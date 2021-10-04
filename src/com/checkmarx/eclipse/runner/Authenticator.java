@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.checkmarx.ast.exceptions.CxException;
+import com.checkmarx.ast.results.CxValidateOutput;
 import com.checkmarx.ast.scans.CxAuth;
 import com.checkmarx.ast.scans.CxScanConfig;
 import com.checkmarx.eclipse.properties.Preferences;
@@ -46,8 +47,9 @@ public class Authenticator {
 		CxAuth cxAuth;
 		try {
 			cxAuth = new CxAuth(config, log);
-			Integer result = cxAuth.cxAuthValidate();
-			System.out.println("Authentication Status :" + result);
+			CxValidateOutput cxValidateOutput = cxAuth.cxAuthValidate();
+			Integer result = cxValidateOutput.getExitCode();
+			System.out.println("Authentication Status :" + cxValidateOutput.getMessage());
 			return result;
 		} catch (CxException e) {
 			// TODO Auto-generated catch block

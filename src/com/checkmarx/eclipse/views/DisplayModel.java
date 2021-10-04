@@ -9,11 +9,13 @@ import com.checkmarx.ast.results.structure.CxResultVulnerabilityDetails;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@Getter
 public class DisplayModel {
 	
 	public DisplayModel parent;
@@ -31,6 +33,7 @@ public class DisplayModel {
     public String sourceFile;
     public String sinkNode;
     public String sinkFile;
+    public String description;
 	
 
 
