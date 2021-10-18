@@ -6,7 +6,8 @@ Bundle-Version: 1.0.0.qualifier
 Bundle-Vendor: Checkmarx
 Require-Bundle: org.eclipse.ui,
  org.eclipse.core.runtime;bundle-version="3.22.0",
- org.eclipse.jdt.core;bundle-version="3.26.0"
+ org.eclipse.jdt.core;bundle-version="3.26.0",
+ org.eclipse.ui.ide;bundle-version="3.18.300"
 Automatic-Module-Name: com.checkmarx.eclipse
 Bundle-RequiredExecutionEnvironment: JavaSE-11
 Import-Package: org.eclipse.core.resources
@@ -20,5 +21,5 @@ Bundle-ClassPath: lib/lombok-1.18.20.jar,
  lib/jackson-core-2.12.4.jar,
  lib/jackson-databind-2.12.4.jar,
  lib/commons-lang3-3.12.0.jar,
- lib/ast-cli-java-wrapper-1.0.14.jar,
+ lib/ast-cli-java-wrapper-1.0.18.jar,
  .

@@ -1,11 +1,9 @@
 package com.checkmarx.eclipse.views.provider;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.jface.viewers.ITreeContentProvider;
 
-import com.checkmarx.ast.results.structure.CxResult;
 import com.checkmarx.eclipse.views.DisplayModel;
 
 public class TreeContentProvider implements ITreeContentProvider {
