@@ -1,82 +1,60 @@
 package com.checkmarx.eclipse.views;
 
-import java.io.IOException;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
+import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IMarker;
+import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.IResourceProxy;
+import org.eclipse.core.resources.IResourceProxyVisitor;
+import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.Path;
 import org.eclipse.jface.action.Action;
-import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
-import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.preference.PreferenceDialog;
 import org.eclipse.jface.preference.StringFieldEditor;
 import org.eclipse.jface.util.IPropertyChangeListener;
-import org.eclipse.jface.util.PropertyChangeEvent;
-import org.eclipse.jface.viewers.ArrayContentProvider;
-import org.eclipse.jface.viewers.ColumnLabelProvider;
 import org.eclipse.jface.viewers.ColumnViewerToolTipSupport;
 import org.eclipse.jface.viewers.ISelectionChangedListener;
 import org.eclipse.jface.viewers.IStructuredSelection;
-import org.eclipse.jface.viewers.ITreeSelection;
-import org.eclipse.jface.viewers.LabelProvider;
-import org.eclipse.jface.viewers.ListViewer;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
-import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.jface.viewers.TreeViewerColumn;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.dnd.Clipboard;
-import org.eclipse.swt.dnd.TextTransfer;
-import org.eclipse.swt.dnd.Transfer;
-import org.eclipse.swt.events.KeyAdapter;
-import org.eclipse.swt.events.KeyEvent;
-import org.eclipse.swt.events.KeyListener;
-import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.FontData;
 import org.eclipse.swt.graphics.Image;
-import org.eclipse.swt.graphics.RGB;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
-import org.eclipse.swt.layout.GridLayout;
-import org.eclipse.swt.layout.RowData;
 import org.eclipse.swt.layout.RowLayout;
-import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Link;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.Shell;
-import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.Text;
-import org.eclipse.swt.widgets.Tree;
 import org.eclipse.swt.widgets.TreeColumn;
-import org.eclipse.ui.IActionBars;
 import org.eclipse.ui.IWorkbench;
-import org.eclipse.ui.IWorkbenchActionConstants;
+import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.PlatformUI;
-import org.eclipse.ui.actions.ActionFactory;
 import org.eclipse.ui.dialogs.PreferencesUtil;
+import org.eclipse.ui.ide.IDE;
 import org.eclipse.ui.part.ViewPart;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import com.checkmarx.ast.exceptions.CxException;
-import com.checkmarx.ast.results.structure.CxResult;
-import com.checkmarx.ast.results.structure.CxResultOutput;
-import com.checkmarx.ast.scans.CxAuth;
-import com.checkmarx.ast.scans.CxScanConfig;
+import com.checkmarx.ast.results.result.Node;
+import com.checkmarx.ast.results.result.PackageData;
 import com.checkmarx.eclipse.Activator;
-import com.checkmarx.eclipse.properties.Preferences;
-import com.checkmarx.eclipse.runner.Authenticator;
+import com.checkmarx.eclipse.utils.PluginConstants;
 import com.checkmarx.eclipse.views.provider.ColumnProvider;
-import com.checkmarx.eclipse.views.provider.ColumnTextProvider;
 import com.checkmarx.eclipse.views.provider.TreeContentProvider;
 
 public class CheckmarxView extends ViewPart {
@@ -107,7 +85,7 @@ public class CheckmarxView extends ViewPart {
 
 	IWorkbench workbench;
 
-	private ListViewer listViewer;
+
 	private TreeViewer viewer;
 	private StringFieldEditor scanIdField;
 	private Action getScanResultsAction, openPrefPageAction, abortGetResultsAction;
@@ -117,19 +95,21 @@ public class CheckmarxView extends ViewPart {
 	private static final String RUNNING = "Retriving the results for the scan id: %s .";
 	private static final String ABORTING = "Aborting the retrieval of results...";
 
-	private List<Action> monitorActions = new ArrayList<>();
 
 	private boolean alreadyRunning = false;
 
 	private IPropertyChangeListener stringChangeListener;
 
-	private CxAuth cxAuth;
-	
+	// private CxAuth cxAuth;
+
+	Font boldFont;
 	private Text typeValueText;
 	private Text severityValueText;
 	private Text statusValueText;
 	private Text descriptionValueText;
-	private Text attackVectorValueText;
+	private Text attackVectorValueLinkText;
+
+	private Composite attackVectorCompositePanel;
 
 //	private List<CxResult> resultList;
 //	private CxResultOutput resultCommandOutput;
@@ -147,6 +127,12 @@ public class CheckmarxView extends ViewPart {
 //			}
 //		};
 //		
+	}
+
+	@Override
+	public void dispose() {
+		super.dispose();
+		boldFont.dispose();
 	}
 
 	@Override
@@ -258,24 +244,21 @@ public class CheckmarxView extends ViewPart {
 
 	private void createViewer(Composite parent) {
 
-
 		// define a new composite for ScanID Field and ScanResults Tree
-		Composite leftCompositePanel = new Composite(parent, SWT.BORDER);	
-		
+		Composite leftCompositePanel = new Composite(parent, SWT.BORDER);
+
 		scanIdField = new StringFieldEditor("scanId", "Scan Id:", 36, leftCompositePanel);
 		scanIdField.setTextLimit(36);
 		scanIdField.setEmptyStringAllowed(false);
-		
-		
+
 		scanIdField.getTextControl(leftCompositePanel).addListener(SWT.DefaultSelection, new Listener() {
 			public void handleEvent(Event event) {
 				getScanResultsAction.run();
 			}
 		});
-		
 
-		
-		viewer = new TreeViewer(leftCompositePanel, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.FULL_SELECTION | SWT.BORDER);
+		viewer = new TreeViewer(leftCompositePanel,
+				SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.FULL_SELECTION | SWT.BORDER);
 		ColumnViewerToolTipSupport.enableFor(viewer);
 		createColumns();
 
@@ -285,8 +268,7 @@ public class CheckmarxView extends ViewPart {
 		viewer.setContentProvider(new TreeContentProvider());
 		// viewer.setLabelProvider();
 		getSite().setSelectionProvider(viewer);
-		
-		
+
 		// define layout for the viewer
 		GridData gridData = new GridData();
 		gridData.verticalAlignment = GridData.FILL;
@@ -297,106 +279,104 @@ public class CheckmarxView extends ViewPart {
 		viewer.getControl().setLayoutData(gridData);
 		viewer.setInput(rootModel);
 
-		//configureSelectionListener
+		// configureSelectionListener
 		configureTreeItemSelectionChangeEvent(viewer);
-		
-		
+
 		// Original working code above
 		// SECTION 2
-		
-		//Setting the BOLD Font for Labels
+
+		// Setting the BOLD Font for Labels
 		Display display = parent.getShell().getDisplay();
 		FontData systemFontData = display.getSystemFont().getFontData()[0];
-		Font boldFont = new Font(display, systemFontData.getName(),
-		                     systemFontData.getHeight(), SWT.BOLD);
-		
-		
+		boldFont = new Font(display, systemFontData.getName(), systemFontData.getHeight(), SWT.BOLD);
+
 		Composite resultInfoCompositePanel = new Composite(parent, SWT.BORDER);
-		resultInfoCompositePanel.setLayout(new RowLayout(SWT.VERTICAL));
+		resultInfoCompositePanel.setLayout(new FillLayout(SWT.VERTICAL));
 
-		
-		Text typeText = new Text(resultInfoCompositePanel, SWT.READ_ONLY);
-		typeText.setFont(boldFont);
-		typeText.setText("Type:");
-		
+		Label typeLabel = new Label(resultInfoCompositePanel, SWT.NONE);
+		typeLabel.setFont(boldFont);
+		typeLabel.setText("Type:");
+
 		typeValueText = new Text(resultInfoCompositePanel, SWT.READ_ONLY);
-		typeValueText.setText("<Insert scanType here>");
-		
-		Text severity = new Text(resultInfoCompositePanel, SWT.READ_ONLY);
-		severity.setFont(boldFont);
-		severity.setText("Severity:");
-		
-		severityValueText = new Text(resultInfoCompositePanel, SWT.READ_ONLY);
-		severityValueText.setText("<Insert severity here>");
-		
-		Text status = new Text(resultInfoCompositePanel, SWT.READ_ONLY);
-		status.setFont(boldFont);
-		status.setText("Status:");
-		
-		statusValueText = new Text(resultInfoCompositePanel, SWT.READ_ONLY);
-		statusValueText.setText("<Insert status here>");
-		
-		Text description = new Text(resultInfoCompositePanel, SWT.READ_ONLY);
-		description.setFont(boldFont);
-		description.setText("Description:");
-		
-		descriptionValueText = new Text(resultInfoCompositePanel, SWT.READ_ONLY);
-		descriptionValueText.setText("<Insert description here>");
+		typeValueText.setText("Not Available.");
 
-		
-		//Section 3
-		Composite attackVectorCompositePanel = new Composite(parent, SWT.BORDER);
+		Label severityLabel = new Label(resultInfoCompositePanel, SWT.NONE);
+		severityLabel.setFont(boldFont);
+		severityLabel.setText("Severity:");
+
+		severityValueText = new Text(resultInfoCompositePanel, SWT.READ_ONLY);
+		severityValueText.setText("Not Available.");
+
+		Label statusLabel = new Label(resultInfoCompositePanel, SWT.NONE);
+		statusLabel.setFont(boldFont);
+		statusLabel.setText("Status:");
+
+		statusValueText = new Text(resultInfoCompositePanel, SWT.READ_ONLY);
+		statusValueText.setText("Not Available.");
+
+		Label descriptionLabel = new Label(resultInfoCompositePanel, SWT.NONE);
+		descriptionLabel.setFont(boldFont);
+		descriptionLabel.setText("Description:");
+
+		descriptionValueText = new Text(resultInfoCompositePanel, SWT.READ_ONLY | SWT.MULTI | SWT.WRAP | SWT.V_SCROLL);
+		descriptionValueText.setText("Not Available.");
+
+		// Section 3
+		attackVectorCompositePanel = new Composite(parent, SWT.BORDER);
 		attackVectorCompositePanel.setLayout(new RowLayout(SWT.VERTICAL));
-		
-		Text attackVector = new Text(attackVectorCompositePanel, SWT.READ_ONLY);
-		attackVector.setFont(boldFont);
-		attackVector.setText("Attack Vector:");
-		
-		attackVectorValueText = new Text(attackVectorCompositePanel, SWT.READ_ONLY);
-		attackVectorValueText.setText("<Insert attack vector here>");
-		
-		
-		// Use this for linking the selection of result to the source file--------------
-//		  viewer.addSelectionChangedListener(new ISelectionChangedListener() {
-//              public void selectionChanged(SelectionChangedEvent event) {
-//                      updateActionEnablement();
-//              }
-//      });
+
+		Label attackVectorLabel = new Label(attackVectorCompositePanel, SWT.NONE);
+		attackVectorLabel.setFont(boldFont);
+		attackVectorLabel.setText("Attack Vector:");
 
 	}
 
-private void configureTreeItemSelectionChangeEvent(TreeViewer viewer) {
-	
-	viewer.addSelectionChangedListener(new ISelectionChangedListener() {
-		
-		@Override
-		public void selectionChanged(SelectionChangedEvent event) {
-		       // if the selection is empty clear the label
-		       if(event.getSelection().isEmpty()) {
-		           System.out.println("Empty row selected");
-		           return;
-		       }
-		       if(event.getSelection() instanceof IStructuredSelection) {
-		           IStructuredSelection selection = (IStructuredSelection)event.getSelection();
-		           DisplayModel selectedItem = (DisplayModel)selection.getFirstElement();
-//		           System.out.println("Selected :" + selectedItem.getName());
-		           
-		           if(selectedItem.getType() !=null) {
-		           typeValueText.setText(selectedItem.getType());
-		           }
-		           
-		           if(selectedItem.getSeverity() !=null) {
-		           severityValueText.setText(selectedItem.getSeverity());
-		           }
-		           
-		           if(selectedItem.getStatus() !=null) {
-		           statusValueText.setText(selectedItem.getStatus());
-		           }
-		           
-		           if(selectedItem.getDescription() !=null) {
-		           descriptionValueText.setText(selectedItem.getDescription());
-		           }
-		        
+	private void configureTreeItemSelectionChangeEvent(TreeViewer viewer) {
+
+		viewer.addSelectionChangedListener(new ISelectionChangedListener() {
+
+			@Override
+			public void selectionChanged(SelectionChangedEvent event) {
+				// if the selection is empty clear the label
+				if (event.getSelection().isEmpty()) {
+					return;
+				}
+				if (event.getSelection() instanceof IStructuredSelection) {
+					IStructuredSelection selection = (IStructuredSelection) event.getSelection();
+					DisplayModel selectedItem = (DisplayModel) selection.getFirstElement();
+
+					// added this line to generate the view dynamically
+					// createDetailsSection(viewer);
+
+					if (selectedItem.getType() != null) {
+						typeValueText.setText((selectedItem.getType()).toUpperCase());
+					}
+
+					if (selectedItem.getSeverity() != null) {
+						severityValueText.setText(selectedItem.getSeverity());
+					}
+					
+					if(selectedItem.getResult()!= null)
+					{
+						if (selectedItem.getResult().getStatus() != null) {
+							statusValueText.setText(selectedItem.getResult().getStatus());
+						}
+
+						if (selectedItem.getResult().getData().getDescription() != null) {
+							descriptionValueText.setText(selectedItem.getResult().getData().getDescription());
+						} else {
+							descriptionValueText.setText("Not Available.");
+						}
+						
+					}
+									
+
+					if(selectedItem.getType()!=null)
+					{
+					updateAttackVectorForSelectedTreeItem(selectedItem);
+					}
+
+					// Delete the following commented code later
 //		           StringBuffer toShow = new StringBuffer();
 //		           for (Iterator iterator = selection.iterator(); iterator.hasNext();) {
 //		               Object domain = (Model) iterator.next();
@@ -409,18 +389,220 @@ private void configureTreeItemSelectionChangeEvent(TreeViewer viewer) {
 //		               toShow.setLength(toShow.length() - 2);
 //		           }
 //		           text.setText(toShow.toString());
-		       }
-		   }
+				}
+			}
 		});
 
-		
 	}
 
-//    private void updateActionEnablement() {
-//        IStructuredSelection sel = 
-//                (IStructuredSelection)viewer.getSelection();
-//        deleteItemAction.setEnabled(sel.size() > 0);
-//}
+
+//	private void createDetailsSection(TreeViewer treeViewer)
+//	{
+//		Composite parent = treeViewer.getControl().getParent();
+//		
+//		Display display = parent.getShell().getDisplay();
+//		FontData systemFontData = display.getSystemFont().getFontData()[0];
+//		Font boldFont = new Font(display, systemFontData.getName(),
+//		                     systemFontData.getHeight(), SWT.BOLD);
+//		
+//		
+//		Composite resultInfoCompositePanel = new Composite(parent, SWT.BORDER);
+//		resultInfoCompositePanel.setLayout(new RowLayout(SWT.VERTICAL));
+//
+//		
+//		Text typeText = new Text(resultInfoCompositePanel, SWT.READ_ONLY);
+//		typeText.setFont(boldFont);
+//		typeText.setText("Type:");
+//		
+//		typeValueText = new Text(resultInfoCompositePanel, SWT.READ_ONLY);
+//	//	typeValueText.setText("Not Available.");
+//		
+//		Text severity = new Text(resultInfoCompositePanel, SWT.READ_ONLY);
+//		severity.setFont(boldFont);
+//		severity.setText("Severity:");
+//		
+//		severityValueText = new Text(resultInfoCompositePanel, SWT.READ_ONLY);
+//	//	severityValueText.setText("Not Available.");
+//		
+//		Text status = new Text(resultInfoCompositePanel, SWT.READ_ONLY);
+//		status.setFont(boldFont);
+//		status.setText("Status:");
+//		
+//		statusValueText = new Text(resultInfoCompositePanel, SWT.READ_ONLY);
+//	//	statusValueText.setText("Not Available.");
+//		
+//		Text description = new Text(resultInfoCompositePanel, SWT.READ_ONLY);
+//		description.setFont(boldFont);
+//		description.setText("Description:");
+//		
+//		descriptionValueText = new Text(resultInfoCompositePanel, SWT.READ_ONLY);
+//	//	descriptionValueText.setText("Not Available.");
+//
+//		
+//		//Section 3
+//		attackVectorCompositePanel = new Composite(parent, SWT.BORDER);
+//		attackVectorCompositePanel.setLayout(new RowLayout(SWT.VERTICAL));
+//		
+//		Text attackVector = new Text(attackVectorCompositePanel, SWT.READ_ONLY);
+//		attackVector.setFont(boldFont);
+//		attackVector.setText("Attack Vector:");
+//		
+//		parent.layout();
+//		
+//		
+//	}
+
+	private void updateAttackVectorForSelectedTreeItem(DisplayModel selectedItem) {
+
+		clearAttackVectorSection(attackVectorCompositePanel);
+		
+		if (selectedItem.getType().equalsIgnoreCase(PluginConstants.SCA_DEPENDENCY)) {
+			
+			List<PackageData> packageDataList = selectedItem.getResult().getData().getPackageData();
+
+			if (packageDataList!= null && !packageDataList.isEmpty()) {
+				
+				for(PackageData packageDataItem : packageDataList)
+				{
+					Text packageDataTypeLabel = new Text(attackVectorCompositePanel, SWT.READ_ONLY);
+					packageDataTypeLabel.setFont(boldFont);
+					packageDataTypeLabel.setText(packageDataItem.getType());
+					
+					Link packageDataLink = new Link(attackVectorCompositePanel, SWT.NONE);
+					packageDataLink.setText("<a>" + packageDataItem.getUrl() + "</a>");
+					
+					
+				}
+				
+				attackVectorCompositePanel.layout();
+								
+			} else {
+				if (attackVectorValueLinkText != null) {
+					attackVectorValueLinkText.setText("Not Available.");
+				}
+			}
+
+		}
+		if (selectedItem.getType().equalsIgnoreCase(PluginConstants.KICS_INFRASTRUCTURE)) {
+
+		}
+		
+		
+		if (selectedItem.getType().equalsIgnoreCase(PluginConstants.SAST)) {
+
+			String queryName = selectedItem.getResult().getData().getQueryName();
+			String groupName = selectedItem.getResult().getData().getGroup();
+			
+			List<Node> nodesList = selectedItem.getResult().getData().getNodes();
+			if (nodesList != null && nodesList.size() > 0) {
+				
+
+				for (Node node : nodesList) {
+					
+					String nodeName = node.getName();
+					String markerDescription = groupName+"_"+queryName+"_"+ nodeName;
+					
+					// attackVectorValueText = new Text(attackVectorCompositePanel, SWT.READ_ONLY);
+					// attackVectorValueText.setText(node.getFileName() + "[" + node.getLine() + ","
+					// + node.getColumn() + "]");
+
+					Link attackVectorValueLinkText = new Link(attackVectorCompositePanel, SWT.NONE);
+					String text = "<a>" + node.getFileName() + "[" + node.getLine() + "," + node.getColumn() + "]"
+							+ "</a>";
+					attackVectorValueLinkText.setText(text);
+					attackVectorValueLinkText.addListener(SWT.Selection, new Listener() {
+						public void handleEvent(Event event) {
+							openTheSelectedFile(node.getFileName(), node.getLine(), markerDescription);
+						}
+					});
+
+					attackVectorCompositePanel.layout();
+
+				}
+			} else {
+				if (attackVectorValueLinkText != null) {
+					attackVectorValueLinkText.setText("Not Available.");
+				}
+
+			}
+		}
+
+	}
+
+	private void clearAttackVectorSection(Composite attackVectorCompositePanel) {
+		
+		for (Control child : attackVectorCompositePanel.getChildren()) {
+			
+			if(!(child instanceof Label))
+			child.dispose();
+		}
+	}
+	
+	private void openTheSelectedFile(String fileName, Integer lineNumber, String markerDescription) {
+
+		Path filePath = new Path(fileName);
+		List<IFile> filesFound = findFileInWorkspace(filePath.lastSegment());
+
+		for (IFile file : filesFound) {
+			Path fullPath = (Path) file.getFullPath();
+			Path absolutePathOfFoundFile = (Path) fullPath.removeFirstSegments(1).makeAbsolute();
+
+			if (absolutePathOfFoundFile.equals(filePath)) {
+				try {
+					IMarker fileMarker = file.createMarker(IMarker.TEXT);
+					fileMarker.setAttribute(IMarker.LINE_NUMBER, lineNumber);
+					IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
+					// IDE.openEditor(marker); //3.0 API
+					IDE.openEditor(page, fileMarker);
+					// marker.delete();
+				} catch (CoreException e) {
+					e.printStackTrace();
+				}
+			}
+
+		}
+
+	}
+
+//	private void createFileMarkers(IFile file, Integer lineNumber, String markerDescription) {		
+//		
+//		try {
+//			fileMarker = file.createMarker(IMarker.PROBLEM);
+//			fileMarker.setAttribute(IMarker.LINE_NUMBER, lineNumber);
+//			fileMarker.setAttribute(IMarker.SEVERITY, IMarker.SEVERITY_WARNING);
+//			fileMarker.setAttribute(IMarker.MESSAGE, markerDescription);
+//		} catch (CoreException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
+//		// return fileMarker;
+//
+//	}
+
+	private List<IFile> findFileInWorkspace(final String fileName) {
+		final List<IFile> foundFiles = new ArrayList<IFile>();
+		try {
+			// visiting only resources proxy because we obtain the resource only when
+			// matching name, thus the workspace traversal is much faster
+			ResourcesPlugin.getWorkspace().getRoot().accept(new IResourceProxyVisitor() {
+				@Override
+				public boolean visit(IResourceProxy resourceProxy) throws CoreException {
+					if (resourceProxy.getType() == IResource.FILE) {
+						String resourceName = resourceProxy.getName();
+						if (resourceName.equals(fileName)) {
+							IFile foundFile = (IFile) resourceProxy.requestResource();
+							foundFiles.add(foundFile);
+						}
+					}
+					return true;
+				}
+			}, IResource.NONE);
+		} catch (Exception e) {
+//			CxLogger.getLogger().error("Error occured while searching for file name in project",e);
+			e.printStackTrace();
+		}
+		return foundFiles;
+	}
 
 	private void createColumns() {
 		TreeViewerColumn col = createTreeViewerColumn("Title", 400);

@@ -18,8 +18,8 @@ public class AuthButtonFieldEditor extends StringButtonFieldEditor {
 		@Override
 		protected String changePressed() {
 
-			Integer result = Authenticator.INSTANCE.doAuthentication();
-			if(result == 0)
+			String result = Authenticator.INSTANCE.doAuthentication();
+			if(!result.isEmpty())
 			{
 				MessageDialog.openInformation(null, "Authentication", "Connection successfull !");
 			}
