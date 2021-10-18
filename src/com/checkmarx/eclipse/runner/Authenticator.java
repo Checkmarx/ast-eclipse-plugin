@@ -6,9 +6,10 @@ import java.net.URISyntaxException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.checkmarx.ast.exceptions.CxException;
-import com.checkmarx.ast.scans.CxAuth;
-import com.checkmarx.ast.scans.CxScanConfig;
+import com.checkmarx.ast.wrapper.CxConfig;
+import com.checkmarx.ast.wrapper.CxConfig.InvalidCLIConfigException;
+import com.checkmarx.ast.wrapper.CxException;
+import com.checkmarx.ast.wrapper.CxWrapper;
 import com.checkmarx.eclipse.properties.Preferences;
 
 public class Authenticator {
@@ -33,32 +34,33 @@ public class Authenticator {
 //
 //	}
 
-	public Integer doAuthentication() {
+	public String doAuthentication() {
 
-		CxScanConfig config = new CxScanConfig();
+		CxConfig config = CxConfig.builder().baseUri(Preferences.getServerUrl()).tenant(Preferences.getTenant()).apiKey(Preferences.getApiKey()).additionalParameters("").build();
 
-	    config.setBaseUri(Preferences.getServerUrl());
-	    config.setTenant(Preferences.getTenant());
-	    config.setApiKey(Preferences.getApiKey());
+//	    config.setBaseUri(Preferences.getServerUrl());
+//	    config.setTenant(Preferences.getTenant());
+//	    config.setApiKey(Preferences.getApiKey());
 	    
 		Logger log = LoggerFactory.getLogger(Authenticator.class.getName());
 
-		CxAuth cxAuth;
+		CxWrapper wrapper;
 		try {
-			cxAuth = new CxAuth(config, log);
-			Integer result = cxAuth.cxAuthValidate();
-			System.out.println("Authentication Status :" + result);
-			return result;
-		} catch (CxException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			wrapper = new CxWrapper(config, log);
+			String cxValidateOutput = wrapper.authValidate();
+		//	Integer result = cxValidateOutput.getExitCode();
+			System.out.println("Authentication Status :" + cxValidateOutput);
+			return cxValidateOutput;
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		} catch (URISyntaxException e) {
+		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		} catch (InterruptedException e) {
+		} catch (InvalidCLIConfigException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (CxException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
