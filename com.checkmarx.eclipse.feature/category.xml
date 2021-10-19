@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<site>
+   <feature url="features/com.checkmarx.eclipse.feature_1.0.0.qualifier.jar" id="com.checkmarx.eclipse.feature" version="1.0.0.qualifier">
+      <category name="com.checkmarx.ast"/>
+   </feature>
+   <category-def name="com.checkmarx.ast" label="Checkmarx AST Scanner">
+      <description>
+         Checkmarx AST Plugin for Eclipse.
+      </description>
+   </category-def>
+</site>
