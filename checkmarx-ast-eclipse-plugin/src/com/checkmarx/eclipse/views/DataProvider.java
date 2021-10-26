@@ -1,6 +1,5 @@
 package com.checkmarx.eclipse.views;
 
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -9,8 +8,8 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
-import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.ILog;
+import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.FrameworkUtil;
@@ -21,7 +20,6 @@ import com.checkmarx.ast.results.Results;
 import com.checkmarx.ast.results.result.Result;
 import com.checkmarx.ast.wrapper.CxConfig;
 import com.checkmarx.ast.wrapper.CxWrapper;
-import com.checkmarx.ast.wrapper.Execution;
 import com.checkmarx.eclipse.properties.Preferences;
 import com.checkmarx.eclipse.runner.Authenticator;
 import com.checkmarx.eclipse.utils.PluginConstants;
@@ -43,8 +41,7 @@ public class DataProvider {
 	private Integer kicsCount = 0;
 
 	public DisplayModel message(String message) {
-		DisplayModel messageModel = new DisplayModel();
-		messageModel.name = message;
+		DisplayModel messageModel = new DisplayModel.DisplayModelBuilder(message).build();
 		return messageModel;
 	}
 	
@@ -57,7 +54,7 @@ public class DataProvider {
 
 	public List<DisplayModel> abortResult() {
 		List<DisplayModel> result = new ArrayList<>();
-		result.add(message("Scan results  call aborted."));
+		result.add(message("Scan results call aborted."));
 		return result;
 	}
 
@@ -128,10 +125,10 @@ public class DataProvider {
 
 			List<DisplayModel> listForEachSeverity = mapEntry.getValue();
 			sastCount = sastCount + listForEachSeverity.size();
-			new DisplayModel();
-			DisplayModel sastSeverityParentModel = DisplayModel.builder()
-					.name(mapEntry.getKey() + " (" + listForEachSeverity.size() + ")").children(listForEachSeverity)
+			
+			DisplayModel sastSeverityParentModel = new DisplayModel.DisplayModelBuilder(mapEntry.getKey() + " (" + listForEachSeverity.size() + ")").setChildren(listForEachSeverity)
 					.build();
+			
 			sastParentModelList.add(sastSeverityParentModel);
 
 		}
@@ -142,9 +139,8 @@ public class DataProvider {
 
 			List<DisplayModel> listForEachSeverity = mapEntry.getValue();
 			scaCount = scaCount + listForEachSeverity.size();
-			new DisplayModel();
-			DisplayModel scaSeverityParentModel = DisplayModel.builder()
-					.name(mapEntry.getKey() + " (" + listForEachSeverity.size() + ")").children(listForEachSeverity)
+
+			DisplayModel scaSeverityParentModel = new DisplayModel.DisplayModelBuilder(mapEntry.getKey() + " (" + listForEachSeverity.size() + ")").setChildren(listForEachSeverity)
 					.build();
 			scaParentModelList.add(scaSeverityParentModel);
 
@@ -157,9 +153,8 @@ public class DataProvider {
 
 			List<DisplayModel> listForEachSeverity = mapEntry.getValue();
 			kicsCount = kicsCount + listForEachSeverity.size();
-			new DisplayModel();
-			DisplayModel kicsSeverityParentModel = DisplayModel.builder()
-					.name(mapEntry.getKey() + " (" + listForEachSeverity.size() + ")").children(listForEachSeverity)
+		
+			DisplayModel kicsSeverityParentModel = new DisplayModel.DisplayModelBuilder(mapEntry.getKey() + " (" + listForEachSeverity.size() + ")").setChildren(listForEachSeverity)
 					.build();
 			kicsParentModelList.add(kicsSeverityParentModel);
 
@@ -168,21 +163,18 @@ public class DataProvider {
 		List<DisplayModel> results = new ArrayList<>();
 		if (sastParentModelList.size() > 0) {
 
-			new DisplayModel();
-			DisplayModel sastModel = DisplayModel.builder().name("SAST" + " (" + sastCount + ")")
-					.children(sastParentModelList).build();
+
+			DisplayModel sastModel = new DisplayModel.DisplayModelBuilder("SAST" + " (" + sastCount + ")").setChildren(sastParentModelList).build();
 			results.add(sastModel);
 		}
 		if (scaParentModelList.size() > 0) {
-			new DisplayModel();
-			DisplayModel scaModel = DisplayModel.builder().name("SCA" + " (" + scaCount + ")")
-					.children(scaParentModelList).build();
+		
+			DisplayModel scaModel = new DisplayModel.DisplayModelBuilder("SCA" + " (" + scaCount + ")").setChildren(scaParentModelList).build();
 			results.add(scaModel);
 		}
 		if (kicsParentModelList.size() > 0) {
-			new DisplayModel();
-			DisplayModel kicsModel = DisplayModel.builder().name("KICS" + " (" + kicsCount + ")")
-					.children(kicsParentModelList).build();
+		
+			DisplayModel kicsModel = new DisplayModel.DisplayModelBuilder("KICS" + " (" + kicsCount + ")").setChildren(kicsParentModelList).build();
 			results.add(kicsModel);
 		}
 
@@ -191,8 +183,7 @@ public class DataProvider {
 //			 results.add(parentDisplayItem);
 //		 }
 
-		projectModel = DisplayModel.builder().name(scanId + " (" + scanResults.getTotalCount() + " Issues)")
-				.children(results).build();
+		projectModel = new DisplayModel.DisplayModelBuilder(scanId + " (" + scanResults.getTotalCount() + " Issues)").setChildren(results).build();
 
 		List<DisplayModel> returnList = new ArrayList<>();
 		returnList.add(projectModel);
@@ -210,8 +201,8 @@ public class DataProvider {
 		}
 
 
-		return DisplayModel.builder().name(displayName).severity(resultItem.getSeverity()).type(resultItem.getType())
-				.result(resultItem).build();
+		return new DisplayModel.DisplayModelBuilder(displayName).setSeverity(resultItem.getSeverity()).setType(resultItem.getType())
+				.setResult(resultItem).build();
 
 //		return DisplayModel.builder().name(displayName).state(resultItem.getState()).status(resultItem.getStatus())
 //				.severity(resultItem.getSeverity()).type(resultItem.getType()).description(description).nodes(nodesList).build();

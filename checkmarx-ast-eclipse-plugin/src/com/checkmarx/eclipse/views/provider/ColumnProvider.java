@@ -7,16 +7,16 @@ import org.eclipse.swt.graphics.Image;
 
 import com.checkmarx.eclipse.views.DisplayModel;
 
-import lombok.AllArgsConstructor;
-
-@AllArgsConstructor
 public class ColumnProvider extends ColumnLabelProvider{
+	
+
 	Function<DisplayModel, Image> vulnFuncImg;
 	Function<DisplayModel, String> vulnFuncTxt;
 	
-
-	public ColumnProvider(Object object, Object object2) {
-		// TODO Auto-generated constructor stub
+	public ColumnProvider(Function<DisplayModel, Image> vulnFuncImg, Function<DisplayModel, String> vulnFuncTxt) {
+		super();
+		this.vulnFuncImg = vulnFuncImg;
+		this.vulnFuncTxt = vulnFuncTxt;
 	}
 
 	@Override
