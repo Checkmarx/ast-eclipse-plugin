@@ -110,15 +110,16 @@ public class CheckmarxView extends ViewPart {
 	private Text attackVectorValueLinkText;
 
 	private Composite attackVectorCompositePanel;
+	private Composite leftCompositePanel;
 
 //	private List<CxResult> resultList;
 //	private CxResultOutput resultCommandOutput;
 
 	public CheckmarxView() {
 		super();
-		rootModel = new DisplayModel();
-		DisplayModel init = new DisplayModel();
-		init.name = "Paste a scanId and hit play to fetch the results.";
+				
+		DisplayModel init = new DisplayModel.DisplayModelBuilder("Paste a scanId and hit play to fetch the results.").build();
+		rootModel = new DisplayModel.DisplayModelBuilder("").build();
 		rootModel.children.add(init);
 
 //		stringChangeListener = new IPropertyChangeListener() {
@@ -177,10 +178,12 @@ public class CheckmarxView extends ViewPart {
 					showMessage("Incorrect scanId format.");
 					return;
 				}
+
 				showMessage(String.format(RUNNING, scanId));
 
 				getScanResultsAction.setEnabled(false);
 				abortGetResultsAction.setEnabled(true);
+
 
 				CompletableFuture.runAsync(() -> {
 					alreadyRunning = true;
@@ -192,6 +195,8 @@ public class CheckmarxView extends ViewPart {
 					viewer.getTree().getDisplay().asyncExec(() -> viewer.refresh());
 					getScanResultsAction.setEnabled(true);
 					alreadyRunning = false;
+					
+
 				});
 
 			}
@@ -245,7 +250,7 @@ public class CheckmarxView extends ViewPart {
 	private void createViewer(Composite parent) {
 
 		// define a new composite for ScanID Field and ScanResults Tree
-		Composite leftCompositePanel = new Composite(parent, SWT.BORDER);
+		leftCompositePanel = new Composite(parent, SWT.BORDER);
 
 		scanIdField = new StringFieldEditor("scanId", "Scan Id:", 36, leftCompositePanel);
 		scanIdField.setTextLimit(36);
@@ -282,7 +287,6 @@ public class CheckmarxView extends ViewPart {
 		// configureSelectionListener
 		configureTreeItemSelectionChangeEvent(viewer);
 
-		// Original working code above
 		// SECTION 2
 
 		// Setting the BOLD Font for Labels
