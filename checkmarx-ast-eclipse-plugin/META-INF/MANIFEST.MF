@@ -1,7 +1,7 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
-Bundle-Name: Checkmarx-ast-eclipse-plugin
-Bundle-SymbolicName: com.checkmarx.eclipse;singleton:=true
+Bundle-Name: Checkmarx Results Viewer
+Bundle-SymbolicName: com.checkmarx.eclipse.plugin;singleton:=true
 Bundle-Version: 1.0.0.qualifier
 Bundle-Vendor: Checkmarx
 Require-Bundle: org.eclipse.ui,
