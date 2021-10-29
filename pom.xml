@@ -13,6 +13,7 @@
 	<modules>
 		<module>checkmarx-ast-eclipse-plugin</module>
 		<module>com.checkmarx.eclipse.feature</module>
+		<module>com.checkmarx.eclipse.site</module>
 	</modules>
 
 	<properties>
@@ -24,6 +25,16 @@
 
 
 	<build>
+	<pluginManagement>
+		<plugins>
+			<plugin>
+				<groupId>org.eclipse.tycho</groupId>
+				<artifactId>tycho-p2-director-plugin</artifactId>
+				<version>${tycho.version}</version>
+			</plugin>
+		</plugins>
+	</pluginManagement>
+	
 		<plugins>
 			<plugin>
 				<groupId>org.eclipse.tycho</groupId>
@@ -47,9 +58,19 @@
 				<groupId>org.eclipse.tycho</groupId>
 				<artifactId>tycho-packaging-plugin</artifactId>
 				<version>${tycho.version}</version>
-				<configuration>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<id>package-feature</id>
+						<configuration>
+						<finalName>${project.artifactId}_${unqualifiedVersion}.${buildQualifier}
+						</finalName>
+						</configuration>
+					</execution>
+				</executions>
+				<!-- <configuration>
 					<format>'v'yyyyMMddHHmm</format>
-				</configuration>
+				</configuration> -->
 			</plugin>
 
 			<plugin>

@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <feature
       id="com.checkmarx.eclipse.feature"
-      label="Checkmarx AST"
+      label="Checkmarx AST Eclipse Feature"
       version="1.0.0.qualifier"
-      provider-name="Checkmarx">
+      provider-name="Checkmarx"
+      plugin="com.checkmarx.eclipse.plugin">
 
    <description url="https://www.checkmarx.com/">
       This is an IDE extension that helps you detect and fix security
@@ -20,7 +21,7 @@ Supported scanner are SAST, SCA and KICS.
    </license>
 
    <plugin
-         id="com.checkmarx.eclipse"
+         id="com.checkmarx.eclipse.plugin"
          download-size="0"
          install-size="0"
          version="0.0.0"
