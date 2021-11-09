@@ -14,6 +14,7 @@
 		<module>checkmarx-ast-eclipse-plugin</module>
 		<module>com.checkmarx.eclipse.feature</module>
 		<module>com.checkmarx.eclipse.site</module>
+		<module>checkmarx-ast-eclipse-plugin-tests</module>
 	</modules>
 
 	<properties>
@@ -42,7 +43,19 @@
 				<version>${tycho.version}</version>
 				<extensions>true</extensions>
 			</plugin>
-
+			
+			<plugin>
+	            <groupId>org.eclipse.tycho</groupId>
+	            <artifactId>tycho-surefire-plugin</artifactId>
+	            <version>${tycho.version}</version>
+	            <configuration>
+	              <useUIHarness>true</useUIHarness>
+	              <useUIThread>false</useUIThread>
+	              <product>org.eclipse.sdk.ide</product>
+	              <application>org.eclipse.ui.ide.workbench</application>
+	            </configuration>
+	        </plugin>
+	        
 			<plugin>
 				<groupId>org.eclipse.tycho</groupId>
 				<artifactId>tycho-compiler-plugin</artifactId>
@@ -102,8 +115,6 @@
 
 		</plugins>
 	</build>
-
-
 
 <repositories>
 	<repository>
