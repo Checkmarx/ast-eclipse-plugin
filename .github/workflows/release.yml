@@ -28,5 +28,10 @@ jobs:
       - name: Update the POM version.
         run: mvn -B versions:set -DnewVersion='${{ env.RELEASE_VERSION }}' --file pom.xml -DskipTests
 
+      - name: Create release
+        run: mvn clean install
+
       - name: Release
         uses: softprops/action-gh-release@v1
+        with:
+          files: ./com.checkmarx.eclipse.site/target/com.checkmarx.eclipse.site-*.zip
