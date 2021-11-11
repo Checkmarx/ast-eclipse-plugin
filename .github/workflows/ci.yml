@@ -28,7 +28,9 @@ jobs:
           CX_CLIENT_SECRET: ${{ secrets.CLIENT_SECRET}}
           CX_BASE_URI: ${{ secrets.BASE_URI }}
           CX_TENANT: ${{ secrets.TENANT }}
-        run: mvn clean install
+        run: |
+          export DISPLAY=:99.0
+          Xvfb -ac :99 -screen 0 1920x1080x16 & mvn clean install
   cx-scan:
     runs-on: ubuntu-latest
     steps:
