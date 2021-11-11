@@ -1,7 +1,10 @@
 package checkmarx.ast.eclipse.plugin.tests.ui;
 
 import org.eclipse.swtbot.eclipse.finder.SWTWorkbenchBot;
+import org.eclipse.swtbot.swt.finder.finders.UIThreadRunnable;
+import org.eclipse.swtbot.swt.finder.results.VoidResult;
 import org.eclipse.swtbot.swt.finder.utils.SWTBotPreferences;
+import org.eclipse.ui.PlatformUI;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -38,6 +41,9 @@ public abstract class BaseUITest {
 	
 	@BeforeClass
 	public static void beforeClass() throws Exception {
+		
+		// Needed to set CI environment keyboard layout
+		SWTBotPreferences.KEYBOARD_LAYOUT = "EN_US"; 
 
 		// Used to decrease tests velocity
 		SWTBotPreferences.PLAYBACK_DELAY = 100;
@@ -57,5 +63,16 @@ public abstract class BaseUITest {
 	
 	protected static void sleep(long millis) {
 		_bot.sleep(millis);
+	}
+	
+	/**
+	 * Used to get the workbench focus back and avoid "widget was null" error message in the CI environment
+	 */
+	protected static void preventWidgetWasNullInCIEnvironment() {
+		UIThreadRunnable.syncExec(new VoidResult() {
+			public void run() {
+				PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell().forceActive();
+			}
+		});
 	}
 }

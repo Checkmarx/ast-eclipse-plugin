@@ -33,18 +33,9 @@ public class TestUI extends BaseUITest {
 
 	@Test
 	public void testAddCheckmarxASTPlugin() {
-
-		// Open "Other" "Show View" options from eclipse "Window" tab
-		_bot.menu(TAB_WINDOW).menu(ITEM_SHOW_VIEW).menu(ITEM_OTHER).click();
-
-		// Activate opened window
-		_bot.shell(ITEM_SHOW_VIEW).activate();
-
-		// Expand "Checkmarx" node and select the "Checkmarx AST Scan"
-		_bot.tree().expandNode(ITEM_CHECKMARX).select(ITEM_CHECKMARX_AST_SCAN);
-
-		// Click to open the plugin in the eclipse show view
-		_bot.button(BTN_OPEN).click();
+				
+		// Add Checkmarx plugin to the eclipse view
+		addCheckmarxPlugin();
 
 		// Assert that active view is the Checkmarx AST Scan
 		assertTrue("Active view must be the Checkmarx AST Scan", _bot.activeView().getTitle().equals(VIEW_CHECKMARX_AST_SCAN));
@@ -69,8 +60,7 @@ public class TestUI extends BaseUITest {
 
 		String firstTreeCell = _bot.tree().cell(0, COLUMN_TITLE);
 
-		// The first row must have a message saying that AST is getting results or
-		// failing due the missing Server Url
+		// The first row must have a message saying that AST is getting results or failing due the missing Server Url
 		boolean expectedResult = firstTreeCell.equals(INFO_SCAN_RETRIVING_RESULTS) || firstTreeCell.equals(ERROR_SERVER_URL_NOT_SET);
 		assertTrue("Plugin should be retrieving results or failed due Server Url not set", expectedResult);
 
@@ -102,6 +92,8 @@ public class TestUI extends BaseUITest {
 
 		// Add Checkmarx AST Plugin
 		addCheckmarxPlugin();
+		
+		preventWidgetWasNullInCIEnvironment();
 
 		assertEquals("The tree must contain one row with an info message", _bot.tree().rowCount(), 1);
 		assertEquals("", INFO_TYPE_SCAN_TO_GET_RESULTS, _bot.tree().cell(0, COLUMN_TITLE));
@@ -113,7 +105,7 @@ public class TestUI extends BaseUITest {
 		sleep(1000);
 
 		assertEquals("The tree must contain one row with an error message", _bot.tree().rowCount(), 1);
-		assertEquals("", ERROR_INCORRECT_SCAN_ID_FORMAT, _bot.tree().cell(0, COLUMN_TITLE));
+		assertEquals("An incorrect scanId format message must be displayed", ERROR_INCORRECT_SCAN_ID_FORMAT, _bot.tree().cell(0, COLUMN_TITLE));
 
 		sleep(1000);
 
@@ -145,6 +137,9 @@ public class TestUI extends BaseUITest {
 	 * Test successful connection
 	 */
 	private void testSuccessfulConnection() {
+		
+		preventWidgetWasNullInCIEnvironment();
+		
 		_bot.menu(TAB_WINDOW).menu(ITEM_PREFERENCES).click();
 		_bot.shell(ITEM_PREFERENCES).activate();
 		_bot.tree().select(ITEM_CHECKMARX_AST);
@@ -158,10 +153,12 @@ public class TestUI extends BaseUITest {
 		_bot.button(BTN_APPLY).click();
 		_bot.button(BTN_TEST_CONNECTION).click();
 		_bot.waitUntil(Conditions.shellIsActive(SHELL_AUTHENTICATION));
-
-		assertEquals("Connection successful must be displayed", INFO_SUCCESSFUL_CONNECTION, _bot.label(1).getText());
-
+		
+		assertEquals(INFO_SUCCESSFUL_CONNECTION, _bot.label(INFO_SUCCESSFUL_CONNECTION).getText());
+		
 		_bot.button(BTN_OK).click();
+		
+		_bot.shell(ITEM_PREFERENCES).setFocus(); // Need to set focus to avoid failing in CI environment
 		_bot.button(BTN_APPLY_AND_CLOSE).click();
 
 		_cxSettingsDefined = true;
@@ -171,6 +168,9 @@ public class TestUI extends BaseUITest {
 	 * Add Checkmarx plugin in the show view perspective
 	 */
 	private void addCheckmarxPlugin() {
+		
+		preventWidgetWasNullInCIEnvironment();
+		
 		_bot.menu(TAB_WINDOW).menu(ITEM_SHOW_VIEW).menu(ITEM_OTHER).click();
 		_bot.shell(ITEM_SHOW_VIEW).activate();
 		_bot.tree().expandNode(ITEM_CHECKMARX).select(ITEM_CHECKMARX_AST_SCAN);
@@ -181,6 +181,9 @@ public class TestUI extends BaseUITest {
 	 * Type a valid Scan ID to get results
 	 */
 	private void typeValidScanID() {
+		
+		preventWidgetWasNullInCIEnvironment();
+		
 		_bot.textWithLabel(LABEL_SCAN_ID).setText(Environment.SCAN_ID);
 		_bot.textWithLabel(LABEL_SCAN_ID).pressShortcut(Keystrokes.LF);
 	}
@@ -193,6 +196,8 @@ public class TestUI extends BaseUITest {
 		if (!_cxSettingsDefined) {
 			return;
 		}
+		
+		preventWidgetWasNullInCIEnvironment();
 
 		_bot.menu(TAB_WINDOW).menu(ITEM_PREFERENCES).click();
 		_bot.shell(ITEM_PREFERENCES).activate();
@@ -206,17 +211,19 @@ public class TestUI extends BaseUITest {
 		_bot.button(BTN_APPLY_AND_CLOSE).click();
 
 		sleep();
+		
+		if (_bot.getFocusedWidget() != null) {
+			// Check if an Authorizing Eclipse Window pops up and closes it
+			if (_bot.activeShell().getText().equals("Authorizing with Eclipse.org")) {
+				_bot.button("Cancel").click();
+			}
 
-		// Check if an Authorizing Eclipse Window pop up and closes it
-		if (_bot.activeShell().getText().equals("Authorizing with Eclipse.org")) {
-			_bot.button("Cancel").click();
-		}
+			sleep();
 
-		sleep();
-
-		// Check if an Authorizing Eclipse Window pop up and closes it
-		if (_bot.activeShell().getText().equals("Preference Recorder")) {
-			_bot.button("Cancel").click();
+			// Check if an Authorizing Eclipse Window pops up and closes it
+			if (_bot.activeShell().getText().equals("Preference Recorder")) {
+				_bot.button("Cancel").click();
+			}
 		}
 
 		_cxSettingsDefined = false;
