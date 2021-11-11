@@ -92,7 +92,7 @@ public class CheckmarxView extends ViewPart {
 	private DisplayModel rootModel;
 	private Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell();
 
-	private static final String RUNNING = "Retriving the results for the scan id: %s .";
+	private static final String RUNNING = "Retrieving the results for the scan id: %s .";
 	private static final String ABORTING = "Aborting the retrieval of results...";
 
 
