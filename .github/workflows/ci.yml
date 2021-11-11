@@ -24,10 +24,10 @@ jobs:
 
       - name: Run tests with Maven
         env:
-          CX_CLIENT_ID: ${{ secrets.CLIENT_ID}}
-          CX_CLIENT_SECRET: ${{ secrets.CLIENT_SECRET}}
-          CX_BASE_URI: ${{ secrets.BASE_URI }}
-          CX_TENANT: ${{ secrets.TENANT }}
+          CX_BASE_URI: ${{ secrets.CX_BASE_URI }}
+          CX_TENANT: ${{ secrets.CX_TENANT }}
+          CX_APIKEY: ${{ secrets.CX_APIKEY }}
+          CX_TEST_SCAN: ${{ secrets.CX_TEST_SCAN }}
         run: |
           export DISPLAY=:99.0
           Xvfb -ac :99 -screen 0 1920x1080x16 & mvn clean install
@@ -41,8 +41,8 @@ jobs:
         with:
           project_name: ast-eclipse-plugin
           branch: master
-          base_uri: ${{ secrets.BASE_URI }}
-          cx_tenant: ${{ secrets.TENANT }}
+          base_uri: ${{ secrets.CX_BASE_URI }}
+          cx_tenant: ${{ secrets.CX_TENANT }}
           cx_client_id: ${{ secrets.CLIENT_ID }}
           cx_client_secret: ${{ secrets.CLIENT_SECRET }}
           additional_params: --tags galactica-team
