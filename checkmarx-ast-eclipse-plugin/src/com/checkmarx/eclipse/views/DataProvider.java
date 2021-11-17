@@ -1,5 +1,6 @@
 package com.checkmarx.eclipse.views;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -16,9 +17,12 @@ import org.osgi.framework.FrameworkUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.checkmarx.ast.project.Project;
 import com.checkmarx.ast.results.Results;
 import com.checkmarx.ast.results.result.Result;
+import com.checkmarx.ast.scan.Scan;
 import com.checkmarx.ast.wrapper.CxConfig;
+import com.checkmarx.ast.wrapper.CxException;
 import com.checkmarx.ast.wrapper.CxWrapper;
 import com.checkmarx.eclipse.properties.Preferences;
 import com.checkmarx.eclipse.runner.Authenticator;
@@ -58,6 +62,75 @@ public class DataProvider {
 		return result;
 	}
 
+	public List<Project> getProjectList()
+	{
+		List<Project> projectList = new  ArrayList<Project>();
+		CxWrapper wrapper =  authenticateWithAST();
+		if(wrapper!=null)
+		{
+			try {
+				String projectLimitFilter = "limit=10000";
+				projectList = wrapper.projectList(projectLimitFilter);
+				
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (CxException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		
+		return projectList;
+	}
+	
+	public List<Scan> getScanListOfProject(String projectId)
+	{
+		List<Scan> scanList = new  ArrayList<Scan>();
+		CxWrapper wrapper =  authenticateWithAST();
+		if(wrapper!=null)
+		{
+			try {
+				String projectIdFilter = "project-id=" + projectId;
+				scanList = wrapper.scanList(projectIdFilter);
+				
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (CxException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		
+		return scanList;
+	}
+	
+	private CxWrapper authenticateWithAST()
+	{
+		Logger log = LoggerFactory.getLogger(Authenticator.class.getName());
+
+		try {
+			CxConfig config = CxConfig.builder().baseUri(Preferences.getServerUrl()).tenant(Preferences.getTenant())
+					.apiKey(Preferences.getApiKey()).additionalParameters("").build();
+			
+			CxWrapper wrapper = new CxWrapper(config, log);
+			String validationResult = wrapper.authValidate();
+			
+			System.out.println("Authentication Status :" + validationResult);
+			return wrapper;
+	
+		} catch (Exception e) {
+			return null;
+		}
+	}
+	
 	public List<DisplayModel> getResultsForScanId(String scanId) {
 
 		abort.set(false);
