@@ -109,7 +109,7 @@ public class CheckmarxView extends ViewPart {
 
 	public CheckmarxView() {
 		super();
-				
+		
 		rootModel = new DisplayModel.DisplayModelBuilder("").build();
 	}
 
