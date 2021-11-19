@@ -11,6 +11,8 @@ import org.eclipse.swtbot.swt.finder.keyboard.Keystrokes;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import com.checkmarx.eclipse.utils.PluginConstants;
+
 import checkmarx.ast.eclipse.plugin.tests.common.Environment;
 
 @RunWith(SWTBotJunit4ClassRunner.class)
@@ -20,7 +22,6 @@ public class TestUI extends BaseUITest {
 	private static final String ERROR_SERVER_URL_NOT_SET = "Error: Checkmarx server URL is not set";
 
 	private static final String INFO_SCAN_RETRIVING_RESULTS = "Retrieving the results for the scan id: " + Environment.SCAN_ID + " .";
-	private static final String INFO_TYPE_SCAN_TO_GET_RESULTS = "Paste a scanId and hit play to fetch the results.";
 
 	private static final String INFO_SUCCESSFUL_CONNECTION = "Connection successfull !";
 
@@ -96,7 +97,7 @@ public class TestUI extends BaseUITest {
 		preventWidgetWasNullInCIEnvironment();
 
 		assertEquals("The tree must contain one row with an info message", _bot.tree().rowCount(), 1);
-		assertEquals("", INFO_TYPE_SCAN_TO_GET_RESULTS, _bot.tree().cell(0, COLUMN_TITLE));
+		assertEquals("", PluginConstants.SCAN_RESULTS_TREE_INITIAL_PLACEHOLDER, _bot.tree().cell(0, COLUMN_TITLE));
 
 		// Test incorrect Scan ID format
 		_bot.textWithLabel(LABEL_SCAN_ID).setText("invalid-scan-id");
