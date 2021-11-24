@@ -3,8 +3,14 @@ package com.checkmarx.eclipse.utils;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
+import org.eclipse.jface.action.Action;
 import org.eclipse.jface.viewers.ComboViewer;
+
+import com.checkmarx.eclipse.views.DataProvider;
+import com.checkmarx.eclipse.views.actions.ActionName;
+import com.checkmarx.eclipse.views.filters.FilterState;
 
 public class PluginUtils {
 
@@ -65,4 +71,22 @@ public class PluginUtils {
 	public static void setTextForComboViewer(ComboViewer comboViewer , String text) {
 		comboViewer.getCombo().setText(text);
 	}
+	
+	/**
+	 * Enable/Disable filter actions
+	 * 
+	 * @param filterActions
+	 */
+	public static void updateFiltersEnabledAndCheckedState(List<Action> filterActions) {
+		
+		for(Action action : filterActions) {
+			
+			// avoid to disable group by severity and group by query name actions
+			if(!action.getId().equals(ActionName.GROUP_BY_SEVERITY.name()) && !action.getId().equals(ActionName.GROUP_BY_QUERY_NAME.name())) {
+				action.setEnabled(DataProvider.getInstance().getCurrentScanId() != null);
+			}
+			
+			action.setChecked(FilterState.isSeverityEnabled(action.getId()));
+		}
+	}	
 }

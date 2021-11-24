@@ -4,41 +4,51 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.jface.action.Action;
+import org.eclipse.jface.action.IAction;
+import org.eclipse.jface.action.IMenuManager;
+import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.preference.StringFieldEditor;
-import org.eclipse.jface.viewers.ComboViewer;
 import org.eclipse.jface.viewers.TreeViewer;
-import org.eclipse.swt.widgets.Composite;
+import org.eclipse.ui.IActionBars;
 
+import com.checkmarx.eclipse.views.DataProvider;
 import com.checkmarx.eclipse.views.DisplayModel;
+import com.checkmarx.eclipse.views.PluginListenerDefinition;
+import com.checkmarx.eclipse.views.PluginListenerType;
+import com.checkmarx.eclipse.views.filters.ActionFilters;
+import com.checkmarx.eclipse.views.filters.FilterState;
+import com.checkmarx.eclipse.views.filters.Severity;
+import com.google.common.eventbus.EventBus;
 
 public class ToolBarActions {
+	
+	public static final String MENU_GROUP_BY = "Group By";
+	public static final String GROUP_BY_SEVERITY = "Severity";
+	public static final String GROUP_BY_QUERY_NAME = "Query Name";
 
 	private List<Action> toolBarActions = new ArrayList<Action>();
+	
+	private IActionBars actionBars;
 
 	private DisplayModel rootModel;
 	private TreeViewer resultsTree;
 	private StringFieldEditor scanIdField;
 	private boolean alreadyRunning = false;
-
-	private Composite resultInfoPanel;
-	private Composite attackVectorPanel;
-	private Composite leftPanel;
-
-	private ComboViewer scanIdComboViewer;
-	private ComboViewer projectComboViewer;
+	
+	private EventBus pluginEventBus;
 	
 	private Action scanResultsAction;
+	private Action groupBySeverityAction;
+	private Action groupByQueryNameAction;
+	private List<Action> filterActions;
 		
-	public ToolBarActions(ToolBarActionsBuilder toolBarActionsBuilder) {
+	private ToolBarActions(ToolBarActionsBuilder toolBarActionsBuilder) {
+		this.actionBars = toolBarActionsBuilder.actionBars;
 		this.rootModel = toolBarActionsBuilder.rootModel;
 		this.resultsTree = toolBarActionsBuilder.resultsTree;
 		this.alreadyRunning = toolBarActionsBuilder.alreadyRunning;
 		this.scanIdField = toolBarActionsBuilder.scanIdField;
-		this.resultInfoPanel = toolBarActionsBuilder.resultInfoPanel;
-		this.attackVectorPanel = toolBarActionsBuilder.attackVectorPanel;
-		this.leftPanel = toolBarActionsBuilder.leftPanel;
-		this.scanIdComboViewer = toolBarActionsBuilder.scanIdComboViewer;
-		this.projectComboViewer = toolBarActionsBuilder.projectComboViewer;
+		this.pluginEventBus = toolBarActionsBuilder.pluginEventBus;
 		
 		createActions();
 	}
@@ -48,17 +58,60 @@ public class ToolBarActions {
 	 */
 	private void createActions() {
 		
-		Action clearSelectionAction = new ActionClearSelection(rootModel, resultsTree, resultInfoPanel, attackVectorPanel, leftPanel, scanIdComboViewer, projectComboViewer).createAction();
-		Action abortScanResultsAction = new ActionAbortScanResults(rootModel, resultsTree).createAction();
-		scanResultsAction = new ActionGetScanResults(rootModel, resultsTree, alreadyRunning, scanIdField, abortScanResultsAction).createAction();
+		filterActions = new ActionFilters(pluginEventBus).createFilterActions();
 		
+		Action clearSelectionAction = new ActionClearSelection(rootModel, resultsTree, pluginEventBus).createAction();
+		Action abortScanResultsAction = new ActionAbortScanResults(rootModel, resultsTree).createAction();
+		scanResultsAction = new ActionGetScanResults(rootModel, resultsTree, alreadyRunning, scanIdField, abortScanResultsAction, pluginEventBus).createAction();
+	     
+		toolBarActions.addAll(filterActions);
 		toolBarActions.add(clearSelectionAction);
 		toolBarActions.add(scanResultsAction);
 		toolBarActions.add(abortScanResultsAction);
+		
+		createGroupByActions();
 	}
 	
 	/**
-	 * Gets all tool bar actions
+	 * Create Group By actions (Severity & Query Name)
+	 */
+	private void createGroupByActions() {
+		groupBySeverityAction = new Action(GROUP_BY_SEVERITY, IAction.AS_CHECK_BOX) {
+			@Override
+			public void run() {
+				FilterState.setState(Severity.GROUP_BY_SEVERITY);
+				pluginEventBus.post(new PluginListenerDefinition(PluginListenerType.FILTER_CHANGED, DataProvider.getInstance().filterResults()));
+			}
+		};
+		
+		groupBySeverityAction.setId(ActionName.GROUP_BY_SEVERITY.name());
+		groupBySeverityAction.setChecked(FilterState.groupBySeverity);
+
+		groupByQueryNameAction = new Action(GROUP_BY_QUERY_NAME, IAction.AS_CHECK_BOX) {
+			@Override
+			public void run() {
+				FilterState.setState(Severity.GROUP_BY_QUERY_NAME);
+				pluginEventBus.post(new PluginListenerDefinition(PluginListenerType.FILTER_CHANGED, DataProvider.getInstance().filterResults()));
+			}
+		};
+		
+		groupByQueryNameAction.setId(ActionName.GROUP_BY_QUERY_NAME.name());
+		groupByQueryNameAction.setChecked(FilterState.groupByQueryName);
+		
+		filterActions.add(groupBySeverityAction);
+		filterActions.add(groupByQueryNameAction);		
+		
+		IMenuManager dropDownMenu = actionBars.getMenuManager();
+		MenuManager subMenu = new MenuManager(MENU_GROUP_BY, MENU_GROUP_BY);
+		subMenu.add(groupBySeverityAction);
+		subMenu.add(groupByQueryNameAction);
+		dropDownMenu.add(subMenu);
+		
+		actionBars.updateActionBars();
+	}
+	
+	/**
+	 * Get all tool bar actions
 	 * 
 	 * @return
 	 */
@@ -67,12 +120,21 @@ public class ToolBarActions {
 	}
 	
 	/**
-	 * Gets scan results action
+	 * Get scan results action
 	 * 
 	 * @return
 	 */
 	public Action getScanResultsAction() {
 		return scanResultsAction;
+	}
+	
+	/**
+	 * Get all filter actions
+	 * 
+	 * @return
+	 */
+	public List<Action> getFilterActions() {
+		return filterActions;
 	}
 	
 	/**
@@ -83,19 +145,21 @@ public class ToolBarActions {
 	 */
 	public static class ToolBarActionsBuilder {
 		
+		private IActionBars actionBars;
+		
 		private DisplayModel rootModel;
 		private TreeViewer resultsTree;
 		private StringFieldEditor scanIdField;
 		private boolean alreadyRunning = false;
-		
-		private Composite resultInfoPanel;
-		private Composite attackVectorPanel;
-		private Composite leftPanel;
-
-		private ComboViewer scanIdComboViewer;
-		private ComboViewer projectComboViewer;
+	
+		private EventBus pluginEventBus;
 		
 		public ToolBarActionsBuilder() {}
+		
+		public ToolBarActionsBuilder actionBars(IActionBars actionBars) {
+			this.actionBars = actionBars;
+			return this;
+		}
 		
 		public ToolBarActionsBuilder rootModel(DisplayModel rootModel) {
 			this.rootModel = rootModel;
@@ -117,28 +181,8 @@ public class ToolBarActions {
 			return this;
 		}
 		
-		public ToolBarActionsBuilder resultInfoPanel(Composite resultInfoPanel) {
-			this.resultInfoPanel = resultInfoPanel;
-			return this;
-		}
-		
-		public ToolBarActionsBuilder attackVectorPanel(Composite attackVectorPanel) {
-			this.attackVectorPanel = attackVectorPanel;
-			return this;
-		}
-		
-		public ToolBarActionsBuilder leftPanel(Composite leftPanel) {
-			this.leftPanel = leftPanel;
-			return this;
-		}
-		
-		public ToolBarActionsBuilder scanIdComboViewer(ComboViewer scanIdComboViewer) {
-			this.scanIdComboViewer = scanIdComboViewer;
-			return this;
-		}
-		
-		public ToolBarActionsBuilder projectComboViewer(ComboViewer projectComboViewer) {
-			this.projectComboViewer = projectComboViewer;
+		public ToolBarActionsBuilder pluginEventBus(EventBus pluginEventBus) {
+			this.pluginEventBus = pluginEventBus;
 			return this;
 		}
 		
