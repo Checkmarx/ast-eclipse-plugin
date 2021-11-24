@@ -51,7 +51,6 @@ public class TestUI extends BaseUITest {
 
 	@Test
 	public void testAddCheckmarxASTPlugin() {
-				
 		// Add Checkmarx plugin to the eclipse view
 		addCheckmarxPlugin();
 
@@ -64,7 +63,6 @@ public class TestUI extends BaseUITest {
 
 	@Test
 	public void testMissingSetCheckmarxServerUrl() {
-
 		// Clear Checkmarx credentials to expect missing Server Url
 		clearCheckmarxCredentials();
 
@@ -104,7 +102,6 @@ public class TestUI extends BaseUITest {
 	 */
 	@Test
 	public void testEnd2End() throws TimeoutException {
-
 		// Set credentials, test connection and add checkmarx plugin
 		setUpCheckmarxPlugin();
 				
@@ -123,7 +120,6 @@ public class TestUI extends BaseUITest {
 	
 	@Test
 	public void testFilterButtonsAndGroupByActionsInToolBar() throws TimeoutException {
-				
 		// Add Checkmarx AST Plugin
 		addCheckmarxPlugin();
 		
@@ -146,7 +142,6 @@ public class TestUI extends BaseUITest {
 	
 	@Test
 	public void testFilteringAndGroupingResults() throws TimeoutException {
-		
 		// Set credentials, test connection and add checkmarx plugin
 		setUpCheckmarxPlugin();
 		
@@ -187,9 +182,7 @@ public class TestUI extends BaseUITest {
 		// Click to include High severity
 		clickSeverityFilter(ActionName.HIGH.name());
 		currentActiveFilters.add(Severity.HIGH.name());
-				
-		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(ToolBarActions.GROUP_BY_QUERY_NAME).click();
-		
+						
 		sleep(1000);		
 		
 		String firstNodeName = _bot.tree().cell(0, COLUMN_TITLE);
@@ -304,7 +297,6 @@ public class TestUI extends BaseUITest {
 	 * Test successful connection
 	 */
 	private void testSuccessfulConnection() {
-		
 		preventWidgetWasNullInCIEnvironment();
 		
 		_bot.menu(TAB_WINDOW).menu(ITEM_PREFERENCES).click();
@@ -335,7 +327,6 @@ public class TestUI extends BaseUITest {
 	 * Add Checkmarx plugin in the show view perspective
 	 */
 	private void addCheckmarxPlugin() {
-		
 		preventWidgetWasNullInCIEnvironment();
 		
 		_bot.menu(TAB_WINDOW).menu(ITEM_SHOW_VIEW).menu(ITEM_OTHER).click();
@@ -348,7 +339,6 @@ public class TestUI extends BaseUITest {
 	 * Type a valid Scan ID to get results
 	 */
 	private void typeValidScanID() {
-		
 		preventWidgetWasNullInCIEnvironment();
 		
 		_bot.textWithLabel(LABEL_SCAN_ID).setText(Environment.SCAN_ID);
@@ -359,7 +349,6 @@ public class TestUI extends BaseUITest {
 	 * Clear all Checkmarx credentials
 	 */
 	private void clearCheckmarxCredentials() {
-
 		if (!_cxSettingsDefined) {
 			return;
 		}
@@ -403,7 +392,6 @@ public class TestUI extends BaseUITest {
 	 * @throws TimeoutException
 	 */
 	private static void waitWhileTreeNodeEqualsTo(String nodeText) throws TimeoutException {
-
 		int retryIdx = 0;
 
 		while (_bot.tree().getAllItems()[0].getText().equals(nodeText)) {

@@ -20,7 +20,6 @@ public class ActionClearSelection extends CxBaseAction {
 	private EventBus pluginEventBus;
 	
 	public ActionClearSelection(DisplayModel rootModel, TreeViewer resultsTree, EventBus pluginEventBus) {
-		
 		super(rootModel, resultsTree);
 		
 		this.pluginEventBus = pluginEventBus;

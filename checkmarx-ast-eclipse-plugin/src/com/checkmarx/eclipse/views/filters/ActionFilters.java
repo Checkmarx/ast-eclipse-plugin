@@ -38,7 +38,6 @@ public class ActionFilters {
 	 * @return
 	 */
 	public List<Action> createFilterActions(){
-		
 		List<Action> filters = new ArrayList<>();
 		
 		Action filterHighAction = createFilterAction(ACTION_FILTER_HIGH_TOOLTIP, ACTION_FILTER_HIGH_ICON_PATH, Severity.HIGH, ActionName.HIGH);

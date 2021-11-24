@@ -10,10 +10,6 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
-import org.eclipse.core.runtime.ILog;
-import org.eclipse.core.runtime.Platform;
-import org.osgi.framework.Bundle;
-import org.osgi.framework.FrameworkUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,9 +31,6 @@ public class DataProvider {
 	private static final String SCA_TREE_NAME = "SCA (%d)";
 	private static final String KICS_TREE_NAME = "KICS (%d)";
 	private static final String RESULTS_TREE_NAME = "%s (%d Issues)";
-
-	private static final Bundle BUNDLE = FrameworkUtil.getBundle(DataProvider.class);
-	private static final ILog LOG = Platform.getLog(BUNDLE);
 	
 	public static DataProvider _dataProvider = null;
 
@@ -52,7 +45,6 @@ public class DataProvider {
 	 * @return
 	 */
 	public static final DataProvider getInstance() {
-		
 		if(_dataProvider == null) {
 			_dataProvider = new DataProvider();
 		}
@@ -164,7 +156,6 @@ public class DataProvider {
 	}
 	
 	public List<DisplayModel> getResultsForScanId(String scanId) {
-
 		abort.set(false);
 		Results scanResults = null;
 
@@ -193,7 +184,6 @@ public class DataProvider {
 	}
 
 	private List<DisplayModel> processResults(Results scanResults, String scanId) {
-		
 		if(scanResults == null || scanResults.getResults() == null || scanResults.getResults().isEmpty()) {
 			return Collections.emptyList();
 		}
@@ -218,7 +208,6 @@ public class DataProvider {
 	 * @return
 	 */
 	private List<DisplayModel> buildResults(String scanId, Map<String, List<DisplayModel>> filteredResultsByScannerType){
-		
 		if(FilterState.groupBySeverity) {
 			// Divide the results for each scanner as per the severity
 			Map<String, List<DisplayModel>> sastResultsMap = new HashMap<>();
@@ -337,7 +326,6 @@ public class DataProvider {
 	 * @return
 	 */
 	private DisplayModel transform(Result resultItem) {
-
 		String displayName = resultItem.getType().equals(PluginConstants.SCA_DEPENDENCY) ? resultItem.getSimilarityId() : resultItem.getData().getQueryName();
 		
 		return new DisplayModel.DisplayModelBuilder(displayName).setSeverity(resultItem.getSeverity()).setType(resultItem.getType()).setResult(resultItem).build();
@@ -350,7 +338,6 @@ public class DataProvider {
 	 * @return
 	 */
 	private Map<String, List<DisplayModel>> filterResultsByScannerTypeV2(List<DisplayModel> allResultsTransformed) {
-
 		Map<String, List<DisplayModel>> filteredMap = new HashMap<>();
 
 		for (DisplayModel transformedResult : allResultsTransformed) {
@@ -377,11 +364,9 @@ public class DataProvider {
 	 * @return
 	 */
 	private Map<String, List<DisplayModel>> filterResultsBySeverityV2(List<DisplayModel> resultList) {
-
 		Map<String, List<DisplayModel>> filteredMapBySeverity = new HashMap<>();
 
 		for (DisplayModel result : resultList) {
-
 			String severityType = result.getSeverity();
 			
 			if(FilterState.isSeverityEnabled(severityType)) {
@@ -405,7 +390,6 @@ public class DataProvider {
 	 * @param results
 	 */
 	private void filterResultsByQueryName(Map<String, List<DisplayModel>> results) {
-
 		for (Map.Entry<String, List<DisplayModel>> entry : results.entrySet()) {
 			
 			String severityOrScannerType = entry.getKey();
@@ -441,7 +425,6 @@ public class DataProvider {
 	 * @return
 	 */
 	private Map<Integer, List<DisplayModel>> createParentNodeByScanner(Map<String, List<DisplayModel>> map){
-		
 		Map<Integer, List<DisplayModel>> result = new HashMap<>();
 		List<DisplayModel> resultList = new ArrayList<>();
 		int counter = 0;
@@ -478,7 +461,6 @@ public class DataProvider {
 	 * @return
 	 */
 	private int getParentCounter(List<DisplayModel> results) {
-
 		int counter = 0;
 
 		for (DisplayModel dm : results) {
