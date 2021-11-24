@@ -17,7 +17,6 @@ public class ActionOpenPreferencesPage extends CxBaseAction {
 	private Shell shell;
 	
 	public ActionOpenPreferencesPage(DisplayModel rootModel, TreeViewer resultsTree, boolean alreadyRunning, StringFieldEditor scanIdField, Shell shell) {
-		
 		super(rootModel, resultsTree);
 		
 		this.shell = shell;

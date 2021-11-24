@@ -7,6 +7,7 @@ import org.eclipse.jface.preference.StringFieldEditor;
 import org.eclipse.jface.viewers.TreeViewer;
 
 import com.checkmarx.eclipse.Activator;
+import com.checkmarx.eclipse.utils.PluginConstants;
 import com.checkmarx.eclipse.utils.PluginUtils;
 import com.checkmarx.eclipse.views.DataProvider;
 import com.checkmarx.eclipse.views.DisplayModel;
@@ -18,9 +19,7 @@ public class ActionGetScanResults extends CxBaseAction {
 	
 	private static final String ACTION_SCAN_RESULTS_TOOLTIP = "Get results for the scan id.";
 	private static final String ACTION_SCAN_RESULTS_ICON_PATH = "platform:/plugin/org.eclipse.ui.browser/icons/clcl16/nav_go.png";
-	
-	private static final String MSG_RETRIEVING_RESULTS = "Retrieving the results for the scan id: %s .";
-	
+		
 	private Action abortScanResultsAction;
 	
 	private boolean alreadyRunning = false;
@@ -28,7 +27,6 @@ public class ActionGetScanResults extends CxBaseAction {
 	private EventBus pluginEventBus;
 
 	public ActionGetScanResults(DisplayModel rootModel, TreeViewer resultsTree, boolean alreadyRunning, StringFieldEditor scanIdField, Action abortScanResultsAction, EventBus pluginEventBus) {
-		
 		super(rootModel, resultsTree);
 		
 		this.abortScanResultsAction = abortScanResultsAction;
@@ -52,7 +50,7 @@ public class ActionGetScanResults extends CxBaseAction {
 					return;
 				}
 
-				showMessage(String.format(MSG_RETRIEVING_RESULTS, scanId));
+				showMessage(String.format(PluginConstants.MSG_RETRIEVING_RESULTS, scanId));
 
 				this.setEnabled(false);
 				abortScanResultsAction.setEnabled(true);
