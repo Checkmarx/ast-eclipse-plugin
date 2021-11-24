@@ -57,7 +57,6 @@ public class ToolBarActions {
 	 * Create all tool bar actions
 	 */
 	private void createActions() {
-		
 		filterActions = new ActionFilters(pluginEventBus).createFilterActions();
 		
 		Action clearSelectionAction = new ActionClearSelection(rootModel, resultsTree, pluginEventBus).createAction();
