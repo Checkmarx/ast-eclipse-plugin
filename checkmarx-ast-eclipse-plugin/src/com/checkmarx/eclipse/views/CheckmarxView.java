@@ -1,6 +1,7 @@
 package com.checkmarx.eclipse.views;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -16,6 +17,7 @@ import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.preference.StringFieldEditor;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.ColumnViewerToolTipSupport;
@@ -45,6 +47,7 @@ import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.swt.widgets.TreeColumn;
+import org.eclipse.ui.IActionBars;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.PlatformUI;
@@ -58,12 +61,20 @@ import com.checkmarx.ast.scan.Scan;
 import com.checkmarx.eclipse.Activator;
 import com.checkmarx.eclipse.utils.PluginConstants;
 import com.checkmarx.eclipse.utils.PluginUtils;
+import com.checkmarx.eclipse.views.actions.ActionName;
 import com.checkmarx.eclipse.views.actions.ActionOpenPreferencesPage;
 import com.checkmarx.eclipse.views.actions.ToolBarActions;
+import com.checkmarx.eclipse.views.filters.FilterState;
 import com.checkmarx.eclipse.views.provider.ColumnProvider;
 import com.checkmarx.eclipse.views.provider.TreeContentProvider;
+import com.google.common.eventbus.EventBus;
+import com.google.common.eventbus.Subscribe;
 
 public class CheckmarxView extends ViewPart {
+	
+	private static final String PLACEHOLDER_SCAN_COMBO_VIEWER_TEXT = "Select scan id";
+	private static final String PLACEHOLDER_PROJECT_COMBO_VIEWER_TEXT = "Select project";
+	private static final String PROJECT_COMBO_VIEWERGETTING_PROJECTS = "Getting the projects from AST server...";
 
 	/**
 	 * The ID of the view as specified by the extension.
@@ -106,7 +117,9 @@ public class CheckmarxView extends ViewPart {
 	private Composite leftCompositePanel;
 	
 	private ToolBarActions toolBarActions;
-
+	
+	private EventBus pluginEventBus;
+	
 	public CheckmarxView() {
 		super();
 		
@@ -117,6 +130,7 @@ public class CheckmarxView extends ViewPart {
 	public void dispose() {
 		super.dispose();
 		boldFont.dispose();
+		pluginEventBus.unregister(this);
 	}
 
 	@Override
@@ -145,22 +159,29 @@ public class CheckmarxView extends ViewPart {
 	 * Creates the Checkmarx plugin tool bar with all actions
 	 */
 	private void createToolbar() {
-		IToolBarManager toolBarManager = getViewSite().getActionBars().getToolBarManager();		
+		
+		IActionBars actionBars = getViewSite().getActionBars();
+		IToolBarManager toolBarManager = actionBars.getToolBarManager();	
+		
+		pluginEventBus = new EventBus();
+		pluginEventBus.register(this);
 		
 		toolBarActions = new ToolBarActions.ToolBarActionsBuilder()
+				.actionBars(actionBars)
 				.rootModel(rootModel)
 				.resultsTree(viewer)
 				.alreadyRunning(alreadyRunning)
 				.scanIdField(scanIdField)
-				.resultInfoPanel(resultInfoCompositePanel)
-				.attackVectorPanel(attackVectorCompositePanel)
-				.leftPanel(attackVectorCompositePanel)
-				.scanIdComboViewer(scanIdComboViewer)
-				.projectComboViewer(projectComboViewer)
+				.pluginEventBus(pluginEventBus)
 				.build();
-		
+				
 		for(Action action : toolBarActions.getToolBarActions()) {
 			toolBarManager.add(action);
+						
+			// Add divider
+			if(action.getId() != null && action.getId().equals(ActionName.INFO.name())) {
+				toolBarManager.add(new Separator("\t"));
+			}
 		}
 	}
 
@@ -229,9 +250,6 @@ public class CheckmarxView extends ViewPart {
 		scanIdField.getTextControl(leftCompositePanel).setLayoutData(new GridData(GridData.HORIZONTAL_ALIGN_FILL | GridData.GRAB_HORIZONTAL));
 		
 		viewer = new TreeViewer(leftCompositePanel, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.FULL_SELECTION | SWT.BORDER);
-		
-		// Display initial message
-		showMessage(PluginConstants.SCAN_RESULTS_TREE_INITIAL_PLACEHOLDER);
 		
 		ColumnViewerToolTipSupport.enableFor(viewer);
 		createColumns();
@@ -314,7 +332,7 @@ public class CheckmarxView extends ViewPart {
 	
 	private void createProjectListComboBox(Composite parent)
 	{
-		List<Project> projectList = DataProvider.INSTANCE.getProjectList();
+		List<Project> projectList = DataProvider.getInstance().getProjectList();
 		
 		projectComboViewer = new ComboViewer(parent, SWT.DROP_DOWN);        
 		projectComboViewer.setContentProvider(ArrayContentProvider.getInstance());
@@ -348,7 +366,7 @@ public class CheckmarxView extends ViewPart {
 
 					Project selectedProject = ((Project) selection.getFirstElement());
 
-					List<Scan> scanList = DataProvider.INSTANCE.getScanListOfProject(selectedProject.getID());
+					List<Scan> scanList = DataProvider.getInstance().getScanListOfProject(selectedProject.getID());
 
 					if (scanList.isEmpty()) {
 						scanIdComboViewer.setInput(scanList);
@@ -402,13 +420,7 @@ public class CheckmarxView extends ViewPart {
 
 					CompletableFuture.runAsync(() -> {
 						alreadyRunning = true;
-						List<DisplayModel> scanResults = DataProvider.INSTANCE.getResultsForScanId(selectedScan.getID());
-
-						rootModel.children.clear();
-						rootModel.children.addAll(scanResults);
-						viewer.getTree().getDisplay().asyncExec(() -> viewer.refresh());
-						toolBarActions.getScanResultsAction().setEnabled(true);
-						alreadyRunning = false;
+						updateResultsTree(DataProvider.getInstance().getResultsForScanId(selectedScan.getID()));
 					});
 
 					// end
@@ -642,7 +654,106 @@ public class CheckmarxView extends ViewPart {
 
 	public void showMessage(String message) {
 		rootModel.children.clear();
-		rootModel.children.add(DataProvider.INSTANCE.message(message));
+		rootModel.children.add(DataProvider.getInstance().message(message));
 		viewer.refresh();
+	}
+	
+	@Subscribe
+	private void listener(PluginListenerDefinition definition) {
+		
+		switch(definition.getListenerType()) {
+			case FILTER_CHANGED:
+			case GET_RESULTS:				
+				updateResultsTree(definition.getResutls());
+				break;
+			case CLEAN_AND_REFRESH:
+				clearAndRefreshPlugin();
+				break;
+		}
+	}
+	
+	/**
+	 * Update results tree
+	 * 
+	 * @param results
+	 */
+	private void updateResultsTree(List<DisplayModel> results) {
+		
+		rootModel.children.clear();
+		rootModel.children.addAll(results);
+		viewer.getTree().getDisplay().asyncExec(() -> viewer.refresh());
+		toolBarActions.getScanResultsAction().setEnabled(true);
+		alreadyRunning = false;
+		
+		PluginUtils.updateFiltersEnabledAndCheckedState(toolBarActions.getFilterActions());
+	}
+	
+	/**
+	 * Clear all plugin fields and reload projects
+	 */
+	private void clearAndRefreshPlugin() {
+
+		resultInfoCompositePanel.setVisible(false);
+		attackVectorCompositePanel.setVisible(false);
+
+		clearResultsTreeViewer();
+		leftCompositePanel.layout();
+
+		clearScanIdComboViewer();
+		clearProjectComboViewer();
+		reloadProjectComboViewer();
+
+		resetFiltersState();
+	}
+	
+	/**
+	 * Clears Results' tree
+	 */
+	private void clearResultsTreeViewer() {
+		rootModel.children.clear();
+		viewer.refresh();
+	}
+	
+	/**
+	 * Clears Scans' combobox
+	 */
+	private void clearScanIdComboViewer() {
+		PluginUtils.enableComboViewer(scanIdComboViewer, false);
+		scanIdComboViewer.refresh();
+		scanIdComboViewer.setInput(Collections.EMPTY_LIST);
+		PluginUtils.setTextForComboViewer(scanIdComboViewer, PLACEHOLDER_SCAN_COMBO_VIEWER_TEXT);
+		scanIdComboViewer.getCombo().update();
+	}
+	
+	/**
+	 * Clears Projects' combobox
+	 */
+	private void clearProjectComboViewer() {
+		projectComboViewer.setInput(Collections.EMPTY_LIST);
+		PluginUtils.setTextForComboViewer(projectComboViewer, PLACEHOLDER_PROJECT_COMBO_VIEWER_TEXT);
+	}
+	
+	/**
+	 * Reloads Projects' combobox
+	 */
+	private void reloadProjectComboViewer() {
+		PluginUtils.enableComboViewer(projectComboViewer, false);
+		PluginUtils.setTextForComboViewer(projectComboViewer, PROJECT_COMBO_VIEWERGETTING_PROJECTS);
+		projectComboViewer.getCombo().update();
+		List<Project> projectList = DataProvider.getInstance().getProjectList();
+		projectComboViewer.setInput(projectList);
+		projectComboViewer.refresh();
+		PluginUtils.setTextForComboViewer(projectComboViewer ,PLACEHOLDER_PROJECT_COMBO_VIEWER_TEXT);
+		PluginUtils.enableComboViewer(projectComboViewer, true);
+	}
+	
+	/**
+	 * Reset filters
+	 */
+	private void resetFiltersState() {
+		DataProvider.getInstance().setCurrentScanId(null);
+		DataProvider.getInstance().setCurrentResults(null);
+		FilterState.resetFilters();
+		PluginUtils.updateFiltersEnabledAndCheckedState(toolBarActions.getFilterActions());
 	}
 }

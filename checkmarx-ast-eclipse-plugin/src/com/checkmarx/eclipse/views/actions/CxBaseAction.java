@@ -29,7 +29,7 @@ public abstract class CxBaseAction {
 	 */
 	public void showMessage(String message) {
 		rootModel.children.clear();
-		rootModel.children.add(DataProvider.INSTANCE.message(message));
+		rootModel.children.add(DataProvider.getInstance().message(message));
 		resultsTree.refresh();
 	}
 	

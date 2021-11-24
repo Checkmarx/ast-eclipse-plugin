@@ -38,6 +38,7 @@ public class ActionOpenPreferencesPage extends CxBaseAction {
 			}
 		};
 
+		openPreferencesPageAction.setId(ActionName.PREFERENCES.name());
 		openPreferencesPageAction.setText(LABEL_PREFERENCES);
 		
 		return openPreferencesPageAction;

@@ -1,6 +1,5 @@
 package com.checkmarx.eclipse.views.actions;
 
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jface.action.Action;
@@ -11,6 +10,9 @@ import com.checkmarx.eclipse.Activator;
 import com.checkmarx.eclipse.utils.PluginUtils;
 import com.checkmarx.eclipse.views.DataProvider;
 import com.checkmarx.eclipse.views.DisplayModel;
+import com.checkmarx.eclipse.views.PluginListenerType;
+import com.checkmarx.eclipse.views.PluginListenerDefinition;
+import com.google.common.eventbus.EventBus;
 
 public class ActionGetScanResults extends CxBaseAction {
 	
@@ -23,14 +25,16 @@ public class ActionGetScanResults extends CxBaseAction {
 	
 	private boolean alreadyRunning = false;
 	private StringFieldEditor scanIdField;
+	private EventBus pluginEventBus;
 
-	public ActionGetScanResults(DisplayModel rootModel, TreeViewer resultsTree, boolean alreadyRunning, StringFieldEditor scanIdField, Action abortScanResultsAction) {
+	public ActionGetScanResults(DisplayModel rootModel, TreeViewer resultsTree, boolean alreadyRunning, StringFieldEditor scanIdField, Action abortScanResultsAction, EventBus pluginEventBus) {
 		
 		super(rootModel, resultsTree);
 		
 		this.abortScanResultsAction = abortScanResultsAction;
 		this.alreadyRunning = alreadyRunning;
 		this.scanIdField = scanIdField;
+		this.pluginEventBus = pluginEventBus;
 	}
 
 	/**
@@ -55,18 +59,12 @@ public class ActionGetScanResults extends CxBaseAction {
 
 				CompletableFuture.runAsync(() -> {
 					alreadyRunning = true;
-					List<DisplayModel> scanResults = DataProvider.INSTANCE.getResultsForScanId(scanId);
-
-					rootModel.children.clear();
-					rootModel.children.addAll(scanResults);
-					resultsTree.getTree().getDisplay().asyncExec(() -> resultsTree.refresh());
-					this.setEnabled(true);
-					alreadyRunning = false;
+					pluginEventBus.post(new PluginListenerDefinition(PluginListenerType.GET_RESULTS, DataProvider.getInstance().getResultsForScanId(scanId)));
 				});
-
 			}
 		};
 
+		getScanResultsAction.setId(ActionName.GET_RESULTS.name());
 		getScanResultsAction.setToolTipText(ACTION_SCAN_RESULTS_TOOLTIP);
 		getScanResultsAction.setImageDescriptor(Activator.getImageDescriptor(ACTION_SCAN_RESULTS_ICON_PATH));
 		

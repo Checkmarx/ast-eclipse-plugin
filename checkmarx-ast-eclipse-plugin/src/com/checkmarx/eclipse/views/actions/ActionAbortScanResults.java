@@ -30,6 +30,7 @@ public class ActionAbortScanResults extends CxBaseAction {
 			}
 		};
 
+		abortScanResultsAction.setId(ActionName.ABORT_RESULTS.name());
 		abortScanResultsAction.setToolTipText(ACTION_ABORT_SCAN_RESULTS_TOOLTIP);
 		abortScanResultsAction.setImageDescriptor(Activator.getImageDescriptor(ACTION_ABORT_SCAN_RESULTS_ICON_PATH));
 		abortScanResultsAction.setEnabled(false);
