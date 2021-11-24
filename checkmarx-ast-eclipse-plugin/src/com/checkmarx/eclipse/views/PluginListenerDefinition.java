@@ -2,6 +2,12 @@ package com.checkmarx.eclipse.views;
 
 import java.util.List;
 
+/**
+ * Class which represents a Listener Configuration to be used in Event Bus
+ * 
+ * @author HugoMa
+ *
+ */
 public class PluginListenerDefinition {
 	
 	private PluginListenerType listenerType;
