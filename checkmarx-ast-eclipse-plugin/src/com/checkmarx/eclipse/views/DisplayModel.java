@@ -74,7 +74,6 @@ public class DisplayModel {
 	}
 	
 	static class DisplayModelBuilder{
-		
 		public DisplayModel parent;
 		public List<DisplayModel> children = new ArrayList<>();
 		
@@ -118,11 +117,8 @@ public class DisplayModel {
 			return this;
 		}
 	    
-		  public DisplayModel build() {
-		        return new DisplayModel(this);
-		    }
-	    
-		
+		public DisplayModel build() {
+			return new DisplayModel(this);
+		}
 	}
-
 }

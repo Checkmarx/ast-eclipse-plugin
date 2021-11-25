@@ -41,7 +41,6 @@ public abstract class BaseUITest {
 	
 	@BeforeClass
 	public static void beforeClass() throws Exception {
-		
 		// Needed to set CI environment keyboard layout
 		SWTBotPreferences.KEYBOARD_LAYOUT = "EN_US"; 
 
