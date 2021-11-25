@@ -1,7 +1,6 @@
 package com.checkmarx.eclipse.runner;
 
 import java.io.IOException;
-import java.net.URISyntaxException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,7 +35,7 @@ public class Authenticator {
 
 	public String doAuthentication() {
 
-		CxConfig config = CxConfig.builder().baseUri(Preferences.getServerUrl()).tenant(Preferences.getTenant()).apiKey(Preferences.getApiKey()).additionalParameters("").build();
+		CxConfig config = CxConfig.builder().baseUri(Preferences.getServerUrl()).tenant(Preferences.getTenant()).apiKey(Preferences.getApiKey()).additionalParameters(Preferences.getAdditionalOptions()).build();
 
 //	    config.setBaseUri(Preferences.getServerUrl());
 //	    config.setTenant(Preferences.getTenant());
@@ -48,7 +47,7 @@ public class Authenticator {
 		try {
 			wrapper = new CxWrapper(config, log);
 			String cxValidateOutput = wrapper.authValidate();
-		//	Integer result = cxValidateOutput.getExitCode();
+	
 			System.out.println("Authentication Status :" + cxValidateOutput);
 			return cxValidateOutput;
 		} catch (IOException e) {

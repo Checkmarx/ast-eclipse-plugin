@@ -10,7 +10,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import org.eclipse.core.runtime.ILog;
-import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
 import org.osgi.framework.Bundle;
 import org.osgi.framework.FrameworkUtil;
@@ -30,20 +29,23 @@ import com.checkmarx.eclipse.utils.PluginConstants;
 
 public class DataProvider {
 
-	private static final Bundle BUNDLE = FrameworkUtil.getBundle(DataProvider.class);
-	private static final ILog LOG = Platform.getLog(BUNDLE);
-
 	public static final DataProvider INSTANCE = new DataProvider();
 
 	public static final AtomicBoolean abort = new AtomicBoolean(false);
 
-	private List<String> scanTypes = new ArrayList<String>();
-	private List<String> severityTypes = new ArrayList<String>();
 
 	private Integer sastCount = 0;
 	private Integer scaCount = 0;
 	private Integer kicsCount = 0;
+	
+	private String projectId;
+	private CxWrapper wrapper;
 
+	private static final String PROJECT_ID_FILTER = "project-id=%s";
+	private static final String BRANCH_FILTER="branch=%s";
+	private static final String LIMIT_FILTER="limit=10000";
+	private static final String SCAN_STATUS_FILTER= "statuses=Completed";
+	
 	public DisplayModel message(String message) {
 		DisplayModel messageModel = new DisplayModel.DisplayModelBuilder(message).build();
 		return messageModel;
@@ -62,15 +64,14 @@ public class DataProvider {
 		return result;
 	}
 
-	public List<Project> getProjectList()
+	public List<Project> getProjects()
 	{
 		List<Project> projectList = new  ArrayList<Project>();
-		CxWrapper wrapper =  authenticateWithAST();
+		authenticateWithAST();
 		if(wrapper!=null)
 		{
 			try {
-				String projectLimitFilter = "limit=10000";
-				projectList = wrapper.projectList(projectLimitFilter);
+				projectList = wrapper.projectList(LIMIT_FILTER);
 				
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
@@ -87,15 +88,40 @@ public class DataProvider {
 		return projectList;
 	}
 	
-	public List<Scan> getScanListOfProject(String projectId)
+	public List<String> getBranchesForProject(String projectId)
 	{
-		List<Scan> scanList = new  ArrayList<Scan>();
-		CxWrapper wrapper =  authenticateWithAST();
+		this.projectId = projectId;
+		List<String> branchList = new  ArrayList<String>();
+		
 		if(wrapper!=null)
 		{
 			try {
-				String projectIdFilter = "project-id=" + projectId;
-				scanList = wrapper.scanList(projectIdFilter);
+				branchList = wrapper.projectBranches(UUID.fromString(projectId),"");
+				
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (CxException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		
+		return branchList;
+	}
+	
+	public List<Scan> getScansForProject(String branch)
+	{
+		List<Scan> scanList = new  ArrayList<Scan>();
+		
+		if(wrapper!=null)
+		{
+			try { 
+				String filters =String.format(PROJECT_ID_FILTER + "," + BRANCH_FILTER + "," + LIMIT_FILTER + "," + SCAN_STATUS_FILTER, this.projectId, branch);
+				scanList = wrapper.scanList(filters);
 				
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
@@ -112,22 +138,21 @@ public class DataProvider {
 		return scanList;
 	}
 	
-	private CxWrapper authenticateWithAST()
+	private void authenticateWithAST()
 	{
 		Logger log = LoggerFactory.getLogger(Authenticator.class.getName());
 
 		try {
 			CxConfig config = CxConfig.builder().baseUri(Preferences.getServerUrl()).tenant(Preferences.getTenant())
-					.apiKey(Preferences.getApiKey()).additionalParameters("").build();
+					.apiKey(Preferences.getApiKey()).additionalParameters(Preferences.getAdditionalOptions()).build();
 			
-			CxWrapper wrapper = new CxWrapper(config, log);
+			wrapper = new CxWrapper(config, log);
 			String validationResult = wrapper.authValidate();
 			
 			System.out.println("Authentication Status :" + validationResult);
-			return wrapper;
-	
+				
 		} catch (Exception e) {
-			return null;
+			System.out.println(e.getMessage());
 		}
 	}
 	
@@ -136,19 +161,9 @@ public class DataProvider {
 		abort.set(false);
 		Results scanResults = null;
 
-		Logger log = LoggerFactory.getLogger(Authenticator.class.getName());
-
 		try {
-			CxConfig config = CxConfig.builder().baseUri(Preferences.getServerUrl()).tenant(Preferences.getTenant())
-					.apiKey(Preferences.getApiKey()).additionalParameters("").build();
-			
-			CxWrapper wrapper = new CxWrapper(config, log);
-			String validationResult = wrapper.authValidate();
-			
 
-			System.out.println("Authentication Status :" + validationResult);
 			System.out.println("Fetching the results for scanId :" + scanId);
-
 			scanResults = wrapper.results(UUID.fromString(scanId));
 			System.out.println("Scan results :" + scanResults.getTotalCount());
 
@@ -159,6 +174,22 @@ public class DataProvider {
 		return processResults(scanResults, scanId);
 	}
 
+	public Scan getScanInformation(String scanId)
+	{
+		Scan scan = null;
+		try
+		{
+			System.out.println("Getting the scan info..");
+			scan = wrapper.scanShow(UUID.fromString(scanId));
+		
+		}
+		catch (Exception e)
+		{
+			System.out.println("Error while getting the scan information: " + e.getMessage());
+		}
+		return scan;
+	}
+	
 	private List<DisplayModel> processResults(Results scanResults, String scanId) {
 
 		DisplayModel projectModel;
@@ -169,7 +200,7 @@ public class DataProvider {
 				.collect(Collectors.toList());
 
 		// Divide all the results as per the scanner type
-		Map<String, List<DisplayModel>> filteredResultsByScannerType = filterResultsByScannerTypeV2(
+		Map<String, List<DisplayModel>> filteredResultsByScannerType = filterResultsByScannerType(
 				allResultsTransformed);
 
 		// Divide the results for each scanner as per the severity
@@ -179,15 +210,15 @@ public class DataProvider {
 
 		if (filteredResultsByScannerType.containsKey(PluginConstants.SAST)) {
 			List<DisplayModel> sastList = filteredResultsByScannerType.get(PluginConstants.SAST);
-			sastResultsMap = filterResultsBySeverityV2(sastList);
+			sastResultsMap = filterResultsBySeverity(sastList);
 		}
 		if (filteredResultsByScannerType.containsKey(PluginConstants.SCA_DEPENDENCY)) {
 			List<DisplayModel> scaList = filteredResultsByScannerType.get(PluginConstants.SCA_DEPENDENCY);
-			scaResultsMap = filterResultsBySeverityV2(scaList);
+			scaResultsMap = filterResultsBySeverity(scaList);
 		}
 		if (filteredResultsByScannerType.containsKey(PluginConstants.KICS_INFRASTRUCTURE)) {
 			List<DisplayModel> kicsList = filteredResultsByScannerType.get(PluginConstants.KICS_INFRASTRUCTURE);
-			kicsResultsMap = filterResultsBySeverityV2(kicsList);
+			kicsResultsMap = filterResultsBySeverity(kicsList);
 		}
 
 		// Creating a parent node for each scanner
@@ -315,7 +346,7 @@ public class DataProvider {
 //		return filteredMap;
 //	}
 
-	private Map<String, List<DisplayModel>> filterResultsByScannerTypeV2(List<DisplayModel> allResultsTransformed) {
+	private Map<String, List<DisplayModel>> filterResultsByScannerType(List<DisplayModel> allResultsTransformed) {
 
 		Map<String, List<DisplayModel>> filteredMap = new HashMap<>();
 
@@ -336,20 +367,7 @@ public class DataProvider {
 		return filteredMap;
 	}
 
-//	private List<CxResult> filterResultsBySeverity(List<CxResult> resultList, String severity) {
-//
-//		List<CxResult> filteredResult = new ArrayList<>();
-//
-//		for (CxResult cxResult : resultList) {
-//
-//			if (cxResult.getSeverity().equalsIgnoreCase(severity)) {
-//				filteredResult.add(cxResult);
-//			}
-//		}
-//		return filteredResult;
-//	}
-
-	private Map<String, List<DisplayModel>> filterResultsBySeverityV2(List<DisplayModel> resultList) {
+	private Map<String, List<DisplayModel>> filterResultsBySeverity(List<DisplayModel> resultList) {
 
 		Map<String, List<DisplayModel>> filteredMap = new HashMap<>();
 
