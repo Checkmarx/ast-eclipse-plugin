@@ -68,6 +68,7 @@ public class PluginUtils {
 	 */
 	public static void setTextForComboViewer(ComboViewer comboViewer, String text) {
 		comboViewer.getCombo().setText(text);
+		comboViewer.getCombo().update();
 	}
 
 	/**

@@ -18,6 +18,7 @@ import com.checkmarx.ast.results.Results;
 import com.checkmarx.ast.results.result.Result;
 import com.checkmarx.ast.scan.Scan;
 import com.checkmarx.ast.wrapper.CxConfig;
+import com.checkmarx.ast.wrapper.CxConfig.InvalidCLIConfigException;
 import com.checkmarx.ast.wrapper.CxException;
 import com.checkmarx.ast.wrapper.CxWrapper;
 import com.checkmarx.eclipse.properties.Preferences;
@@ -183,6 +184,27 @@ public class DataProvider {
 		} catch (Exception e) {
 			System.out.println(e.getMessage());
 		}
+	}
+	
+	/**
+	 * Creates a new wrapper to validate AST authentication
+	 * 
+	 * @return
+	 */
+	public List<DisplayModel> validateAuthentication(){
+		
+		Logger log = LoggerFactory.getLogger(Authenticator.class.getName());
+		
+		CxConfig config = CxConfig.builder().baseUri(Preferences.getServerUrl()).tenant(Preferences.getTenant())
+				.apiKey(Preferences.getApiKey()).additionalParameters(Preferences.getAdditionalOptions()).build();
+		
+		try {
+			wrapper = new CxWrapper(config, log);
+		} catch (InvalidCLIConfigException | IOException e) {
+			return error(e);
+		}
+		
+		return Collections.emptyList();
 	}
 	
 	public List<DisplayModel> getResultsForScanId(String scanId) {
