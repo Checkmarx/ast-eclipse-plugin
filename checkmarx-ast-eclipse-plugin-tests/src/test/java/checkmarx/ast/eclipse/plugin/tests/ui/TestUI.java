@@ -62,15 +62,21 @@ public class TestUI extends BaseUITest {
 	}
 
 	@Test
-	public void testMissingSetCheckmarxServerUrl() {
+	public void testMissingSetCheckmarxServerUrl() throws TimeoutException {
+		
+		// Test Connection
+		testSuccessfulConnection();
+
+		// Add Checkmarx AST Plugin
+		addCheckmarxPlugin();
+		
 		// Clear Checkmarx credentials to expect missing Server Url
 		clearCheckmarxCredentials();
 
-		// Add Checkmarx plugin to the eclipse perspective view
-		addCheckmarxPlugin();
-
 		// Type a valid and existing scan id
 		typeValidScanID();
+		
+		sleep();
 
 		assertEquals("The tree must contain a single row", _bot.tree().rowCount(), 1);
 
@@ -249,8 +255,8 @@ public class TestUI extends BaseUITest {
 		sleep(1000);
 		
 		// Test incorrect Scan ID format
-		_bot.textWithLabel(LABEL_SCAN_ID).setText("invalid-scan-id");
-		_bot.textWithLabel(LABEL_SCAN_ID).pressShortcut(Keystrokes.LF);
+		_bot.comboBox(2).setText("invalid-scan-id");
+		_bot.comboBox(2).pressShortcut(Keystrokes.LF);
 
 		sleep(1000);
 
@@ -341,8 +347,9 @@ public class TestUI extends BaseUITest {
 	private void typeValidScanID() {
 		preventWidgetWasNullInCIEnvironment();
 		
-		_bot.textWithLabel(LABEL_SCAN_ID).setText(Environment.SCAN_ID);
-		_bot.textWithLabel(LABEL_SCAN_ID).pressShortcut(Keystrokes.LF);
+		_bot.comboBox(2).setText(Environment.SCAN_ID);
+		_bot.comboBox(2).pressShortcut(Keystrokes.LF);
+		
 	}
 
 	/**
