@@ -13,9 +13,11 @@ public class GlobalSettings {
 	
 	
 	public static final String PARAM_PROJECT_ID = "project-id";
+	public static final String PARAM_BRANCH = "branch";
 	public static final String PARAM_SCAN_ID = "scan-id";
 	
 	private String projectId;
+	private String branch;
 	private String scanId;
 
 	private static final Preferences preferences = ConfigurationScope.INSTANCE.getNode(GLOBAL_SETTINGS_ID);
@@ -38,12 +40,22 @@ public class GlobalSettings {
 	public void setScanId(String scanId) {
 		this.scanId = scanId;
 	}
+	
+	public String getBranch() {
+		return branch;
+	}
+
+
+	public void setBranch(String branch) {
+		this.branch = branch;
+	}
 
 	/**
 	 * Load current settings
 	 */
 	public void loadSettings() {
 		setProjectId(getFromPreferences(PARAM_PROJECT_ID, ""));
+		setBranch(getFromPreferences(PARAM_BRANCH, ""));
 		setScanId(getFromPreferences(PARAM_SCAN_ID, ""));
 		FilterState.loadFiltersFromSettings();
 	}

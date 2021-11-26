@@ -16,6 +16,7 @@ import org.eclipse.swtbot.swt.finder.widgets.SWTBotToolbarButton;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import com.checkmarx.eclipse.utils.PluginConstants;
 import com.checkmarx.eclipse.views.actions.ActionName;
 import com.checkmarx.eclipse.views.actions.ToolBarActions;
 import com.checkmarx.eclipse.views.filters.Severity;
@@ -27,8 +28,6 @@ public class TestUI extends BaseUITest {
 	
 	private static final String ERROR_INCORRECT_SCAN_ID_FORMAT = "Incorrect scanId format.";
 	private static final String ERROR_SERVER_URL_NOT_SET = "Error: Checkmarx server URL is not set";
-
-	private static final String INFO_SCAN_RETRIVING_RESULTS = "Retrieving the results for the scan id: " + Environment.SCAN_ID + " .";
 
 	private static final String INFO_SUCCESSFUL_CONNECTION = "Connection successfull !";
 	
@@ -50,7 +49,7 @@ public class TestUI extends BaseUITest {
 	}
 
 	@Test
-	public void testAddCheckmarxASTPlugin() {
+	public void testAddCheckmarxASTPlugin() throws TimeoutException {
 		// Add Checkmarx plugin to the eclipse view
 		addCheckmarxPlugin();
 
@@ -63,7 +62,6 @@ public class TestUI extends BaseUITest {
 
 	@Test
 	public void testMissingSetCheckmarxServerUrl() throws TimeoutException {
-		
 		// Test Connection
 		testSuccessfulConnection();
 
@@ -83,13 +81,13 @@ public class TestUI extends BaseUITest {
 		String firstTreeCell = _bot.tree().cell(0, COLUMN_TITLE);
 
 		// The first row must have a message saying that AST is getting results or failing due the missing Server Url
-		boolean expectedResult = firstTreeCell.equals(INFO_SCAN_RETRIVING_RESULTS) || firstTreeCell.equals(ERROR_SERVER_URL_NOT_SET);
+		boolean expectedResult = firstTreeCell.equals(String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, Environment.SCAN_ID)) || firstTreeCell.equals(ERROR_SERVER_URL_NOT_SET);
 		assertTrue("Plugin should be retrieving results or failed due Server Url not set", expectedResult);
 
 		sleep();
 
 		// After a sleep the missing Server Url message must be displayed
-		assertEquals("", ERROR_SERVER_URL_NOT_SET, _bot.tree().cell(0, COLUMN_TITLE));
+		assertEquals(ERROR_SERVER_URL_NOT_SET, _bot.tree().cell(0, COLUMN_TITLE));
 		
 		// Close Checkmarx AST Scan view
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
@@ -109,7 +107,7 @@ public class TestUI extends BaseUITest {
 	@Test
 	public void testEnd2End() throws TimeoutException {
 		// Set credentials, test connection and add checkmarx plugin
-		setUpCheckmarxPlugin();
+		setUpCheckmarxPlugin(false);
 				
 		String firstNodeName = _bot.tree().cell(0, COLUMN_TITLE);
 		String secondNodeName = _bot.tree().getTreeItem(firstNodeName).expand().getNode(0).getText();
@@ -149,7 +147,7 @@ public class TestUI extends BaseUITest {
 	@Test
 	public void testFilteringAndGroupingResults() throws TimeoutException {
 		// Set credentials, test connection and add checkmarx plugin
-		setUpCheckmarxPlugin();
+		setUpCheckmarxPlugin(true);
 		
 		ArrayList<String> currentActiveFilters = new ArrayList<>(Arrays.asList(Severity.HIGH.name(), Severity.MEDIUM.name()));	
 				
@@ -243,7 +241,7 @@ public class TestUI extends BaseUITest {
 	 * 
 	 * @throws TimeoutException
 	 */
-	private void setUpCheckmarxPlugin() throws TimeoutException{
+	private void setUpCheckmarxPlugin(boolean ignoreWrongScanValidation) throws TimeoutException{
 		// Test Connection
 		testSuccessfulConnection();
 
@@ -254,22 +252,25 @@ public class TestUI extends BaseUITest {
 
 		sleep(1000);
 		
-		// Test incorrect Scan ID format
-		_bot.comboBox(2).setText("invalid-scan-id");
-		_bot.comboBox(2).pressShortcut(Keystrokes.LF);
+		if(!ignoreWrongScanValidation) {
+			// Test incorrect Scan ID format
+			_bot.comboBox(2).setText("invalid-scan-id");
+			_bot.comboBox(2).pressShortcut(Keystrokes.LF);
 
-		sleep(1000);
+			sleep(1000);
 
-		assertEquals("The tree must contain one row with an error message", _bot.tree().rowCount(), 1);
-		assertEquals("An incorrect scanId format message must be displayed", ERROR_INCORRECT_SCAN_ID_FORMAT, _bot.tree().cell(0, COLUMN_TITLE));
-
+			assertEquals("The tree must contain one row with an error message", _bot.tree().rowCount(), 1);
+			assertEquals("An incorrect scanId format message must be displayed", ERROR_INCORRECT_SCAN_ID_FORMAT, _bot.tree().cell(0, COLUMN_TITLE));
+		}
+		
 		// type a valid and existing Scan ID
 		typeValidScanID();
 
 		assertEquals("The tree must contain one row", _bot.tree().rowCount(), 1);		
-		assertEquals("The plugin should be retrieving results", INFO_SCAN_RETRIVING_RESULTS, _bot.tree().cell(0, COLUMN_TITLE));
+		boolean retrievingOrRetrievedResults = _bot.tree().cell(0, COLUMN_TITLE).contains(Environment.SCAN_ID);
+		assertTrue("The plugin should have or should be retrieving results", retrievingOrRetrievedResults);
 
-		waitWhileTreeNodeEqualsTo(INFO_SCAN_RETRIVING_RESULTS);
+		waitWhileTreeNodeEqualsTo(String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, Environment.SCAN_ID));
 		
 		assertTrue("The plugin should retrieve results", _bot.tree().cell(0, COLUMN_TITLE).startsWith(Environment.SCAN_ID));
 	}
@@ -305,6 +306,8 @@ public class TestUI extends BaseUITest {
 	private void testSuccessfulConnection() {
 		preventWidgetWasNullInCIEnvironment();
 		
+		if(_cxSettingsDefined) return;
+		
 		_bot.menu(TAB_WINDOW).menu(ITEM_PREFERENCES).click();
 		_bot.shell(ITEM_PREFERENCES).activate();
 		_bot.tree().select(ITEM_CHECKMARX_AST);
@@ -331,25 +334,32 @@ public class TestUI extends BaseUITest {
 
 	/**
 	 * Add Checkmarx plugin in the show view perspective
+	 * 
+	 * @throws TimeoutException 
 	 */
-	private void addCheckmarxPlugin() {
+	private void addCheckmarxPlugin() throws TimeoutException {
 		preventWidgetWasNullInCIEnvironment();
 		
 		_bot.menu(TAB_WINDOW).menu(ITEM_SHOW_VIEW).menu(ITEM_OTHER).click();
 		_bot.shell(ITEM_SHOW_VIEW).activate();
 		_bot.tree().expandNode(ITEM_CHECKMARX).select(ITEM_CHECKMARX_AST_SCAN);
 		_bot.button(BTN_OPEN).click();
+		
+		waitUntilBranchComboIsEnabled();
 	}
 
 	/**
 	 * Type a valid Scan ID to get results
+	 * 
+	 * @throws TimeoutException 
 	 */
-	private void typeValidScanID() {
+	private void typeValidScanID() throws TimeoutException {
 		preventWidgetWasNullInCIEnvironment();
 		
 		_bot.comboBox(2).setText(Environment.SCAN_ID);
 		_bot.comboBox(2).pressShortcut(Keystrokes.LF);
 		
+		waitUntilBranchComboIsEnabled();
 	}
 
 	/**
@@ -414,6 +424,38 @@ public class TestUI extends BaseUITest {
 
 		if (retryIdx == 10) {
 			throw new TimeoutException("Timeout after 5000ms. Scan results should be retrieved");
+		}
+	}
+	
+	/**
+	 * Wait until branch combobox is enabled
+	 * 
+	 * @throws TimeoutException
+	 */
+	private static void waitUntilBranchComboIsEnabled() throws TimeoutException {
+		preventWidgetWasNullInCIEnvironment();
+		
+		boolean emptyScanId = _bot.comboBox(2).getText().isEmpty() || _bot.comboBox(2).getText().equals(PluginConstants.COMBOBOX_SCAND_ID_PLACEHOLDER);
+		
+		if(emptyScanId) {
+			return;
+		}
+		
+		int retryIdx = 0;
+
+		while (!_bot.comboBox(1).isEnabled()) {
+
+			if (retryIdx == 10) {
+				break;
+			}
+
+			_bot.sleep(1000);
+
+			retryIdx++;
+		}
+
+		if (retryIdx == 10) {
+			throw new TimeoutException("Timeout after 5000ms. Branches' combobox must be enabled");
 		}
 	}
 }
