@@ -7,7 +7,6 @@ import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.MenuManager;
-import org.eclipse.jface.preference.StringFieldEditor;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.ui.IActionBars;
 
@@ -32,12 +31,11 @@ public class ToolBarActions {
 
 	private DisplayModel rootModel;
 	private TreeViewer resultsTree;
-	private StringFieldEditor scanIdField;
-	private boolean alreadyRunning = false;
 	
 	private EventBus pluginEventBus;
 	
 	private Action scanResultsAction;
+	private Action abortResultsAction;
 	private Action groupBySeverityAction;
 	private Action groupByQueryNameAction;
 	private List<Action> filterActions;
@@ -46,8 +44,6 @@ public class ToolBarActions {
 		this.actionBars = toolBarActionsBuilder.actionBars;
 		this.rootModel = toolBarActionsBuilder.rootModel;
 		this.resultsTree = toolBarActionsBuilder.resultsTree;
-		this.alreadyRunning = toolBarActionsBuilder.alreadyRunning;
-		this.scanIdField = toolBarActionsBuilder.scanIdField;
 		this.pluginEventBus = toolBarActionsBuilder.pluginEventBus;
 		
 		createActions();
@@ -60,13 +56,13 @@ public class ToolBarActions {
 		filterActions = new ActionFilters(pluginEventBus).createFilterActions();
 		
 		Action clearSelectionAction = new ActionClearSelection(rootModel, resultsTree, pluginEventBus).createAction();
-		Action abortScanResultsAction = new ActionAbortScanResults(rootModel, resultsTree).createAction();
-		scanResultsAction = new ActionGetScanResults(rootModel, resultsTree, alreadyRunning, scanIdField, abortScanResultsAction, pluginEventBus).createAction();
+		abortResultsAction = new ActionAbortScanResults(rootModel, resultsTree).createAction();
+		scanResultsAction = new ActionGetScanResults(rootModel, resultsTree, pluginEventBus).createAction();
 	     
 		toolBarActions.addAll(filterActions);
 		toolBarActions.add(clearSelectionAction);
 		toolBarActions.add(scanResultsAction);
-		toolBarActions.add(abortScanResultsAction);
+		toolBarActions.add(abortResultsAction);
 		
 		createGroupByActions();
 	}
@@ -128,6 +124,15 @@ public class ToolBarActions {
 	}
 	
 	/**
+	 * Get abort results action
+	 * 
+	 * @return
+	 */
+	public Action getAbortResultsAction() {
+		return abortResultsAction;
+	}
+	
+	/**
 	 * Get all filter actions
 	 * 
 	 * @return
@@ -148,8 +153,6 @@ public class ToolBarActions {
 		
 		private DisplayModel rootModel;
 		private TreeViewer resultsTree;
-		private StringFieldEditor scanIdField;
-		private boolean alreadyRunning = false;
 	
 		private EventBus pluginEventBus;
 		
@@ -167,16 +170,6 @@ public class ToolBarActions {
 		
 		public ToolBarActionsBuilder resultsTree(TreeViewer resultsTree) {
 			this.resultsTree = resultsTree;
-			return this;
-		}
-		
-		public ToolBarActionsBuilder scanIdField(StringFieldEditor scanIdField) {
-			this.scanIdField = scanIdField;
-			return this;
-		}
-		
-		public ToolBarActionsBuilder alreadyRunning(boolean alreadyRunning) {
-			this.alreadyRunning = alreadyRunning;
 			return this;
 		}
 		

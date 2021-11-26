@@ -2,7 +2,6 @@ package com.checkmarx.eclipse.views.actions;
 
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.preference.PreferenceDialog;
-import org.eclipse.jface.preference.StringFieldEditor;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.dialogs.PreferencesUtil;
@@ -16,7 +15,7 @@ public class ActionOpenPreferencesPage extends CxBaseAction {
 
 	private Shell shell;
 	
-	public ActionOpenPreferencesPage(DisplayModel rootModel, TreeViewer resultsTree, boolean alreadyRunning, StringFieldEditor scanIdField, Shell shell) {
+	public ActionOpenPreferencesPage(DisplayModel rootModel, TreeViewer resultsTree, Shell shell) {
 		super(rootModel, resultsTree);
 		
 		this.shell = shell;

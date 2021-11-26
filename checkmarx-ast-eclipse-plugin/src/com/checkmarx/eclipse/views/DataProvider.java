@@ -27,6 +27,11 @@ import com.checkmarx.eclipse.views.filters.FilterState;
 
 public class DataProvider {
 	
+	private static final String PROJECT_ID_FILTER = "project-id=%s";
+	private static final String BRANCH_FILTER="branch=%s";
+	private static final String LIMIT_FILTER="limit=10000";
+	private static final String SCAN_STATUS_FILTER= "statuses=Completed";
+	
 	private static final String SAST_TREE_NAME = "SAST (%d)";
 	private static final String SCA_TREE_NAME = "SCA (%d)";
 	private static final String KICS_TREE_NAME = "KICS (%d)";
@@ -38,6 +43,8 @@ public class DataProvider {
 	
 	private Results currentResults;
 	private String currentScanId;
+	private String projectId;
+	private CxWrapper wrapper;
 	
 	/**
 	 * Singleton data provider instance
@@ -67,7 +74,7 @@ public class DataProvider {
 	public void setCurrentResults(Results currentResults) {
 		this.currentResults = currentResults;
 	}
-
+	
 	public DisplayModel message(String message) {
 		DisplayModel messageModel = new DisplayModel.DisplayModelBuilder(message).build();
 		return messageModel;
@@ -86,15 +93,14 @@ public class DataProvider {
 		return result;
 	}
 
-	public List<Project> getProjectList()
+	public List<Project> getProjects()
 	{
 		List<Project> projectList = new  ArrayList<Project>();
-		CxWrapper wrapper =  authenticateWithAST();
+		authenticateWithAST();
 		if(wrapper!=null)
 		{
 			try {
-				String projectLimitFilter = "limit=10000";
-				projectList = wrapper.projectList(projectLimitFilter);
+				projectList = wrapper.projectList(LIMIT_FILTER);
 				
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
@@ -111,15 +117,40 @@ public class DataProvider {
 		return projectList;
 	}
 	
-	public List<Scan> getScanListOfProject(String projectId)
+	public List<String> getBranchesForProject(String projectId)
 	{
-		List<Scan> scanList = new  ArrayList<Scan>();
-		CxWrapper wrapper =  authenticateWithAST();
+		this.projectId = projectId;
+		List<String> branchList = new  ArrayList<String>();
+		
 		if(wrapper!=null)
 		{
 			try {
-				String projectIdFilter = "project-id=" + projectId;
-				scanList = wrapper.scanList(projectIdFilter);
+				branchList = wrapper.projectBranches(UUID.fromString(projectId),"");
+				
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (CxException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		
+		return branchList;
+	}
+	
+	public List<Scan> getScansForProject(String branch)
+	{
+		List<Scan> scanList = new  ArrayList<Scan>();
+		
+		if(wrapper!=null)
+		{
+			try { 
+				String filters =String.format(PROJECT_ID_FILTER + "," + BRANCH_FILTER + "," + LIMIT_FILTER + "," + SCAN_STATUS_FILTER, this.projectId, branch);
+				scanList = wrapper.scanList(filters);
 				
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
@@ -136,22 +167,21 @@ public class DataProvider {
 		return scanList;
 	}
 	
-	private CxWrapper authenticateWithAST()
+	private void authenticateWithAST()
 	{
 		Logger log = LoggerFactory.getLogger(Authenticator.class.getName());
 
 		try {
 			CxConfig config = CxConfig.builder().baseUri(Preferences.getServerUrl()).tenant(Preferences.getTenant())
-					.apiKey(Preferences.getApiKey()).additionalParameters("").build();
+					.apiKey(Preferences.getApiKey()).additionalParameters(Preferences.getAdditionalOptions()).build();
 			
-			CxWrapper wrapper = new CxWrapper(config, log);
+			wrapper = new CxWrapper(config, log);
 			String validationResult = wrapper.authValidate();
 			
 			System.out.println("Authentication Status :" + validationResult);
-			return wrapper;
-	
+				
 		} catch (Exception e) {
-			return null;
+			System.out.println(e.getMessage());
 		}
 	}
 	
@@ -183,6 +213,22 @@ public class DataProvider {
 		return processResults(scanResults, scanId);
 	}
 
+	public Scan getScanInformation(String scanId)
+	{
+		Scan scan = null;
+		try
+		{
+			System.out.println("Getting the scan info..");
+			scan = wrapper.scanShow(UUID.fromString(scanId));
+		
+		}
+		catch (Exception e)
+		{
+			System.out.println("Error while getting the scan information: " + e.getMessage());
+		}
+		return scan;
+	}
+	
 	private List<DisplayModel> processResults(Results scanResults, String scanId) {
 		if(scanResults == null || scanResults.getResults() == null || scanResults.getResults().isEmpty()) {
 			return Collections.emptyList();
