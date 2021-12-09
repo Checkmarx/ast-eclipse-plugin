@@ -2,7 +2,7 @@ package com.checkmarx.eclipse.views.actions;
 
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.viewers.TreeViewer;
-import com.checkmarx.eclipse.views.DataProvider;
+
 import com.checkmarx.eclipse.views.DisplayModel;
 
 public abstract class CxBaseAction {
@@ -20,17 +20,5 @@ public abstract class CxBaseAction {
 	 * 
 	 * @return
 	 */
-	public abstract Action createAction();
-	
-	/**
-	 * Add a message to the tree
-	 * 
-	 * @param message
-	 */
-	public void showMessage(String message) {
-		rootModel.children.clear();
-		rootModel.children.add(DataProvider.getInstance().message(message));
-		resultsTree.refresh();
-	}
-	
+	public abstract Action createAction();	
 }
