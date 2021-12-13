@@ -6,9 +6,9 @@ public class PluginConstants {
 	public static final String SCA_DEPENDENCY = "dependency";
 	public static final String KICS_INFRASTRUCTURE = "infrastructure";
 	public static final String RETRIEVING_RESULTS_FOR_SCAN = "Retrieving results for scan id %s...";
-	public static final String COMBOBOX_SCAND_ID_PLACEHOLDER = "Select project or paste a Scan Id here and hit Enter.";
+	public static final String COMBOBOX_SCAND_ID_PLACEHOLDER = "Select a project or paste a Scan Id here and hit Enter.";
 	public static final String COMBOBOX_SCAND_ID_GETTING_SCANS = "Getting scans for the project...";
-	public static final String COMBOBOX_SCAND_ID_NO_SCANS_AVAILABLE = "No scans available. Select project or paste a Scan Id here and hit Enter.";
+	public static final String COMBOBOX_SCAND_ID_NO_SCANS_AVAILABLE = "No scans available. Select a project or paste a Scan Id here and hit Enter.";
 	public static final String COMBOBOX_BRANCH_CHANGING = "Changing branch...";
 	
 	/******************************** LOG VIEW: ERRORS ********************************/
