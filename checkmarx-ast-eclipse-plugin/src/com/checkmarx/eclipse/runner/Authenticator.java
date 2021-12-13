@@ -9,7 +9,6 @@ import com.checkmarx.ast.wrapper.CxConfig;
 import com.checkmarx.ast.wrapper.CxConfig.InvalidCLIConfigException;
 import com.checkmarx.ast.wrapper.CxException;
 import com.checkmarx.ast.wrapper.CxWrapper;
-import com.checkmarx.eclipse.properties.Preferences;
 
 public class Authenticator {
 
@@ -33,39 +32,29 @@ public class Authenticator {
 //
 //	}
 
-	public String doAuthentication() {
+	public String doAuthentication(String serverUrl, String authUrl, String tenant, String apiKey,
+			String additionalParams) {
 
-		CxConfig config = CxConfig.builder().baseUri(Preferences.getServerUrl()).tenant(Preferences.getTenant()).apiKey(Preferences.getApiKey()).additionalParameters(Preferences.getAdditionalOptions()).build();
+		CxConfig config = CxConfig.builder().baseUri(serverUrl).baseAuthUri(authUrl).tenant(tenant).apiKey(apiKey)
+				.additionalParameters(additionalParams).build();
 
-//	    config.setBaseUri(Preferences.getServerUrl());
-//	    config.setTenant(Preferences.getTenant());
-//	    config.setApiKey(Preferences.getApiKey());
-	    
 		Logger log = LoggerFactory.getLogger(Authenticator.class.getName());
 
 		CxWrapper wrapper;
 		try {
 			wrapper = new CxWrapper(config, log);
 			String cxValidateOutput = wrapper.authValidate();
-	
-			System.out.println("Authentication Status :" + cxValidateOutput);
+			System.out.println("Authentication Status: " + cxValidateOutput);
 			return cxValidateOutput;
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			return e.getMessage();
 		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			return e.getMessage();
 		} catch (InvalidCLIConfigException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			return e.getMessage();
 		} catch (CxException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			return e.getMessage();
 		}
-		return null;
-
-		
 	}
 
 }
