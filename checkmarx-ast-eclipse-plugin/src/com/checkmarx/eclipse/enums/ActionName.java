@@ -1,4 +1,4 @@
-package com.checkmarx.eclipse.views.actions;
+package com.checkmarx.eclipse.enums;
 
 public enum ActionName {
 	

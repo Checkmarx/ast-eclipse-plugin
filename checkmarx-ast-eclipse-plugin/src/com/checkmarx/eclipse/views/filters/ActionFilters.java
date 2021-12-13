@@ -6,10 +6,11 @@ import java.util.List;
 import org.eclipse.jface.action.Action;
 
 import com.checkmarx.eclipse.Activator;
+import com.checkmarx.eclipse.enums.ActionName;
+import com.checkmarx.eclipse.enums.PluginListenerType;
+import com.checkmarx.eclipse.enums.Severity;
 import com.checkmarx.eclipse.views.DataProvider;
-import com.checkmarx.eclipse.views.PluginListenerType;
 import com.checkmarx.eclipse.views.PluginListenerDefinition;
-import com.checkmarx.eclipse.views.actions.ActionName;
 import com.google.common.eventbus.EventBus;
 
 public class ActionFilters {

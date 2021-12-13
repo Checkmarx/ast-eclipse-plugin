@@ -9,9 +9,9 @@ import org.eclipse.jface.action.Action;
 import org.eclipse.jface.viewers.ComboViewer;
 import org.eclipse.jface.viewers.TreeViewer;
 
+import com.checkmarx.eclipse.enums.ActionName;
 import com.checkmarx.eclipse.views.DataProvider;
 import com.checkmarx.eclipse.views.DisplayModel;
-import com.checkmarx.eclipse.views.actions.ActionName;
 import com.checkmarx.eclipse.views.filters.FilterState;
 
 public class PluginUtils {
