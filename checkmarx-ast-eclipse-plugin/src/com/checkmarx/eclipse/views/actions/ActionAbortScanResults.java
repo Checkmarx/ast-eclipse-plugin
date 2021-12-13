@@ -4,6 +4,7 @@ import org.eclipse.jface.action.Action;
 import org.eclipse.jface.viewers.TreeViewer;
 
 import com.checkmarx.eclipse.Activator;
+import com.checkmarx.eclipse.utils.PluginUtils;
 import com.checkmarx.eclipse.views.DataProvider;
 import com.checkmarx.eclipse.views.DisplayModel;
 
@@ -24,7 +25,7 @@ public class ActionAbortScanResults extends CxBaseAction {
 		Action abortScanResultsAction = new Action() {
 			@Override
 			public void run() {
-				showMessage(MSG_ABORTING_RETRIEVAL_SCAN_RESULTS);
+				PluginUtils.showMessage(rootModel, resultsTree, MSG_ABORTING_RETRIEVAL_SCAN_RESULTS);
 				DataProvider.abort.set(true);
 				this.setEnabled(false);
 			}
