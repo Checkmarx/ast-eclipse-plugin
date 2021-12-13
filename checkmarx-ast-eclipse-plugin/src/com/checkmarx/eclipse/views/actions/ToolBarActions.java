@@ -25,7 +25,7 @@ public class ToolBarActions {
 	public static final String GROUP_BY_SEVERITY = "Severity";
 	public static final String GROUP_BY_QUERY_NAME = "Query Name";
 
-	private List<Action> toolBarActions = new ArrayList<Action>();
+	private List<Action> toolBarActions = new ArrayList<>();
 	
 	private IActionBars actionBars;
 

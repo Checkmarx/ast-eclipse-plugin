@@ -74,7 +74,7 @@ public class ActionFilters {
 		filterAction.setId(actionName.name());
 		filterAction.setToolTipText(tooltip);
 		filterAction.setImageDescriptor(Activator.getImageDescriptor(imagePath));
-		filterAction.setEnabled(DataProvider.getInstance().getCurrentScanId() != null);
+		filterAction.setEnabled(DataProvider.getInstance().containsResults());
 		filterAction.setChecked(FilterState.isSeverityEnabled(severity.name()));
 		
 		return filterAction;
