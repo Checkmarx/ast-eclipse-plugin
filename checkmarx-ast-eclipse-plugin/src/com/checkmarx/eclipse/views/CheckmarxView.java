@@ -30,6 +30,7 @@ import org.eclipse.jface.viewers.StructuredSelection;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.jface.viewers.TreeViewerColumn;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.CLabel;
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.FontData;
 import org.eclipse.swt.graphics.Image;
@@ -90,15 +91,14 @@ public class CheckmarxView extends ViewPart {
 	public static final Image CRITICAL_SEVERITY = Activator.getImageDescriptor("/icons/severity-critical.png")
 			.createImage();
 
-	public static final Image HIGH_SEVERITY = Activator.getImageDescriptor("/icons/severity-high.png").createImage();
+	public static final Image HIGH_SEVERITY = Activator.getImageDescriptor("/icons/high_untoggle.png").createImage();
 
-	public static final Image MEDIUM_SEVERITY = Activator.getImageDescriptor("/icons/severity-medium.png")
+	public static final Image MEDIUM_SEVERITY = Activator.getImageDescriptor("/icons/medium_untoggle.png")
 			.createImage();
 
-	public static final Image LOW_SEVERITY = Activator.getImageDescriptor("/icons/severity-low.png").createImage();
+	public static final Image LOW_SEVERITY = Activator.getImageDescriptor("/icons/low_untoggle.png").createImage();
 
-	public static final Image INFO_SEVERITY = Activator
-			.getImageDescriptor("platform:/plugin/org.eclipse.ui/icons/full/obj16/info_tsk.png").createImage();
+	public static final Image INFO_SEVERITY = Activator.getImageDescriptor("/icons/info_untoggle.png").createImage();
 
 	private TreeViewer viewer;
 	private ComboViewer scanIdComboViewer, projectComboViewer, branchComboViewer;
@@ -115,6 +115,8 @@ public class CheckmarxView extends ViewPart {
 	private Composite topComposite;
 	private Composite resultInfoCompositePanel, attackVectorCompositePanel;
 	private Composite leftCompositePanel;
+
+	private CLabel titleLabel;
 
 	private Label attackVectorLabel;
 	private ToolBarActions toolBarActions;
@@ -282,6 +284,11 @@ public class CheckmarxView extends ViewPart {
 		resultInfoCompositePanel = new Composite(bottomComposite, SWT.BORDER);
 		resultInfoCompositePanel.setLayout(new GridLayout(1, false));
 
+		titleLabel = new CLabel(resultInfoCompositePanel, SWT.NONE);
+		titleLabel.setFont(boldFont);
+		titleLabel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false, 1, 1));
+		titleLabel.setBottomMargin(30);
+		;
 		Label summaryLabel = new Label(resultInfoCompositePanel, SWT.NONE);
 		summaryLabel.setFont(boldFont);
 		summaryLabel.setText("Summary:");
@@ -317,7 +324,7 @@ public class CheckmarxView extends ViewPart {
 
 		resultInfoCompositePanel.setVisible(false);
 		attackVectorCompositePanel.setVisible(false);
-		
+
 	}
 
 	private void createProjectListComboBox(Composite parent) {
@@ -695,6 +702,8 @@ public class CheckmarxView extends ViewPart {
 
 					if (selectedItem.getSeverity() != null) {
 						summaryString = summaryString + selectedItem.getSeverity() + " " + VERTICAL_SEPERATOR + " ";
+						titleLabel.setImage(findSeverityImage(selectedItem));
+						titleLabel.setText(selectedItem.getName());
 					}
 
 					if (selectedItem.getResult() != null) {
