@@ -26,7 +26,6 @@ import checkmarx.ast.eclipse.plugin.tests.common.Environment;
 @RunWith(SWTBotJunit4ClassRunner.class)
 public class TestUI extends BaseUITest {
 	
-	private static final String ERROR_INCORRECT_SCAN_ID_FORMAT = "Incorrect scanId format.";
 	private static final String ERROR_SERVER_URL_NOT_SET = "Error: Checkmarx server URL is not set";
 
 	private static final String INFO_SUCCESSFUL_CONNECTION = "Connection successfull !";
@@ -74,14 +73,14 @@ public class TestUI extends BaseUITest {
 		// Type a valid and existing scan id
 		typeValidScanID();
 		
-		sleep();
-
 		assertEquals("The tree must contain a single row", _bot.tree().rowCount(), 1);
 
 		String firstTreeCell = _bot.tree().cell(0, COLUMN_TITLE);
 
 		// The first row must have a message saying that AST is getting results or failing due the missing Server Url
-		boolean expectedResult = firstTreeCell.equals(String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, Environment.SCAN_ID)) || firstTreeCell.equals(ERROR_SERVER_URL_NOT_SET);
+		boolean retrievingResults = firstTreeCell.equals(String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, Environment.SCAN_ID));
+		boolean urlNotSet = firstTreeCell.equals(ERROR_SERVER_URL_NOT_SET);
+		boolean expectedResult = retrievingResults || urlNotSet;
 		assertTrue("Plugin should be retrieving results or failed due Server Url not set", expectedResult);
 
 		sleep();
@@ -115,9 +114,7 @@ public class TestUI extends BaseUITest {
 		
 		// Expand nodes until the first vulnerability
 		_bot.tree().expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).select();
-		
-		sleep(1000);
-		
+				
 		// Close Checkmarx AST Scan view
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
 	}
@@ -212,9 +209,7 @@ public class TestUI extends BaseUITest {
 		firstNodeName = _bot.tree().cell(0, COLUMN_TITLE);
 		secondNodeName = _bot.tree().getTreeItem(firstNodeName).expand().getNode(0).getText();
 		_bot.tree().expandNode(firstNodeName).expandNode(secondNodeName);
-		
-		sleep(1000);
-		
+				
 		// Get's the first engine child
 		String firstEngineChild = _bot.tree().expandNode(firstNodeName).expandNode(secondNodeName).getNode(0).getText();
 		
@@ -249,8 +244,6 @@ public class TestUI extends BaseUITest {
 		addCheckmarxPlugin();
 		
 		preventWidgetWasNullInCIEnvironment();
-
-		sleep(1000);
 		
 		if(!ignoreWrongScanValidation) {
 			// Test incorrect Scan ID format
@@ -260,7 +253,7 @@ public class TestUI extends BaseUITest {
 			sleep(1000);
 
 			assertEquals("The tree must contain one row with an error message", _bot.tree().rowCount(), 1);
-			assertEquals("An incorrect scanId format message must be displayed", ERROR_INCORRECT_SCAN_ID_FORMAT, _bot.tree().cell(0, COLUMN_TITLE));
+			assertEquals("An incorrect scanId format message must be displayed", PluginConstants.TREE_INVALID_SCAN_ID_FORMAT, _bot.tree().cell(0, COLUMN_TITLE));
 		}
 		
 		// type a valid and existing Scan ID
@@ -295,7 +288,6 @@ public class TestUI extends BaseUITest {
 		String secondNodeName = _bot.tree().getTreeItem(firstNodeName).expand().getNode(0).getText();
 		
 		_bot.tree().expandNode(firstNodeName).expandNode(secondNodeName);
-		sleep(1000);
 		
 		return _bot.tree().getTreeItem(_bot.tree().cell(0, COLUMN_TITLE)).expand().getNode(0).getNodes().stream().map(node -> node.split("\\(")[0].trim()).collect(Collectors.toList());
 	}
@@ -328,6 +320,10 @@ public class TestUI extends BaseUITest {
 		
 		_bot.shell(ITEM_PREFERENCES).setFocus(); // Need to set focus to avoid failing in CI environment
 		_bot.button(BTN_APPLY_AND_CLOSE).click();
+		
+		sleep();
+		
+		closeUneededWindows();
 
 		_cxSettingsDefined = true;
 	}
@@ -385,6 +381,12 @@ public class TestUI extends BaseUITest {
 
 		sleep();
 		
+		closeUneededWindows();
+
+		_cxSettingsDefined = false;
+	}
+	
+	private void closeUneededWindows() {
 		if (_bot.getFocusedWidget() != null) {
 			// Check if an Authorizing Eclipse Window pops up and closes it
 			if (_bot.activeShell().getText().equals("Authorizing with Eclipse.org")) {
@@ -398,8 +400,6 @@ public class TestUI extends BaseUITest {
 				_bot.button("Cancel").click();
 			}
 		}
-
-		_cxSettingsDefined = false;
 	}
 	
 	/**
