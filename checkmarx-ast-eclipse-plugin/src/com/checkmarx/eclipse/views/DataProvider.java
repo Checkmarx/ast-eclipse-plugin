@@ -259,7 +259,7 @@ public class DataProvider {
 		List<DisplayModel> allResultsTransformed = resultsList.stream().map(resultItem -> transform(resultItem)).collect(Collectors.toList());
 
 		// Divide all the results by scanner type
-		Map<String, List<DisplayModel>> filteredResultsByScannerType = filterResultsByScannerTypeV2(allResultsTransformed);
+		Map<String, List<DisplayModel>> filteredResultsByScannerType = filterResultsByScannerType(allResultsTransformed);
 
 		// build results based on selected filters
 		return buildResults(scanId, filteredResultsByScannerType);
@@ -281,7 +281,7 @@ public class DataProvider {
 
 			if (filteredResultsByScannerType.containsKey(PluginConstants.SAST)) {
 				List<DisplayModel> sastList = filteredResultsByScannerType.get(PluginConstants.SAST);
-				sastResultsMap = filterResultsBySeverityV2(sastList);
+				sastResultsMap = filterResultsBySeverity(sastList);
 				
 				if(FilterState.groupByQueryName && !sastResultsMap.isEmpty()) {
 					filterResultsByQueryName(sastResultsMap);
@@ -290,7 +290,7 @@ public class DataProvider {
 			
 			if (filteredResultsByScannerType.containsKey(PluginConstants.SCA_DEPENDENCY)) {
 				List<DisplayModel> scaList = filteredResultsByScannerType.get(PluginConstants.SCA_DEPENDENCY);
-				scaResultsMap = filterResultsBySeverityV2(scaList);
+				scaResultsMap = filterResultsBySeverity(scaList);
 				
 				if(FilterState.groupByQueryName && !scaResultsMap.isEmpty()) {
 					filterResultsByQueryName(scaResultsMap);
@@ -299,7 +299,7 @@ public class DataProvider {
 			
 			if (filteredResultsByScannerType.containsKey(PluginConstants.KICS_INFRASTRUCTURE)) {
 				List<DisplayModel> kicsList = filteredResultsByScannerType.get(PluginConstants.KICS_INFRASTRUCTURE);
-				kicsResultsMap = filterResultsBySeverityV2(kicsList);
+				kicsResultsMap = filterResultsBySeverity(kicsList);
 				
 				if(FilterState.groupByQueryName && !kicsResultsMap.isEmpty()) {
 					filterResultsByQueryName(kicsResultsMap);
@@ -402,7 +402,7 @@ public class DataProvider {
 	 * @param allResultsTransformed
 	 * @return
 	 */
-	private Map<String, List<DisplayModel>> filterResultsByScannerTypeV2(List<DisplayModel> allResultsTransformed) {
+	private Map<String, List<DisplayModel>> filterResultsByScannerType(List<DisplayModel> allResultsTransformed) {
 		Map<String, List<DisplayModel>> filteredMap = new HashMap<>();
 
 		for (DisplayModel transformedResult : allResultsTransformed) {
@@ -428,7 +428,7 @@ public class DataProvider {
 	 * @param resultList
 	 * @return
 	 */
-	private Map<String, List<DisplayModel>> filterResultsBySeverityV2(List<DisplayModel> resultList) {
+	private Map<String, List<DisplayModel>> filterResultsBySeverity(List<DisplayModel> resultList) {
 		Map<String, List<DisplayModel>> filteredMapBySeverity = new HashMap<>();
 
 		for (DisplayModel result : resultList) {
