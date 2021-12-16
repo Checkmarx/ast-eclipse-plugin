@@ -461,34 +461,25 @@ public class TestUI extends BaseUITest {
 	}
 	
 	/**
-	 * Wait until connection test complete
+	 * Wait while tree node equals to a a specific message. Fails after 10 retries
 	 * 
+	 * @param nodeText
 	 * @throws TimeoutException
 	 */
 	private static void waitForConnectionResponse() throws TimeoutException {
-		preventWidgetWasNullInCIEnvironment();
-		
-		boolean emptyConnectionResultLabel = _bot.comboBox(6).getText().isEmpty() || _bot.comboBox(6).getText().equals(PluginConstants.PREFERENCES_VALIDATING_STATE);
-		
-		if(!emptyConnectionResultLabel) {
-			return;
-		}
-		
 		int retryIdx = 0;
 
-		while (emptyConnectionResultLabel) {
-
+		while (!_bot.text(6).getText().equals(INFO_SUCCESSFUL_CONNECTION)) {
 			if (retryIdx == 10) {
 				break;
 			}
 
 			_bot.sleep(1000);
-
 			retryIdx++;
 		}
 
 		if (retryIdx == 10) {
-			throw new TimeoutException("Connection timeout after 5000ms.");
+			throw new TimeoutException("Connection validation timeout after 10000ms.");
 		}
 	}
 }
