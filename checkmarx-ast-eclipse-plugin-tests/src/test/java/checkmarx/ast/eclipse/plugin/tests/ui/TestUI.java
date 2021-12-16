@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
-import org.eclipse.swtbot.eclipse.finder.waits.Conditions;
 import org.eclipse.swtbot.swt.finder.junit.SWTBotJunit4ClassRunner;
 import org.eclipse.swtbot.swt.finder.keyboard.Keystrokes;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotToolbarButton;
@@ -43,7 +42,7 @@ public class TestUI extends BaseUITest {
 	private static boolean _cxSettingsDefined = false;
 
 	@Test
-	public void testSuccessfulConnetion() {
+	public void testSuccessfulConnetion() throws TimeoutException {
 		testSuccessfulConnection();
 	}
 
@@ -294,8 +293,10 @@ public class TestUI extends BaseUITest {
 
 	/**
 	 * Test successful connection
+	 * 
+	 * @throws TimeoutException
 	 */
-	private void testSuccessfulConnection() {
+	private void testSuccessfulConnection() throws TimeoutException {
 		preventWidgetWasNullInCIEnvironment();
 		
 		if(_cxSettingsDefined) return;
@@ -314,7 +315,7 @@ public class TestUI extends BaseUITest {
 		_bot.button(BTN_TEST_CONNECTION).click();
 		
 		//Do waitUntil Method to get text from text(6)
-		_bot.sleep(5000);
+		waitForConnectionResponse();
 		
 		assertEquals(INFO_SUCCESSFUL_CONNECTION, _bot.text(6).getText());
 			
@@ -456,6 +457,38 @@ public class TestUI extends BaseUITest {
 
 		if (retryIdx == 10) {
 			throw new TimeoutException("Timeout after 5000ms. Branches' combobox must be enabled");
+		}
+	}
+	
+	/**
+	 * Wait until connection test complete
+	 * 
+	 * @throws TimeoutException
+	 */
+	private static void waitForConnectionResponse() throws TimeoutException {
+		preventWidgetWasNullInCIEnvironment();
+		
+		boolean emptyConnectionResultLabel = _bot.comboBox(6).getText().isEmpty() || _bot.comboBox(6).getText().equals(PluginConstants.PREFERENCES_VALIDATING_STATE);
+		
+		if(!emptyConnectionResultLabel) {
+			return;
+		}
+		
+		int retryIdx = 0;
+
+		while (emptyConnectionResultLabel) {
+
+			if (retryIdx == 10) {
+				break;
+			}
+
+			_bot.sleep(1000);
+
+			retryIdx++;
+		}
+
+		if (retryIdx == 10) {
+			throw new TimeoutException("Connection timeout after 5000ms.");
 		}
 	}
 }
