@@ -82,7 +82,7 @@ public class CheckmarxView extends ViewPart {
 	private static final String NO_PROJECTS_AVAILABLE = "No projects available.";
 	private static final String NO_SCANS_AVAILABLE = "No scans available.";
 	private static final String VERTICAL_SEPERATOR = "|";
-	private static final String FORMATTED_SCAN_LABEL = "%s (%s, %s)";
+	private static final String FORMATTED_SCAN_LABEL = "%s (%s)";
 
 	/**
 	 * The ID of the view as specified by the extension.
@@ -611,8 +611,11 @@ public class CheckmarxView extends ViewPart {
 	 * @return
 	 */
 	private static String formatScanLabel(Scan scan) {
-		String updatedAtDate = PluginUtils.convertStringTimeStamp(scan.getUpdatedAt());   
-        return String.format(FORMATTED_SCAN_LABEL, scan.getID(), scan.getStatus(), updatedAtDate);
+
+		String updatedAtDate = PluginUtils.convertStringTimeStamp(scan.getUpdatedAt());
+		       
+        return String.format(FORMATTED_SCAN_LABEL, scan.getID(), updatedAtDate);
+
 	}
 
 	/**
