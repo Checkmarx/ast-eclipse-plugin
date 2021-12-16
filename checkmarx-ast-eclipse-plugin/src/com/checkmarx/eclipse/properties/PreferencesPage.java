@@ -20,6 +20,7 @@ import org.eclipse.ui.IWorkbenchPreferencePage;
 
 import com.checkmarx.eclipse.Activator;
 import com.checkmarx.eclipse.runner.Authenticator;
+import com.checkmarx.eclipse.utils.PluginConstants;
 
 public class PreferencesPage extends FieldEditorPreferencePage implements IWorkbenchPreferencePage {
 
@@ -58,22 +59,22 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 		parentLayout.marginWidth = 0;
 		topComposite.setLayout(parentLayout);
 
-		StringFieldEditor serverUrl = new StringFieldEditor(Preferences.SERVER_URL, "Server Url:", topComposite);
+		StringFieldEditor serverUrl = new StringFieldEditor(Preferences.SERVER_URL, PluginConstants.PREFERENCES_SERVER_URL, topComposite);
 		addField(serverUrl);
 
-		StringFieldEditor authUrl = new StringFieldEditor(Preferences.AUTHENTICATION_URL, "Authentication Url:",
+		StringFieldEditor authUrl = new StringFieldEditor(Preferences.AUTHENTICATION_URL, PluginConstants.PREFERENCES_AUTH_URL,
 				topComposite);
 		addField(authUrl);
 
-		StringFieldEditor tenant = new StringFieldEditor(Preferences.TENANT, "Tenant:", topComposite);
+		StringFieldEditor tenant = new StringFieldEditor(Preferences.TENANT, PluginConstants.PREFERENCES_TENANT, topComposite);
 		addField(tenant);
 
-		StringFieldEditor apiKey = new StringFieldEditor(Preferences.API_KEY, "AST API KEY:", topComposite);
+		StringFieldEditor apiKey = new StringFieldEditor(Preferences.API_KEY, PluginConstants.PREFERENCES_API_KEY, topComposite);
 		addField(apiKey);
 		Text textControl = apiKey.getTextControl(topComposite);
 
 		StringFieldEditor additionalParams = new StringFieldEditor(Preferences.ADDITIONAL_OPTIONS,
-				"Additional Options:", topGridData.widthHint, 5, 0, topComposite);
+				PluginConstants.PREFERENCES_ADDITIONAL_OPTIONS, topGridData.widthHint, 5, 0, topComposite);
 		addField(additionalParams);
 
         //set the width for API Key text field        
@@ -90,7 +91,7 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 		connectionLabel.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
 		Button connectionButton = new Button(topComposite, SWT.PUSH);
-		connectionButton.setText("Test Connection");
+		connectionButton.setText(PluginConstants.PREFERENCES_TEST_CONNECTION);
 		connectionButton.addSelectionListener(new SelectionAdapter() {
 
 			public void widgetSelected(SelectionEvent e) {
@@ -102,7 +103,7 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 
 				String additionalParams_str = additionalParams.getStringValue();
 				connectionButton.setEnabled(false);
-				connectionLabel.setText("Validating...");
+				connectionLabel.setText(PluginConstants.PREFERENCES_VALIDATING_STATE);
 				getFieldEditorParent().layout();
 				CompletableFuture.supplyAsync(() -> {
 					try {

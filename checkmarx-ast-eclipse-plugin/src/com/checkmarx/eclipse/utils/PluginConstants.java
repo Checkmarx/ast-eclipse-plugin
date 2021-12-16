@@ -32,4 +32,18 @@ public class PluginConstants {
 	/******************************** TREE MESSAGES ********************************/
 	public static final String TREE_PROVIDED_SCAN_ID_DOES_NOT_EXIST = "Provided scan id %s does not exist";
 	public static final String TREE_INVALID_SCAN_ID_FORMAT = "Invalid scan id format.";
+	
+	/******************************** PREFERENCES ********************************/
+	public static final String PREFERENCES_SERVER_URL = "Server Url:";
+	public static final String PREFERENCES_AUTH_URL = "Authentication Url:";
+	public static final String PREFERENCES_TENANT = "Tenant:";
+	public static final String PREFERENCES_API_KEY = "API key:";
+	public static final String PREFERENCES_ADDITIONAL_OPTIONS = "Additional Options:";
+	public static final String PREFERENCES_TEST_CONNECTION = "Test Connection";
+	public static final String PREFERENCES_VALIDATING_STATE = "Validating...";
+	
+
+
+
+	
 }
