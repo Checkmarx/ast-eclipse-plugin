@@ -2,6 +2,7 @@ package com.checkmarx.eclipse.views;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -23,22 +24,22 @@ import com.checkmarx.ast.wrapper.CxException;
 import com.checkmarx.ast.wrapper.CxWrapper;
 import com.checkmarx.eclipse.properties.Preferences;
 import com.checkmarx.eclipse.runner.Authenticator;
+import com.checkmarx.eclipse.utils.CxLogger;
 import com.checkmarx.eclipse.utils.PluginConstants;
+import com.checkmarx.eclipse.utils.PluginUtils;
 import com.checkmarx.eclipse.views.filters.FilterState;
 
 public class DataProvider {
 	
-	private static final String PROJECT_ID_FILTER = "project-id=%s";
-	private static final String BRANCH_FILTER="branch=%s";
-	private static final String LIMIT_FILTER="limit=10000";
-	private static final String SCAN_STATUS_FILTER= "statuses=Completed";
+	private static final String LIMIT_FILTER="limit=10000";		
+	private static final String FILTER_SCANS_FOR_PROJECT = "project-id=%s,branch=%s,limit=10000,statuses=Completed";
 	
 	private static final String SAST_TREE_NAME = "SAST (%d)";
 	private static final String SCA_TREE_NAME = "SCA (%d)";
 	private static final String KICS_TREE_NAME = "KICS (%d)";
 	private static final String RESULTS_TREE_NAME = "%s (%d Issues)";
 	
-	public static DataProvider _dataProvider = null;
+	private static DataProvider _dataProvider = null;
 
 	public static final AtomicBoolean abort = new AtomicBoolean(false);
 	
@@ -75,114 +76,90 @@ public class DataProvider {
 	public void setCurrentResults(Results currentResults) {
 		this.currentResults = currentResults;
 	}
-	
-	public DisplayModel message(String message) {
-		DisplayModel messageModel = new DisplayModel.DisplayModelBuilder(message).build();
-		return messageModel;
-	}
-	
-	public List<DisplayModel> error(Exception e) {
-		e.printStackTrace();
-		List<DisplayModel> result = new ArrayList<>();
-		result.add(message("Error: " + e.getMessage()));
-		return result;
-	}
 
-	public List<DisplayModel> abortResult() {
-		List<DisplayModel> result = new ArrayList<>();
-		result.add(message("Scan results call aborted."));
-		return result;
-	}
-
-	public List<Project> getProjects()
-	{
-		List<Project> projectList = new  ArrayList<Project>();
+	/**
+	 * Get AST projects
+	 * 
+	 * @return
+	 */
+	public List<Project> getProjects() {
+		List<Project> projectList = new ArrayList<Project>();
+		
 		authenticateWithAST();
-		if(wrapper!=null)
-		{
+		
+		if (wrapper != null) {
 			try {
 				projectList = wrapper.projectList(LIMIT_FILTER);
-				
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (CxException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+
+			} catch (IOException | InterruptedException | CxException e) {
+				CxLogger.error(String.format(PluginConstants.ERROR_GETTING_PROJECTS, e.getMessage()), e);
 			}
 		}
-		
+
 		return projectList;
 	}
 	
-	public List<String> getBranchesForProject(String projectId)
-	{
+	/**
+	 * Get branches for a specific project
+	 * 
+	 * @param projectId
+	 * @return
+	 */
+	public List<String> getBranchesForProject(String projectId) {
 		this.projectId = projectId;
-		List<String> branchList = new  ArrayList<String>();
-		
-		if(wrapper!=null)
-		{
+		List<String> branchList = new ArrayList<String>();
+
+		if (wrapper != null) {
 			try {
-				branchList = wrapper.projectBranches(UUID.fromString(projectId),"");
-				
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (CxException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+				branchList = wrapper.projectBranches(UUID.fromString(projectId), "");
+
+			} catch (IOException | InterruptedException | CxException e) {
+				CxLogger.error(String.format(PluginConstants.ERROR_GETTING_BRANCHES, projectId, e.getMessage()), e);
 			}
 		}
-		
+
 		return branchList;
 	}
 	
-	public List<Scan> getScansForProject(String branch)
-	{
-		List<Scan> scanList = new  ArrayList<Scan>();
-		
-		if(wrapper!=null)
-		{
-			try { 
-				String filters =String.format(PROJECT_ID_FILTER + "," + BRANCH_FILTER + "," + LIMIT_FILTER + "," + SCAN_STATUS_FILTER, this.projectId, branch);
-				scanList = wrapper.scanList(filters);
-				
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (CxException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+	/**
+	 * Get scans for a specific project based on a provided branch
+	 * 
+	 * @param branch
+	 * @return
+	 */
+	public List<Scan> getScansForProject(String branch) {
+		List<Scan> scanList = new ArrayList<>();
+
+		if (wrapper != null) {
+			try {
+				String filter = String.format(FILTER_SCANS_FOR_PROJECT, projectId, branch);
+				scanList = wrapper.scanList(filter);
+
+			} catch (IOException | InterruptedException | CxException e) {
+				CxLogger.error(String.format(PluginConstants.ERROR_GETTING_SCANS, projectId, branch, e.getMessage()), e);
 			}
 		}
-		
+
 		return scanList;
 	}
 	
-	private void authenticateWithAST()
-	{
+	/**
+	 * Authenticate to AST with current credentials
+	 */
+	private void authenticateWithAST() {
 		Logger log = LoggerFactory.getLogger(Authenticator.class.getName());
 
 		try {
 			CxConfig config = CxConfig.builder().baseUri(Preferences.getServerUrl()).tenant(Preferences.getTenant())
 					.apiKey(Preferences.getApiKey()).additionalParameters(Preferences.getAdditionalOptions()).build();
-			
+
 			wrapper = new CxWrapper(config, log);
 			String validationResult = wrapper.authValidate();
-			
-			System.out.println("Authentication Status :" + validationResult);
-				
+
+			CxLogger.info(String.format(PluginConstants.INFO_AUTHENTICATION_STATUS, validationResult));
+
 		} catch (Exception e) {
-			System.out.println(e.getMessage());
+			CxLogger.error(String.format(PluginConstants.ERROR_AUTHENTICATING_AST, e.getMessage()), e);
 		}
 	}
 	
@@ -191,8 +168,8 @@ public class DataProvider {
 	 * 
 	 * @return
 	 */
+	//TODO: check if this method is needed when introduced new changes regarding authentication panel
 	public List<DisplayModel> validateAuthentication(){
-		
 		Logger log = LoggerFactory.getLogger(Authenticator.class.getName());
 		
 		CxConfig config = CxConfig.builder().baseUri(Preferences.getServerUrl()).tenant(Preferences.getTenant())
@@ -201,12 +178,19 @@ public class DataProvider {
 		try {
 			wrapper = new CxWrapper(config, log);
 		} catch (InvalidCLIConfigException | IOException e) {
-			return error(e);
+			CxLogger.error(String.format(PluginConstants.ERROR_AUTHENTICATING_AST, e.getMessage()), e);
+			return  Arrays.asList(PluginUtils.message("Error: " + e.getMessage()));
 		}
 		
 		return Collections.emptyList();
 	}
 	
+	/**
+	 * Get results for a specific scan id
+	 * 
+	 * @param scanId
+	 * @return
+	 */
 	public List<DisplayModel> getResultsForScanId(String scanId) {
 		abort.set(false);
 		Results scanResults = null;
@@ -218,39 +202,52 @@ public class DataProvider {
 		try {
 			CxConfig config = CxConfig.builder().baseUri(Preferences.getServerUrl()).tenant(Preferences.getTenant()).apiKey(Preferences.getApiKey()).additionalParameters("").build();
 			
+			// TODO: remove this new wrapper creation. Change to just use one and update the wrapper when the checkmarx credentials changes.
 			CxWrapper wrapper = new CxWrapper(config, log);
 			String validationResult = wrapper.authValidate();
 			
-			System.out.println("Authentication Status: " + validationResult);
-			System.out.println("Fetching the results for scanId: " + scanId);
+			CxLogger.info(String.format(PluginConstants.INFO_AUTHENTICATION_STATUS, validationResult));
+			CxLogger.info(String.format(PluginConstants.INFO_FETCHING_RESULTS, scanId));
 
 			scanResults = wrapper.results(UUID.fromString(scanId));
 			setCurrentResults(scanResults);
-			System.out.println("Scan results: " + scanResults.getTotalCount());
+			CxLogger.info(String.format(PluginConstants.INFO_SCAN_RESULTS_COUNT, scanResults.getTotalCount()));
 
 		} catch (Exception e) {
-			return error(e);
+			CxLogger.error(String.format(PluginConstants.ERROR_GETTING_RESULTS, scanId, e.getMessage()), e);
+			return  Arrays.asList(PluginUtils.message("Error: " + e.getMessage()));
 		}
 
 		return processResults(scanResults, scanId);
 	}
 
-	public Scan getScanInformation(String scanId)
-	{
+	/**
+	 * Get scan information for a specific scan id
+	 * 
+	 * @param scanId
+	 * @return
+	 * @throws Exception 
+	 */
+	public Scan getScanInformation(String scanId) {
 		Scan scan = null;
-		try
-		{
-			System.out.println("Getting the scan info..");
+
+		try {
+			CxLogger.info(String.format(PluginConstants.INFO_GETTING_SCAN_INFO, scanId));
 			scan = wrapper.scanShow(UUID.fromString(scanId));
-		
+		} catch (Exception e) {
+			CxLogger.error(String.format(PluginConstants.ERROR_GETTING_SCAN_INFO, e.getMessage()), e);
 		}
-		catch (Exception e)
-		{
-			System.out.println("Error while getting the scan information: " + e.getMessage());
-		}
+
 		return scan;
 	}
 	
+	/**
+	 * Process results to be displayed in the tree
+	 * 
+	 * @param scanResults
+	 * @param scanId
+	 * @return
+	 */
 	private List<DisplayModel> processResults(Results scanResults, String scanId) {
 		if(scanResults == null || scanResults.getResults() == null || scanResults.getResults().isEmpty()) {
 			return Collections.emptyList();
@@ -262,7 +259,7 @@ public class DataProvider {
 		List<DisplayModel> allResultsTransformed = resultsList.stream().map(resultItem -> transform(resultItem)).collect(Collectors.toList());
 
 		// Divide all the results by scanner type
-		Map<String, List<DisplayModel>> filteredResultsByScannerType = filterResultsByScannerTypeV2(allResultsTransformed);
+		Map<String, List<DisplayModel>> filteredResultsByScannerType = filterResultsByScannerType(allResultsTransformed);
 
 		// build results based on selected filters
 		return buildResults(scanId, filteredResultsByScannerType);
@@ -284,7 +281,7 @@ public class DataProvider {
 
 			if (filteredResultsByScannerType.containsKey(PluginConstants.SAST)) {
 				List<DisplayModel> sastList = filteredResultsByScannerType.get(PluginConstants.SAST);
-				sastResultsMap = filterResultsBySeverityV2(sastList);
+				sastResultsMap = filterResultsBySeverity(sastList);
 				
 				if(FilterState.groupByQueryName && !sastResultsMap.isEmpty()) {
 					filterResultsByQueryName(sastResultsMap);
@@ -293,7 +290,7 @@ public class DataProvider {
 			
 			if (filteredResultsByScannerType.containsKey(PluginConstants.SCA_DEPENDENCY)) {
 				List<DisplayModel> scaList = filteredResultsByScannerType.get(PluginConstants.SCA_DEPENDENCY);
-				scaResultsMap = filterResultsBySeverityV2(scaList);
+				scaResultsMap = filterResultsBySeverity(scaList);
 				
 				if(FilterState.groupByQueryName && !scaResultsMap.isEmpty()) {
 					filterResultsByQueryName(scaResultsMap);
@@ -302,7 +299,7 @@ public class DataProvider {
 			
 			if (filteredResultsByScannerType.containsKey(PluginConstants.KICS_INFRASTRUCTURE)) {
 				List<DisplayModel> kicsList = filteredResultsByScannerType.get(PluginConstants.KICS_INFRASTRUCTURE);
-				kicsResultsMap = filterResultsBySeverityV2(kicsList);
+				kicsResultsMap = filterResultsBySeverity(kicsList);
 				
 				if(FilterState.groupByQueryName && !kicsResultsMap.isEmpty()) {
 					filterResultsByQueryName(kicsResultsMap);
@@ -405,7 +402,7 @@ public class DataProvider {
 	 * @param allResultsTransformed
 	 * @return
 	 */
-	private Map<String, List<DisplayModel>> filterResultsByScannerTypeV2(List<DisplayModel> allResultsTransformed) {
+	private Map<String, List<DisplayModel>> filterResultsByScannerType(List<DisplayModel> allResultsTransformed) {
 		Map<String, List<DisplayModel>> filteredMap = new HashMap<>();
 
 		for (DisplayModel transformedResult : allResultsTransformed) {
@@ -431,7 +428,7 @@ public class DataProvider {
 	 * @param resultList
 	 * @return
 	 */
-	private Map<String, List<DisplayModel>> filterResultsBySeverityV2(List<DisplayModel> resultList) {
+	private Map<String, List<DisplayModel>> filterResultsBySeverity(List<DisplayModel> resultList) {
 		Map<String, List<DisplayModel>> filteredMapBySeverity = new HashMap<>();
 
 		for (DisplayModel result : resultList) {

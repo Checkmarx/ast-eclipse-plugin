@@ -73,7 +73,7 @@ public class DisplayModel {
 		this.result = result;
 	}
 	
-	static class DisplayModelBuilder{
+	public static class DisplayModelBuilder{
 		public DisplayModel parent;
 		public List<DisplayModel> children = new ArrayList<>();
 		

@@ -7,8 +7,10 @@ import java.util.List;
 
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.viewers.ComboViewer;
+import org.eclipse.jface.viewers.TreeViewer;
 
 import com.checkmarx.eclipse.views.DataProvider;
+import com.checkmarx.eclipse.views.DisplayModel;
 import com.checkmarx.eclipse.views.actions.ActionName;
 import com.checkmarx.eclipse.views.filters.FilterState;
 
@@ -85,5 +87,26 @@ public class PluginUtils {
 
 			action.setChecked(FilterState.isSeverityEnabled(action.getId()));
 		}
+	}
+	
+	/**
+	 * Create a display model to be presented in the tree
+	 * 
+	 * @param message
+	 * @return
+	 */
+	public static DisplayModel message(String message) {
+		return new DisplayModel.DisplayModelBuilder(message).build();
+	}
+	
+	/**
+	 * Show message in the tree
+	 * 
+	 * @param message
+	 */
+	public static void showMessage(DisplayModel rootModel, TreeViewer viewer, String message) {
+		rootModel.children.clear();
+		rootModel.children.add(PluginUtils.message(message));
+		viewer.refresh();
 	}
 }
