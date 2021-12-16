@@ -28,7 +28,7 @@ public class TestUI extends BaseUITest {
 	
 	private static final String ERROR_SERVER_URL_NOT_SET = "Error: Checkmarx server URL is not set";
 
-	private static final String INFO_SUCCESSFUL_CONNECTION = "Connection successfull !";
+	private static final String INFO_SUCCESSFUL_CONNECTION = "Successfully authenticated to AST server!";
 	
 	private static final String ASSERT_FILTER_ACTIONS_IN_TOOLBAR = "All filter actions must be in the tool bar";
 	private static final String ASSERT_GROUP_BY_ACTIONS_IN_TOOLBAR = "All group by actions must be in the tool bar";
@@ -306,18 +306,18 @@ public class TestUI extends BaseUITest {
 
 		_bot.sleep(1000);
 
-		_bot.textWithLabel(LABEL_SERVER_URL).setText(Environment.BASE_URL);
-		_bot.textWithLabel(LABEL_TENANT).setText(Environment.TENANT);
-		_bot.textWithLabel(LABEL_AST_API_KEY).setText(Environment.API_KEY);
+		_bot.textWithLabel(PluginConstants.PREFERENCES_SERVER_URL).setText(Environment.BASE_URL);
+		_bot.textWithLabel(PluginConstants.PREFERENCES_TENANT).setText(Environment.TENANT);
+		_bot.textWithLabel(PluginConstants.PREFERENCES_API_KEY).setText(Environment.API_KEY);
 
 		_bot.button(BTN_APPLY).click();
 		_bot.button(BTN_TEST_CONNECTION).click();
-		_bot.waitUntil(Conditions.shellIsActive(SHELL_AUTHENTICATION));
 		
-		assertEquals(INFO_SUCCESSFUL_CONNECTION, _bot.label(INFO_SUCCESSFUL_CONNECTION).getText());
+		//Do waitUntil Method to get text from text(6)
+		_bot.sleep(5000);
 		
-		_bot.button(BTN_OK).click();
-		
+		assertEquals(INFO_SUCCESSFUL_CONNECTION, _bot.text(6).getText());
+			
 		_bot.shell(ITEM_PREFERENCES).setFocus(); // Need to set focus to avoid failing in CI environment
 		_bot.button(BTN_APPLY_AND_CLOSE).click();
 		
@@ -372,9 +372,9 @@ public class TestUI extends BaseUITest {
 		_bot.shell(ITEM_PREFERENCES).activate();
 		_bot.tree().select(ITEM_CHECKMARX_AST);
 
-		_bot.textWithLabel(LABEL_SERVER_URL).setText("");
-		_bot.textWithLabel(LABEL_TENANT).setText("");
-		_bot.textWithLabel(LABEL_AST_API_KEY).setText("");
+		_bot.textWithLabel(PluginConstants.PREFERENCES_SERVER_URL).setText("");
+		_bot.textWithLabel(PluginConstants.PREFERENCES_TENANT).setText("");
+		_bot.textWithLabel(PluginConstants.PREFERENCES_API_KEY).setText("");
 
 		_bot.button(BTN_APPLY).click();
 		_bot.button(BTN_APPLY_AND_CLOSE).click();
