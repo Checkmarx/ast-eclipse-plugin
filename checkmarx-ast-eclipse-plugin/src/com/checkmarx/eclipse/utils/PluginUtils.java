@@ -9,9 +9,9 @@ import org.eclipse.jface.action.Action;
 import org.eclipse.jface.viewers.ComboViewer;
 import org.eclipse.jface.viewers.TreeViewer;
 
+import com.checkmarx.eclipse.enums.ActionName;
 import com.checkmarx.eclipse.views.DataProvider;
 import com.checkmarx.eclipse.views.DisplayModel;
-import com.checkmarx.eclipse.views.actions.ActionName;
 import com.checkmarx.eclipse.views.filters.FilterState;
 
 public class PluginUtils {
@@ -82,7 +82,7 @@ public class PluginUtils {
 		for (Action action : filterActions) {
 			// avoid to disable group by severity and group by query name actions
 			if (!action.getId().equals(ActionName.GROUP_BY_SEVERITY.name()) && !action.getId().equals(ActionName.GROUP_BY_QUERY_NAME.name())) {
-				action.setEnabled(DataProvider.getInstance().getCurrentScanId() != null);
+				action.setEnabled(DataProvider.getInstance().containsResults());
 			}
 
 			action.setChecked(FilterState.isSeverityEnabled(action.getId()));

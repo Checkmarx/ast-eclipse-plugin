@@ -1,7 +1,8 @@
-package com.checkmarx.eclipse.views.filters;
+package com.checkmarx.eclipse.enums;
 
 public enum Severity {
 	
+	CRITICAL,
 	HIGH,
 	MEDIUM,
 	LOW,
