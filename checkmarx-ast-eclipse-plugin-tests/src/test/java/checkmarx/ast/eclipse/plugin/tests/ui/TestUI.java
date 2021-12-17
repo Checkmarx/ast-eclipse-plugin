@@ -16,10 +16,10 @@ import org.eclipse.swtbot.swt.finder.widgets.SWTBotToolbarButton;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import com.checkmarx.eclipse.enums.ActionName;
+import com.checkmarx.eclipse.enums.Severity;
 import com.checkmarx.eclipse.utils.PluginConstants;
-import com.checkmarx.eclipse.views.actions.ActionName;
 import com.checkmarx.eclipse.views.actions.ToolBarActions;
-import com.checkmarx.eclipse.views.filters.Severity;
 
 import checkmarx.ast.eclipse.plugin.tests.common.Environment;
 
