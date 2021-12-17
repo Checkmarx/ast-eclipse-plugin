@@ -1,5 +1,6 @@
 package com.checkmarx.eclipse.views.filters;
 
+import com.checkmarx.eclipse.enums.Severity;
 import com.checkmarx.eclipse.views.GlobalSettings;
 
 public class FilterState {

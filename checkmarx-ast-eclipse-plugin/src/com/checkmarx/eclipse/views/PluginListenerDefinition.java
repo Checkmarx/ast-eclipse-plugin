@@ -2,6 +2,8 @@ package com.checkmarx.eclipse.views;
 
 import java.util.List;
 
+import com.checkmarx.eclipse.enums.PluginListenerType;
+
 /**
  * Class which represents a Listener Configuration to be used in Event Bus
  * 
