@@ -1,13 +1,15 @@
 package com.checkmarx.eclipse.utils;
 
 public class PluginConstants {
+	public static final String EMPTY_STRING = "";
 	public static final String SAST = "sast";
 	public static final String SCA_DEPENDENCY = "dependency";
 	public static final String KICS_INFRASTRUCTURE = "infrastructure";
 	public static final String RETRIEVING_RESULTS_FOR_SCAN = "Retrieving results for scan id %s...";
-	public static final String COMBOBOX_SCAND_ID_PLACEHOLDER = "Select project or paste a Scan Id here and hit Enter.";
+	public static final String COMBOBOX_SCAND_ID_PLACEHOLDER = "Select a project or paste a Scan Id here and hit Enter.";
 	public static final String COMBOBOX_SCAND_ID_GETTING_SCANS = "Getting scans for the project...";
-	public static final String COMBOBOX_SCAND_ID_NO_SCANS_AVAILABLE = "No scans available.";
+	public static final String COMBOBOX_SCAND_ID_NO_SCANS_AVAILABLE = "No scans available. Select a project or paste a Scan Id here and hit Enter.";
+	public static final String COMBOBOX_BRANCH_CHANGING = "Changing branch...";
 	
 	/******************************** LOG VIEW: ERRORS ********************************/
 	public static final String ERROR_AUTHENTICATING_AST = "An error occurred while trying to authenticate to AST: %s";
@@ -18,6 +20,7 @@ public class PluginConstants {
 	public static final String ERROR_GETTING_RESULTS = "An error occurred while getting results for scan id %s: %s";
 	public static final String ERROR_OPENING_FILE = "An error occurred while opening file: %s";
 	public static final String ERROR_FINDING_FILE = "An error occurred while finding file in workspace: %s";
+	public static final String ERROR_GETTING_GIT_BRANCH = "An error occurred while getting git branch: %s";
 	
 	/******************************** LOG VIEW: INFO ********************************/
 	public static final String INFO_AUTHENTICATION_STATUS = "Authentication Status: %s";
@@ -32,6 +35,7 @@ public class PluginConstants {
 	/******************************** TREE MESSAGES ********************************/
 	public static final String TREE_PROVIDED_SCAN_ID_DOES_NOT_EXIST = "Provided scan id %s does not exist";
 	public static final String TREE_INVALID_SCAN_ID_FORMAT = "Invalid scan id format.";
+	public static final String TREE_NO_RESULTS = "No results.";
 	
 	/******************************** PREFERENCES ********************************/
 	public static final String PREFERENCES_SERVER_URL = "Server Url:";
@@ -41,5 +45,5 @@ public class PluginConstants {
 	public static final String PREFERENCES_ADDITIONAL_OPTIONS = "Additional Options:";
 	public static final String PREFERENCES_TEST_CONNECTION = "Test Connection";
 	public static final String PREFERENCES_VALIDATING_STATE = "Validating...";
-	
+
 }
