@@ -40,6 +40,7 @@ public class ActionClearSelection extends CxBaseAction {
 		clearSelectionAction.setId(ActionName.CLEAN_AND_REFRESH.name());
 		clearSelectionAction.setToolTipText(ACTION_CLEAR_SELECTION_TOOLTIP);
 		clearSelectionAction.setImageDescriptor(Activator.getImageDescriptor(ACTION_CLEAR_SELECTION_ICON_PATH));
+		clearSelectionAction.setEnabled(false);
 		
 		return clearSelectionAction;
 	}

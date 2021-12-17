@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
-import org.eclipse.swtbot.eclipse.finder.waits.Conditions;
 import org.eclipse.swtbot.swt.finder.junit.SWTBotJunit4ClassRunner;
 import org.eclipse.swtbot.swt.finder.keyboard.Keystrokes;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotToolbarButton;
@@ -28,7 +27,7 @@ public class TestUI extends BaseUITest {
 	
 	private static final String ERROR_SERVER_URL_NOT_SET = "Error: Checkmarx server URL is not set";
 
-	private static final String INFO_SUCCESSFUL_CONNECTION = "Connection successfull !";
+	private static final String INFO_SUCCESSFUL_CONNECTION = "Successfully authenticated to AST server!";
 	
 	private static final String ASSERT_FILTER_ACTIONS_IN_TOOLBAR = "All filter actions must be in the tool bar";
 	private static final String ASSERT_GROUP_BY_ACTIONS_IN_TOOLBAR = "All group by actions must be in the tool bar";
@@ -43,7 +42,7 @@ public class TestUI extends BaseUITest {
 	private static boolean _cxSettingsDefined = false;
 
 	@Test
-	public void testSuccessfulConnetion() {
+	public void testSuccessfulConnetion() throws TimeoutException {
 		testSuccessfulConnection();
 	}
 
@@ -294,8 +293,10 @@ public class TestUI extends BaseUITest {
 
 	/**
 	 * Test successful connection
+	 * 
+	 * @throws TimeoutException
 	 */
-	private void testSuccessfulConnection() {
+	private void testSuccessfulConnection() throws TimeoutException {
 		preventWidgetWasNullInCIEnvironment();
 		
 		if(_cxSettingsDefined) return;
@@ -306,18 +307,18 @@ public class TestUI extends BaseUITest {
 
 		_bot.sleep(1000);
 
-		_bot.textWithLabel(LABEL_SERVER_URL).setText(Environment.BASE_URL);
-		_bot.textWithLabel(LABEL_TENANT).setText(Environment.TENANT);
-		_bot.textWithLabel(LABEL_AST_API_KEY).setText(Environment.API_KEY);
+		_bot.textWithLabel(PluginConstants.PREFERENCES_SERVER_URL).setText(Environment.BASE_URL);
+		_bot.textWithLabel(PluginConstants.PREFERENCES_TENANT).setText(Environment.TENANT);
+		_bot.textWithLabel(PluginConstants.PREFERENCES_API_KEY).setText(Environment.API_KEY);
 
 		_bot.button(BTN_APPLY).click();
 		_bot.button(BTN_TEST_CONNECTION).click();
-		_bot.waitUntil(Conditions.shellIsActive(SHELL_AUTHENTICATION));
 		
-		assertEquals(INFO_SUCCESSFUL_CONNECTION, _bot.label(INFO_SUCCESSFUL_CONNECTION).getText());
+		//Do waitUntil Method to get text from text(6)
+		waitForConnectionResponse();
 		
-		_bot.button(BTN_OK).click();
-		
+		assertEquals(INFO_SUCCESSFUL_CONNECTION, _bot.text(6).getText());
+			
 		_bot.shell(ITEM_PREFERENCES).setFocus(); // Need to set focus to avoid failing in CI environment
 		_bot.button(BTN_APPLY_AND_CLOSE).click();
 		
@@ -372,9 +373,9 @@ public class TestUI extends BaseUITest {
 		_bot.shell(ITEM_PREFERENCES).activate();
 		_bot.tree().select(ITEM_CHECKMARX_AST);
 
-		_bot.textWithLabel(LABEL_SERVER_URL).setText("");
-		_bot.textWithLabel(LABEL_TENANT).setText("");
-		_bot.textWithLabel(LABEL_AST_API_KEY).setText("");
+		_bot.textWithLabel(PluginConstants.PREFERENCES_SERVER_URL).setText("");
+		_bot.textWithLabel(PluginConstants.PREFERENCES_TENANT).setText("");
+		_bot.textWithLabel(PluginConstants.PREFERENCES_API_KEY).setText("");
 
 		_bot.button(BTN_APPLY).click();
 		_bot.button(BTN_APPLY_AND_CLOSE).click();
@@ -456,6 +457,29 @@ public class TestUI extends BaseUITest {
 
 		if (retryIdx == 10) {
 			throw new TimeoutException("Timeout after 5000ms. Branches' combobox must be enabled");
+		}
+	}
+	
+	/**
+	 * Wait while tree node equals to a a specific message. Fails after 10 retries
+	 * 
+	 * @param nodeText
+	 * @throws TimeoutException
+	 */
+	private static void waitForConnectionResponse() throws TimeoutException {
+		int retryIdx = 0;
+
+		while (!_bot.text(6).getText().equals(INFO_SUCCESSFUL_CONNECTION)) {
+			if (retryIdx == 10) {
+				break;
+			}
+
+			_bot.sleep(1000);
+			retryIdx++;
+		}
+
+		if (retryIdx == 10) {
+			throw new TimeoutException("Connection validation timeout after 10000ms.");
 		}
 	}
 }
