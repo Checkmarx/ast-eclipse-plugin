@@ -20,9 +20,6 @@ public abstract class BaseUITest {
 	protected static final String ITEM_CHECKMARX_AST = "Checkmarx AST";
 	protected static final String ITEM_CHECKMARX_AST_SCAN = "Checkmarx AST Scan";
 	
-	protected static final String LABEL_SERVER_URL = "Server Url:";
-	protected static final String LABEL_TENANT = "Tenant:";
-	protected static final String LABEL_AST_API_KEY = "AST API Key:";
 	protected static final String LABEL_SCAN_ID = "Scan Id:";
 	
 	protected static final String COLUMN_TITLE = "Title";
