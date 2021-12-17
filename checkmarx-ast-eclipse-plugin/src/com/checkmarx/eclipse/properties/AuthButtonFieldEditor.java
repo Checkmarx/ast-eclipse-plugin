@@ -10,6 +10,8 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 
 import com.checkmarx.eclipse.runner.Authenticator;
+import com.checkmarx.eclipse.utils.CxLogger;
+import com.checkmarx.eclipse.utils.PluginConstants;
 
 public class AuthButtonFieldEditor extends StringButtonFieldEditor {
 
@@ -37,7 +39,7 @@ public class AuthButtonFieldEditor extends StringButtonFieldEditor {
 
 	@Override
 	protected String changePressed() {
-		connectionLabel.setText("Validating...");
+		connectionLabel.setText(PluginConstants.PREFERENCES_VALIDATING_STATE);
 
 		String serverUrl_str = serverUrl.getStringValue();
 		String authUrl_str = authUrl.getStringValue();
@@ -50,7 +52,8 @@ public class AuthButtonFieldEditor extends StringButtonFieldEditor {
 				return Authenticator.INSTANCE.doAuthentication(serverUrl_str, authUrl_str, tenant_str, apiKey_str,
 						additionalParams_str);
 			} catch (Throwable t) {
-				return t.getMessage();
+				CxLogger.error("An error occured while trying to authenticate to AST server", new Exception(t));
+				return t.getMessage();	
 			}
 		}).thenAccept((result) -> Display.getDefault().syncExec(() -> connectionLabel.setText(result)));
 
