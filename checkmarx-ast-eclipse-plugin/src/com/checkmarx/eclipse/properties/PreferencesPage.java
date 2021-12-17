@@ -20,6 +20,7 @@ import org.eclipse.ui.IWorkbenchPreferencePage;
 
 import com.checkmarx.eclipse.Activator;
 import com.checkmarx.eclipse.runner.Authenticator;
+import com.checkmarx.eclipse.utils.CxLogger;
 import com.checkmarx.eclipse.utils.PluginConstants;
 
 public class PreferencesPage extends FieldEditorPreferencePage implements IWorkbenchPreferencePage {
@@ -110,6 +111,7 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 						return Authenticator.INSTANCE.doAuthentication(serverUrl_str, authUrl_str, tenant_str,
 								apiKey_str, additionalParams_str);
 					} catch (Throwable t) {
+						CxLogger.error("An error occured while...", new Exception(t));
 						return t.getMessage();
 					}
 				}).thenAccept((result) -> Display.getDefault().syncExec(() -> {

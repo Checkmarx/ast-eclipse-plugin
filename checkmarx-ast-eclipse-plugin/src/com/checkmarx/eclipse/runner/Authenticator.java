@@ -9,8 +9,12 @@ import com.checkmarx.ast.wrapper.CxConfig;
 import com.checkmarx.ast.wrapper.CxConfig.InvalidCLIConfigException;
 import com.checkmarx.ast.wrapper.CxException;
 import com.checkmarx.ast.wrapper.CxWrapper;
+import com.checkmarx.eclipse.utils.CxLogger;
 
 public class Authenticator {
+
+	
+	protected static final String AUTH_STATUS = "Authentication Status: ";
 
 	public static final Authenticator INSTANCE = new Authenticator();
 
@@ -44,15 +48,10 @@ public class Authenticator {
 		try {
 			wrapper = new CxWrapper(config, log);
 			String cxValidateOutput = wrapper.authValidate();
-			System.out.println("Authentication Status: " + cxValidateOutput);
+			System.out.println(AUTH_STATUS + cxValidateOutput);
 			return cxValidateOutput;
-		} catch (IOException e) {
-			return e.getMessage();
-		} catch (InterruptedException e) {
-			return e.getMessage();
-		} catch (InvalidCLIConfigException e) {
-			return e.getMessage();
-		} catch (CxException e) {
+		} catch (IOException | InterruptedException | InvalidCLIConfigException | CxException e) {
+			CxLogger.error(String.format("An error occurred while trying to authenticate to AST Server: %s", e.getMessage()), e);
 			return e.getMessage();
 		}
 	}
