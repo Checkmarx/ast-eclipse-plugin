@@ -10,13 +10,14 @@ import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.ui.IActionBars;
 
+import com.checkmarx.eclipse.enums.ActionName;
+import com.checkmarx.eclipse.enums.PluginListenerType;
+import com.checkmarx.eclipse.enums.Severity;
 import com.checkmarx.eclipse.views.DataProvider;
 import com.checkmarx.eclipse.views.DisplayModel;
 import com.checkmarx.eclipse.views.PluginListenerDefinition;
-import com.checkmarx.eclipse.views.PluginListenerType;
 import com.checkmarx.eclipse.views.filters.ActionFilters;
 import com.checkmarx.eclipse.views.filters.FilterState;
-import com.checkmarx.eclipse.views.filters.Severity;
 import com.google.common.eventbus.EventBus;
 
 public class ToolBarActions {
@@ -25,7 +26,7 @@ public class ToolBarActions {
 	public static final String GROUP_BY_SEVERITY = "Severity";
 	public static final String GROUP_BY_QUERY_NAME = "Query Name";
 
-	private List<Action> toolBarActions = new ArrayList<Action>();
+	private List<Action> toolBarActions = new ArrayList<>();
 	
 	private IActionBars actionBars;
 
@@ -34,6 +35,7 @@ public class ToolBarActions {
 	
 	private EventBus pluginEventBus;
 	
+	private Action clearAndRefreshAction;
 	private Action scanResultsAction;
 	private Action abortResultsAction;
 	private Action groupBySeverityAction;
@@ -55,12 +57,12 @@ public class ToolBarActions {
 	private void createActions() {
 		filterActions = new ActionFilters(pluginEventBus).createFilterActions();
 		
-		Action clearSelectionAction = new ActionClearSelection(rootModel, resultsTree, pluginEventBus).createAction();
+		clearAndRefreshAction = new ActionClearSelection(rootModel, resultsTree, pluginEventBus).createAction();
 		abortResultsAction = new ActionAbortScanResults(rootModel, resultsTree).createAction();
 		scanResultsAction = new ActionGetScanResults(rootModel, resultsTree, pluginEventBus).createAction();
 	     
 		toolBarActions.addAll(filterActions);
-		toolBarActions.add(clearSelectionAction);
+		toolBarActions.add(clearAndRefreshAction);
 		toolBarActions.add(scanResultsAction);
 		toolBarActions.add(abortResultsAction);
 		
@@ -112,6 +114,15 @@ public class ToolBarActions {
 	 */
 	public List<Action> getToolBarActions() {
 		return this.toolBarActions;
+	}
+	
+	/**
+	 * Get clear and refresh action
+	 * 
+	 * @return
+	 */
+	public Action getClearAndRefreshAction() {
+		return clearAndRefreshAction;
 	}
 	
 	/**
