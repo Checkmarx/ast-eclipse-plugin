@@ -16,16 +16,16 @@ import com.google.common.eventbus.EventBus;
 public class ActionFilters {
 	
 	private static final String ACTION_FILTER_HIGH_TOOLTIP = "High";
-	private static final String ACTION_FILTER_HIGH_ICON_PATH = "/icons/severity-high.png";
+	private static final String ACTION_FILTER_HIGH_ICON_PATH = "/icons/high_untoggle.png";
 	
 	private static final String ACTION_FILTER_MEDIUM_TOOLTIP = "Medium";
-	private static final String ACTION_FILTER_MEDIUM_ICON_PATH = "/icons/severity-medium.png";
+	private static final String ACTION_FILTER_MEDIUM_ICON_PATH = "/icons/medium_untoggle.png";
 	
 	private static final String ACTION_FILTER_LOW_TOOLTIP = "Low";
-	private static final String ACTION_FILTER_LOW_ICON_PATH = "/icons/severity-low.png";
+	private static final String ACTION_FILTER_LOW_ICON_PATH = "/icons/low_untoggle.png";
 	
 	private static final String ACTION_FILTER_INFO_TOOLTIP = "Info";
-	private static final String ACTION_FILTER_INFO_ICON_PATH = "platform:/plugin/org.eclipse.ui/icons/full/obj16/info_tsk.png";
+	private static final String ACTION_FILTER_INFO_ICON_PATH = "/icons/info_untoggle.png";
 	
 	private EventBus pluginEventBus;
 	
