@@ -42,8 +42,4 @@ public class PluginConstants {
 	public static final String PREFERENCES_TEST_CONNECTION = "Test Connection";
 	public static final String PREFERENCES_VALIDATING_STATE = "Validating...";
 	
-
-
-
-	
 }

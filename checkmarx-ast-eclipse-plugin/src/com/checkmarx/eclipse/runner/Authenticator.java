@@ -10,6 +10,7 @@ import com.checkmarx.ast.wrapper.CxConfig.InvalidCLIConfigException;
 import com.checkmarx.ast.wrapper.CxException;
 import com.checkmarx.ast.wrapper.CxWrapper;
 import com.checkmarx.eclipse.utils.CxLogger;
+import com.checkmarx.eclipse.utils.PluginConstants;
 
 public class Authenticator {
 
@@ -17,24 +18,6 @@ public class Authenticator {
 	protected static final String AUTH_STATUS = "Authentication Status: ";
 
 	public static final Authenticator INSTANCE = new Authenticator();
-
-//	private String pollCallback(String token) throws IOException, InterruptedException, AuthException,
-//			KeyManagementException, NoSuchAlgorithmException, KeyStoreException {
-//
-//
-//		for (int i = 0; i < 20; i++) {
-//			HttpResponse response = httpClient.execute(post);
-//			String responseJson = EntityUtils.toString(response.getEntity(), "UTF-8");
-//			AuthResponse authResponse = objectMapper.readValue(responseJson, AuthResponse.class);
-//			if (authResponse.isOk()) {
-//				return authResponse.getApi();
-//			}
-//			Thread.sleep(2000);
-//		}
-//
-//		throw new AuthException("timeout, please try again");
-//
-//	}
 
 	public String doAuthentication(String serverUrl, String authUrl, String tenant, String apiKey,
 			String additionalParams) {
@@ -48,10 +31,10 @@ public class Authenticator {
 		try {
 			wrapper = new CxWrapper(config, log);
 			String cxValidateOutput = wrapper.authValidate();
-			System.out.println(AUTH_STATUS + cxValidateOutput);
+			CxLogger.info(AUTH_STATUS + cxValidateOutput);
 			return cxValidateOutput;
 		} catch (IOException | InterruptedException | InvalidCLIConfigException | CxException e) {
-			CxLogger.error(String.format("An error occurred while trying to authenticate to AST Server: %s", e.getMessage()), e);
+			CxLogger.error(String.format(PluginConstants.ERROR_AUTHENTICATING_AST, e.getMessage()), e);
 			return e.getMessage();
 		}
 	}

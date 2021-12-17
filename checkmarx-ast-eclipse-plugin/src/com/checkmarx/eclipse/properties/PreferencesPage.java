@@ -111,7 +111,7 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 						return Authenticator.INSTANCE.doAuthentication(serverUrl_str, authUrl_str, tenant_str,
 								apiKey_str, additionalParams_str);
 					} catch (Throwable t) {
-						CxLogger.error("An error occured while...", new Exception(t));
+						CxLogger.error(PluginConstants.ERROR_AUTHENTICATING_AST, new Exception(t));
 						return t.getMessage();
 					}
 				}).thenAccept((result) -> Display.getDefault().syncExec(() -> {
