@@ -545,4 +545,13 @@ public class DataProvider {
 	public List<DisplayModel> filterResults(){		
 		return processResults(getCurrentResults(), getCurrentScanId());
 	}
+	
+	/**
+	 * Check if plugin has results loaded
+	 * 
+	 * @return
+	 */
+	public boolean containsResults() {
+		return getCurrentResults() != null && getCurrentResults().getResults() != null && !getCurrentResults().getResults().isEmpty();
+	}
 }
