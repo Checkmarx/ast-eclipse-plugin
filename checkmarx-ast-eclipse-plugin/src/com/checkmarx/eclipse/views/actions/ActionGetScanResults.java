@@ -39,6 +39,7 @@ public class ActionGetScanResults extends CxBaseAction {
 		getScanResultsAction.setId(ActionName.GET_RESULTS.name());
 		getScanResultsAction.setToolTipText(ACTION_SCAN_RESULTS_TOOLTIP);
 		getScanResultsAction.setImageDescriptor(Activator.getImageDescriptor(ACTION_SCAN_RESULTS_ICON_PATH));
+		getScanResultsAction.setEnabled(false);
 		
 		return getScanResultsAction;
 	}
