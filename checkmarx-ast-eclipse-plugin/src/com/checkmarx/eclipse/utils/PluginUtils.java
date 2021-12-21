@@ -5,11 +5,15 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+import org.apache.commons.lang3.StringUtils;
+import org.eclipse.e4.core.services.events.IEventBroker;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.viewers.ComboViewer;
 import org.eclipse.jface.viewers.TreeViewer;
+import org.eclipse.ui.PlatformUI;
 
 import com.checkmarx.eclipse.enums.ActionName;
+import com.checkmarx.eclipse.properties.Preferences;
 import com.checkmarx.eclipse.views.DataProvider;
 import com.checkmarx.eclipse.views.DisplayModel;
 import com.checkmarx.eclipse.views.filters.FilterState;
@@ -108,5 +112,13 @@ public class PluginUtils {
 		rootModel.children.clear();
 		rootModel.children.add(PluginUtils.message(message));
 		viewer.refresh();
+	}
+	
+	public static IEventBroker getEventBroker() {
+		return (IEventBroker) PlatformUI.getWorkbench().getService(IEventBroker.class);
+	}
+	
+	public static boolean areCredentialsDefined() {
+		return StringUtils.isNotBlank(Preferences.getServerUrl()) && StringUtils.isNotBlank(Preferences.getTenant()) && StringUtils.isNotBlank(Preferences.getApiKey());
 	}
 }
