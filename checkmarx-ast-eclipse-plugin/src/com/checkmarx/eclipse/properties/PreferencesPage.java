@@ -22,6 +22,7 @@ import com.checkmarx.eclipse.Activator;
 import com.checkmarx.eclipse.runner.Authenticator;
 import com.checkmarx.eclipse.utils.CxLogger;
 import com.checkmarx.eclipse.utils.PluginConstants;
+import com.checkmarx.eclipse.utils.PluginUtils;
 
 public class PreferencesPage extends FieldEditorPreferencePage implements IWorkbenchPreferencePage {
 
@@ -42,7 +43,6 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 
 	@Override
 	protected void createFieldEditors() {
-
 		Composite topComposite = new Composite(getFieldEditorParent(), SWT.NONE);
 		GridData topGridData = new GridData();
 		topGridData.horizontalAlignment = GridData.FILL;
@@ -127,8 +127,14 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 		return new LabelFieldEditor("", getFieldEditorParent());
 	}
 
-	public void persist() {
-		super.performOk();
-	}
+	@Override
+	public boolean performOk() {
+		boolean ok = super.performOk();
 
+		if (ok) {
+			PluginUtils.getEventBroker().post(PluginConstants.TOPIC_APPLY_SETTINGS, PluginConstants.EMPTY_STRING);
+		}
+
+		return ok;
+	}
 }
