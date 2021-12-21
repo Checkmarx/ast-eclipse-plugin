@@ -19,7 +19,6 @@ import com.checkmarx.ast.results.Results;
 import com.checkmarx.ast.results.result.Result;
 import com.checkmarx.ast.scan.Scan;
 import com.checkmarx.ast.wrapper.CxConfig;
-import com.checkmarx.ast.wrapper.CxConfig.InvalidCLIConfigException;
 import com.checkmarx.ast.wrapper.CxException;
 import com.checkmarx.ast.wrapper.CxWrapper;
 import com.checkmarx.eclipse.properties.Preferences;
@@ -46,7 +45,7 @@ public class DataProvider {
 	private Results currentResults;
 	private String currentScanId;
 	private String projectId;
-	private CxWrapper wrapper;
+	private static CxWrapper cxWrapper;
 	
 	/**
 	 * Singleton data provider instance
@@ -81,15 +80,16 @@ public class DataProvider {
 	 * Get AST projects
 	 * 
 	 * @return
+	 * @throws Exception 
 	 */
-	public List<Project> getProjects() {
+	public List<Project> getProjects() throws Exception {
 		List<Project> projectList = new ArrayList<Project>();
 		
-		authenticateWithAST();
+		cxWrapper = authenticateWithAST();
 		
-		if (wrapper != null) {
+		if (cxWrapper != null) {
 			try {
-				projectList = wrapper.projectList(LIMIT_FILTER);
+				projectList = cxWrapper.projectList(LIMIT_FILTER);
 
 			} catch (IOException | InterruptedException | CxException e) {
 				CxLogger.error(String.format(PluginConstants.ERROR_GETTING_PROJECTS, e.getMessage()), e);
@@ -108,10 +108,10 @@ public class DataProvider {
 	public List<String> getBranchesForProject(String projectId) {
 		this.projectId = projectId;
 		List<String> branchList = new ArrayList<String>();
-
-		if (wrapper != null) {
+		
+		if (cxWrapper != null) {
 			try {
-				branchList = wrapper.projectBranches(UUID.fromString(projectId), "");
+				branchList = cxWrapper.projectBranches(UUID.fromString(projectId), PluginConstants.EMPTY_STRING);
 
 			} catch (IOException | InterruptedException | CxException e) {
 				CxLogger.error(String.format(PluginConstants.ERROR_GETTING_BRANCHES, projectId, e.getMessage()), e);
@@ -129,11 +129,11 @@ public class DataProvider {
 	 */
 	public List<Scan> getScansForProject(String branch) {
 		List<Scan> scanList = new ArrayList<>();
-
-		if (wrapper != null) {
+		
+		if (cxWrapper != null) {
 			try {
 				String filter = String.format(FILTER_SCANS_FOR_PROJECT, projectId, branch);
-				scanList = wrapper.scanList(filter);
+				scanList = cxWrapper.scanList(filter);
 
 			} catch (IOException | InterruptedException | CxException e) {
 				CxLogger.error(String.format(PluginConstants.ERROR_GETTING_SCANS, projectId, branch, e.getMessage()), e);
@@ -145,44 +145,27 @@ public class DataProvider {
 	
 	/**
 	 * Authenticate to AST with current credentials
+	 * @throws Exception 
 	 */
-	private void authenticateWithAST() {
+	private static CxWrapper authenticateWithAST() throws Exception {
+		CxWrapper cxWrapper = null;
 		Logger log = LoggerFactory.getLogger(Authenticator.class.getName());
 
 		try {
 			CxConfig config = CxConfig.builder().baseUri(Preferences.getServerUrl()).tenant(Preferences.getTenant())
 					.apiKey(Preferences.getApiKey()).additionalParameters(Preferences.getAdditionalOptions()).build();
 
-			wrapper = new CxWrapper(config, log);
-			String validationResult = wrapper.authValidate();
+			cxWrapper = new CxWrapper(config, log);
+			String validationResult = cxWrapper.authValidate();
 
 			CxLogger.info(String.format(PluginConstants.INFO_AUTHENTICATION_STATUS, validationResult));
 
-		} catch (Exception e) {
+		} catch (CxException e) {
 			CxLogger.error(String.format(PluginConstants.ERROR_AUTHENTICATING_AST, e.getMessage()), e);
-		}
-	}
-	
-	/**
-	 * Creates a new wrapper to validate AST authentication
-	 * 
-	 * @return
-	 */
-	//TODO: check if this method is needed when introduced new changes regarding authentication panel
-	public List<DisplayModel> validateAuthentication(){
-		Logger log = LoggerFactory.getLogger(Authenticator.class.getName());
-		
-		CxConfig config = CxConfig.builder().baseUri(Preferences.getServerUrl()).tenant(Preferences.getTenant())
-				.apiKey(Preferences.getApiKey()).additionalParameters(Preferences.getAdditionalOptions()).build();
-		
-		try {
-			wrapper = new CxWrapper(config, log);
-		} catch (InvalidCLIConfigException | IOException e) {
-			CxLogger.error(String.format(PluginConstants.ERROR_AUTHENTICATING_AST, e.getMessage()), e);
-			return  Arrays.asList(PluginUtils.message("Error: " + e.getMessage()));
+			throw new Exception(e);
 		}
 		
-		return Collections.emptyList();
+		return cxWrapper;
 	}
 	
 	/**
@@ -194,22 +177,13 @@ public class DataProvider {
 	public List<DisplayModel> getResultsForScanId(String scanId) {
 		abort.set(false);
 		Results scanResults = null;
-
-		Logger log = LoggerFactory.getLogger(Authenticator.class.getName());
 		
 		setCurrentScanId(scanId);
 
-		try {
-			CxConfig config = CxConfig.builder().baseUri(Preferences.getServerUrl()).tenant(Preferences.getTenant()).apiKey(Preferences.getApiKey()).additionalParameters("").build();
-			
-			// TODO: remove this new wrapper creation. Change to just use one and update the wrapper when the checkmarx credentials changes.
-			CxWrapper wrapper = new CxWrapper(config, log);
-			String validationResult = wrapper.authValidate();
-			
-			CxLogger.info(String.format(PluginConstants.INFO_AUTHENTICATION_STATUS, validationResult));
+		try {						
 			CxLogger.info(String.format(PluginConstants.INFO_FETCHING_RESULTS, scanId));
 
-			scanResults = wrapper.results(UUID.fromString(scanId));
+			scanResults = cxWrapper.results(UUID.fromString(scanId));
 			setCurrentResults(scanResults);
 			CxLogger.info(String.format(PluginConstants.INFO_SCAN_RESULTS_COUNT, scanResults.getTotalCount()));
 
@@ -230,10 +204,10 @@ public class DataProvider {
 	 */
 	public Scan getScanInformation(String scanId) {
 		Scan scan = null;
-
+		
 		try {
 			CxLogger.info(String.format(PluginConstants.INFO_GETTING_SCAN_INFO, scanId));
-			scan = wrapper.scanShow(UUID.fromString(scanId));
+			scan = cxWrapper.scanShow(UUID.fromString(scanId));
 		} catch (Exception e) {
 			CxLogger.error(String.format(PluginConstants.ERROR_GETTING_SCAN_INFO, e.getMessage()), e);
 		}
@@ -553,5 +527,13 @@ public class DataProvider {
 	 */
 	public boolean containsResults() {
 		return getCurrentResults() != null && getCurrentResults().getResults() != null && !getCurrentResults().getResults().isEmpty();
+	}
+	
+	/**
+	 * Update cxWrapper after applied another credentials
+	 * @throws Exception 
+	 */
+	public static void updateWrapper() throws Exception {
+		cxWrapper = authenticateWithAST();
 	}
 }
