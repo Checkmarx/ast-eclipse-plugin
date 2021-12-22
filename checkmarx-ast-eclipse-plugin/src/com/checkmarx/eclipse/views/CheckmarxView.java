@@ -767,6 +767,9 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		loadingScans();
 		PluginUtils.showMessage(rootModel, resultsTree, PluginConstants.EMPTY_STRING);
 		toolBarActions.getToolBarActions().forEach(action -> action.setEnabled(false));
+		// Hide center and right panels
+		resultViewComposite.setVisible(false);
+		attackVectorCompositePanel.setVisible(false);
 	}
 	
 	private void createScanIdComboBox(Composite parent){
@@ -844,6 +847,9 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		PluginUtils.enableComboViewer(projectComboViewer, false);
 		PluginUtils.enableComboViewer(branchComboViewer, false);
 		toolBarActions.getToolBarActions().forEach(action -> action.setEnabled(action.getId().equals(ActionName.ABORT_RESULTS.name())));
+		// Hide center and right panels
+		resultViewComposite.setVisible(false);
+		attackVectorCompositePanel.setVisible(false);
 	}
 	
 	/**
