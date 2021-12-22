@@ -74,6 +74,8 @@ public class TestUI extends BaseUITest {
 		
 		// Clear Checkmarx credentials to expect missing Server Url
 		clearCheckmarxCredentials();
+		
+		preventWidgetWasNullInCIEnvironment();
 
 		// After a sleep the missing Server Url message must be displayed
 		assertEquals(ERROR_SERVER_URL_NOT_SET, _bot.tree().cell(0, 0));
