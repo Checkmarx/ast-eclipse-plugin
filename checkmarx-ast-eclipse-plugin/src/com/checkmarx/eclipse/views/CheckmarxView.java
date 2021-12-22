@@ -904,14 +904,23 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		
 		Display.getDefault().asyncExec(new Runnable() {
 		    public void run() {
-		    	Scan scan = DataProvider.getInstance().getScanInformation(scanId);
-		    	
-		    	if(scan == null) {
-		    		resetProjectsAndBranchesCombo();
-		    		PluginUtils.showMessage(rootModel, resultsTree, String.format(PluginConstants.TREE_PROVIDED_SCAN_ID_DOES_NOT_EXIST, scanId));
-		    		return;
-		    	}
+		    	Scan scan;
 				
+		    	try {
+					scan = DataProvider.getInstance().getScanInformation(scanId);
+				} catch (Exception e) {
+					String errorMessage = e.getCause() != null && e.getCause().getMessage() != null ? e.getCause().getMessage() : e.getMessage();
+					PluginUtils.showMessage(rootModel, resultsTree, errorMessage);
+					
+					PluginUtils.setTextForComboViewer(projectComboViewer, PROJECT_COMBO_VIEWER_TEXT);
+					PluginUtils.enableComboViewer(projectComboViewer, true);
+					
+					PluginUtils.setTextForComboViewer(branchComboViewer, BRANCH_COMBO_VIEWER_TEXT);
+					PluginUtils.enableComboViewer(branchComboViewer, false);
+					
+					return;
+				}
+		    	
 				String projectId = scan.getProjectID();
 				
 		    	List<Project> projectList = getProjects();
@@ -1341,23 +1350,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		PluginUtils.enableComboViewer(projectComboViewer, false);
 		PluginUtils.setTextForComboViewer(projectComboViewer, LOADING_PROJECTS);
 	}
-
-	/**
-	 * Reset values for projects and branches combo
-	 */
-	private void resetProjectsAndBranchesCombo() {
-		currentProjectId = PluginConstants.EMPTY_STRING;
-		currentBranch = PluginConstants.EMPTY_STRING;
-		currentScanId = PluginConstants.EMPTY_STRING;
-		currentScanIdFormmated = PluginConstants.EMPTY_STRING;
-		currentBranches = new ArrayList<>();
-		
-		PluginUtils.enableComboViewer(projectComboViewer, true);
-		PluginUtils.setTextForComboViewer(projectComboViewer, PROJECT_COMBO_VIEWER_TEXT);
-		
-		PluginUtils.enableComboViewer(branchComboViewer, false);
-		PluginUtils.setTextForComboViewer(branchComboViewer, BRANCH_COMBO_VIEWER_TEXT);
-	}
 	
 	/**
 	 * Turn branches' combobox loading and disabled
@@ -1428,38 +1420,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	public void handleEvent(org.osgi.service.event.Event arg0) {
 		if(!isPluginDraw) {
 			drawPluginPanel();
-		}else {
-			try {
-				// Try to authenticate with the new credentials
-				DataProvider.updateWrapper();
-			}catch(Exception e) {
-				String errorMessage = e.getCause() != null && e.getCause().getMessage() != null ? e.getCause().getMessage() : e.getMessage();
-				PluginUtils.showMessage(rootModel, resultsTree, errorMessage);
-				
-				projectComboViewer.setInput(new ArrayList<>());
-		    	projectComboViewer.refresh();
-		    	PluginUtils.setTextForComboViewer(projectComboViewer, PROJECT_COMBO_VIEWER_TEXT);
-				PluginUtils.enableComboViewer(projectComboViewer, false);
-				
-				branchComboViewer.setInput(new ArrayList<>());
-				branchComboViewer.refresh();
-		    	PluginUtils.setTextForComboViewer(branchComboViewer, BRANCH_COMBO_VIEWER_TEXT);
-		    	PluginUtils.enableComboViewer(branchComboViewer, false);
-		    	
-		    	scanIdComboViewer.setInput(new ArrayList<>());
-		    	scanIdComboViewer.refresh();
-		    	PluginUtils.setTextForComboViewer(scanIdComboViewer, SCAN_COMBO_VIEWER_TEXT);
-		    	PluginUtils.enableComboViewer(scanIdComboViewer, false);
-		    	
-				toolBarActions.getToolBarActions().forEach(action -> action.setEnabled(false));
-				
-				// Hide center and right panels
-				resultViewComposite.setVisible(false);
-				attackVectorCompositePanel.setVisible(false);
-								
-				return;
-			}
-			
+		}else {			
 			// If authenticated successfully and the projects are empty try to get them again
 			if(projectComboViewer.getCombo().getItemCount() == 0) {
 				clearAndRefreshPlugin();

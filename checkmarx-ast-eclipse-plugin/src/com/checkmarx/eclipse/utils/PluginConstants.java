@@ -22,6 +22,7 @@ public class PluginConstants {
 	public static final String ERROR_OPENING_FILE = "An error occurred while opening file: %s";
 	public static final String ERROR_FINDING_FILE = "An error occurred while finding file in workspace: %s";
 	public static final String ERROR_GETTING_GIT_BRANCH = "An error occurred while getting git branch: %s";
+	public static final String ERROR_BUILDING_CX_WRAPPER = "An error occurred while instantiating a CxWrapper: %s";
 	
 	/******************************** LOG VIEW: INFO ********************************/
 	public static final String INFO_AUTHENTICATION_STATUS = "Authentication Status: %s";
@@ -34,7 +35,6 @@ public class PluginConstants {
 	public static final String INFO_CHANGE_PROJECT_EVENT_NOT_TRIGGERED = "Change project event not triggered. Project already selected";
 	
 	/******************************** TREE MESSAGES ********************************/
-	public static final String TREE_PROVIDED_SCAN_ID_DOES_NOT_EXIST = "Provided scan id %s does not exist";
 	public static final String TREE_INVALID_SCAN_ID_FORMAT = "Invalid scan id format.";
 	public static final String TREE_NO_RESULTS = "No results.";
 	
