@@ -19,6 +19,7 @@ import com.checkmarx.ast.results.Results;
 import com.checkmarx.ast.results.result.Result;
 import com.checkmarx.ast.scan.Scan;
 import com.checkmarx.ast.wrapper.CxConfig;
+import com.checkmarx.ast.wrapper.CxConfig.InvalidCLIConfigException;
 import com.checkmarx.ast.wrapper.CxException;
 import com.checkmarx.ast.wrapper.CxWrapper;
 import com.checkmarx.eclipse.properties.Preferences;
@@ -45,7 +46,6 @@ public class DataProvider {
 	private Results currentResults;
 	private String currentScanId;
 	private String projectId;
-	private static CxWrapper cxWrapper;
 	
 	/**
 	 * Singleton data provider instance
@@ -85,7 +85,7 @@ public class DataProvider {
 	public List<Project> getProjects() throws Exception {
 		List<Project> projectList = new ArrayList<Project>();
 		
-		cxWrapper = authenticateWithAST();
+		CxWrapper cxWrapper = authenticateWithAST();
 		
 		if (cxWrapper != null) {
 			try {
@@ -109,14 +109,16 @@ public class DataProvider {
 		this.projectId = projectId;
 		List<String> branchList = new ArrayList<String>();
 		
-		if (cxWrapper != null) {
+	
 			try {
+				CxWrapper cxWrapper = getWrapper();
+				
 				branchList = cxWrapper.projectBranches(UUID.fromString(projectId), PluginConstants.EMPTY_STRING);
 
-			} catch (IOException | InterruptedException | CxException e) {
+			} catch (Exception e) {
 				CxLogger.error(String.format(PluginConstants.ERROR_GETTING_BRANCHES, projectId, e.getMessage()), e);
 			}
-		}
+	
 
 		return branchList;
 	}
@@ -130,16 +132,15 @@ public class DataProvider {
 	public List<Scan> getScansForProject(String branch) {
 		List<Scan> scanList = new ArrayList<>();
 		
-		if (cxWrapper != null) {
-			try {
-				String filter = String.format(FILTER_SCANS_FOR_PROJECT, projectId, branch);
-				scanList = cxWrapper.scanList(filter);
+		try {
+			String filter = String.format(FILTER_SCANS_FOR_PROJECT, projectId, branch);
+			CxWrapper cxWrapper = getWrapper();
+			scanList = cxWrapper.scanList(filter);
 
-			} catch (IOException | InterruptedException | CxException e) {
-				CxLogger.error(String.format(PluginConstants.ERROR_GETTING_SCANS, projectId, branch, e.getMessage()), e);
-			}
+		} catch (Exception e) {
+			CxLogger.error(String.format(PluginConstants.ERROR_GETTING_SCANS, projectId, branch, e.getMessage()), e);
 		}
-
+	
 		return scanList;
 	}
 	
@@ -149,13 +150,10 @@ public class DataProvider {
 	 */
 	private static CxWrapper authenticateWithAST() throws Exception {
 		CxWrapper cxWrapper = null;
-		Logger log = LoggerFactory.getLogger(Authenticator.class.getName());
-
+		
 		try {
-			CxConfig config = CxConfig.builder().baseUri(Preferences.getServerUrl()).tenant(Preferences.getTenant())
-					.apiKey(Preferences.getApiKey()).additionalParameters(Preferences.getAdditionalOptions()).build();
-
-			cxWrapper = new CxWrapper(config, log);
+			
+			cxWrapper = getWrapper();
 			String validationResult = cxWrapper.authValidate();
 
 			CxLogger.info(String.format(PluginConstants.INFO_AUTHENTICATION_STATUS, validationResult));
@@ -179,10 +177,10 @@ public class DataProvider {
 		Results scanResults = null;
 		
 		setCurrentScanId(scanId);
-
+		
 		try {						
 			CxLogger.info(String.format(PluginConstants.INFO_FETCHING_RESULTS, scanId));
-
+			CxWrapper cxWrapper = getWrapper();
 			scanResults = cxWrapper.results(UUID.fromString(scanId));
 			setCurrentResults(scanResults);
 			CxLogger.info(String.format(PluginConstants.INFO_SCAN_RESULTS_COUNT, scanResults.getTotalCount()));
@@ -202,14 +200,17 @@ public class DataProvider {
 	 * @return
 	 * @throws Exception 
 	 */
-	public Scan getScanInformation(String scanId) {
+	public Scan getScanInformation(String scanId) throws Exception {
 		Scan scan = null;
+		
+		CxWrapper cxWrapper = getWrapper();
 		
 		try {
 			CxLogger.info(String.format(PluginConstants.INFO_GETTING_SCAN_INFO, scanId));
 			scan = cxWrapper.scanShow(UUID.fromString(scanId));
 		} catch (Exception e) {
 			CxLogger.error(String.format(PluginConstants.ERROR_GETTING_SCAN_INFO, e.getMessage()), e);
+			throw new Exception(e);
 		}
 
 		return scan;
@@ -512,6 +513,30 @@ public class DataProvider {
 	}
 	
 	/**
+	 * Create a CxWrapper with current credentials
+	 * 
+	 * @return
+	 * @throws Exception
+	 */
+	private static CxWrapper getWrapper() throws Exception {
+		CxWrapper cxWrapper = null;
+		
+		Logger log = LoggerFactory.getLogger(Authenticator.class.getName());
+
+		CxConfig config = CxConfig.builder().baseUri(Preferences.getServerUrl()).tenant(Preferences.getTenant())
+				.apiKey(Preferences.getApiKey()).additionalParameters(Preferences.getAdditionalOptions()).build();
+
+		try {
+			cxWrapper = new CxWrapper(config, log);
+		} catch (InvalidCLIConfigException | IOException e) {
+			CxLogger.error(String.format(PluginConstants.ERROR_BUILDING_CX_WRAPPER, e.getMessage()), e);
+			throw new Exception(e);
+		}
+		
+		return cxWrapper;
+	}
+	
+	/**
 	 * Filter results based on current filter
 	 * 
 	 * @return
@@ -527,13 +552,5 @@ public class DataProvider {
 	 */
 	public boolean containsResults() {
 		return getCurrentResults() != null && getCurrentResults().getResults() != null && !getCurrentResults().getResults().isEmpty();
-	}
-	
-	/**
-	 * Update cxWrapper after applied another credentials
-	 * @throws Exception 
-	 */
-	public static void updateWrapper() throws Exception {
-		cxWrapper = authenticateWithAST();
 	}
 }

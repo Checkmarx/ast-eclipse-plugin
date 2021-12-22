@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
@@ -70,12 +71,29 @@ public class TestUI extends BaseUITest {
 		testSuccessfulConnection(false);
 
 		// Add Checkmarx AST Plugin
-		addCheckmarxPlugin(false);
-		
+		addCheckmarxPlugin(true);
+
 		// Clear Checkmarx credentials to expect missing Server Url
 		clearCheckmarxCredentials();
-		
+
+		// Type a valid and existing scan id
 		preventWidgetWasNullInCIEnvironment();
+		
+		_bot.comboBox(2).setText(UUID.randomUUID().toString());
+		_bot.comboBox(2).pressShortcut(Keystrokes.LF);
+
+		assertEquals("The tree must contain a single row", _bot.tree().rowCount(), 1);
+
+		String firstTreeCell = _bot.tree().cell(0, 0);
+
+		// The first row must have a message saying that AST is getting results or
+		// failing due the missing Server Url
+		boolean retrievingResults = firstTreeCell.equals(String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, Environment.SCAN_ID));
+		boolean urlNotSet = firstTreeCell.equals(ERROR_SERVER_URL_NOT_SET);
+		boolean expectedResult = retrievingResults || urlNotSet;
+		assertTrue("Plugin should be retrieving results or failed due Server Url not set", expectedResult);
+
+		sleep();
 
 		// After a sleep the missing Server Url message must be displayed
 		assertEquals(ERROR_SERVER_URL_NOT_SET, _bot.tree().cell(0, 0));
