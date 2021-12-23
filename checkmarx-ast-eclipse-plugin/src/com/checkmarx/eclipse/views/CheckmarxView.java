@@ -181,6 +181,9 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	@Override
 	public void createPartControl(Composite parent) {
 		this.parent = parent;
+		
+		// Clear vulnerabilities from Problems View
+		PluginUtils.clearVulnerabilitiesFromProblemsView();
 				
 		if(PluginUtils.areCredentialsDefined()) {
 			drawPluginPanel();
@@ -674,6 +677,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		// Hide center and right panels
 		resultViewComposite.setVisible(false);
 		attackVectorCompositePanel.setVisible(false);
+		// Clear vulnerabilities from Problems View
+		PluginUtils.clearVulnerabilitiesFromProblemsView();
 	}
 	
 	/**
@@ -770,6 +775,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		// Hide center and right panels
 		resultViewComposite.setVisible(false);
 		attackVectorCompositePanel.setVisible(false);
+		// Clear vulnerabilities from Problems View
+		PluginUtils.clearVulnerabilitiesFromProblemsView();
 	}
 	
 	private void createScanIdComboBox(Composite parent){
@@ -850,6 +857,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		// Hide center and right panels
 		resultViewComposite.setVisible(false);
 		attackVectorCompositePanel.setVisible(false);
+		// Clear vulnerabilities from Problems View
+		PluginUtils.clearVulnerabilitiesFromProblemsView();
 	}
 	
 	/**
@@ -1309,6 +1318,9 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				toolBarActions.getScanResultsAction().setEnabled(true);
 			}
 		});
+		
+		// Clear vulnerabilities from Problems View
+		PluginUtils.clearVulnerabilitiesFromProblemsView();
 	}
 
 	/**
