@@ -46,7 +46,6 @@ public class DataProvider {
 	private Results currentResults;
 	private String currentScanId;
 	private String projectId;
-	private CxWrapper wrapper;
 	
 	/**
 	 * Singleton data provider instance
@@ -81,15 +80,16 @@ public class DataProvider {
 	 * Get AST projects
 	 * 
 	 * @return
+	 * @throws Exception 
 	 */
-	public List<Project> getProjects() {
+	public List<Project> getProjects() throws Exception {
 		List<Project> projectList = new ArrayList<Project>();
 		
-		authenticateWithAST();
+		CxWrapper cxWrapper = authenticateWithAST();
 		
-		if (wrapper != null) {
+		if (cxWrapper != null) {
 			try {
-				projectList = wrapper.projectList(LIMIT_FILTER);
+				projectList = cxWrapper.projectList(LIMIT_FILTER);
 
 			} catch (IOException | InterruptedException | CxException e) {
 				CxLogger.error(String.format(PluginConstants.ERROR_GETTING_PROJECTS, e.getMessage()), e);
@@ -108,15 +108,17 @@ public class DataProvider {
 	public List<String> getBranchesForProject(String projectId) {
 		this.projectId = projectId;
 		List<String> branchList = new ArrayList<String>();
-
-		if (wrapper != null) {
+		
+	
 			try {
-				branchList = wrapper.projectBranches(UUID.fromString(projectId), "");
+				CxWrapper cxWrapper = getWrapper();
+				
+				branchList = cxWrapper.projectBranches(UUID.fromString(projectId), PluginConstants.EMPTY_STRING);
 
-			} catch (IOException | InterruptedException | CxException e) {
+			} catch (Exception e) {
 				CxLogger.error(String.format(PluginConstants.ERROR_GETTING_BRANCHES, projectId, e.getMessage()), e);
 			}
-		}
+	
 
 		return branchList;
 	}
@@ -129,60 +131,39 @@ public class DataProvider {
 	 */
 	public List<Scan> getScansForProject(String branch) {
 		List<Scan> scanList = new ArrayList<>();
+		
+		try {
+			String filter = String.format(FILTER_SCANS_FOR_PROJECT, projectId, branch);
+			CxWrapper cxWrapper = getWrapper();
+			scanList = cxWrapper.scanList(filter);
 
-		if (wrapper != null) {
-			try {
-				String filter = String.format(FILTER_SCANS_FOR_PROJECT, projectId, branch);
-				scanList = wrapper.scanList(filter);
-
-			} catch (IOException | InterruptedException | CxException e) {
-				CxLogger.error(String.format(PluginConstants.ERROR_GETTING_SCANS, projectId, branch, e.getMessage()), e);
-			}
+		} catch (Exception e) {
+			CxLogger.error(String.format(PluginConstants.ERROR_GETTING_SCANS, projectId, branch, e.getMessage()), e);
 		}
-
+	
 		return scanList;
 	}
 	
 	/**
 	 * Authenticate to AST with current credentials
+	 * @throws Exception 
 	 */
-	private void authenticateWithAST() {
-		Logger log = LoggerFactory.getLogger(Authenticator.class.getName());
-
+	private static CxWrapper authenticateWithAST() throws Exception {
+		CxWrapper cxWrapper = null;
+		
 		try {
-			CxConfig config = CxConfig.builder().baseUri(Preferences.getServerUrl()).tenant(Preferences.getTenant())
-					.apiKey(Preferences.getApiKey()).additionalParameters(Preferences.getAdditionalOptions()).build();
-
-			wrapper = new CxWrapper(config, log);
-			String validationResult = wrapper.authValidate();
+			
+			cxWrapper = getWrapper();
+			String validationResult = cxWrapper.authValidate();
 
 			CxLogger.info(String.format(PluginConstants.INFO_AUTHENTICATION_STATUS, validationResult));
 
-		} catch (Exception e) {
+		} catch (CxException e) {
 			CxLogger.error(String.format(PluginConstants.ERROR_AUTHENTICATING_AST, e.getMessage()), e);
-		}
-	}
-	
-	/**
-	 * Creates a new wrapper to validate AST authentication
-	 * 
-	 * @return
-	 */
-	//TODO: check if this method is needed when introduced new changes regarding authentication panel
-	public List<DisplayModel> validateAuthentication(){
-		Logger log = LoggerFactory.getLogger(Authenticator.class.getName());
-		
-		CxConfig config = CxConfig.builder().baseUri(Preferences.getServerUrl()).tenant(Preferences.getTenant())
-				.apiKey(Preferences.getApiKey()).additionalParameters(Preferences.getAdditionalOptions()).build();
-		
-		try {
-			wrapper = new CxWrapper(config, log);
-		} catch (InvalidCLIConfigException | IOException e) {
-			CxLogger.error(String.format(PluginConstants.ERROR_AUTHENTICATING_AST, e.getMessage()), e);
-			return  Arrays.asList(PluginUtils.message("Error: " + e.getMessage()));
+			throw new Exception(e);
 		}
 		
-		return Collections.emptyList();
+		return cxWrapper;
 	}
 	
 	/**
@@ -194,22 +175,13 @@ public class DataProvider {
 	public List<DisplayModel> getResultsForScanId(String scanId) {
 		abort.set(false);
 		Results scanResults = null;
-
-		Logger log = LoggerFactory.getLogger(Authenticator.class.getName());
 		
 		setCurrentScanId(scanId);
-
-		try {
-			CxConfig config = CxConfig.builder().baseUri(Preferences.getServerUrl()).tenant(Preferences.getTenant()).apiKey(Preferences.getApiKey()).additionalParameters("").build();
-			
-			// TODO: remove this new wrapper creation. Change to just use one and update the wrapper when the checkmarx credentials changes.
-			CxWrapper wrapper = new CxWrapper(config, log);
-			String validationResult = wrapper.authValidate();
-			
-			CxLogger.info(String.format(PluginConstants.INFO_AUTHENTICATION_STATUS, validationResult));
+		
+		try {						
 			CxLogger.info(String.format(PluginConstants.INFO_FETCHING_RESULTS, scanId));
-
-			scanResults = wrapper.results(UUID.fromString(scanId));
+			CxWrapper cxWrapper = getWrapper();
+			scanResults = cxWrapper.results(UUID.fromString(scanId));
 			setCurrentResults(scanResults);
 			CxLogger.info(String.format(PluginConstants.INFO_SCAN_RESULTS_COUNT, scanResults.getTotalCount()));
 
@@ -228,14 +200,17 @@ public class DataProvider {
 	 * @return
 	 * @throws Exception 
 	 */
-	public Scan getScanInformation(String scanId) {
+	public Scan getScanInformation(String scanId) throws Exception {
 		Scan scan = null;
-
+		
+		CxWrapper cxWrapper = getWrapper();
+		
 		try {
 			CxLogger.info(String.format(PluginConstants.INFO_GETTING_SCAN_INFO, scanId));
-			scan = wrapper.scanShow(UUID.fromString(scanId));
+			scan = cxWrapper.scanShow(UUID.fromString(scanId));
 		} catch (Exception e) {
 			CxLogger.error(String.format(PluginConstants.ERROR_GETTING_SCAN_INFO, e.getMessage()), e);
+			throw new Exception(e);
 		}
 
 		return scan;
@@ -535,6 +510,30 @@ public class DataProvider {
 		}
 
 		return counter > 0 ? counter : results.size();
+	}
+	
+	/**
+	 * Create a CxWrapper with current credentials
+	 * 
+	 * @return
+	 * @throws Exception
+	 */
+	private static CxWrapper getWrapper() throws Exception {
+		CxWrapper cxWrapper = null;
+		
+		Logger log = LoggerFactory.getLogger(Authenticator.class.getName());
+
+		CxConfig config = CxConfig.builder().baseUri(Preferences.getServerUrl()).tenant(Preferences.getTenant())
+				.apiKey(Preferences.getApiKey()).additionalParameters(Preferences.getAdditionalOptions()).build();
+
+		try {
+			cxWrapper = new CxWrapper(config, log);
+		} catch (InvalidCLIConfigException | IOException e) {
+			CxLogger.error(String.format(PluginConstants.ERROR_BUILDING_CX_WRAPPER, e.getMessage()), e);
+			throw new Exception(e);
+		}
+		
+		return cxWrapper;
 	}
 	
 	/**

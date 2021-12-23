@@ -6,9 +6,11 @@ import static org.junit.Assert.assertTrue;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
+import org.eclipse.swtbot.swt.finder.exceptions.WidgetNotFoundException;
 import org.eclipse.swtbot.swt.finder.junit.SWTBotJunit4ClassRunner;
 import org.eclipse.swtbot.swt.finder.keyboard.Keystrokes;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotToolbarButton;
@@ -25,7 +27,7 @@ import checkmarx.ast.eclipse.plugin.tests.common.Environment;
 @RunWith(SWTBotJunit4ClassRunner.class)
 public class TestUI extends BaseUITest {
 	
-	private static final String ERROR_SERVER_URL_NOT_SET = "Error: Checkmarx server URL is not set";
+	private static final String ERROR_SERVER_URL_NOT_SET = "Checkmarx server URL is not set";
 
 	private static final String INFO_SUCCESSFUL_CONNECTION = "Successfully authenticated to AST server!";
 	
@@ -38,21 +40,26 @@ public class TestUI extends BaseUITest {
 	private static final String ASSERT_GROUP_BY_QUERY_NAME = "Parent name must be equals to child name once it is grouped by query name";
 	private static final String ASSERT_NO_CHINDREN = "One group by severity and group by query name are not selected, this node shouldn't have children";
 	private static final String ASSERT_GROUP_BY_SEVERITY_NOT_SELECTED = "Engine child should not be HIGH, MEDIUM, LOW or INFO once the group by severity is not enabled";
-
+	private static final String ASSERT_CREDENTIALS_PANEL = "The  credentials panel must appear once Checkmarx credentials are not defined";
+	
 	private static boolean _cxSettingsDefined = false;
 
 	@Test
 	public void testSuccessfulConnetion() throws TimeoutException {
-		testSuccessfulConnection();
+		testSuccessfulConnection(false);		
 	}
 
 	@Test
 	public void testAddCheckmarxASTPlugin() throws TimeoutException {
 		// Add Checkmarx plugin to the eclipse view
-		addCheckmarxPlugin();
+		addCheckmarxPlugin(false);
 
 		// Assert that active view is the Checkmarx AST Scan
 		assertTrue("Active view must be the Checkmarx AST Scan", _bot.activeView().getTitle().equals(VIEW_CHECKMARX_AST_SCAN));
+		
+		preventWidgetWasNullInCIEnvironment();
+		
+		assertTrue(ASSERT_CREDENTIALS_PANEL, _bot.button(PluginConstants.BTN_OPEN_SETTINGS) != null);
 		
 		// Close Checkmarx AST Scan view
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
@@ -61,22 +68,26 @@ public class TestUI extends BaseUITest {
 	@Test
 	public void testMissingSetCheckmarxServerUrl() throws TimeoutException {
 		// Test Connection
-		testSuccessfulConnection();
+		testSuccessfulConnection(false);
 
 		// Add Checkmarx AST Plugin
-		addCheckmarxPlugin();
-		
+		addCheckmarxPlugin(true);
+
 		// Clear Checkmarx credentials to expect missing Server Url
 		clearCheckmarxCredentials();
 
 		// Type a valid and existing scan id
-		typeValidScanID();
+		preventWidgetWasNullInCIEnvironment();
 		
+		_bot.comboBox(2).setText(UUID.randomUUID().toString());
+		_bot.comboBox(2).pressShortcut(Keystrokes.LF);
+
 		assertEquals("The tree must contain a single row", _bot.tree().rowCount(), 1);
 
-		String firstTreeCell = _bot.tree().cell(0, COLUMN_TITLE);
+		String firstTreeCell = _bot.tree().cell(0, 0);
 
-		// The first row must have a message saying that AST is getting results or failing due the missing Server Url
+		// The first row must have a message saying that AST is getting results or
+		// failing due the missing Server Url
 		boolean retrievingResults = firstTreeCell.equals(String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, Environment.SCAN_ID));
 		boolean urlNotSet = firstTreeCell.equals(ERROR_SERVER_URL_NOT_SET);
 		boolean expectedResult = retrievingResults || urlNotSet;
@@ -85,7 +96,7 @@ public class TestUI extends BaseUITest {
 		sleep();
 
 		// After a sleep the missing Server Url message must be displayed
-		assertEquals(ERROR_SERVER_URL_NOT_SET, _bot.tree().cell(0, COLUMN_TITLE));
+		assertEquals(ERROR_SERVER_URL_NOT_SET, _bot.tree().cell(0, 0));
 		
 		// Close Checkmarx AST Scan view
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
@@ -107,7 +118,7 @@ public class TestUI extends BaseUITest {
 		// Set credentials, test connection and add checkmarx plugin
 		setUpCheckmarxPlugin(false);
 				
-		String firstNodeName = _bot.tree().cell(0, COLUMN_TITLE);
+		String firstNodeName = _bot.tree().cell(0, 0);
 		String secondNodeName = _bot.tree().getTreeItem(firstNodeName).expand().getNode(0).getText();
 		String thirdNodeName = _bot.tree().getTreeItem(firstNodeName).expand().getNode(0).expand().getNode(0).getText();
 		
@@ -120,9 +131,12 @@ public class TestUI extends BaseUITest {
 	
 	@Test
 	public void testFilterButtonsAndGroupByActionsInToolBar() throws TimeoutException {
+		// Test Connection
+		testSuccessfulConnection(false);
+
 		// Add Checkmarx AST Plugin
-		addCheckmarxPlugin();
-		
+		addCheckmarxPlugin(false);
+				
 		List<SWTBotToolbarButton> toolbarButtons = _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).getToolbarButtons();
 		List<String> toolBarButtonsNames = toolbarButtons.stream().map(btn -> btn.getToolTipText().toUpperCase()).collect(Collectors.toList());
 		List<String> filterActions = Arrays.asList(ActionName.HIGH.name(), ActionName.MEDIUM.name(), ActionName.LOW.name(), ActionName.INFO.name());
@@ -177,7 +191,7 @@ public class TestUI extends BaseUITest {
 		filterInfoBtn.click();
 		
 		// Asserts that no issues are visible in the tree once we are grouping by Severity and no severity is selected
-		assertEquals(ASSERT_TREE_WITH_NO_ISSUES, _bot.tree().cell(0, COLUMN_TITLE), Environment.SCAN_ID + " (0 Issues)");
+		assertEquals(ASSERT_TREE_WITH_NO_ISSUES, _bot.tree().cell(0, 0), Environment.SCAN_ID + " (0 Issues)");
 		
 		// Click to include High severity
 		clickSeverityFilter(ActionName.HIGH.name());
@@ -185,7 +199,7 @@ public class TestUI extends BaseUITest {
 						
 		sleep(1000);		
 		
-		String firstNodeName = _bot.tree().cell(0, COLUMN_TITLE);
+		String firstNodeName = _bot.tree().cell(0, 0);
 		String secondNodeName = _bot.tree().getTreeItem(firstNodeName).expand().getNode(0).getText();
 		String thirdNodeName = _bot.tree().getTreeItem(firstNodeName).expand().getNode(0).expand().getNode(0).getText();
 		
@@ -205,7 +219,7 @@ public class TestUI extends BaseUITest {
 		
 		sleep(1000);
 		
-		firstNodeName = _bot.tree().cell(0, COLUMN_TITLE);
+		firstNodeName = _bot.tree().cell(0, 0);
 		secondNodeName = _bot.tree().getTreeItem(firstNodeName).expand().getNode(0).getText();
 		_bot.tree().expandNode(firstNodeName).expandNode(secondNodeName);
 				
@@ -226,6 +240,24 @@ public class TestUI extends BaseUITest {
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
 	}
 	
+	@Test(expected = WidgetNotFoundException.class)
+	public void testInitialPanelWhenMissingCredentials() throws TimeoutException {
+		// Add Checkmarx plugin to the eclipse view
+		addCheckmarxPlugin(false);
+
+		// Assert that active view is the Checkmarx AST Scan
+		assertTrue("Active view must be the Checkmarx AST Scan", _bot.activeView().getTitle().equals(VIEW_CHECKMARX_AST_SCAN));
+		
+		assertTrue(ASSERT_CREDENTIALS_PANEL, _bot.button(PluginConstants.BTN_OPEN_SETTINGS) != null);
+		
+		_bot.button(PluginConstants.BTN_OPEN_SETTINGS).click();
+		
+		testSuccessfulConnection(true);
+		
+		// Button Open Settings must not be present at this moment so we are expecting WidgetNotFoundException in this test
+		_bot.button(PluginConstants.BTN_OPEN_SETTINGS);
+	}
+	
 	/**
 	 * Set up checkmarx plugin
 	 * 
@@ -237,10 +269,10 @@ public class TestUI extends BaseUITest {
 	 */
 	private void setUpCheckmarxPlugin(boolean ignoreWrongScanValidation) throws TimeoutException{
 		// Test Connection
-		testSuccessfulConnection();
+		testSuccessfulConnection(false);
 
 		// Add Checkmarx AST Plugin
-		addCheckmarxPlugin();
+		addCheckmarxPlugin(true);
 		
 		preventWidgetWasNullInCIEnvironment();
 		
@@ -252,19 +284,19 @@ public class TestUI extends BaseUITest {
 			sleep(1000);
 
 			assertEquals("The tree must contain one row with an error message", _bot.tree().rowCount(), 1);
-			assertEquals("An incorrect scanId format message must be displayed", PluginConstants.TREE_INVALID_SCAN_ID_FORMAT, _bot.tree().cell(0, COLUMN_TITLE));
+			assertEquals("An incorrect scanId format message must be displayed", PluginConstants.TREE_INVALID_SCAN_ID_FORMAT, _bot.tree().cell(0, 0));
 		}
 		
 		// type a valid and existing Scan ID
 		typeValidScanID();
 
 		assertEquals("The tree must contain one row", _bot.tree().rowCount(), 1);		
-		boolean retrievingOrRetrievedResults = _bot.tree().cell(0, COLUMN_TITLE).contains(Environment.SCAN_ID);
+		boolean retrievingOrRetrievedResults = _bot.tree().cell(0, 0).contains(Environment.SCAN_ID);
 		assertTrue("The plugin should have or should be retrieving results", retrievingOrRetrievedResults);
 
 		waitWhileTreeNodeEqualsTo(String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, Environment.SCAN_ID));
 		
-		assertTrue("The plugin should retrieve results", _bot.tree().cell(0, COLUMN_TITLE).startsWith(Environment.SCAN_ID));
+		assertTrue("The plugin should retrieve results", _bot.tree().cell(0, 0).startsWith(Environment.SCAN_ID));
 	}
 	
 	/**
@@ -283,12 +315,12 @@ public class TestUI extends BaseUITest {
 	 * @return
 	 */
 	private List<String> expandTreeUntilFirstEngineAndGetCurrentSeverities() {
-		String firstNodeName = _bot.tree().cell(0, COLUMN_TITLE);
+		String firstNodeName = _bot.tree().cell(0, 0);
 		String secondNodeName = _bot.tree().getTreeItem(firstNodeName).expand().getNode(0).getText();
 		
 		_bot.tree().expandNode(firstNodeName).expandNode(secondNodeName);
 		
-		return _bot.tree().getTreeItem(_bot.tree().cell(0, COLUMN_TITLE)).expand().getNode(0).getNodes().stream().map(node -> node.split("\\(")[0].trim()).collect(Collectors.toList());
+		return _bot.tree().getTreeItem(_bot.tree().cell(0, 0)).expand().getNode(0).getNodes().stream().map(node -> node.split("\\(")[0].trim()).collect(Collectors.toList());
 	}
 
 	/**
@@ -296,17 +328,21 @@ public class TestUI extends BaseUITest {
 	 * 
 	 * @throws TimeoutException
 	 */
-	private void testSuccessfulConnection() throws TimeoutException {
+	private void testSuccessfulConnection(boolean openFromInitialPanel) throws TimeoutException {
 		preventWidgetWasNullInCIEnvironment();
 		
 		if(_cxSettingsDefined) return;
 		
-		_bot.menu(TAB_WINDOW).menu(ITEM_PREFERENCES).click();
-		_bot.shell(ITEM_PREFERENCES).activate();
-		_bot.tree().select(ITEM_CHECKMARX_AST);
+		if(!openFromInitialPanel) {
+			_bot.menu(TAB_WINDOW).menu(ITEM_PREFERENCES).click();
+			_bot.shell(ITEM_PREFERENCES).activate();
+			_bot.tree().select(ITEM_CHECKMARX_AST);
+		}
 
 		_bot.sleep(1000);
 
+		_bot.shell(ITEM_PREFERENCES).setFocus(); // Need to set focus to avoid failing in CI environment
+		
 		_bot.textWithLabel(PluginConstants.PREFERENCES_SERVER_URL).setText(Environment.BASE_URL);
 		_bot.textWithLabel(PluginConstants.PREFERENCES_TENANT).setText(Environment.TENANT);
 		_bot.textWithLabel(PluginConstants.PREFERENCES_API_KEY).setText(Environment.API_KEY);
@@ -321,10 +357,6 @@ public class TestUI extends BaseUITest {
 			
 		_bot.shell(ITEM_PREFERENCES).setFocus(); // Need to set focus to avoid failing in CI environment
 		_bot.button(BTN_APPLY_AND_CLOSE).click();
-		
-		sleep();
-		
-		closeUneededWindows();
 
 		_cxSettingsDefined = true;
 	}
@@ -334,7 +366,7 @@ public class TestUI extends BaseUITest {
 	 * 
 	 * @throws TimeoutException 
 	 */
-	private void addCheckmarxPlugin() throws TimeoutException {
+	private void addCheckmarxPlugin(boolean waitUntilPluginEnable) throws TimeoutException {
 		preventWidgetWasNullInCIEnvironment();
 		
 		_bot.menu(TAB_WINDOW).menu(ITEM_SHOW_VIEW).menu(ITEM_OTHER).click();
@@ -342,7 +374,10 @@ public class TestUI extends BaseUITest {
 		_bot.tree().expandNode(ITEM_CHECKMARX).select(ITEM_CHECKMARX_AST_SCAN);
 		_bot.button(BTN_OPEN).click();
 		
-		waitUntilBranchComboIsEnabled();
+		if(waitUntilPluginEnable) {
+			waitUntilBranchComboIsEnabled();	
+		}
+		
 	}
 
 	/**
@@ -373,34 +408,14 @@ public class TestUI extends BaseUITest {
 		_bot.shell(ITEM_PREFERENCES).activate();
 		_bot.tree().select(ITEM_CHECKMARX_AST);
 
-		_bot.textWithLabel(PluginConstants.PREFERENCES_SERVER_URL).setText("");
-		_bot.textWithLabel(PluginConstants.PREFERENCES_TENANT).setText("");
-		_bot.textWithLabel(PluginConstants.PREFERENCES_API_KEY).setText("");
+		_bot.textWithLabel(PluginConstants.PREFERENCES_SERVER_URL).setText(PluginConstants.EMPTY_STRING);
+		_bot.textWithLabel(PluginConstants.PREFERENCES_TENANT).setText(PluginConstants.EMPTY_STRING);
+		_bot.textWithLabel(PluginConstants.PREFERENCES_API_KEY).setText(PluginConstants.EMPTY_STRING);
 
 		_bot.button(BTN_APPLY).click();
 		_bot.button(BTN_APPLY_AND_CLOSE).click();
 
-		sleep();
-		
-		closeUneededWindows();
-
 		_cxSettingsDefined = false;
-	}
-	
-	private void closeUneededWindows() {
-		if (_bot.getFocusedWidget() != null) {
-			// Check if an Authorizing Eclipse Window pops up and closes it
-			if (_bot.activeShell().getText().equals("Authorizing with Eclipse.org")) {
-				_bot.button("Cancel").click();
-			}
-
-			sleep();
-
-			// Check if an Authorizing Eclipse Window pops up and closes it
-			if (_bot.activeShell().getText().equals("Preference Recorder")) {
-				_bot.button("Cancel").click();
-			}
-		}
 	}
 	
 	/**
