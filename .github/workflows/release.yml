@@ -26,7 +26,7 @@ jobs:
             ${{ runner.os }}-maven-
 
       - name: Update the POM version.
-        run: mvn -B versions:set -DnewVersion='${{ env.RELEASE_VERSION }}-SNAPSHOT' --file pom.xml -DskipTests
+        run: mvn -B versions:set -DnewVersion='${{ env.RELEASE_VERSION }}' --file pom.xml -DskipTests
 
       - name: Create release
         run: mvn clean install
