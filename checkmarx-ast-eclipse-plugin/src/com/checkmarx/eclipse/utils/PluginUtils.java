@@ -169,6 +169,7 @@ public class PluginUtils {
 						IMarker fileMarker = file.createMarker(IMarker.PROBLEM);
 						fileMarker.setAttribute(IMarker.MESSAGE, node.getName());
 						fileMarker.setAttribute(IMarker.LOCATION, String.format(PARAM_LINE, node.getLine()));
+						fileMarker.setAttribute(IMarker.LINE_NUMBER, node.getLine());
 						fileMarker.setAttribute(IMarker.SOURCE_ID, PluginConstants.PROBLEM_SOURCE_ID);
 						fileMarker.setAttribute(IMarker.SEVERITY, getIMarkerSeverity(result.getSeverity()));
 					} catch (CoreException e) {
