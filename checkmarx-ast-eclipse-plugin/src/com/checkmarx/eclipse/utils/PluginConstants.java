@@ -23,6 +23,7 @@ public class PluginConstants {
 	public static final String ERROR_FINDING_FILE = "An error occurred while finding file in workspace: %s";
 	public static final String ERROR_GETTING_GIT_BRANCH = "An error occurred while getting git branch: %s";
 	public static final String ERROR_BUILDING_CX_WRAPPER = "An error occurred while instantiating a CxWrapper: %s";
+	public static final String ERROR_FINDING_OR_DELETING_MARKER = "An error occurred while finding or deleting a marker from Problems View: %s";
 	
 	/******************************** LOG VIEW: INFO ********************************/
 	public static final String INFO_AUTHENTICATION_STATUS = "Authentication Status: %s";
@@ -49,5 +50,8 @@ public class PluginConstants {
 	
 	/******************************** TOPICS ********************************/
 	public static final String TOPIC_APPLY_SETTINGS = "ApplySettings";
+	
+	/******************************** PROBLEMS VIEW ********************************/
+	public static final String PROBLEM_SOURCE_ID = "CheckmarxEclipsePlugin";
 
 }
