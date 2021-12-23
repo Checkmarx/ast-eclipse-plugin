@@ -109,7 +109,6 @@ public class DataProvider {
 		this.projectId = projectId;
 		List<String> branchList = new ArrayList<String>();
 		
-	
 			try {
 				CxWrapper cxWrapper = getWrapper();
 				
@@ -229,6 +228,9 @@ public class DataProvider {
 		}
 
 		List<Result> resultsList = scanResults.getResults();
+		
+		// Add Checkmarx vulnerabilities to Problems View
+		PluginUtils.addVulnerabilitiesToProblemsView(resultsList);
 
 		// transform all the results at once to avoid multiple transformation steps
 		List<DisplayModel> allResultsTransformed = resultsList.stream().map(resultItem -> transform(resultItem)).collect(Collectors.toList());
