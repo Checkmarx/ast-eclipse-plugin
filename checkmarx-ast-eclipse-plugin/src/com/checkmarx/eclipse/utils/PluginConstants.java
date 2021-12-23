@@ -10,6 +10,7 @@ public class PluginConstants {
 	public static final String COMBOBOX_SCAND_ID_GETTING_SCANS = "Getting scans for the project...";
 	public static final String COMBOBOX_SCAND_ID_NO_SCANS_AVAILABLE = "No scans available. Select a project or paste a Scan Id here and hit Enter.";
 	public static final String COMBOBOX_BRANCH_CHANGING = "Changing branch...";
+	public static final String BTN_OPEN_SETTINGS = "Open Settings";
 	
 	/******************************** LOG VIEW: ERRORS ********************************/
 	public static final String ERROR_AUTHENTICATING_AST = "An error occurred while trying to authenticate to AST: %s";
@@ -21,6 +22,7 @@ public class PluginConstants {
 	public static final String ERROR_OPENING_FILE = "An error occurred while opening file: %s";
 	public static final String ERROR_FINDING_FILE = "An error occurred while finding file in workspace: %s";
 	public static final String ERROR_GETTING_GIT_BRANCH = "An error occurred while getting git branch: %s";
+	public static final String ERROR_BUILDING_CX_WRAPPER = "An error occurred while instantiating a CxWrapper: %s";
 	
 	/******************************** LOG VIEW: INFO ********************************/
 	public static final String INFO_AUTHENTICATION_STATUS = "Authentication Status: %s";
@@ -33,7 +35,6 @@ public class PluginConstants {
 	public static final String INFO_CHANGE_PROJECT_EVENT_NOT_TRIGGERED = "Change project event not triggered. Project already selected";
 	
 	/******************************** TREE MESSAGES ********************************/
-	public static final String TREE_PROVIDED_SCAN_ID_DOES_NOT_EXIST = "Provided scan id %s does not exist";
 	public static final String TREE_INVALID_SCAN_ID_FORMAT = "Invalid scan id format.";
 	public static final String TREE_NO_RESULTS = "No results.";
 	
@@ -45,5 +46,8 @@ public class PluginConstants {
 	public static final String PREFERENCES_ADDITIONAL_OPTIONS = "Additional Options:";
 	public static final String PREFERENCES_TEST_CONNECTION = "Test Connection";
 	public static final String PREFERENCES_VALIDATING_STATE = "Validating...";
+	
+	/******************************** TOPICS ********************************/
+	public static final String TOPIC_APPLY_SETTINGS = "ApplySettings";
 
 }

@@ -19,6 +19,7 @@ import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.action.Separator;
+import org.eclipse.jface.preference.PreferenceDialog;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.ColumnViewerToolTipSupport;
 import org.eclipse.jface.viewers.ComboViewer;
@@ -41,6 +42,7 @@ import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.layout.RowLayout;
+import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
@@ -55,8 +57,10 @@ import org.eclipse.swt.widgets.TreeColumn;
 import org.eclipse.ui.IActionBars;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.dialogs.PreferencesUtil;
 import org.eclipse.ui.ide.IDE;
 import org.eclipse.ui.part.ViewPart;
+import org.osgi.service.event.EventHandler;
 
 import com.checkmarx.ast.project.Project;
 import com.checkmarx.ast.results.result.Node;
@@ -77,13 +81,14 @@ import com.google.common.base.Strings;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 
-public class CheckmarxView extends ViewPart {
+public class CheckmarxView extends ViewPart implements EventHandler {
 
 	private static final String PROJECT_COMBO_VIEWER_TEXT = "Select a project";
 	private static final String SCAN_COMBO_VIEWER_TEXT = "Select a scan";
 	private static final String BRANCH_COMBO_VIEWER_TEXT = "Select a branch";
 	private static final String LOADING_PROJECTS = "Loading projects...";
 	private static final String LOADING_BRANCHES = "Loading branches...";
+	private static final String LOADING_SCANS = "Loading scans...";
 	private static final String NO_BRANCHES_AVAILABLE = "No branches available.";
 	private static final String NO_PROJECTS_AVAILABLE = "No projects available.";
 	private static final String VERTICAL_SEPERATOR = "|";
@@ -93,6 +98,9 @@ public class CheckmarxView extends ViewPart {
 	 * The ID of the view as specified by the extension.
 	 */
 	public static final String ID = "com.checkmarx.eclipse.views.CheckmarxView";
+	
+	public static final Image CHECKMARX_OPEN_SETTINGS_LOGO = Activator.getImageDescriptor("/icons/checkmarx-80.png")
+			.createImage();
 
 	public static final Image CRITICAL_SEVERITY = Activator.getImageDescriptor("/icons/severity-critical.png")
 			.createImage();
@@ -106,7 +114,7 @@ public class CheckmarxView extends ViewPart {
 
 	public static final Image INFO_SEVERITY = Activator.getImageDescriptor("/icons/info_untoggle.png").createImage();
 
-	private TreeViewer viewer;
+	private TreeViewer resultsTree;
 	private ComboViewer scanIdComboViewer, projectComboViewer, branchComboViewer;
 	private DisplayModel rootModel;
 	private Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell();
@@ -118,9 +126,9 @@ public class CheckmarxView extends ViewPart {
 	private Text descriptionValueText;
 	private Text attackVectorValueLinkText;
 
-	private Composite topComposite;
-	private Composite resultInfoCompositePanel, attackVectorCompositePanel;
-	private Composite leftCompositePanel;
+	private Composite resultViewComposite;
+	private Composite attackVectorCompositePanel;
+	private Composite openSettingsComposite;
 
 	private CLabel titleLabel;
 
@@ -140,27 +148,47 @@ public class CheckmarxView extends ViewPart {
 	private boolean scansCleanedByProject = false; 
 	private boolean firstTimeTriggered = false; 
 	
+	private Composite parent;
+	
+	private boolean isPluginDraw = false;
+		
 	public CheckmarxView() {
 		super();
-	
+
 		rootModel = new DisplayModel.DisplayModelBuilder(PluginConstants.EMPTY_STRING).build();
 		globalSettings.loadSettings();
+		currentProjectId = globalSettings.getProjectId();
+		currentBranch = globalSettings.getBranch();
+		currentScanId = globalSettings.getScanId();
+		PluginUtils.getEventBroker().subscribe(PluginConstants.TOPIC_APPLY_SETTINGS, this);
 	}
 
 	@Override
 	public void dispose() {
 		super.dispose();
-		boldFont.dispose();
-		pluginEventBus.unregister(this);
+		
+		if(boldFont != null && !boldFont.isDisposed()) {
+			boldFont.dispose();
+		}
+		
+		if(pluginEventBus != null) {
+			pluginEventBus.unregister(this);
+		}
+		
+		PluginUtils.getEventBroker().unsubscribe(this);
 	}
 
 	@Override
 	public void createPartControl(Composite parent) {
-		createViewer(parent);
-		createToolbar();
-		createContextMenu();
-		initGitBranchListener();
+		this.parent = parent;
+				
+		if(PluginUtils.areCredentialsDefined()) {
+			drawPluginPanel();
+		}else {
+			drawMissingCredentialsPanel();
+		}
 	}
+	
 	
 	/**
 	 * Init git branch listener to update plugin to the same branch
@@ -195,7 +223,7 @@ public class CheckmarxView extends ViewPart {
 		boolean pluginBranchesContainsGitBranch = !currentBranches.isEmpty() && currentBranches.contains(gitBranch);
 		
 		if (!currentProjectId.isEmpty() &&  pluginBranchesContainsGitBranch) {
-			disablePluginFields();
+			disablePluginFields(true);
 
 			Display.getDefault().asyncExec(new Runnable() {
 				public void run() {
@@ -211,14 +239,14 @@ public class CheckmarxView extends ViewPart {
 		MenuManager menuManager = new MenuManager("#PopupMenu");
 		menuManager.setRemoveAllWhenShown(true);
 		menuManager.addMenuListener(CheckmarxView.this::fillContextMenu);
-		Menu menu = menuManager.createContextMenu(viewer.getControl());
-		viewer.getControl().setMenu(menu);
+		Menu menu = menuManager.createContextMenu(resultsTree.getControl());
+		resultsTree.getControl().setMenu(menu);
 
-		getSite().registerContextMenu(menuManager, viewer);
+		getSite().registerContextMenu(menuManager, resultsTree);
 	}
 
 	private void fillContextMenu(IMenuManager manager) {
-		Action openPreferencesPageAction = new ActionOpenPreferencesPage(rootModel, viewer, shell).createAction();
+		Action openPreferencesPageAction = new ActionOpenPreferencesPage(rootModel, resultsTree, shell).createAction();
 		manager.add(openPreferencesPageAction);
 	}
 
@@ -233,7 +261,7 @@ public class CheckmarxView extends ViewPart {
 		pluginEventBus.register(this);
 
 		toolBarActions = new ToolBarActions.ToolBarActionsBuilder().actionBars(actionBars).rootModel(rootModel)
-				.resultsTree(viewer).pluginEventBus(pluginEventBus).build();
+				.resultsTree(resultsTree).pluginEventBus(pluginEventBus).build();
 
 		for (Action action : toolBarActions.getToolBarActions()) {
 			toolBarManager.add(action);
@@ -249,14 +277,27 @@ public class CheckmarxView extends ViewPart {
 			toolBarActions.getScanResultsAction().setEnabled(true);
 			toolBarActions.getClearAndRefreshAction().setEnabled(true);
 		}
+		
+		actionBars.updateActionBars();
 	}
 
 	@Override
 	public void setFocus() {
-		viewer.getControl().setFocus();
+		if(resultsTree != null) {
+			resultsTree.getControl().setFocus();
+		}
 	}
 
-	private void createViewer(Composite parent) {
+	/**
+	 * Draw Plugin
+	 */
+	private void drawPluginPanel() {	
+		// Dispose missing credentials panel
+		if(openSettingsComposite != null && !openSettingsComposite.isDisposed()) {
+			openSettingsComposite.dispose();
+		}
+		
+		// Define parent layout
 		GridLayout parentLayout = new GridLayout();
 		parentLayout.numColumns = 1;
 		parentLayout.horizontalSpacing = 0;
@@ -265,23 +306,121 @@ public class CheckmarxView extends ViewPart {
 		parentLayout.marginWidth = 0;
 		parent.setLayout(parentLayout);
 
-		// Top Bar Composite Panel
-		topComposite = new Composite(parent, SWT.NONE);
+		// Create panel where projects, branches and scans comboboxes will be drawn
+		createComboboxesPanel();
+
+		// Create panel to view results
+		createResultsPanel();
+		
+		// Create plugin toolBar
+		createToolbar();
+		
+		// Create context menu
+		createContextMenu();
+		
+		// Init git branch listener
+		initGitBranchListener();
+
+		// Refresh layout
+		parent.layout();
+		
+		isPluginDraw = true;
+	}
+	
+	/**
+	 *  Panel where projects, branches and scans comboboxes will be drawn
+	 */
+	private void createComboboxesPanel() {
+		Composite comboboxesComposite = new Composite(parent, SWT.NONE);
 		GridLayout topLayout = new GridLayout();
 		topLayout.numColumns = 3;
-		topComposite.setLayout(topLayout);
+		comboboxesComposite.setLayout(topLayout);
 
 		GridData topGridData = new GridData();
 		topGridData.horizontalAlignment = GridData.FILL;
 		topGridData.verticalAlignment = GridData.FILL;
 		topGridData.grabExcessHorizontalSpace = true;
-		topComposite.setLayoutData(topGridData);
-		createProjectListComboBox(topComposite);
-		createBranchComboBox(topComposite);
-		createScanIdComboBox(topComposite);
+		comboboxesComposite.setLayoutData(topGridData);
+		
+		createProjectListComboBox(comboboxesComposite);
+		createBranchComboBox(comboboxesComposite);
+		createScanIdComboBox(comboboxesComposite);
+		
+		loadComboboxes();
+	}
+	
+	private void loadComboboxes() {
+		loadingProjects();
+		loadingBranches();
+		loadingScans();
+		
+		Display.getDefault().asyncExec(new Runnable() {
+		    public void run() {
+		    	List<Project> projectList = getProjects();
+						    	
+		    	projectComboViewer.setInput(projectList);
+				
+				if(currentProjectId.isEmpty() || projectList.isEmpty()) {
+					PluginUtils.setTextForComboViewer(projectComboViewer, PROJECT_COMBO_VIEWER_TEXT);
+					PluginUtils.setTextForComboViewer(branchComboViewer, BRANCH_COMBO_VIEWER_TEXT);
+					PluginUtils.setTextForComboViewer(scanIdComboViewer, PluginConstants.COMBOBOX_SCAND_ID_PLACEHOLDER);
+					
+					PluginUtils.enableComboViewer(projectComboViewer, true);
+					PluginUtils.enableComboViewer(scanIdComboViewer, true);
+					PluginUtils.enableComboViewer(branchComboViewer, false);
+					
+					return;
+				}
+				
+				// Set project id
+				String currentProjectName = getProjectFromId(projectList, currentProjectId);
+				PluginUtils.setTextForComboViewer(projectComboViewer, currentProjectName);
+				
+				// Get branches for project id
+				currentBranches = DataProvider.getInstance().getBranchesForProject(currentProjectId);
+				branchComboViewer.setInput(currentBranches);
+				
+				PluginUtils.setTextForComboViewer(branchComboViewer, BRANCH_COMBO_VIEWER_TEXT);
+				PluginUtils.setTextForComboViewer(scanIdComboViewer, PluginConstants.COMBOBOX_SCAND_ID_PLACEHOLDER);
+				
+				if(!currentBranch.isEmpty()) {
+					PluginUtils.setTextForComboViewer(branchComboViewer, currentBranch);
+					
+					List<Scan> scanList = DataProvider.getInstance().getScansForProject(currentBranch);
+					scanIdComboViewer.setInput(scanList);
+					
+					PluginUtils.setTextForComboViewer(scanIdComboViewer, scanList.isEmpty() ? PluginConstants.COMBOBOX_SCAND_ID_NO_SCANS_AVAILABLE : SCAN_COMBO_VIEWER_TEXT);
+					
+					if(!currentScanId.isEmpty()) {
+						String currentScanName = getScanNameFromId(scanList, currentScanId);
+						currentScanIdFormmated = currentScanName;
+						PluginUtils.setTextForComboViewer(scanIdComboViewer, currentScanName);
 
-		// Bottom Panel
-		Composite bottomComposite = new Composite(parent, SWT.BORDER);
+						Display.getDefault().asyncExec(new Runnable() {
+						    public void run() {
+						    	alreadyRunning = true;
+						    	updateResultsTree(DataProvider.getInstance().getResultsForScanId(currentScanId));
+						    }
+						});
+					}else {
+						PluginUtils.enableComboViewer(projectComboViewer, true);
+						PluginUtils.enableComboViewer(scanIdComboViewer, true);
+						PluginUtils.enableComboViewer(branchComboViewer, true);
+					}
+				}else {
+					PluginUtils.enableComboViewer(projectComboViewer, true);
+					PluginUtils.enableComboViewer(scanIdComboViewer, true);
+					PluginUtils.enableComboViewer(branchComboViewer, true);
+				}
+		    }
+		});
+	}
+	
+	/**
+	 * Create results panel
+	 */
+	private void createResultsPanel() {
+		Composite resultsComposite = new Composite(parent, SWT.BORDER);
 
 		GridData bottomGridData = new GridData();
 		bottomGridData.horizontalAlignment = GridData.FILL;
@@ -289,39 +428,41 @@ public class CheckmarxView extends ViewPart {
 		bottomGridData.grabExcessHorizontalSpace = true;
 		bottomGridData.grabExcessVerticalSpace = true;
 
-		bottomComposite.setLayout(new FillLayout(SWT.HORIZONTAL));
-		bottomComposite.setLayoutData(bottomGridData);
+		resultsComposite.setLayout(new FillLayout(SWT.HORIZONTAL));
+		resultsComposite.setLayoutData(bottomGridData);
 
-		leftCompositePanel = new Composite(bottomComposite, SWT.BORDER);
-		GridLayout leftCompositeLayout = new GridLayout();
-		leftCompositeLayout.numColumns = 1;
-		GridData leftCompositePanelGridData = new GridData();
-		leftCompositePanelGridData.horizontalAlignment = GridData.BEGINNING;
-		leftCompositePanelGridData.grabExcessVerticalSpace = true;
-		leftCompositeLayout.marginWidth = 0;
-		leftCompositeLayout.marginHeight = 0;
+		createTreeResultsPanel(resultsComposite);
+		createResultViewPanel(resultsComposite);
+		createResultVulnerabilitiesPanel(resultsComposite);
+	}
+	
+	/**
+	 * Create results' tree panel
+	 * 
+	 * @param resultsComposite
+	 */
+	private void createTreeResultsPanel(Composite resultsComposite) {
+		Composite treeResultsComposite = new Composite(resultsComposite, SWT.BORDER);
 
-		leftCompositePanel.setLayoutData(leftCompositePanelGridData);
-		leftCompositePanel.setLayout(leftCompositeLayout);
+		GridLayout treeResultsLayout = new GridLayout();
+		treeResultsLayout.numColumns = 1;
+		treeResultsLayout.marginWidth = 0;
+		treeResultsLayout.marginHeight = 0;
+		treeResultsComposite.setLayout(treeResultsLayout);
 
-		viewer = new TreeViewer(leftCompositePanel, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.FULL_SELECTION);
+		GridData treeResultsLayoutData = new GridData();
+		treeResultsLayoutData.horizontalAlignment = GridData.BEGINNING;
+		treeResultsLayoutData.grabExcessVerticalSpace = true;
+		treeResultsComposite.setLayoutData(treeResultsLayoutData);
 
-		// Display initial message
-		boolean gettingResults = globalSettings.getProjectId() != null && !globalSettings.getProjectId().isEmpty()
-				&& globalSettings.getScanId() != null && !globalSettings.getScanId().isEmpty();
-		boolean noProjectsAvailable = projectComboViewer.getCombo().getText().equals(NO_PROJECTS_AVAILABLE);
-		String message = gettingResults && !noProjectsAvailable ? String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, globalSettings.getScanId()) : PluginConstants.EMPTY_STRING;
-		PluginUtils.showMessage(rootModel, viewer, message);
+		resultsTree = new TreeViewer(treeResultsComposite, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.FULL_SELECTION);
+		resultsTree.getTree().setHeaderVisible(false);
+		resultsTree.getTree().setLinesVisible(true);
+		resultsTree.setContentProvider(new TreeContentProvider());
 		
-		ColumnViewerToolTipSupport.enableFor(viewer);
-		createColumns();
-
-		viewer.getTree().setHeaderVisible(false);
-		viewer.getTree().setLinesVisible(true);
-
-		viewer.setContentProvider(new TreeContentProvider());
-		getSite().setSelectionProvider(viewer);
-
+		// configure column settings
+		configureResultsTreeColumns();
+		
 		// define layout for the viewer
 		GridData gridData = new GridData();
 		gridData.verticalAlignment = GridData.FILL;
@@ -329,46 +470,76 @@ public class CheckmarxView extends ViewPart {
 		gridData.grabExcessHorizontalSpace = true;
 		gridData.grabExcessVerticalSpace = true;
 		gridData.horizontalAlignment = GridData.FILL;
-		viewer.getControl().setLayoutData(gridData);
-		viewer.setInput(rootModel);
+		resultsTree.getControl().setLayoutData(gridData);
+		resultsTree.setInput(rootModel);
 
-		// configureSelectionListener
-		configureTreeItemSelectionChangeEvent(viewer);
-
-		// SECTION 2
-		// Setting the BOLD Font for Labels
+		// Add selection change event for each result
+		configureTreeItemSelectionChangeEvent(resultsTree);
+		
+		// Define an initial message in the tree
+		drawResultsTreeInitialMessage();
+	}
+	
+	/**
+	 * Draw results' tree initial message
+	 */
+	private void drawResultsTreeInitialMessage() {
+		boolean gettingResults = globalSettings.getProjectId() != null && !globalSettings.getProjectId().isEmpty()
+				&& globalSettings.getScanId() != null && !globalSettings.getScanId().isEmpty();
+		boolean noProjectsAvailable = projectComboViewer.getCombo().getText().equals(NO_PROJECTS_AVAILABLE);
+		String message = gettingResults && !noProjectsAvailable
+				? String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, globalSettings.getScanId())
+				: PluginConstants.EMPTY_STRING;
+		PluginUtils.showMessage(rootModel, resultsTree, message);
+	}
+	
+	/**
+	 * Create result's view panel
+	 * 
+	 * @param resultsComposite
+	 */
+	private void createResultViewPanel(Composite resultsComposite) {
+		// Define bold font for labels
 		Display display = parent.getShell().getDisplay();
 		FontData systemFontData = display.getSystemFont().getFontData()[0];
 		boldFont = new Font(display, systemFontData.getName(), systemFontData.getHeight(), SWT.BOLD);
 
-		resultInfoCompositePanel = new Composite(bottomComposite, SWT.BORDER);
-		resultInfoCompositePanel.setLayout(new GridLayout(1, false));
+		resultViewComposite = new Composite(resultsComposite, SWT.BORDER);
+		resultViewComposite.setLayout(new GridLayout(1, false));
 
-		titleLabel = new CLabel(resultInfoCompositePanel, SWT.NONE);
+		titleLabel = new CLabel(resultViewComposite, SWT.NONE);
 		titleLabel.setFont(boldFont);
 		titleLabel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false, 1, 1));
 		titleLabel.setBottomMargin(30);
-		;
-		Label summaryLabel = new Label(resultInfoCompositePanel, SWT.NONE);
+
+		Label summaryLabel = new Label(resultViewComposite, SWT.NONE);
 		summaryLabel.setFont(boldFont);
 		summaryLabel.setText("Summary:");
 		summaryLabel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false, 1, 1));
 
-		summaryText = new Text(resultInfoCompositePanel, SWT.READ_ONLY | SWT.WRAP);
+		summaryText = new Text(resultViewComposite, SWT.READ_ONLY | SWT.WRAP);
 		summaryText.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false, 1, 1));
 		summaryText.setText("Not Available.");
 
-		Label descriptionLabel = new Label(resultInfoCompositePanel, SWT.NONE);
+		Label descriptionLabel = new Label(resultViewComposite, SWT.NONE);
 		descriptionLabel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false, 1, 1));
 		descriptionLabel.setFont(boldFont);
 		descriptionLabel.setText("Description:");
 
-		descriptionValueText = new Text(resultInfoCompositePanel, SWT.READ_ONLY | SWT.MULTI | SWT.WRAP);
+		descriptionValueText = new Text(resultViewComposite, SWT.READ_ONLY | SWT.MULTI | SWT.WRAP);
 		descriptionValueText.setLayoutData(new GridData(SWT.LEFT, SWT.TOP, true, true, 1, 1));
 		descriptionValueText.setText("Not Available.");
-
-		// Section 3
-		attackVectorCompositePanel = new Composite(bottomComposite, SWT.BORDER);
+		
+		resultViewComposite.setVisible(false);
+	}
+	
+	/**
+	 * Create result's vulnerabilities panel
+	 * 
+	 * @param resultsComposite
+	 */
+	private void createResultVulnerabilitiesPanel(Composite resultsComposite) {
+		attackVectorCompositePanel = new Composite(resultsComposite, SWT.BORDER);
 
 		GridData attackVectorCompositePanelGridData = new GridData();
 		attackVectorCompositePanelGridData.horizontalAlignment = GridData.END;
@@ -376,31 +547,56 @@ public class CheckmarxView extends ViewPart {
 		attackVectorCompositePanelGridData.grabExcessVerticalSpace = true;
 
 		attackVectorCompositePanel.setLayoutData(attackVectorCompositePanelGridData);
-
 		attackVectorCompositePanel.setLayout(new RowLayout(SWT.VERTICAL));
 
 		attackVectorLabel = new Label(attackVectorCompositePanel, SWT.NONE);
 		attackVectorLabel.setFont(boldFont);
 
-		resultInfoCompositePanel.setVisible(false);
 		attackVectorCompositePanel.setVisible(false);
+	}
+	
+	/**
+	 * Draw panel when Checkmarx credentials are not defined
+	 */
+	private void drawMissingCredentialsPanel() {
+		openSettingsComposite = new Composite(parent, SWT.NONE);
 
+		openSettingsComposite.setLayout(new GridLayout(1, true));
+
+		final Label hidden = new Label(openSettingsComposite, SWT.NONE);
+		hidden.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, true, false));
+		hidden.setImage(CHECKMARX_OPEN_SETTINGS_LOGO);
+		hidden.setVisible(false);
+		
+		final Label cxLogo = new Label(openSettingsComposite, SWT.NONE);
+		cxLogo.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, true, false));
+		cxLogo.setImage(CHECKMARX_OPEN_SETTINGS_LOGO);
+		
+		final Button btn = new Button(openSettingsComposite, SWT.NONE);
+		btn.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, true, false));
+		btn.setText(PluginConstants.BTN_OPEN_SETTINGS);
+
+		btn.addListener(SWT.Selection, new Listener() {
+			@Override
+			public void handleEvent(Event arg0) {
+				PreferenceDialog pref = PreferencesUtil.createPreferenceDialogOn(shell, "com.checkmarx.eclipse.properties.preferencespage", null, null);
+
+				if (pref != null) {
+					pref.open();
+				}
+			}
+		});
 	}
 
 	private void createProjectListComboBox(Composite parent) {
-		List<Project> projectList = DataProvider.getInstance().getProjects();
-		currentProjectId = globalSettings.getProjectId();
-		String currentProjectName = getProjectFromId(projectList, currentProjectId);
-
 		projectComboViewer = new ComboViewer(parent, SWT.DROP_DOWN);
-		PluginUtils.enableComboViewer(projectComboViewer, false);
 		projectComboViewer.setContentProvider(ArrayContentProvider.getInstance());
-		projectComboViewer.setInput(projectList);
-
+		projectComboViewer.setInput(new ArrayList<>());
+		
 		GridData gridData = new GridData();
 		gridData.widthHint = 400;
 		projectComboViewer.getCombo().setLayoutData(gridData);
-
+		
 		projectComboViewer.setLabelProvider(new LabelProvider() {
 			@Override
 			public String getText(Object element) {
@@ -422,7 +618,6 @@ public class CheckmarxView extends ViewPart {
 					Project selectedProject = ((Project) selection.getFirstElement());
 
 					// Avoid non-sense trigger changed when opening the combo
-
 					if(selectedProject.getID().equals(currentProjectId)) {
 						CxLogger.info(PluginConstants.INFO_CHANGE_PROJECT_EVENT_NOT_TRIGGERED);
 
@@ -452,8 +647,6 @@ public class CheckmarxView extends ViewPart {
 				}
 			}
 		});
-
-		PluginUtils.setTextForComboViewer(projectComboViewer, currentProjectName);
 	}
 
 	/**
@@ -475,11 +668,11 @@ public class CheckmarxView extends ViewPart {
 		// Make plugin loading
 		loadingBranches();
 		PluginUtils.enableComboViewer(scanIdComboViewer, false);
-		PluginUtils.showMessage(rootModel, viewer, PluginConstants.EMPTY_STRING);
+		PluginUtils.showMessage(rootModel, resultsTree, PluginConstants.EMPTY_STRING);
 		PluginUtils.setTextForComboViewer(scanIdComboViewer, PluginConstants.COMBOBOX_SCAND_ID_PLACEHOLDER);
 		toolBarActions.getToolBarActions().forEach(action -> action.setEnabled(false));
 		// Hide center and right panels
-		resultInfoCompositePanel.setVisible(false);
+		resultViewComposite.setVisible(false);
 		attackVectorCompositePanel.setVisible(false);
 	}
 	
@@ -491,7 +684,7 @@ public class CheckmarxView extends ViewPart {
 	 * @return
 	 */
 	private String getProjectFromId(List<Project> projects, String projectId) {
-		if (projects.isEmpty()) {
+		if (projects == null || projects.isEmpty()) {
 			return NO_PROJECTS_AVAILABLE;
 		}
 
@@ -501,18 +694,21 @@ public class CheckmarxView extends ViewPart {
 	}
 
 	private void createBranchComboBox(Composite parent) {
-		currentBranch = globalSettings.getBranch();
 		branchComboViewer = new ComboViewer(parent, SWT.DROP_DOWN);
-		PluginUtils.enableComboViewer(branchComboViewer, false);
 		branchComboViewer.setContentProvider(ArrayContentProvider.getInstance());
-
+		branchComboViewer.setInput(new ArrayList<>());
+		
+		GridData gridData = new GridData();
+		gridData.widthHint = 150;
+		branchComboViewer.getCombo().setLayoutData(gridData);
+		
 		branchComboViewer.setLabelProvider(new LabelProvider() {
 			@Override
 			public String getText(Object element) {
 				return element.toString();
 			}
 		});
-
+				
 		branchComboViewer.addSelectionChangedListener(new ISelectionChangedListener() {
 			@Override
 			public void selectionChanged(SelectionChangedEvent event) {
@@ -548,17 +744,6 @@ public class CheckmarxView extends ViewPart {
 				}
 			}
 		});
-				
-		if (!currentProjectId.isEmpty()) {
-			currentBranches = DataProvider.getInstance().getBranchesForProject(currentProjectId);
-			branchComboViewer.setInput(currentBranches);
-		}
-
-		PluginUtils.setTextForComboViewer(branchComboViewer, currentProjectId.isEmpty() || currentBranch.isEmpty() ? BRANCH_COMBO_VIEWER_TEXT : currentBranch);
-		
-		GridData gridData = new GridData();
-		gridData.widthHint = 150;
-		branchComboViewer.getCombo().setLayoutData(gridData);
 	}
 	
 	/**
@@ -580,15 +765,28 @@ public class CheckmarxView extends ViewPart {
 		// Make plugin loading
 		PluginUtils.enableComboViewer(projectComboViewer, false);
 		loadingScans();
-		PluginUtils.showMessage(rootModel, viewer, PluginConstants.EMPTY_STRING);
+		PluginUtils.showMessage(rootModel, resultsTree, PluginConstants.EMPTY_STRING);
 		toolBarActions.getToolBarActions().forEach(action -> action.setEnabled(false));
+		// Hide center and right panels
+		resultViewComposite.setVisible(false);
+		attackVectorCompositePanel.setVisible(false);
 	}
 	
 	private void createScanIdComboBox(Composite parent){
-		currentScanId = globalSettings.getScanId();
 		scanIdComboViewer = new ComboViewer(parent, SWT.DROP_DOWN | SWT.SIMPLE);
-		PluginUtils.enableComboViewer(scanIdComboViewer, false);
 		scanIdComboViewer.setContentProvider(ArrayContentProvider.getInstance());
+		scanIdComboViewer.setInput(new ArrayList<>());
+		
+		GridData gridData = new GridData();
+		gridData.widthHint = 450;
+		scanIdComboViewer.getCombo().setLayoutData(gridData);
+		
+		scanIdComboViewer.getCombo().addListener(SWT.DefaultSelection, new Listener() {
+			public void handleEvent(Event event) {
+				toolBarActions.getScanResultsAction().run();
+			}
+		});
+		
 
 		scanIdComboViewer.setLabelProvider(new LabelProvider() {
 			@Override
@@ -600,7 +798,7 @@ public class CheckmarxView extends ViewPart {
 				return super.getText(element);
 			}
 		});
-
+		
 		scanIdComboViewer.addSelectionChangedListener(new ISelectionChangedListener() {
 			@Override
 			public void selectionChanged(SelectionChangedEvent event) {
@@ -628,44 +826,6 @@ public class CheckmarxView extends ViewPart {
 				}
 			}
 		});
-
-		PluginUtils.setTextForComboViewer(scanIdComboViewer, PluginConstants.COMBOBOX_SCAND_ID_PLACEHOLDER);
-		
-		if(!currentBranch.isEmpty()) {
-			List<Scan> scanList = DataProvider.getInstance().getScansForProject(currentBranch);
-			scanIdComboViewer.setInput(scanList);
-			PluginUtils.setTextForComboViewer(scanIdComboViewer, scanList.isEmpty() ? PluginConstants.COMBOBOX_SCAND_ID_NO_SCANS_AVAILABLE : PluginConstants.COMBOBOX_SCAND_ID_PLACEHOLDER);
-			
-			if(!currentScanId.isEmpty()) {
-				String currentScanName = getScanNameFromId(scanList, currentScanId);
-				currentScanIdFormmated = currentScanName;
-				PluginUtils.setTextForComboViewer(scanIdComboViewer, currentScanName);
-
-				Display.getDefault().asyncExec(new Runnable() {
-				    public void run() {
-				    	alreadyRunning = true;
-				    	updateResultsTree(DataProvider.getInstance().getResultsForScanId(currentScanId));
-				    }
-				});
-			}else {
-				PluginUtils.enableComboViewer(projectComboViewer, true);
-				PluginUtils.enableComboViewer(branchComboViewer, !currentProjectId.isEmpty());
-				PluginUtils.enableComboViewer(scanIdComboViewer, true);
-			}
-		} else {
-			PluginUtils.enableComboViewer(projectComboViewer, true);
-			PluginUtils.enableComboViewer(branchComboViewer, !currentProjectId.isEmpty());
-			PluginUtils.enableComboViewer(scanIdComboViewer, true);
-		}
-
-		GridData gridData = new GridData();
-		gridData.widthHint = 450;
-		scanIdComboViewer.getCombo().setLayoutData(gridData);
-		scanIdComboViewer.getCombo().addListener(SWT.DefaultSelection, new Listener() {
-			public void handleEvent(Event event) {
-				toolBarActions.getScanResultsAction().run();
-			}
-		});
 	}
 	
 	/**
@@ -683,10 +843,13 @@ public class CheckmarxView extends ViewPart {
 		GlobalSettings.storeInPreferences(GlobalSettings.PARAM_SCAN_ID, scan);
 
 		// Make plugin loading
-		PluginUtils.showMessage(rootModel, viewer, String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, scan));
+		PluginUtils.showMessage(rootModel, resultsTree, String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, scan));
 		PluginUtils.enableComboViewer(projectComboViewer, false);
 		PluginUtils.enableComboViewer(branchComboViewer, false);
 		toolBarActions.getToolBarActions().forEach(action -> action.setEnabled(action.getId().equals(ActionName.ABORT_RESULTS.name())));
+		// Hide center and right panels
+		resultViewComposite.setVisible(false);
+		attackVectorCompositePanel.setVisible(false);
 	}
 	
 	/**
@@ -713,7 +876,6 @@ public class CheckmarxView extends ViewPart {
 	 * @return
 	 */
 	private static String formatScanLabel(Scan scan) {
-
 		String updatedAtDate = PluginUtils.convertStringTimeStamp(scan.getUpdatedAt());
 		       
         return String.format(FORMATTED_SCAN_LABEL, scan.getID(), updatedAtDate);
@@ -724,15 +886,7 @@ public class CheckmarxView extends ViewPart {
 	 * Reverse selection - Populate project combobox and select a project id based
 	 * on the chosen scan id
 	 */
-	private void setSelectionForProjectComboViewer() {
-		
-		// TODO: this validation shouldn't be needed after authentication panel developments. When the authentication is not set the user won't be able to perform a reverse selection
-		List<DisplayModel> validationError = DataProvider.getInstance().validateAuthentication();
-		if (!validationError.isEmpty()) {
-			updateResultsTree(validationError);
-			return;
-		}
-		
+	private void setSelectionForProjectComboViewer() {		
 		String scanId = scanIdComboViewer.getCombo().getText();
 		
 		if(currentScanId.equals(scanId)) {
@@ -742,44 +896,50 @@ public class CheckmarxView extends ViewPart {
 		}
 		
 		if (!PluginUtils.validateScanIdFormat(scanId)) {
-			PluginUtils.showMessage(rootModel, viewer, PluginConstants.TREE_INVALID_SCAN_ID_FORMAT);
+			PluginUtils.showMessage(rootModel, resultsTree, PluginConstants.TREE_INVALID_SCAN_ID_FORMAT);
 			return;
 		}
 		
 		// Disable all tool bar actions except the clear and refresh action
 		toolBarActions.getToolBarActions().forEach(action -> action.setEnabled(action.getId().equals(ActionName.ABORT_RESULTS.name())));
-		PluginUtils.showMessage(rootModel, viewer, String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, scanId));
+		PluginUtils.showMessage(rootModel, resultsTree, String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, scanId));
 		loadingProjects();
 		loadingBranches();
-		resultInfoCompositePanel.setVisible(false);
+		resultViewComposite.setVisible(false);
 		attackVectorCompositePanel.setVisible(false);		
 		
 		Display.getDefault().asyncExec(new Runnable() {
 		    public void run() {
-		    	Scan scan = DataProvider.getInstance().getScanInformation(scanId);
-		    	
-		    	if(scan == null) {
-		    		resetProjectsAndBranchesCombo();
-		    		PluginUtils.showMessage(rootModel, viewer, String.format(PluginConstants.TREE_PROVIDED_SCAN_ID_DOES_NOT_EXIST, scanId));
-		    		return;
-		    	}
+		    	Scan scan;
 				
-				String projectId = scan.getProjectID();
-
-				List<Project> projectList = DataProvider.getInstance().getProjects();
-
-				if (projectList != null) {
-					projectComboViewer.setInput(projectList);
-
-					String projectName = getProjectFromId(projectList, projectId);
-					PluginUtils.setTextForComboViewer(projectComboViewer, projectName);
-
-					currentProjectId = projectId;
-					GlobalSettings.storeInPreferences(GlobalSettings.PARAM_PROJECT_ID, currentProjectId);
-				} else {
+		    	try {
+					scan = DataProvider.getInstance().getScanInformation(scanId);
+				} catch (Exception e) {
+					String errorMessage = e.getCause() != null && e.getCause().getMessage() != null ? e.getCause().getMessage() : e.getMessage();
+					PluginUtils.showMessage(rootModel, resultsTree, errorMessage);
+					
+					PluginUtils.setTextForComboViewer(projectComboViewer, PROJECT_COMBO_VIEWER_TEXT);
 					PluginUtils.enableComboViewer(projectComboViewer, true);
-					PluginUtils.setTextForComboViewer(projectComboViewer, NO_PROJECTS_AVAILABLE);
+					
+					PluginUtils.setTextForComboViewer(branchComboViewer, BRANCH_COMBO_VIEWER_TEXT);
+					PluginUtils.enableComboViewer(branchComboViewer, false);
+					
+					return;
 				}
+		    	
+				String projectId = scan.getProjectID();
+				
+		    	List<Project> projectList = getProjects();
+		    	
+		    	projectComboViewer.setInput(projectList);
+		    	
+		    	if(projectList.isEmpty()) return;
+				
+				String projectName = getProjectFromId(projectList, projectId);
+				PluginUtils.setTextForComboViewer(projectComboViewer, projectName);
+
+				currentProjectId = projectId;
+				GlobalSettings.storeInPreferences(GlobalSettings.PARAM_PROJECT_ID, currentProjectId);
 
 				setSelectionForBranchComboViewer(scan.getBranch(), projectId);
 				setSelectionForScanIdComboViewer(scan.getID(), scan.getBranch());
@@ -880,8 +1040,8 @@ public class CheckmarxView extends ViewPart {
 					if (!summaryString.isBlank()) {
 						summaryText.setText(summaryString);
 					}
-					resultInfoCompositePanel.setVisible(true);
-					resultInfoCompositePanel.layout();
+					resultViewComposite.setVisible(true);
+					resultViewComposite.layout();
 					if (selectedItem.getType() != null) {
 						updateAttackVectorForSelectedTreeItem(selectedItem);
 					}
@@ -1021,20 +1181,23 @@ public class CheckmarxView extends ViewPart {
 		return foundFiles;
 	}
 
-	private void createColumns() {
-		TreeViewerColumn col = createTreeViewerColumn("Title", 500);
-		ColumnProvider label = new ColumnProvider(this::findSeverityImage, model -> model.name);
-		col.setLabelProvider((label));
-	}
-
-	private TreeViewerColumn createTreeViewerColumn(String title, int bound) {
-		final TreeViewerColumn viewerColumn = new TreeViewerColumn(viewer, SWT.NONE);
+	/**
+	 * Define a configuration for tree columns
+	 */
+	private void configureResultsTreeColumns() {
+		ColumnViewerToolTipSupport.enableFor(resultsTree);
+		
+		final TreeViewerColumn viewerColumn = new TreeViewerColumn(resultsTree, SWT.NONE);
+		
 		final TreeColumn column = viewerColumn.getColumn();
-		column.setText(title);
-		column.setWidth(bound);
+		column.setWidth(500);
 		column.setResizable(true);
 		column.setMoveable(false);
-		return viewerColumn;
+				
+		ColumnProvider label = new ColumnProvider(this::findSeverityImage, model -> model.name);
+		viewerColumn.setLabelProvider(label);
+		
+		getSite().setSelectionProvider(resultsTree);
 	}
 
 	private Image findSeverityImage(DisplayModel model) {
@@ -1083,7 +1246,7 @@ public class CheckmarxView extends ViewPart {
 	private void updateResultsTree(List<DisplayModel> results) {
 		rootModel.children.clear();
 		rootModel.children.addAll(results);
-		viewer.getTree().getDisplay().asyncExec(() -> viewer.refresh());
+		resultsTree.getTree().getDisplay().asyncExec(() -> resultsTree.refresh());
 		toolBarActions.getScanResultsAction().setEnabled(true);
 		toolBarActions.getAbortResultsAction().setEnabled(false);
 		toolBarActions.getClearAndRefreshAction().setEnabled(true);
@@ -1093,7 +1256,7 @@ public class CheckmarxView extends ViewPart {
 		alreadyRunning = false;
 
 		if(results.isEmpty()) {
-			PluginUtils.showMessage(rootModel, viewer, PluginConstants.TREE_NO_RESULTS);
+			PluginUtils.showMessage(rootModel, resultsTree, PluginConstants.TREE_NO_RESULTS);
 		}
 		
 		PluginUtils.updateFiltersEnabledAndCheckedState(toolBarActions.getFilterActions());
@@ -1104,7 +1267,7 @@ public class CheckmarxView extends ViewPart {
 	 */
 	private void clearAndRefreshPlugin() {
 		// Disable comboboxes and update placeholders
-		PluginUtils.showMessage(rootModel, viewer, PluginConstants.EMPTY_STRING);
+		PluginUtils.showMessage(rootModel, resultsTree, PluginConstants.EMPTY_STRING);
 		PluginUtils.enableComboViewer(projectComboViewer, false);
 		PluginUtils.setTextForComboViewer(projectComboViewer, LOADING_PROJECTS);
 		PluginUtils.enableComboViewer(branchComboViewer, false);
@@ -1113,7 +1276,7 @@ public class CheckmarxView extends ViewPart {
 		PluginUtils.setTextForComboViewer(scanIdComboViewer, PluginConstants.COMBOBOX_SCAND_ID_PLACEHOLDER);
 		
 		// Hide center and right panels
-		resultInfoCompositePanel.setVisible(false);
+		resultViewComposite.setVisible(false);
 		attackVectorCompositePanel.setVisible(false);
 		
 		// Empty branches and scans comboboxes
@@ -1169,10 +1332,11 @@ public class CheckmarxView extends ViewPart {
 	/**
 	 * Reloads Projects' combobox
 	 */
-	private void resetProjectComboViewer() {
-		projectComboViewer.setInput(DataProvider.getInstance().getProjects());
-		projectComboViewer.refresh();
-		PluginUtils.setTextForComboViewer(projectComboViewer, PROJECT_COMBO_VIEWER_TEXT);
+	private void resetProjectComboViewer() {  		
+		List<Project> projectList = getProjects();
+    	projectComboViewer.setInput(projectList);
+    	projectComboViewer.refresh();
+    	PluginUtils.setTextForComboViewer(projectComboViewer, PROJECT_COMBO_VIEWER_TEXT);
 	}
 
 	/**
@@ -1192,23 +1356,6 @@ public class CheckmarxView extends ViewPart {
 		PluginUtils.enableComboViewer(projectComboViewer, false);
 		PluginUtils.setTextForComboViewer(projectComboViewer, LOADING_PROJECTS);
 	}
-
-	/**
-	 * Reset values for projects and branches combo
-	 */
-	private void resetProjectsAndBranchesCombo() {
-		currentProjectId = PluginConstants.EMPTY_STRING;
-		currentBranch = PluginConstants.EMPTY_STRING;
-		currentScanId = PluginConstants.EMPTY_STRING;
-		currentScanIdFormmated = PluginConstants.EMPTY_STRING;
-		currentBranches = new ArrayList<>();
-		
-		PluginUtils.enableComboViewer(projectComboViewer, true);
-		PluginUtils.setTextForComboViewer(projectComboViewer, PROJECT_COMBO_VIEWER_TEXT);
-		
-		PluginUtils.enableComboViewer(branchComboViewer, false);
-		PluginUtils.setTextForComboViewer(branchComboViewer, BRANCH_COMBO_VIEWER_TEXT);
-	}
 	
 	/**
 	 * Turn branches' combobox loading and disabled
@@ -1223,23 +1370,26 @@ public class CheckmarxView extends ViewPart {
 	 */
 	private void loadingScans() {
 		PluginUtils.enableComboViewer(scanIdComboViewer, false);
-		PluginUtils.setTextForComboViewer(scanIdComboViewer, PluginConstants.COMBOBOX_SCAND_ID_GETTING_SCANS);
+		PluginUtils.setTextForComboViewer(scanIdComboViewer, LOADING_SCANS);
 	}
 	
 	/**
 	 * Disable comboboxes
 	 */
-	private void disablePluginFields() {
+	private void disablePluginFields(boolean disableToolBar) {
 		Display.getDefault().syncExec(new Runnable() {
 			public void run() {
 				PluginUtils.enableComboViewer(projectComboViewer, false);
 				PluginUtils.enableComboViewer(branchComboViewer, false);
 				PluginUtils.setTextForComboViewer(branchComboViewer, PluginConstants.COMBOBOX_BRANCH_CHANGING);
 				loadingScans();
-				toolBarActions.getToolBarActions().forEach(action -> action.setEnabled(false));
-				PluginUtils.showMessage(rootModel, viewer, PluginConstants.EMPTY_STRING);
-				resultInfoCompositePanel.setVisible(false);
+				PluginUtils.showMessage(rootModel, resultsTree, PluginConstants.EMPTY_STRING);
+				resultViewComposite.setVisible(false);
 				attackVectorCompositePanel.setVisible(false);
+				
+				if(disableToolBar) {
+					toolBarActions.getToolBarActions().forEach(action -> action.setEnabled(false));
+				}
 			}
 		});
 	}
@@ -1267,5 +1417,38 @@ public class CheckmarxView extends ViewPart {
 			
 			action.setEnabled(resultsAvailable);
 		}
+	}
+
+	/**
+	 * Event fired when Checkmarx credentials are changed
+	 */
+	@Override
+	public void handleEvent(org.osgi.service.event.Event arg0) {
+		if(!isPluginDraw) {
+			drawPluginPanel();
+		}else {			
+			// If authenticated successfully and the projects are empty try to get them again
+			if(projectComboViewer.getCombo().getItemCount() == 0) {
+				clearAndRefreshPlugin();
+			}
+		}
+	}
+
+	/**
+	 * Get projects from AST and draw an error message in the tree if an error occurred
+	 * 
+	 * @return
+	 */
+	private List<Project> getProjects(){
+		List<Project> projectList = new ArrayList<>();
+		
+		try {
+			projectList = DataProvider.getInstance().getProjects();
+		} catch (Exception e) {
+			String errorMessage = e.getCause() != null && e.getCause().getMessage() != null ? e.getCause().getMessage() : e.getMessage();
+			PluginUtils.showMessage(rootModel, resultsTree, errorMessage);
+		}
+		
+		return projectList;
 	}
 }

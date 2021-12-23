@@ -22,8 +22,6 @@ public abstract class BaseUITest {
 	
 	protected static final String LABEL_SCAN_ID = "Scan Id:";
 	
-	protected static final String COLUMN_TITLE = "Title";
-
 	protected static final String BTN_OPEN = "Open";
 	protected static final String BTN_APPLY = "Apply";
 	protected static final String BTN_TEST_CONNECTION = "Test Connection";
