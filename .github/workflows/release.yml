@@ -26,10 +26,10 @@ jobs:
             ${{ runner.os }}-maven-
 
       - name: Update the POM version.
-        run: mvn -B org.eclipse.tycho:tycho-versions-plugin:set-version -DnewVersion='${{ env.RELEASE_VERSION }}' --file pom.xml -DskipTests -pl "!checkmarx-ast-eclipse-plugin-tests"
+        run: mvn -B org.eclipse.tycho:tycho-versions-plugin:set-version -DnewVersion='${{ env.RELEASE_VERSION }}' --file pom.xml 
 
       - name: Create release
-        run: mvn clean install
+        run: mvn -B clean install --file pom.xml  -DskipTests -pl "!checkmarx-ast-eclipse-plugin-tests"
 
       - name: Release
         uses: softprops/action-gh-release@v1
