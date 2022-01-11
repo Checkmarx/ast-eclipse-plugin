@@ -25,6 +25,7 @@ public class PluginConstants {
 	public static final String ERROR_BUILDING_CX_WRAPPER = "An error occurred while instantiating a CxWrapper: %s";
 	public static final String ERROR_FINDING_OR_DELETING_MARKER = "An error occurred while finding or deleting a marker from Problems View: %s";
 	public static final String ERROR_UPDATING_TRIAGE = "An error occurred while updating triage similarity id: %s";
+	public static final String ERROR_GETTING_TRIAGE_DETAILS = "An error occurred while getting triage details: %s";
 	
 	/******************************** LOG VIEW: INFO ********************************/
 	public static final String INFO_AUTHENTICATION_STATUS = "Authentication Status: %s";

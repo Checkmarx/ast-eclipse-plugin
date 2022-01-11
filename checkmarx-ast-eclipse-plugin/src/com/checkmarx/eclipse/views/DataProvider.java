@@ -101,29 +101,6 @@ public class DataProvider {
 	}
 	
 	/**
-	 * Get AST Triage details
-	 * 
-	 * @return
-	 * @throws Exception 
-	 */
-	public List<Predicate> getTriageShow(UUID projectID, String similarityID, String scanType) throws Exception {
-		List<Predicate> triageList = new ArrayList<Predicate>();
-		
-		CxWrapper cxWrapper = authenticateWithAST();
-		
-		if (cxWrapper != null) {
-			try {
-				triageList = cxWrapper.triageShow(projectID,similarityID,scanType);
-
-			} catch (IOException | InterruptedException | CxException e) {
-				CxLogger.error(String.format(PluginConstants.ERROR_GETTING_PROJECTS, e.getMessage()), e);
-			}
-		}
-
-		return triageList;
-	}
-	
-	/**
 	 * Get branches for a specific project
 	 * 
 	 * @param projectId
@@ -579,20 +556,51 @@ public class DataProvider {
 	public boolean containsResults() {
 		return getCurrentResults() != null && getCurrentResults().getResults() != null && !getCurrentResults().getResults().isEmpty();
 	}
+	
+	/**
+	 * Get AST Triage details
+	 * 
+	 * @return
+	 * @throws Exception 
+	 */
+	public List<Predicate> getTriageShow(UUID projectID, String similarityID, String scanType) throws Exception {
+		List<Predicate> triageList = new ArrayList<Predicate>();
 
-	public void triageUpdate(UUID fromString, String similarityId, String type, String selectedStatus, String string,
-			String selectedSeverity) {
-		
+		CxWrapper cxWrapper = authenticateWithAST();
+
+		if (cxWrapper != null) {
 			try {
-				CxWrapper cxWrapper = authenticateWithAST();
-				if (cxWrapper != null) {
-				cxWrapper.triageUpdate(fromString, similarityId, type, selectedStatus, string, selectedSeverity);
-				}
+				triageList = cxWrapper.triageShow(projectID, similarityID, scanType);
 
-			} catch (Exception e) {
-				CxLogger.error(String.format(PluginConstants.ERROR_UPDATING_TRIAGE, e.getMessage()), e);
-			} 
-		
-		
+			} catch (IOException | InterruptedException | CxException e) {
+				CxLogger.error(String.format(PluginConstants.ERROR_GETTING_TRIAGE_DETAILS, e.getMessage()), e);
+			}
+		}
+
+		return triageList;
+	}
+
+	/**
+	 * Update a vulnerability severity or state
+	 * 
+	 * @param projectId
+	 * @param similarityId
+	 * @param engineType
+	 * @param state
+	 * @param comment
+	 * @param severity
+	 */
+	public void triageUpdate(UUID projectId, String similarityId, String engineType, String state, String comment, String severity) {
+
+		try {
+			CxWrapper cxWrapper = authenticateWithAST();
+			
+			if (cxWrapper != null) {
+				cxWrapper.triageUpdate(projectId, similarityId, engineType, state, comment, severity);
+			}
+
+		} catch (Exception e) {
+			CxLogger.error(String.format(PluginConstants.ERROR_UPDATING_TRIAGE, e.getMessage()), e);
+		}
 	}
 }
