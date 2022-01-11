@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.checkmarx.ast.predicate.Predicate;
 import com.checkmarx.ast.project.Project;
 import com.checkmarx.ast.results.Results;
 import com.checkmarx.ast.results.result.Result;
@@ -97,6 +98,29 @@ public class DataProvider {
 		}
 
 		return projectList;
+	}
+	
+	/**
+	 * Get AST Triage details
+	 * 
+	 * @return
+	 * @throws Exception 
+	 */
+	public List<Predicate> getTriageShow(UUID projectID, String similarityID, String scanType) throws Exception {
+		List<Predicate> triageList = new ArrayList<Predicate>();
+		
+		CxWrapper cxWrapper = authenticateWithAST();
+		
+		if (cxWrapper != null) {
+			try {
+				triageList = cxWrapper.triageShow(projectID,similarityID,scanType);
+
+			} catch (IOException | InterruptedException | CxException e) {
+				CxLogger.error(String.format(PluginConstants.ERROR_GETTING_PROJECTS, e.getMessage()), e);
+			}
+		}
+
+		return triageList;
 	}
 	
 	/**
@@ -554,5 +578,21 @@ public class DataProvider {
 	 */
 	public boolean containsResults() {
 		return getCurrentResults() != null && getCurrentResults().getResults() != null && !getCurrentResults().getResults().isEmpty();
+	}
+
+	public void triageUpdate(UUID fromString, String similarityId, String type, String selectedStatus, String string,
+			String selectedSeverity) {
+		
+			try {
+				CxWrapper cxWrapper = authenticateWithAST();
+				if (cxWrapper != null) {
+				cxWrapper.triageUpdate(fromString, similarityId, type, selectedStatus, string, selectedSeverity);
+				}
+
+			} catch (Exception e) {
+				CxLogger.error(String.format(PluginConstants.ERROR_UPDATING_TRIAGE, e.getMessage()), e);
+			} 
+		
+		
 	}
 }

@@ -1,10 +1,12 @@
 package com.checkmarx.eclipse.views;
 
+import java.awt.Color;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
@@ -35,8 +37,11 @@ import org.eclipse.jgit.events.RefsChangedListener;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CLabel;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.FontData;
+import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
@@ -52,6 +57,8 @@ import org.eclipse.swt.widgets.Link;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.swt.widgets.TabFolder;
+import org.eclipse.swt.widgets.TabItem;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.swt.widgets.TreeColumn;
 import org.eclipse.ui.IActionBars;
@@ -60,11 +67,14 @@ import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.dialogs.PreferencesUtil;
 import org.eclipse.ui.ide.IDE;
 import org.eclipse.ui.part.ViewPart;
+import org.eclipse.wb.swt.SWTResourceManager;
 import org.osgi.service.event.EventHandler;
 
+import com.checkmarx.ast.predicate.Predicate;
 import com.checkmarx.ast.project.Project;
 import com.checkmarx.ast.results.result.Node;
 import com.checkmarx.ast.results.result.PackageData;
+import com.checkmarx.ast.results.result.Result;
 import com.checkmarx.ast.scan.Scan;
 import com.checkmarx.eclipse.Activator;
 import com.checkmarx.eclipse.enums.ActionName;
@@ -115,8 +125,11 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	public static final Image INFO_SEVERITY = Activator.getImageDescriptor("/icons/info_untoggle.png").createImage();
 
 	private TreeViewer resultsTree;
-	private ComboViewer scanIdComboViewer, projectComboViewer, branchComboViewer;
+	private ComboViewer scanIdComboViewer, projectComboViewer, branchComboViewer, triageSeverity, triageStatus;
+	private org.eclipse.swt.widgets.List detailList,changeList;
 	private DisplayModel rootModel;
+	private String selectedSeverity, selectedStatus;
+	private Button triageButton;
 	private Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell();
 
 	private boolean alreadyRunning = false;
@@ -129,6 +142,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private Composite resultViewComposite;
 	private Composite attackVectorCompositePanel;
 	private Composite openSettingsComposite;
+	//private Composite triageDropBox;
 
 	private CLabel titleLabel;
 
@@ -144,6 +158,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private String currentScanId =  PluginConstants.EMPTY_STRING;
 	private static String currentScanIdFormmated =  PluginConstants.EMPTY_STRING;
 	private List<String> currentBranches = new ArrayList<>();
+	
+	private org.eclipse.swt.widgets.TabItem triageDetails,triageChanges;
 	
 	private boolean scansCleanedByProject = false; 
 	private boolean firstTimeTriggered = false; 
@@ -514,6 +530,61 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		titleLabel.setFont(boldFont);
 		titleLabel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false, 1, 1));
 		titleLabel.setBottomMargin(30);
+		
+		/*
+		 * Here, add the triage dropdown to show severity, status and also an update button to call triage update
+		 * 
+		 * */
+		
+//		Label triageLabel = new Label(resultViewComposite, SWT.NONE);
+//		triageLabel.setFont(boldFont);
+//		triageLabel.setText("Triage:");
+//		triageLabel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false, 1, 1));
+		
+		
+		Composite triageView = new Composite(resultViewComposite,SWT.NONE);
+		triageView.setLayout(new GridLayout(3, false));
+		
+		
+		triageSeverity = new ComboViewer(triageView, SWT.NONE);
+		Combo combo_1 = triageSeverity.getCombo();
+		GridData gd_combo_1 = new GridData(SWT.LEFT, SWT.CENTER, true, false, 1, 1);
+		gd_combo_1.widthHint = 180;
+		combo_1.setLayoutData(gd_combo_1);
+		
+		triageStatus = new ComboViewer(triageView, SWT.NONE);
+		Combo combo_2 = triageStatus.getCombo();
+		GridData gd_combo_2 = new GridData(SWT.LEFT, SWT.CENTER, true, false, 1, 1);
+		gd_combo_2.widthHint = 180;
+		combo_2.setLayoutData(gd_combo_2);
+		
+		triageButton = new Button(triageView, SWT.PUSH);
+		triageButton.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false, 1, 1));
+		triageButton.setText("Update");
+		
+		
+		
+		Composite composite = new Composite(resultViewComposite, SWT.NONE);
+		GridData gd_composite = new GridData(SWT.LEFT, SWT.CENTER, false, false, 1, 1);
+		gd_composite.heightHint = 300;
+		gd_composite.widthHint = 517;
+		composite.setLayoutData(gd_composite);
+		
+		
+		TabFolder tabFolder = new TabFolder(composite, SWT.V_SCROLL);
+		tabFolder.setBounds(10, 10, 495, 279);
+		
+		triageDetails = new TabItem(tabFolder, SWT.NONE);
+		triageDetails.setText("Details");
+		
+		detailList = new org.eclipse.swt.widgets.List(tabFolder,SWT.BORDER);
+		triageDetails.setControl(detailList);
+		
+		triageChanges = new TabItem(tabFolder, SWT.NONE);
+		triageChanges.setText("Changes");
+		
+		changeList = new org.eclipse.swt.widgets.List(tabFolder,SWT.BORDER);
+		triageChanges.setControl(changeList);
 
 		Label summaryLabel = new Label(resultViewComposite, SWT.NONE);
 		summaryLabel.setFont(boldFont);
@@ -1049,12 +1120,100 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					if (!summaryString.isBlank()) {
 						summaryText.setText(summaryString);
 					}
+					
+					if(selectedItem!= null && selectedItem.getResult() != null && selectedItem.getResult().getSimilarityId() != null) {
+						populateTriageDetails(selectedItem);
+						// call triage show method			
+						// empty triage details and changes
+						List<Predicate> triageDetails = getTriageInfo(UUID.fromString(currentProjectId),selectedItem.getResult().getSimilarityId(),selectedItem.getResult().getType());	
+						CxLogger.info(triageDetails + "");
+						if(triageDetails.size() >0) {
+							populateDetailsAndChanges(triageDetails);
+						}
+					}
 					resultViewComposite.setVisible(true);
 					resultViewComposite.layout();
 					if (selectedItem.getType() != null) {
 						updateAttackVectorForSelectedTreeItem(selectedItem);
 					}
 				}
+			}
+			
+			private void populateDetailsAndChanges(List<Predicate> triageDetails) {
+				detailList.removeAll();
+				changeList.removeAll();
+				for(Predicate detail: triageDetails) {
+					detailList.add("Predicate ID: " + detail.getID());
+					detailList.add("Severity: " + detail.getSeverity());
+					detailList.add("State: " + detail.getState());
+					changeList.add("Created at: " + detail.getCreatedAt());
+					changeList.add("Updated at: " + detail.getUpdatedAt());
+					changeList.add("Comment: " + detail.getComment());
+				}
+				
+				
+			}
+
+			private void populateTriageDetails(DisplayModel selectedItem) {
+				// TODO Auto-generated method stub
+				String[] severity = {"HIGH","MEDIUM","LOW","INFO"};
+				String[] status = {"To Verify","Not Exploitable","Confirmed","Urgent"};
+				triageSeverity.setContentProvider(ArrayContentProvider.getInstance());
+				PluginUtils.setTextForComboViewer(triageSeverity, "Severity");
+				triageSeverity.setInput(severity);
+				triageStatus.setContentProvider(ArrayContentProvider.getInstance());
+				PluginUtils.setTextForComboViewer(triageStatus, "Status");
+				triageStatus.setInput(status);
+				triageSeverity.addSelectionChangedListener(new ISelectionChangedListener() {
+
+					@Override
+					public void selectionChanged(SelectionChangedEvent event) {
+						// TODO Auto-generated method stub
+						IStructuredSelection selection = (IStructuredSelection) event.getSelection();
+						if (selection.size() > 0) {
+							selectedSeverity = ((String) selection.getFirstElement());
+						}
+					}
+				});
+				
+				triageStatus.addSelectionChangedListener(new ISelectionChangedListener() {
+
+					@Override
+					public void selectionChanged(SelectionChangedEvent event) {
+						// TODO Auto-generated method stub
+						IStructuredSelection selection = (IStructuredSelection) event.getSelection();
+						if (selection.size() > 0) {
+							selectedStatus = ((String) selection.getFirstElement());
+						}
+					}
+				});
+				
+				triageButton.addSelectionListener(new SelectionAdapter() {
+					public void widgetSelected(SelectionEvent event) {
+						// call triage update
+						if(selectedSeverity != null && selectedStatus != null) {
+							triageButton.setText("updating");
+							DataProvider.getInstance().triageUpdate(UUID.fromString(currentProjectId),selectedItem.getResult().getSimilarityId(),selectedItem.getResult().getType(),selectedStatus,"testComment",selectedSeverity);
+							triageButton.setText("updated");
+						}
+					
+					}
+				});
+				
+				
+			}
+
+			private List<Predicate> getTriageInfo(UUID projectID,String similarityId,String scanType) {
+				List<Predicate> triageList = new ArrayList<Predicate>();
+				
+				try {
+					triageList = DataProvider.getInstance().getTriageShow(projectID,similarityId,scanType);
+				} catch (Exception e) {
+					String errorMessage = e.getCause() != null && e.getCause().getMessage() != null ? e.getCause().getMessage() : e.getMessage();
+					PluginUtils.showMessage(rootModel, resultsTree, errorMessage);
+				}
+				
+				return triageList;
 			}
 		});
 	}
