@@ -40,13 +40,13 @@ import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.FontData;
-import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.layout.RowLayout;
 import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
@@ -130,7 +130,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private boolean alreadyRunning = false;
 
 	Font boldFont;
-	private Text summaryText;
+
 	private Text descriptionValueText;
 	private Text attackVectorValueLinkText;
 
@@ -515,17 +515,18 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		Display display = parent.getShell().getDisplay();
 		FontData systemFontData = display.getSystemFont().getFontData()[0];
 		boldFont = new Font(display, systemFontData.getName(), systemFontData.getHeight(), SWT.BOLD);
+		Font titleFont = new Font(display, systemFontData.getName(), systemFontData.getHeight() + 2, SWT.BOLD);
 
 		resultViewComposite = new Composite(resultsComposite, SWT.BORDER);
 		resultViewComposite.setLayout(new GridLayout(1, false));
 
 		// TODO: change font size
 		titleLabel = new CLabel(resultViewComposite, SWT.NONE);
-		titleLabel.setFont(boldFont);
+		titleLabel.setFont(titleFont);
 		titleLabel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false, 1, 1));
 		
 		/*
-		 * Here, add the triage dropdown to show severity, status and also an update button to call triage update
+		 * Here, add the triage dropdown to show severity, state and also an update button to call triage update
 		 * 
 		 * */
 		
@@ -547,16 +548,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		triageButton = new Button(triageView, SWT.PUSH);
 		triageButton.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false, 1, 1));
 		triageButton.setText("Update");
-
-		Label summaryLabel = new Label(resultViewComposite, SWT.NONE);
-		summaryLabel.setFont(boldFont);
-		summaryLabel.setText("Summary:");
-		summaryLabel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false, 1, 1));
-
-		summaryText = new Text(resultViewComposite, SWT.READ_ONLY | SWT.WRAP);
-		summaryText.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false, 1, 1));
-		summaryText.setText("Not Available.");
-
+		
+		
 		Label descriptionLabel = new Label(resultViewComposite, SWT.NONE);
 		descriptionLabel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false, 1, 1));
 		descriptionLabel.setFont(boldFont);
@@ -1091,9 +1084,9 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 						}
 					}
 
-					if (!summaryString.isBlank()) {
-						summaryText.setText(summaryString);
-					}
+//					if (!summaryString.isBlank()) {
+//						summaryText.setText(summaryString);
+//					}
 					
 					if(selectedItem != null && selectedItem.getResult() != null && selectedItem.getResult().getSimilarityId() != null) {
 						changeList.removeAll();
@@ -1121,6 +1114,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 */
 	private void createTriageSeverityAndStateCombos(DisplayModel selectedItem) {
 		String currentSeverity = selectedItem.getSeverity();
+		selectedSeverity = selectedItem.getSeverity();
 		String[] severity = {"HIGH","MEDIUM","LOW","INFO"};
 		
 		triageSeverityComboViewew.setContentProvider(ArrayContentProvider.getInstance());
@@ -1139,6 +1133,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		});
 		
 		String currentState = selectedItem.getResult().getState();
+		selectedState = selectedItem.getResult().getState();
 		String[] state = {"TO_VERIFY", "NOT_EXPLOITABLE", "PROPOSED_NOT_EXPLOITABLE", "CONFIRMED", "URGENT"};
 		
 		triageStateComboViewer.setContentProvider(ArrayContentProvider.getInstance());
@@ -1163,15 +1158,25 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					UUID projectId = UUID.fromString(currentProjectId);
 					String similarityId = selectedItem.getResult().getSimilarityId();
 					String engineType = selectedItem.getResult().getType();
-
+					triageButton.setEnabled(false);
+					triageButton.setText("Loading");
 					DataProvider.getInstance().triageUpdate(projectId, similarityId, engineType, selectedState, "testComment", selectedSeverity);
+					selectedItem.setSeverity(selectedSeverity);
+					titleLabel.setImage(findSeverityImage(selectedItem));
+					titleLabel.setText(selectedItem.getName());
+					populateTriageChanges(selectedItem);
+					triageButton.setEnabled(true);
+					triageButton.setText("Update");
 					
 					Display.getDefault().asyncExec(new Runnable() {
 					    public void run() {
 					    	alreadyRunning = true;
 							updateResultsTree(DataProvider.getInstance().getResultsForScanId(currentScanId));
+							
 					    }
 					});
+					
+					resultViewComposite.layout();
 				}
 			}
 		});
@@ -1190,7 +1195,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				changeList.removeAll();
 				
 				for(Predicate detail: triageDetails) {										
-					changeList.add("org_admin");
+					changeList.add(detail.getCreatedBy());
 					changeList.add(detail.getCreatedAt() != null ? detail.getCreatedAt() : "no created at");
 					changeList.add(detail.getSeverity());
 					changeList.add(detail.getState());
