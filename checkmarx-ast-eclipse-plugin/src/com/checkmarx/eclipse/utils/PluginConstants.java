@@ -11,6 +11,7 @@ public class PluginConstants {
 	public static final String COMBOBOX_SCAND_ID_NO_SCANS_AVAILABLE = "No scans available. Select a project or paste a Scan Id here and hit Enter.";
 	public static final String COMBOBOX_BRANCH_CHANGING = "Changing branch...";
 	public static final String BTN_OPEN_SETTINGS = "Open Settings";
+	public static final String LOADING_CHANGES = "Loading changes...";
 	
 	/******************************** LOG VIEW: ERRORS ********************************/
 	public static final String ERROR_AUTHENTICATING_AST = "An error occurred while trying to authenticate to AST: %s";

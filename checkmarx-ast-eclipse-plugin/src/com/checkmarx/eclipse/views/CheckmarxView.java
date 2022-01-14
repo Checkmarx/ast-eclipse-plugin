@@ -96,7 +96,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private static final String LOADING_SCANS = "Loading scans...";
 	private static final String NO_BRANCHES_AVAILABLE = "No branches available.";
 	private static final String NO_PROJECTS_AVAILABLE = "No projects available.";
-	private static final String VERTICAL_SEPERATOR = "|";
 	private static final String FORMATTED_SCAN_LABEL = "%s (%s)";
 
 	/**
@@ -124,6 +123,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private org.eclipse.swt.widgets.List changeList;
 	private DisplayModel rootModel;
 	private String selectedSeverity, selectedState;
+	private DisplayModel currentDisplayModel;
 	private Button triageButton;
 	private Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell();
 
@@ -520,15 +520,9 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		resultViewComposite = new Composite(resultsComposite, SWT.BORDER);
 		resultViewComposite.setLayout(new GridLayout(1, false));
 
-		// TODO: change font size
 		titleLabel = new CLabel(resultViewComposite, SWT.NONE);
 		titleLabel.setFont(titleFont);
 		titleLabel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false, 1, 1));
-		
-		/*
-		 * Here, add the triage dropdown to show severity, state and also an update button to call triage update
-		 * 
-		 * */
 		
 		Composite triageView = new Composite(resultViewComposite,SWT.NONE);
 		triageView.setLayout(new GridLayout(3, false));
@@ -548,7 +542,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		triageButton = new Button(triageView, SWT.PUSH);
 		triageButton.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false, 1, 1));
 		triageButton.setText("Update");
-		
 		
 		Label descriptionLabel = new Label(resultViewComposite, SWT.NONE);
 		descriptionLabel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false, 1, 1));
@@ -1059,49 +1052,31 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				if (event.getSelection() instanceof IStructuredSelection) {
 					IStructuredSelection selection = (IStructuredSelection) event.getSelection();
 					DisplayModel selectedItem = (DisplayModel) selection.getFirstElement();
-					String summaryString = PluginConstants.EMPTY_STRING;
-
-					if (selectedItem.getType() != null) {
-						summaryString = (selectedItem.getType()).toUpperCase() + " " + VERTICAL_SEPERATOR + " ";
+					
+					if(selectedItem == null || selectedItem.getType() == null) {
+						return;
 					}
-
+					
 					if (selectedItem.getSeverity() != null) {
-						summaryString = summaryString + selectedItem.getSeverity() + " " + VERTICAL_SEPERATOR + " ";
 						titleLabel.setImage(findSeverityImage(selectedItem));
 						titleLabel.setText(selectedItem.getName());
 					}
 
 					if (selectedItem.getResult() != null) {
-						if (selectedItem.getResult().getStatus() != null) {
-							summaryString = summaryString + selectedItem.getResult().getStatus() + " "
-									+ VERTICAL_SEPERATOR + " ";
-						}
-
-						if (selectedItem.getResult().getData().getDescription() != null) {
-							descriptionValueText.setText(selectedItem.getResult().getData().getDescription());
-						} else {
-							descriptionValueText.setText("Not Available.");
-						}
-					}
-
-//					if (!summaryString.isBlank()) {
-//						summaryText.setText(summaryString);
-//					}
-					
-					if(selectedItem != null && selectedItem.getResult() != null && selectedItem.getResult().getSimilarityId() != null) {
-						changeList.removeAll();
-						changeList.add("Loading changes...");
 						
-						createTriageSeverityAndStateCombos(selectedItem);
+						descriptionValueText.setText(selectedItem.getResult().getData().getDescription() != null ? selectedItem.getResult().getData().getDescription() : "Not Available");
 						
-						populateTriageChanges(selectedItem);
+						if(selectedItem.getResult().getSimilarityId() != null) {
+							createTriageSeverityAndStateCombos(selectedItem);
+							
+							populateTriageChanges(selectedItem);
+						}
 					}
 					
 					resultViewComposite.setVisible(true);
 					resultViewComposite.layout();
-					if (selectedItem.getType() != null) {
-						updateAttackVectorForSelectedTreeItem(selectedItem);
-					}
+					
+					updateAttackVectorForSelectedTreeItem(selectedItem);
 				}
 			}
 		});
@@ -1113,6 +1088,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 * @param selectedItem
 	 */
 	private void createTriageSeverityAndStateCombos(DisplayModel selectedItem) {
+		currentDisplayModel = selectedItem;
+		
 		String currentSeverity = selectedItem.getSeverity();
 		selectedSeverity = selectedItem.getSeverity();
 		String[] severity = {"HIGH","MEDIUM","LOW","INFO"};
@@ -1132,7 +1109,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 			}
 		});
 		
-		String currentState = selectedItem.getResult().getState();
+		String currentState = selectedItem.getState();
 		selectedState = selectedItem.getResult().getState();
 		String[] state = {"TO_VERIFY", "NOT_EXPLOITABLE", "PROPOSED_NOT_EXPLOITABLE", "CONFIRMED", "URGENT"};
 		
@@ -1153,26 +1130,33 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		triageButton.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent event) {
-				// call triage update
-				if(selectedSeverity != null && selectedState != null) {
+				// Call triage update. triageButton.isEnabled() is used to avoid nonsense randomly clicks triggered
+				if(selectedSeverity != null && selectedState != null && triageButton.isEnabled()) {
 					UUID projectId = UUID.fromString(currentProjectId);
-					String similarityId = selectedItem.getResult().getSimilarityId();
-					String engineType = selectedItem.getResult().getType();
+					String similarityId = currentDisplayModel.getResult().getSimilarityId();
+					String engineType = currentDisplayModel.getResult().getType();
 					triageButton.setEnabled(false);
 					triageButton.setText("Loading");
-					DataProvider.getInstance().triageUpdate(projectId, similarityId, engineType, selectedState, "testComment", selectedSeverity);
-					selectedItem.setSeverity(selectedSeverity);
-					titleLabel.setImage(findSeverityImage(selectedItem));
-					titleLabel.setText(selectedItem.getName());
-					populateTriageChanges(selectedItem);
-					triageButton.setEnabled(true);
-					triageButton.setText("Update");
 					
 					Display.getDefault().asyncExec(new Runnable() {
-					    public void run() {
-					    	alreadyRunning = true;
-							updateResultsTree(DataProvider.getInstance().getResultsForScanId(currentScanId));
+					    public void run() {	
+					    	boolean successfullyUpdate = DataProvider.getInstance().triageUpdate(projectId, similarityId, engineType, selectedState, "testComment", selectedSeverity);
 							
+					    	if(successfullyUpdate) {
+					    		currentDisplayModel.setSeverity(selectedSeverity);
+					    		currentDisplayModel.setState(selectedState);
+								titleLabel.setImage(findSeverityImage(currentDisplayModel));
+								titleLabel.setText(currentDisplayModel.getName());
+								populateTriageChanges(currentDisplayModel);
+								
+								alreadyRunning = true;
+								updateResultsTree(DataProvider.getInstance().sortResults());
+								
+								triageButton.setEnabled(true);
+								triageButton.setText("Update");
+					    	}else {
+					    		// TODO: inform the user that update failed?
+					    	}
 					    }
 					});
 					
@@ -1188,9 +1172,12 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 * @param selectedItem
 	 */
 	private void populateTriageChanges(DisplayModel selectedItem) {
+		changeList.removeAll();
+		changeList.add(PluginConstants.LOADING_CHANGES);
+		
 		Display.getDefault().asyncExec(new Runnable() {
 			public void run() {
-				List<Predicate> triageDetails = getTriageInfo(UUID.fromString(currentProjectId),selectedItem.getResult().getSimilarityId(),selectedItem.getResult().getType());	
+				List<Predicate> triageDetails = getTriageInfo(UUID.fromString(currentProjectId), selectedItem.getResult().getSimilarityId(), selectedItem.getResult().getType());
 				
 				changeList.removeAll();
 				
