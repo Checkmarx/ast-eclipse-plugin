@@ -13,10 +13,10 @@
     <img src="logo.svg" alt="Logo" width="80" height="80">
   </a>
 
-  <h3 align="center">{Project Name}</h3>
+  <h3 align="center">AST-ECLIPSE-PLUGIN</h3>
 
   <p align="center">
-    {description}
+    The CxAST Eclipse plugin enables you to import results from a CxAST scan directly into your IDE.
     <br />
     <a href="https://checkmarx.atlassian.net/wiki/spaces/AST/pages/6107267142/CxAST+Eclipse+Plugin"><strong>Explore the docs »</strong></a>
     <br />
