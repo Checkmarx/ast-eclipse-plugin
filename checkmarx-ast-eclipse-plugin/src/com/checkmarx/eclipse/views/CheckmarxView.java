@@ -1039,8 +1039,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 									+ VERTICAL_SEPERATOR + " ";
 						}
 
-						if (selectedItem.getResult().getData().getDescription() != null) {
-							descriptionValueText.setText(selectedItem.getResult().getData().getDescription());
+						if (selectedItem.getResult().getDescription() != null) {
+							descriptionValueText.setText(selectedItem.getResult().getDescription());
 						} else {
 							descriptionValueText.setText("Not Available.");
 						}
