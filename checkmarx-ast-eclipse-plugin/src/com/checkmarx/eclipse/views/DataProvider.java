@@ -526,6 +526,7 @@ public class DataProvider {
 		Logger log = LoggerFactory.getLogger(Authenticator.class.getName());
 
 		CxConfig config = CxConfig.builder().baseUri(Preferences.getServerUrl()).tenant(Preferences.getTenant())
+				.baseAuthUri(Preferences.getAuthServerUrl())
 				.apiKey(Preferences.getApiKey()).additionalParameters(Preferences.getAdditionalOptions()).build();
 
 		try {

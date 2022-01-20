@@ -1039,8 +1039,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 									+ VERTICAL_SEPERATOR + " ";
 						}
 
-						if (selectedItem.getResult().getData().getDescription() != null) {
-							descriptionValueText.setText(selectedItem.getResult().getData().getDescription());
+						if (selectedItem.getResult().getDescription() != null) {
+							descriptionValueText.setText(selectedItem.getResult().getDescription());
 						} else {
 							descriptionValueText.setText("Not Available.");
 						}
@@ -1064,7 +1064,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		attackVectorCompositePanel.setVisible(true);
 
 		if (selectedItem.getType().equalsIgnoreCase(PluginConstants.SCA_DEPENDENCY)) {
-			attackVectorLabel.setText("Attack Vector: ");
+			attackVectorLabel.setText("Package Data: ");
 			List<PackageData> packageDataList = selectedItem.getResult().getData().getPackageData();
 
 			if (packageDataList != null && !packageDataList.isEmpty()) {
