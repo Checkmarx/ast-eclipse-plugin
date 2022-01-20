@@ -29,6 +29,10 @@ public class Preferences {
 		return getPref(SERVER_URL);
 	}
 	
+	public static String getAuthServerUrl() {
+		return getPref(AUTHENTICATION_URL);
+	}
+	
 	public static String getTenant() {
 		return getPref(TENANT);
 	}
