@@ -24,6 +24,7 @@ import org.eclipse.jface.preference.PreferenceDialog;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.ColumnViewerToolTipSupport;
 import org.eclipse.jface.viewers.ComboViewer;
+import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.ISelectionChangedListener;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.LabelProvider;
@@ -31,11 +32,13 @@ import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.viewers.StructuredSelection;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.jface.viewers.TreeViewerColumn;
+import org.eclipse.jface.viewers.ViewerFilter;
 import org.eclipse.jgit.events.RefsChangedEvent;
 import org.eclipse.jgit.events.RefsChangedListener;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CLabel;
+import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Font;
@@ -52,10 +55,13 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Link;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.swt.widgets.TabFolder;
+import org.eclipse.swt.widgets.TabItem;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.swt.widgets.TreeColumn;
 import org.eclipse.ui.IActionBars;
@@ -85,6 +91,7 @@ import com.checkmarx.eclipse.views.provider.TreeContentProvider;
 import com.google.common.base.Strings;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
+
 
 public class CheckmarxView extends ViewPart implements EventHandler {
 
@@ -117,10 +124,17 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	public static final Image LOW_SEVERITY = Activator.getImageDescriptor("/icons/low_untoggle.png").createImage();
 
 	public static final Image INFO_SEVERITY = Activator.getImageDescriptor("/icons/info_untoggle.png").createImage();
+	
+	
+	public static final Image USER = Activator.getImageDescriptor("/icons/user.png").createImage();
+	
+	public static final Image CREATED_AT_IMAGE = Activator.getImageDescriptor("/icons/date.png").createImage();
+	
+	public static final Image COMMENT = Activator.getImageDescriptor("/icons/comment.png").createImage();
 
 	private TreeViewer resultsTree;
 	private ComboViewer scanIdComboViewer, projectComboViewer, branchComboViewer, triageSeverityComboViewew, triageStateComboViewer;
-	private org.eclipse.swt.widgets.List changeList;
+	private Text commentText;
 	private DisplayModel rootModel;
 	private String selectedSeverity, selectedState;
 	private DisplayModel currentDisplayModel;
@@ -131,14 +145,11 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 	Font boldFont;
 
-	private Text descriptionValueText;
 	private Text attackVectorValueLinkText;
 
 	private Composite resultViewComposite;
 	private Composite attackVectorCompositePanel;
 	private Composite openSettingsComposite;
-	private Composite changesComposite;
-
 	private CLabel titleLabel;
 
 	private Label attackVectorLabel;
@@ -158,8 +169,11 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private boolean firstTimeTriggered = false; 
 	
 	private Composite parent;
+	private ScrolledComposite scrolledComposite;
+	
 	
 	private boolean isPluginDraw = false;
+	protected TabFolder tabFolder;
 		
 	public CheckmarxView() {
 		super();
@@ -543,26 +557,17 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		triageButton.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false, 1, 1));
 		triageButton.setText("Update");
 		
-		Label descriptionLabel = new Label(resultViewComposite, SWT.NONE);
-		descriptionLabel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false, 1, 1));
-		descriptionLabel.setFont(boldFont);
-		descriptionLabel.setText("Description:");
+		commentText = new Text(triageView,SWT.BORDER);
+		commentText.setText("Comment");
+		GridData commentData = new GridData(SWT.FILL,SWT.BEGINNING,true,true,3,1);
+		commentText.setEnabled(true);
+		commentText.setLayoutData(commentData);
 
-		descriptionValueText = new Text(resultViewComposite, SWT.READ_ONLY | SWT.MULTI | SWT.WRAP);
-		descriptionValueText.setLayoutData(new GridData(SWT.LEFT, SWT.TOP, true, false, 1, 1));
-		descriptionValueText.setText("Not Available.");
-		
-		
-		Label changesLabel = new Label(resultViewComposite, SWT.NONE);
-		changesLabel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false, 1, 1));
-		changesLabel.setFont(boldFont);
-		changesLabel.setText("Changes:");
-		
-		changesComposite = new Composite(resultViewComposite, SWT.NONE);
-		changesComposite.setLayout(new FillLayout(SWT.VERTICAL));
-		changesComposite.setLayoutData(new GridData(GridData.FILL, GridData.FILL, true, true));
-		
-		changeList = new org.eclipse.swt.widgets.List(changesComposite, SWT.V_SCROLL);
+		scrolledComposite = new ScrolledComposite(resultViewComposite, SWT.H_SCROLL| SWT.V_SCROLL);		
+	    scrolledComposite.setExpandHorizontal(true);
+	    scrolledComposite.setExpandVertical(true);
+		scrolledComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+
 		
 		resultViewComposite.setVisible(false);
 	}
@@ -1061,17 +1066,11 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 						titleLabel.setImage(findSeverityImage(selectedItem));
 						titleLabel.setText(selectedItem.getName());
 					}
-
-					if (selectedItem.getResult() != null) {
-						
-						descriptionValueText.setText(selectedItem.getResult().getData().getDescription() != null ? selectedItem.getResult().getData().getDescription() : "Not Available");
-						
-						if(selectedItem.getResult().getSimilarityId() != null) {
-							createTriageSeverityAndStateCombos(selectedItem);
-							
-							populateTriageChanges(selectedItem);
+					
+					if(selectedItem.getResult() != null && selectedItem.getResult().getSimilarityId() != null) {
+						createTriageSeverityAndStateCombos(selectedItem);			
+						populateTriageChanges(selectedItem);
 						}
-					}
 					
 					resultViewComposite.setVisible(true);
 					resultViewComposite.layout();
@@ -1137,10 +1136,13 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					String engineType = currentDisplayModel.getResult().getType();
 					triageButton.setEnabled(false);
 					triageButton.setText("Loading");
+					commentText.setEnabled(false);
+					commentText.setEditable(false);
+					
 					
 					Display.getDefault().asyncExec(new Runnable() {
 					    public void run() {	
-					    	boolean successfullyUpdate = DataProvider.getInstance().triageUpdate(projectId, similarityId, engineType, selectedState, "testComment", selectedSeverity);
+					    	boolean successfullyUpdate = DataProvider.getInstance().triageUpdate(projectId, similarityId, engineType, selectedState, commentText.getText() != null ? commentText.getText() : "", selectedSeverity);
 							
 					    	if(successfullyUpdate) {
 					    		currentDisplayModel.setSeverity(selectedSeverity);
@@ -1151,9 +1153,15 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 								
 								alreadyRunning = true;
 								updateResultsTree(DataProvider.getInstance().sortResults());
-								
 								triageButton.setEnabled(true);
 								triageButton.setText("Update");
+								commentText.setEnabled(true);
+								commentText.setText("Comment");
+								commentText.setEditable(true);
+								
+								// TODO: open the selectedItem in the tree - check hidden filter scenario
+								
+								
 					    	}else {
 					    		// TODO: inform the user that update failed?
 					    	}
@@ -1172,29 +1180,125 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 * @param selectedItem
 	 */
 	private void populateTriageChanges(DisplayModel selectedItem) {
-		changeList.removeAll();
-		changeList.add(PluginConstants.LOADING_CHANGES);
-		
+
+		populateLoadingScreen();
+
 		Display.getDefault().asyncExec(new Runnable() {
 			public void run() {
+				
+				tabFolder = new TabFolder(scrolledComposite, SWT.NONE);
+				TabItem tbtmDescription = new TabItem(tabFolder, SWT.NONE);
+				tbtmDescription.setText("Description");
+				
+				
+				TabItem tbtmChanges = new TabItem(tabFolder, SWT.NONE);
+				tbtmChanges.setText("Changes");
+				
+				Composite detailsComposite = new Composite(tabFolder, SWT.NONE);
+				detailsComposite.setLayout(new GridLayout(1, false));
+				tbtmDescription.setControl(detailsComposite);
+				detailsComposite.setLayoutData(new GridData(SWT.FILL, SWT.BEGINNING, false, false));
+
+	
+				Composite changesComposite = new Composite(tabFolder, SWT.NONE);
+				changesComposite.setLayout(new FillLayout(SWT.VERTICAL));
+				tbtmChanges.setControl(changesComposite);
+				changesComposite.setLayoutData(new GridData(SWT.FILL, SWT.BEGINNING, true, true, 1, 1));
+				
+				CLabel descriptionLabel = new CLabel(detailsComposite,SWT.WRAP | SWT.NONE);
+				descriptionLabel.setText(selectedItem.getResult().getData().getDescription() != null ? selectedItem.getResult().getData().getDescription() : "No data");
+				descriptionLabel.setLayoutData(new GridData(SWT.LEFT, SWT.BEGINNING, false, false, 1, 1));
+				
+				
+				
 				List<Predicate> triageDetails = getTriageInfo(UUID.fromString(currentProjectId), selectedItem.getResult().getSimilarityId(), selectedItem.getResult().getType());
-				
-				changeList.removeAll();
-				
-				for(Predicate detail: triageDetails) {										
-					changeList.add(detail.getCreatedBy());
-					changeList.add(detail.getCreatedAt() != null ? detail.getCreatedAt() : "no created at");
-					changeList.add(detail.getSeverity());
-					changeList.add(detail.getState());
-					changeList.add(detail.getComment().isEmpty() ? "No comment." : detail.getComment());
-					changeList.add("");
+				if(triageDetails.size() >0) {
+					// populate changes composite based on the predicate
+					for(Predicate detail : triageDetails) {
+						
+						CLabel createdBy = new CLabel(changesComposite,SWT.NONE);
+						createdBy.setImage(USER);
+						String user = detail.getCreatedBy();
+						if(detail.getCreatedAt() != null) {
+						String time = PluginUtils.convertStringTimeStamp(detail.getCreatedAt());
+						createdBy.setText(user + " | " + time.replace("|", ""));
+						}
+						else {
+						createdBy.setText(user);	
+						}
+						createdBy.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+
+						
+						CLabel severity = new CLabel(changesComposite,SWT.NONE);
+						severity.setImage(findSeverityImageString(detail.getSeverity()));
+						severity.setText(detail.getSeverity());
+						severity.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+						
+						if(detail.getComment() != null && detail.getComment() != "") {
+							CLabel comment = new CLabel(changesComposite,SWT.NONE);
+							comment.setImage(COMMENT);
+							comment.setText(detail.getComment());
+							comment.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+						}
+						
+						Label label = new Label(changesComposite, SWT.SEPARATOR | SWT.HORIZONTAL);
+						label.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 0));
+					}
 				}
 				
-				if(triageDetails.isEmpty()) {
-					changeList.add("No changes.");
+				else {
+					
+					changesComposite = new Composite(tabFolder, SWT.NONE);
+					changesComposite.setLayout(new GridLayout(1, false));
+					tbtmChanges.setControl(changesComposite);
+					changesComposite.setLayoutData(new GridData(SWT.FILL, SWT.BEGINNING, false, false));
+					
+					CLabel noChange = new CLabel(changesComposite,SWT.NONE);
+					noChange.setText("No changes");
+					noChange.setLayoutData(new GridData(SWT.FILL, SWT.BEGINNING, false, false, 1, 1));
 				}
+				
+				scrolledComposite.setContent(tabFolder);
+				scrolledComposite.setMinSize(tabFolder.computeSize(SWT.DEFAULT, SWT.DEFAULT));
+			}
+			
+			
+
+			private Image findSeverityImageString(String severity) {
+				if (severity == null)
+					return null;
+
+				if (severity.equalsIgnoreCase(Severity.CRITICAL.name()))
+					return CRITICAL_SEVERITY;
+				if (severity.equalsIgnoreCase(Severity.HIGH.name()))
+					return HIGH_SEVERITY;
+				if (severity.equalsIgnoreCase(Severity.MEDIUM.name()))
+					return MEDIUM_SEVERITY;
+				if (severity.equalsIgnoreCase(Severity.LOW.name()))
+					return LOW_SEVERITY;
+				if (severity.equalsIgnoreCase(Severity.INFO.name()))
+					return INFO_SEVERITY;
+
+				return null;
 			}
 		});
+		
+		
+		
+		
+	}
+
+	private void populateLoadingScreen() {
+		Composite loadingScreen = new Composite(scrolledComposite, SWT.NONE);
+		loadingScreen.setLayout(new GridLayout(1, false));
+		loadingScreen.setLayoutData(new GridData(SWT.FILL, SWT.BEGINNING, false, false));
+		
+		CLabel loadingLabel = new CLabel(loadingScreen,SWT.NONE);
+		loadingLabel.setText("Loading");
+		loadingLabel.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+		
+		scrolledComposite.setContent(loadingScreen);
+		scrolledComposite.setMinSize(loadingScreen.computeSize(SWT.DEFAULT, SWT.DEFAULT));
 	}
 
 	/**
