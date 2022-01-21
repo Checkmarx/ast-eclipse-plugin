@@ -1185,77 +1185,30 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 		Display.getDefault().asyncExec(new Runnable() {
 			public void run() {
-				
-				tabFolder = new TabFolder(scrolledComposite, SWT.NONE);
-				TabItem tbtmDescription = new TabItem(tabFolder, SWT.NONE);
-				tbtmDescription.setText("Description");
-				
+
+				createDescriptionInfo(selectedItem);
 				
 				TabItem tbtmChanges = new TabItem(tabFolder, SWT.NONE);
 				tbtmChanges.setText("Changes");
 				
-				Composite detailsComposite = new Composite(tabFolder, SWT.NONE);
-				detailsComposite.setLayout(new GridLayout(1, false));
-				tbtmDescription.setControl(detailsComposite);
-				detailsComposite.setLayoutData(new GridData(SWT.FILL, SWT.BEGINNING, false, false));
-
-	
 				Composite changesComposite = new Composite(tabFolder, SWT.NONE);
 				changesComposite.setLayout(new FillLayout(SWT.VERTICAL));
 				tbtmChanges.setControl(changesComposite);
 				changesComposite.setLayoutData(new GridData(SWT.FILL, SWT.BEGINNING, true, true, 1, 1));
-				
-				CLabel descriptionLabel = new CLabel(detailsComposite,SWT.WRAP | SWT.NONE);
-				descriptionLabel.setText(selectedItem.getResult().getData().getDescription() != null ? selectedItem.getResult().getData().getDescription() : "No data");
-				descriptionLabel.setLayoutData(new GridData(SWT.LEFT, SWT.BEGINNING, false, false, 1, 1));
-				
 				
 				
 				List<Predicate> triageDetails = getTriageInfo(UUID.fromString(currentProjectId), selectedItem.getResult().getSimilarityId(), selectedItem.getResult().getType());
 				if(triageDetails.size() >0) {
 					// populate changes composite based on the predicate
 					for(Predicate detail : triageDetails) {
-						
-						CLabel createdBy = new CLabel(changesComposite,SWT.NONE);
-						createdBy.setImage(USER);
-						String user = detail.getCreatedBy();
-						if(detail.getCreatedAt() != null) {
-						String time = PluginUtils.convertStringTimeStamp(detail.getCreatedAt());
-						createdBy.setText(user + " | " + time.replace("|", ""));
-						}
-						else {
-						createdBy.setText(user);	
-						}
-						createdBy.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
-
-						
-						CLabel severity = new CLabel(changesComposite,SWT.NONE);
-						severity.setImage(findSeverityImageString(detail.getSeverity()));
-						severity.setText(detail.getSeverity());
-						severity.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
-						
-						if(detail.getComment() != null && detail.getComment() != "") {
-							CLabel comment = new CLabel(changesComposite,SWT.NONE);
-							comment.setImage(COMMENT);
-							comment.setText(detail.getComment());
-							comment.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
-						}
-						
-						Label label = new Label(changesComposite, SWT.SEPARATOR | SWT.HORIZONTAL);
-						label.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 0));
+						// populate individual triage node details
+						populateIndChangesData(detail,changesComposite);
 					}
 				}
 				
 				else {
+					populateNoChangesData(changesComposite,tbtmChanges);
 					
-					changesComposite = new Composite(tabFolder, SWT.NONE);
-					changesComposite.setLayout(new GridLayout(1, false));
-					tbtmChanges.setControl(changesComposite);
-					changesComposite.setLayoutData(new GridData(SWT.FILL, SWT.BEGINNING, false, false));
-					
-					CLabel noChange = new CLabel(changesComposite,SWT.NONE);
-					noChange.setText("No changes");
-					noChange.setLayoutData(new GridData(SWT.FILL, SWT.BEGINNING, false, false, 1, 1));
 				}
 				
 				scrolledComposite.setContent(tabFolder);
@@ -1263,6 +1216,73 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 			}
 			
 			
+
+			private void populateNoChangesData(Composite changesComposite, TabItem tbtmChanges) {
+				changesComposite = new Composite(tabFolder, SWT.NONE);
+				changesComposite.setLayout(new GridLayout(1, false));
+				tbtmChanges.setControl(changesComposite);
+				changesComposite.setLayoutData(new GridData(SWT.FILL, SWT.BEGINNING, false, false));
+				
+				CLabel noChange = new CLabel(changesComposite,SWT.NONE);
+				noChange.setText(PluginConstants.NO_CHANGES);
+				noChange.setLayoutData(new GridData(SWT.FILL, SWT.BEGINNING, false, false, 1, 1));
+				
+			}
+
+
+
+			private void populateIndChangesData(Predicate detail, Composite changesComposite) {
+				CLabel createdBy = new CLabel(changesComposite,SWT.NONE);
+				createdBy.setImage(USER);
+				String user = detail.getCreatedBy();
+				if(detail.getCreatedAt() != null) {
+				String time = PluginUtils.convertStringTimeStamp(detail.getCreatedAt());
+				createdBy.setText(user + " | " + time.replace("|", ""));
+				}
+				else {
+				createdBy.setText(user);	
+				}
+				createdBy.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+
+				
+				CLabel severity = new CLabel(changesComposite,SWT.NONE);
+				severity.setImage(findSeverityImageString(detail.getSeverity()));
+				severity.setText(detail.getSeverity());
+				severity.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+				
+				if(detail.getComment() != null && detail.getComment() != "") {
+					CLabel comment = new CLabel(changesComposite,SWT.NONE);
+					comment.setImage(COMMENT);
+					comment.setText(detail.getComment());
+					comment.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+				}
+				
+				Label label = new Label(changesComposite, SWT.SEPARATOR | SWT.HORIZONTAL);
+				label.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 0));
+				
+			}
+
+
+
+			private void createDescriptionInfo(DisplayModel selectedItem) {
+
+				tabFolder = new TabFolder(scrolledComposite, SWT.NONE);
+				TabItem tbtmDescription = new TabItem(tabFolder, SWT.NONE);
+				tbtmDescription.setText("Description");
+				
+				
+				Composite detailsComposite = new Composite(tabFolder, SWT.NONE);
+				detailsComposite.setLayout(new GridLayout(1, false));
+				tbtmDescription.setControl(detailsComposite);
+				detailsComposite.setLayoutData(new GridData(SWT.FILL, SWT.BEGINNING, false, false));
+
+				CLabel descriptionLabel = new CLabel(detailsComposite,SWT.WRAP | SWT.NONE);
+				descriptionLabel.setText(selectedItem.getResult().getData().getDescription() != null ? selectedItem.getResult().getData().getDescription() : "No data");
+				descriptionLabel.setLayoutData(new GridData(SWT.LEFT, SWT.BEGINNING, false, false, 1, 1));
+				
+			}
+
+
 
 			private Image findSeverityImageString(String severity) {
 				if (severity == null)
@@ -1294,7 +1314,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		loadingScreen.setLayoutData(new GridData(SWT.FILL, SWT.BEGINNING, false, false));
 		
 		CLabel loadingLabel = new CLabel(loadingScreen,SWT.NONE);
-		loadingLabel.setText("Loading");
+		loadingLabel.setText(PluginConstants.LOADING_CHANGES);
 		loadingLabel.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
 		
 		scrolledComposite.setContent(loadingScreen);

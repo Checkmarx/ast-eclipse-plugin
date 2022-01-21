@@ -12,6 +12,7 @@ public class PluginConstants {
 	public static final String COMBOBOX_BRANCH_CHANGING = "Changing branch...";
 	public static final String BTN_OPEN_SETTINGS = "Open Settings";
 	public static final String LOADING_CHANGES = "Loading changes...";
+	public static final String NO_CHANGES = "No changes...";
 	
 	/******************************** LOG VIEW: ERRORS ********************************/
 	public static final String ERROR_AUTHENTICATING_AST = "An error occurred while trying to authenticate to AST: %s";
