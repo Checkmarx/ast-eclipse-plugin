@@ -68,7 +68,7 @@ public class ActionFilters {
 			@Override
 			public void run() {
 				FilterState.setState(severity);
-				pluginEventBus.post(new PluginListenerDefinition(PluginListenerType.FILTER_CHANGED, DataProvider.getInstance().filterResults()));
+				pluginEventBus.post(new PluginListenerDefinition(PluginListenerType.FILTER_CHANGED, DataProvider.getInstance().sortResults()));
 			}
 		};
 

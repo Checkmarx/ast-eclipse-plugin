@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
@@ -23,6 +24,7 @@ import org.eclipse.jface.preference.PreferenceDialog;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.ColumnViewerToolTipSupport;
 import org.eclipse.jface.viewers.ComboViewer;
+import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.ISelectionChangedListener;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.LabelProvider;
@@ -30,11 +32,15 @@ import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.viewers.StructuredSelection;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.jface.viewers.TreeViewerColumn;
+import org.eclipse.jface.viewers.ViewerFilter;
 import org.eclipse.jgit.events.RefsChangedEvent;
 import org.eclipse.jgit.events.RefsChangedListener;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CLabel;
+import org.eclipse.swt.custom.ScrolledComposite;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.FontData;
 import org.eclipse.swt.graphics.Image;
@@ -43,15 +49,19 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.layout.RowLayout;
 import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Link;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.swt.widgets.TabFolder;
+import org.eclipse.swt.widgets.TabItem;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.swt.widgets.TreeColumn;
 import org.eclipse.ui.IActionBars;
@@ -62,6 +72,7 @@ import org.eclipse.ui.ide.IDE;
 import org.eclipse.ui.part.ViewPart;
 import org.osgi.service.event.EventHandler;
 
+import com.checkmarx.ast.predicate.Predicate;
 import com.checkmarx.ast.project.Project;
 import com.checkmarx.ast.results.result.Node;
 import com.checkmarx.ast.results.result.PackageData;
@@ -81,6 +92,7 @@ import com.google.common.base.Strings;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 
+
 public class CheckmarxView extends ViewPart implements EventHandler {
 
 	private static final String PROJECT_COMBO_VIEWER_TEXT = "Select a project";
@@ -91,7 +103,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private static final String LOADING_SCANS = "Loading scans...";
 	private static final String NO_BRANCHES_AVAILABLE = "No branches available.";
 	private static final String NO_PROJECTS_AVAILABLE = "No projects available.";
-	private static final String VERTICAL_SEPERATOR = "|";
 	private static final String FORMATTED_SCAN_LABEL = "%s (%s)";
 
 	/**
@@ -113,23 +124,32 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	public static final Image LOW_SEVERITY = Activator.getImageDescriptor("/icons/low_untoggle.png").createImage();
 
 	public static final Image INFO_SEVERITY = Activator.getImageDescriptor("/icons/info_untoggle.png").createImage();
+	
+	
+	public static final Image USER = Activator.getImageDescriptor("/icons/user.png").createImage();
+	
+	public static final Image CREATED_AT_IMAGE = Activator.getImageDescriptor("/icons/date.png").createImage();
+	
+	public static final Image COMMENT = Activator.getImageDescriptor("/icons/comment.png").createImage();
 
 	private TreeViewer resultsTree;
-	private ComboViewer scanIdComboViewer, projectComboViewer, branchComboViewer;
+	private ComboViewer scanIdComboViewer, projectComboViewer, branchComboViewer, triageSeverityComboViewew, triageStateComboViewer;
+	private Text commentText;
 	private DisplayModel rootModel;
+	private String selectedSeverity, selectedState;
+	private DisplayModel currentDisplayModel;
+	private Button triageButton;
 	private Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell();
 
 	private boolean alreadyRunning = false;
 
-	Font boldFont;
-	private Text summaryText;
-	private Text descriptionValueText;
+	Font boldFont,titleFont;
+
 	private Text attackVectorValueLinkText;
 
 	private Composite resultViewComposite;
 	private Composite attackVectorCompositePanel;
 	private Composite openSettingsComposite;
-
 	private CLabel titleLabel;
 
 	private Label attackVectorLabel;
@@ -144,13 +164,16 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private String currentScanId =  PluginConstants.EMPTY_STRING;
 	private static String currentScanIdFormmated =  PluginConstants.EMPTY_STRING;
 	private List<String> currentBranches = new ArrayList<>();
-	
+		
 	private boolean scansCleanedByProject = false; 
 	private boolean firstTimeTriggered = false; 
 	
 	private Composite parent;
+	private ScrolledComposite scrolledComposite;
+	
 	
 	private boolean isPluginDraw = false;
+	protected TabFolder tabFolder;
 		
 	public CheckmarxView() {
 		super();
@@ -169,6 +192,10 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		
 		if(boldFont != null && !boldFont.isDisposed()) {
 			boldFont.dispose();
+		}
+		
+		if(titleFont != null && !titleFont.isDisposed()) {
+			titleFont.dispose();
 		}
 		
 		if(pluginEventBus != null) {
@@ -506,32 +533,70 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		Display display = parent.getShell().getDisplay();
 		FontData systemFontData = display.getSystemFont().getFontData()[0];
 		boldFont = new Font(display, systemFontData.getName(), systemFontData.getHeight(), SWT.BOLD);
+		titleFont = new Font(display, systemFontData.getName(), systemFontData.getHeight() + 2, SWT.BOLD);
 
 		resultViewComposite = new Composite(resultsComposite, SWT.BORDER);
-		resultViewComposite.setLayout(new GridLayout(1, false));
+		GridLayout gl_resultViewComposite = new GridLayout(1, false);
+		gl_resultViewComposite.marginWidth = 0;
+		gl_resultViewComposite.marginHeight = 0;
+		gl_resultViewComposite.verticalSpacing = 0;
+		resultViewComposite.setLayout(gl_resultViewComposite);
 
 		titleLabel = new CLabel(resultViewComposite, SWT.NONE);
-		titleLabel.setFont(boldFont);
-		titleLabel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false, 1, 1));
-		titleLabel.setBottomMargin(30);
+		titleLabel.setFont(titleFont);
+		titleLabel.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false, 1, 1));
+		
+		Composite triageView = new Composite(resultViewComposite,SWT.NONE);
+		//triageView.setLayout(new GridLayout(3, false)); //columneEqualWidth = true
+		GridLayout gl_triageView = new GridLayout(3,false);
+		gl_triageView.marginHeight = 10;
+		triageView.setLayout(gl_triageView);
+		triageView.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false, 1, 1));
+		
+		triageSeverityComboViewew = new ComboViewer(triageView, SWT.READ_ONLY);
+		Combo combo_1 = triageSeverityComboViewew.getCombo();
+		GridData gd_combo_1 = new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1); 
+		gd_combo_1.widthHint = SWT.DEFAULT;  
+		combo_1.setLayoutData(gd_combo_1);
+		
+		triageStateComboViewer = new ComboViewer(triageView, SWT.READ_ONLY);
+		Combo combo_2 = triageStateComboViewer.getCombo();
+		GridData gd_combo_2 = new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1);
+		gd_combo_2.widthHint = 180;
+		combo_2.setLayoutData(gd_combo_2);
+		
+		triageButton = new Button(triageView, SWT.FLAT | SWT.CENTER);
+		triageButton.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, true, 1, 1));
+		triageButton.setText(PluginConstants.BTN_UPDATE);
+		
+		commentText = new Text(triageView,SWT.BORDER);
+		commentText.setText(PluginConstants.DEFAULT_COMMENT_TXT);
+		GridData commentData = new GridData(SWT.FILL,SWT.FILL,true,true,3,1);
+		commentText.setEnabled(true);
+		commentText.setLayoutData(commentData);
+		
+		commentText.addListener(SWT.FocusIn, new Listener() {
+		      public void handleEvent(Event e) {
+		        commentText.setText("");
+		        resultViewComposite.layout();
+		      }
+		    });
+		
+		commentText.addListener(SWT.FocusOut, new Listener() {
+		      public void handleEvent(Event e) {
+		    	  Text textReceived = (Text) e.widget;
+		    	  if(textReceived.getText() == null || textReceived.getText() =="") {
+		    		  commentText.setText(PluginConstants.DEFAULT_COMMENT_TXT);
+		    		  resultViewComposite.layout();
+		    	  }
+		      }
+		    });
 
-		Label summaryLabel = new Label(resultViewComposite, SWT.NONE);
-		summaryLabel.setFont(boldFont);
-		summaryLabel.setText("Summary:");
-		summaryLabel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false, 1, 1));
+		scrolledComposite = new ScrolledComposite(resultViewComposite, SWT.H_SCROLL| SWT.V_SCROLL);		
+	    scrolledComposite.setExpandHorizontal(true);
+	    scrolledComposite.setExpandVertical(true);
+		scrolledComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
-		summaryText = new Text(resultViewComposite, SWT.READ_ONLY | SWT.WRAP);
-		summaryText.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false, 1, 1));
-		summaryText.setText("Not Available.");
-
-		Label descriptionLabel = new Label(resultViewComposite, SWT.NONE);
-		descriptionLabel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false, 1, 1));
-		descriptionLabel.setFont(boldFont);
-		descriptionLabel.setText("Description:");
-
-		descriptionValueText = new Text(resultViewComposite, SWT.READ_ONLY | SWT.MULTI | SWT.WRAP);
-		descriptionValueText.setLayoutData(new GridData(SWT.LEFT, SWT.TOP, true, true, 1, 1));
-		descriptionValueText.setText("Not Available.");
 		
 		resultViewComposite.setVisible(false);
 	}
@@ -1021,42 +1086,298 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				if (event.getSelection() instanceof IStructuredSelection) {
 					IStructuredSelection selection = (IStructuredSelection) event.getSelection();
 					DisplayModel selectedItem = (DisplayModel) selection.getFirstElement();
-					String summaryString = PluginConstants.EMPTY_STRING;
-
-					if (selectedItem.getType() != null) {
-						summaryString = (selectedItem.getType()).toUpperCase() + " " + VERTICAL_SEPERATOR + " ";
+					
+					if(selectedItem == null || selectedItem.getType() == null) {
+						return;
 					}
-
+					
 					if (selectedItem.getSeverity() != null) {
-						summaryString = summaryString + selectedItem.getSeverity() + " " + VERTICAL_SEPERATOR + " ";
 						titleLabel.setImage(findSeverityImage(selectedItem));
 						titleLabel.setText(selectedItem.getName());
 					}
+					
+					if(selectedItem.getResult() != null && selectedItem.getResult().getSimilarityId() != null) {
+						createTriageSeverityAndStateCombos(selectedItem);			
+						populateTriageChanges(selectedItem);
 
-					if (selectedItem.getResult() != null) {
-						if (selectedItem.getResult().getStatus() != null) {
-							summaryString = summaryString + selectedItem.getResult().getStatus() + " "
-									+ VERTICAL_SEPERATOR + " ";
 						}
-
-						if (selectedItem.getResult().getDescription() != null) {
-							descriptionValueText.setText(selectedItem.getResult().getDescription());
-						} else {
-							descriptionValueText.setText("Not Available.");
-						}
-					}
-
-					if (!summaryString.isBlank()) {
-						summaryText.setText(summaryString);
-					}
+					
 					resultViewComposite.setVisible(true);
 					resultViewComposite.layout();
-					if (selectedItem.getType() != null) {
-						updateAttackVectorForSelectedTreeItem(selectedItem);
-					}
+					
+					updateAttackVectorForSelectedTreeItem(selectedItem);
 				}
 			}
 		});
+	}
+	
+	/**
+	 * Create combo viewers for severity and state
+	 * 
+	 * @param selectedItem
+	 */
+	private void createTriageSeverityAndStateCombos(DisplayModel selectedItem) {
+		currentDisplayModel = selectedItem;
+		
+		String currentSeverity = selectedItem.getSeverity();
+		selectedSeverity = selectedItem.getSeverity();
+		String[] severity = {"HIGH","MEDIUM","LOW","INFO"};
+		
+		triageSeverityComboViewew.setContentProvider(ArrayContentProvider.getInstance());
+		triageSeverityComboViewew.setInput(severity);
+		PluginUtils.setTextForComboViewer(triageSeverityComboViewew, currentSeverity);
+		
+		triageSeverityComboViewew.addSelectionChangedListener(new ISelectionChangedListener() {
+
+			@Override
+			public void selectionChanged(SelectionChangedEvent event) {
+				IStructuredSelection selection = (IStructuredSelection) event.getSelection();
+				if (selection.size() > 0) {
+					selectedSeverity = ((String) selection.getFirstElement());
+				}
+			}
+		});
+		
+		String currentState = selectedItem.getState();
+		selectedState = selectedItem.getResult().getState();
+		String[] state = {"TO_VERIFY", "NOT_EXPLOITABLE", "PROPOSED_NOT_EXPLOITABLE", "CONFIRMED", "URGENT"};
+		
+		triageStateComboViewer.setContentProvider(ArrayContentProvider.getInstance());
+		triageStateComboViewer.setInput(state);
+		PluginUtils.setTextForComboViewer(triageStateComboViewer, currentState);
+		
+		triageStateComboViewer.addSelectionChangedListener(new ISelectionChangedListener() {
+			@Override
+			public void selectionChanged(SelectionChangedEvent event) {
+				IStructuredSelection selection = (IStructuredSelection) event.getSelection();
+				if (selection.size() > 0) {
+					selectedState = ((String) selection.getFirstElement());
+				}
+			}
+		});
+		
+		triageButton.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent event) {
+				// Call triage update. triageButton.isEnabled() is used to avoid nonsense randomly clicks triggered
+				if(selectedSeverity != null && selectedState != null && triageButton.isEnabled()) {
+					UUID projectId = UUID.fromString(currentProjectId);
+					String similarityId = currentDisplayModel.getResult().getSimilarityId();
+					String engineType = currentDisplayModel.getResult().getType();
+					triageButton.setEnabled(false);
+					triageButton.setText(PluginConstants.BTN_LOADING);
+					commentText.setEnabled(false);
+					commentText.setEditable(false);
+					
+					
+					Display.getDefault().asyncExec(new Runnable() {
+					    public void run() {	
+					    	
+					    	String comment = commentText.getText() != null && !commentText.getText().equalsIgnoreCase("Enter comment") ? commentText.getText() : ""; 
+					    	boolean successfullyUpdate = DataProvider.getInstance().triageUpdate(projectId, similarityId, engineType, selectedState, comment, selectedSeverity);
+							
+					    	if(successfullyUpdate) {
+					    		currentDisplayModel.setSeverity(selectedSeverity);
+					    		currentDisplayModel.setState(selectedState);
+								titleLabel.setImage(findSeverityImage(currentDisplayModel));
+								titleLabel.setText(currentDisplayModel.getName());
+								populateTriageChanges(currentDisplayModel);
+								
+								alreadyRunning = true;
+								updateResultsTree(DataProvider.getInstance().sortResults());
+								triageButton.setEnabled(true);
+								triageButton.setText(PluginConstants.BTN_UPDATE);
+								commentText.setEnabled(true);
+								commentText.setText(PluginConstants.DEFAULT_COMMENT_TXT);
+								commentText.setEditable(true);
+								
+								// TODO: open the selectedItem in the tree - check hidden filter scenario
+								
+								
+					    	}else {
+					    		// TODO: inform the user that update failed?
+					    	}
+					    }
+					});
+					
+					resultViewComposite.layout();
+				}
+			}
+		});
+	}
+	
+	/**
+	 * Populate list of changes for the selected vulnerability
+	 * 
+	 * @param selectedItem
+	 */
+	private void populateTriageChanges(DisplayModel selectedItem) {
+
+		populateLoadingScreen();
+
+		Display.getDefault().asyncExec(new Runnable() {
+			public void run() {
+
+				createDescriptionInfo(selectedItem);
+				
+				TabItem tbtmChanges = new TabItem(tabFolder, SWT.NONE);
+				tbtmChanges.setText("Changes");
+				
+				Composite changesComposite = new Composite(tabFolder, SWT.NONE);
+				GridLayout gl_detailsComposite = new GridLayout(1, false);
+				gl_detailsComposite.marginWidth = 0;
+				gl_detailsComposite.marginHeight = 0;
+				changesComposite.setLayout(gl_detailsComposite);
+				tbtmChanges.setControl(changesComposite);
+				
+				
+				List<Predicate> triageDetails = getTriageInfo(UUID.fromString(currentProjectId), selectedItem.getResult().getSimilarityId(), selectedItem.getResult().getType());
+				if(triageDetails.size() >0) {
+					// populate changes composite based on the predicate
+					for(Predicate detail : triageDetails) {
+						// populate individual triage node details
+						populateIndChangesData(detail,changesComposite);
+					}
+				}
+				
+				else {
+					populateNoChangesData(changesComposite,tbtmChanges);
+					
+				}
+				
+				scrolledComposite.setContent(tabFolder);
+				scrolledComposite.setMinSize(changesComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT));
+			}
+			
+			
+
+			private void populateNoChangesData(Composite changesComposite, TabItem tbtmChanges) {
+				changesComposite = new Composite(tabFolder, SWT.NONE);
+				changesComposite.setLayout(new GridLayout(1, false));
+				tbtmChanges.setControl(changesComposite);
+				changesComposite.setLayoutData(new GridData(SWT.FILL, SWT.BEGINNING, false, false));
+				
+				CLabel noChange = new CLabel(changesComposite,SWT.NONE);
+				noChange.setText(PluginConstants.NO_CHANGES);
+				noChange.setLayoutData(new GridData(SWT.FILL, SWT.BEGINNING, false, false, 1, 1));
+				
+			}
+
+
+
+			private void populateIndChangesData(Predicate detail, Composite changesComposite) {
+				CLabel createdBy = new CLabel(changesComposite,SWT.NONE);
+				createdBy.setImage(USER);
+				String user = detail.getCreatedBy();
+				if(detail.getCreatedAt() != null) {
+				String time = PluginUtils.convertStringTimeStamp(detail.getCreatedAt());
+				createdBy.setText(user + " | " + time.replace("|", ""));
+				}
+				else {
+				createdBy.setText(user);	
+				}
+				createdBy.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+
+				
+				CLabel severity = new CLabel(changesComposite,SWT.NONE);
+				severity.setImage(findSeverityImageString(detail.getSeverity()));
+				severity.setText(detail.getSeverity());
+				severity.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+				
+				if(detail.getComment() != null && detail.getComment() != "") {
+					CLabel comment = new CLabel(changesComposite,SWT.NONE);
+					comment.setImage(COMMENT);
+					comment.setText(detail.getComment());
+					comment.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+				}
+				
+				Label label = new Label(changesComposite, SWT.SEPARATOR | SWT.HORIZONTAL);
+				label.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+				
+			}
+
+
+
+			private void createDescriptionInfo(DisplayModel selectedItem) {
+
+				tabFolder = new TabFolder(scrolledComposite, SWT.NONE);
+				TabItem tbtmDescription = new TabItem(tabFolder, SWT.NONE);
+				tbtmDescription.setText("Description");
+				
+				
+				Composite detailsComposite = new Composite(tabFolder, SWT.NONE);
+				GridLayout gl_detailsComposite = new GridLayout(1, false);
+				gl_detailsComposite.marginWidth = 0;
+				gl_detailsComposite.marginHeight = 0;
+				detailsComposite.setLayout(gl_detailsComposite);
+				tbtmDescription.setControl(detailsComposite);
+
+				Text descriptionTxt = new Text(detailsComposite, SWT.READ_ONLY | SWT.WRAP | SWT.MULTI);
+				descriptionTxt.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
+				descriptionTxt.setText(selectedItem.getResult().getDescription() != null ? selectedItem.getResult().getDescription() : "No data");
+				
+			}
+
+
+
+			private Image findSeverityImageString(String severity) {
+				if (severity == null)
+					return null;
+
+				if (severity.equalsIgnoreCase(Severity.CRITICAL.name()))
+					return CRITICAL_SEVERITY;
+				if (severity.equalsIgnoreCase(Severity.HIGH.name()))
+					return HIGH_SEVERITY;
+				if (severity.equalsIgnoreCase(Severity.MEDIUM.name()))
+					return MEDIUM_SEVERITY;
+				if (severity.equalsIgnoreCase(Severity.LOW.name()))
+					return LOW_SEVERITY;
+				if (severity.equalsIgnoreCase(Severity.INFO.name()))
+					return INFO_SEVERITY;
+
+				return null;
+			}
+		});
+		
+		
+		
+		
+	}
+
+	private void populateLoadingScreen() {
+		Composite loadingScreen = new Composite(scrolledComposite, SWT.NONE);
+		loadingScreen.setLayout(new GridLayout(1, false));
+		loadingScreen.setLayoutData(new GridData(SWT.FILL, SWT.BEGINNING, false, false));
+		
+		CLabel loadingLabel = new CLabel(loadingScreen,SWT.NONE);
+		loadingLabel.setText(PluginConstants.LOADING_CHANGES);
+		loadingLabel.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+		
+		commentText.setText(PluginConstants.DEFAULT_COMMENT_TXT);
+		
+		scrolledComposite.setContent(loadingScreen);
+		//scrolledComposite.setMinSize(loadingScreen.computeSize(SWT.DEFAULT, SWT.DEFAULT));
+	}
+
+	/**
+	 * Get triage information
+	 * 
+	 * @param projectID
+	 * @param similarityId
+	 * @param scanType
+	 * @return
+	 */
+	private List<Predicate> getTriageInfo(UUID projectID,String similarityId,String scanType) {
+		List<Predicate> triageList = new ArrayList<Predicate>();
+		
+		try {
+			triageList = DataProvider.getInstance().getTriageShow(projectID, similarityId, scanType);
+		} catch (Exception e) {
+			String errorMessage = e.getCause() != null && e.getCause().getMessage() != null ? e.getCause().getMessage() : e.getMessage();
+			PluginUtils.showMessage(rootModel, resultsTree, errorMessage);
+		}
+		
+		return triageList;
 	}
 
 	private void updateAttackVectorForSelectedTreeItem(DisplayModel selectedItem) {

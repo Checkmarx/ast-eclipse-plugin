@@ -53,6 +53,8 @@ public class FilterState {
 				groupByQueryName = !groupByQueryName;
 				GlobalSettings.storeInPreferences(Severity.GROUP_BY_QUERY_NAME.name(), String.valueOf(groupByQueryName));
 				break;
+		default:
+			break;
 		}
 	}
 	
@@ -70,6 +72,8 @@ public class FilterState {
 			case INFO: return info;
 			case GROUP_BY_SEVERITY: return groupBySeverity;
 			case GROUP_BY_QUERY_NAME: return groupByQueryName;
+		default:
+			break;
 		}
 		
 		return false;

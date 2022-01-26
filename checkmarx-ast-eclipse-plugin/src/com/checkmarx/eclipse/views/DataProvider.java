@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.checkmarx.ast.predicate.Predicate;
 import com.checkmarx.ast.project.Project;
 import com.checkmarx.ast.results.Results;
 import com.checkmarx.ast.results.result.Result;
@@ -46,6 +47,7 @@ public class DataProvider {
 	private Results currentResults;
 	private String currentScanId;
 	private String projectId;
+	private List<DisplayModel> currentResultsTransformed;
 	
 	/**
 	 * Singleton data provider instance
@@ -233,13 +235,26 @@ public class DataProvider {
 		PluginUtils.addVulnerabilitiesToProblemsView(resultsList);
 
 		// transform all the results at once to avoid multiple transformation steps
-		List<DisplayModel> allResultsTransformed = resultsList.stream().map(resultItem -> transform(resultItem)).collect(Collectors.toList());
+		currentResultsTransformed = resultsList.stream().map(resultItem -> transform(resultItem)).collect(Collectors.toList());
 
 		// Divide all the results by scanner type
-		Map<String, List<DisplayModel>> filteredResultsByScannerType = filterResultsByScannerType(allResultsTransformed);
+		Map<String, List<DisplayModel>> filteredResultsByScannerType = filterResultsByScannerType(currentResultsTransformed);
 
 		// build results based on selected filters
 		return buildResults(scanId, filteredResultsByScannerType);
+	}
+	
+	/**
+	 * Sort results as they may have changed due to a triage update
+	 * 
+	 * @return
+	 */
+	public List<DisplayModel> sortResults(){
+		// Divide all the results by scanner type
+		Map<String, List<DisplayModel>> filteredResultsByScannerType = filterResultsByScannerType(currentResultsTransformed);
+
+		// build results based on selected filters
+		return buildResults(getCurrentScanId(), filteredResultsByScannerType);
 	}
 	
 	/**
@@ -250,59 +265,31 @@ public class DataProvider {
 	 * @return
 	 */
 	private List<DisplayModel> buildResults(String scanId, Map<String, List<DisplayModel>> filteredResultsByScannerType){
+		
+		// Filter results by selected severities
+		filteredResultsByScannerType.entrySet().stream().forEach(entry -> entry.getValue().removeIf(result -> !FilterState.isSeverityEnabled(result.getSeverity())));
+				
 		if(FilterState.groupBySeverity) {
-			// Divide the results for each scanner as per the severity
-			Map<String, List<DisplayModel>> sastResultsMap = new HashMap<>();
-			Map<String, List<DisplayModel>> scaResultsMap = new HashMap<>();
-			Map<String, List<DisplayModel>> kicsResultsMap = new HashMap<>();
-
-			if (filteredResultsByScannerType.containsKey(PluginConstants.SAST)) {
-				List<DisplayModel> sastList = filteredResultsByScannerType.get(PluginConstants.SAST);
-				sastResultsMap = filterResultsBySeverity(sastList);
-				
-				if(FilterState.groupByQueryName && !sastResultsMap.isEmpty()) {
-					filterResultsByQueryName(sastResultsMap);
-				}
-			}
-			
-			if (filteredResultsByScannerType.containsKey(PluginConstants.SCA_DEPENDENCY)) {
-				List<DisplayModel> scaList = filteredResultsByScannerType.get(PluginConstants.SCA_DEPENDENCY);
-				scaResultsMap = filterResultsBySeverity(scaList);
-				
-				if(FilterState.groupByQueryName && !scaResultsMap.isEmpty()) {
-					filterResultsByQueryName(scaResultsMap);
-				}
-			}
-			
-			if (filteredResultsByScannerType.containsKey(PluginConstants.KICS_INFRASTRUCTURE)) {
-				List<DisplayModel> kicsList = filteredResultsByScannerType.get(PluginConstants.KICS_INFRASTRUCTURE);
-				kicsResultsMap = filterResultsBySeverity(kicsList);
-				
-				if(FilterState.groupByQueryName && !kicsResultsMap.isEmpty()) {
-					filterResultsByQueryName(kicsResultsMap);
-				}
-			}
-
-			// Parent node for SAST
-			Map<Integer, List<DisplayModel>> sastParentModelList = createParentNodeByScanner(sastResultsMap);
-			Integer sastCount = sastParentModelList.keySet().stream().findFirst().get();
-			List<DisplayModel> sastChildren = sastParentModelList.get(sastCount);
-
-			// Parent node for SCA
-			Map<Integer, List<DisplayModel>> scaParentModelList = createParentNodeByScanner(scaResultsMap);
-			Integer scaCount = scaParentModelList.keySet().stream().findFirst().get();
-			List<DisplayModel> scaChildren = scaParentModelList.get(scaCount);
-
-			// Parent node for KICS
-			Map<Integer, List<DisplayModel>> kicsParentModelList = createParentNodeByScanner(kicsResultsMap);
-			Integer kicsCount = kicsParentModelList.keySet().stream().findFirst().get();
-			List<DisplayModel> kicsChildren = kicsParentModelList.get(kicsCount);
-			
-			return addResults(scanId, sastCount, sastChildren, scaCount, scaChildren, kicsCount, kicsChildren);
-			
-		}else if(FilterState.groupByQueryName) {
-			filterResultsByQueryName(filteredResultsByScannerType);
+			groupResultsBySeverity(filteredResultsByScannerType);
 		}
+		
+		if(FilterState.groupByQueryName) {
+			groupResultsByQueryName(filteredResultsByScannerType);
+		}
+		
+		return addResults(scanId, filteredResultsByScannerType);
+	}
+	
+	/**
+	 *  Evaluates if each engine has results and adds it to the final map
+	 * 
+	 * @param scanId
+	 * @param filteredResultsByScannerType
+	 * @return
+	 */
+	private List<DisplayModel> addResults(String scanId, Map<String, List<DisplayModel>> filteredResultsByScannerType) {
+		List<DisplayModel> returnList = new ArrayList<>();
+		List<DisplayModel> results = new ArrayList<>();
 		
 		boolean constainsSASTResults = filteredResultsByScannerType.containsKey(PluginConstants.SAST) && filteredResultsByScannerType.get(PluginConstants.SAST).size() > 0;
 		List<DisplayModel> sastResults = constainsSASTResults ? filteredResultsByScannerType.get(PluginConstants.SAST) : Collections.emptyList();
@@ -315,41 +302,19 @@ public class DataProvider {
 		boolean constainsKICKSResults = filteredResultsByScannerType.containsKey(PluginConstants.KICS_INFRASTRUCTURE) && filteredResultsByScannerType.get(PluginConstants.KICS_INFRASTRUCTURE).size() > 0;
 		List<DisplayModel> kicsResults = constainsKICKSResults ? filteredResultsByScannerType.get(PluginConstants.KICS_INFRASTRUCTURE) : Collections.emptyList();
 		int kicsCount = constainsKICKSResults ? getParentCounter(kicsResults) : 0;
-
-		return addResults(scanId, sastCount, sastResults, scaCount, scaResults, kicsCount, kicsResults);
-	}
-	
-	/**
-	 * Evaluates if each engine has results and adds it to the final map
-	 * 
-	 * @param scanId
-	 * @param sastCount
-	 * @param sastChildren
-	 * @param scaCount
-	 * @param scaChildren
-	 * @param kicsCount
-	 * @param kicsChildren
-	 * @return
-	 */
-	private List<DisplayModel> addResults(String scanId, Integer sastCount, List<DisplayModel> sastChildren, Integer scaCount, List<DisplayModel> scaChildren, Integer kicsCount, List<DisplayModel> kicsChildren) {
-		List<DisplayModel> returnList = new ArrayList<>();
-		List<DisplayModel> results = new ArrayList<>();
 		
 		if (sastCount > 0) {
-
-			DisplayModel sastModel = new DisplayModel.DisplayModelBuilder(String.format(SAST_TREE_NAME, sastCount)).setChildren(sastChildren).build();
+			DisplayModel sastModel = new DisplayModel.DisplayModelBuilder(String.format(SAST_TREE_NAME, sastCount)).setChildren(sastResults).build();
 			results.add(sastModel);
 		}
 		
 		if (scaCount > 0) {
-			
-			DisplayModel scaModel = new DisplayModel.DisplayModelBuilder(String.format(SCA_TREE_NAME, scaCount)).setChildren(scaChildren).build();
+			DisplayModel scaModel = new DisplayModel.DisplayModelBuilder(String.format(SCA_TREE_NAME, scaCount)).setChildren(scaResults).build();
 			results.add(scaModel);
 		}
 		
 		if (kicsCount > 0) {
-			
-			DisplayModel kicsModel = new DisplayModel.DisplayModelBuilder(String.format(KICS_TREE_NAME, kicsCount)).setChildren(kicsChildren).build();
+			DisplayModel kicsModel = new DisplayModel.DisplayModelBuilder(String.format(KICS_TREE_NAME, kicsCount)).setChildren(kicsResults).build();
 			results.add(kicsModel);
 		}
 		
@@ -370,7 +335,7 @@ public class DataProvider {
 	private DisplayModel transform(Result resultItem) {
 		String displayName = resultItem.getType().equals(PluginConstants.SCA_DEPENDENCY) ? resultItem.getSimilarityId() : resultItem.getData().getQueryName();
 		
-		return new DisplayModel.DisplayModelBuilder(displayName).setSeverity(resultItem.getSeverity()).setType(resultItem.getType()).setResult(resultItem).build();
+		return new DisplayModel.DisplayModelBuilder(displayName).setSeverity(resultItem.getSeverity()).setType(resultItem.getType()).setResult(resultItem).setSate(resultItem.getState()).build();
 	}
 
 	/**
@@ -387,77 +352,77 @@ public class DataProvider {
 			String scanType = transformedResult.getType();
 
 			if (filteredMap.containsKey(scanType)) {
-				List<DisplayModel> mapResultList = filteredMap.get(scanType);
-				mapResultList.add(transformedResult);
+				filteredMap.get(scanType).add(transformedResult);
 			} else {
-				List<DisplayModel> mapResultList = new ArrayList<>();
-				mapResultList.add(transformedResult);
-				filteredMap.put(scanType, mapResultList);
+				filteredMap.put(scanType, new ArrayList<>(Arrays.asList(transformedResult)));
 			}
 
 		}
 		return filteredMap;
 	}
-
+	
 	/**
-	 * Group results by Severity
+	 * Group vulnerabilities by severity
 	 * 
-	 * @param resultList
-	 * @return
+	 * @param filteredResultsByScannerType
 	 */
-	private Map<String, List<DisplayModel>> filterResultsBySeverity(List<DisplayModel> resultList) {
-		Map<String, List<DisplayModel>> filteredMapBySeverity = new HashMap<>();
-
-		for (DisplayModel result : resultList) {
-			String severityType = result.getSeverity();
+	private void groupResultsBySeverity(Map<String, List<DisplayModel>> filteredResultsByScannerType) {		
+		filteredResultsByScannerType.entrySet().stream().forEach(entry -> {
 			
-			if(FilterState.isSeverityEnabled(severityType)) {
-				if (filteredMapBySeverity.containsKey(severityType)) {
-					List<DisplayModel> mapResultList = filteredMapBySeverity.get(severityType);
-					mapResultList.add(result);
+			Map<String, List<DisplayModel>> mapBySeverity = new HashMap<>();
+			String scanner = entry.getKey();
+			List<DisplayModel> vulnerabilities = entry.getValue();
+			
+			for (DisplayModel result : vulnerabilities) {
+				String severityType = result.getSeverity();
+				
+				if (mapBySeverity.containsKey(severityType)) {
+					 mapBySeverity.get(severityType).add(result);
 				} else {
-					List<DisplayModel> mapResultList = new ArrayList<>();
-					mapResultList.add(result);
-					filteredMapBySeverity.put(severityType, mapResultList);
+					mapBySeverity.put(severityType, new ArrayList<>(Arrays.asList(result)));
 				}
 			}
-		}
-		
-		return filteredMapBySeverity;
+			
+			List<DisplayModel> children = createParentNodeByScanner(mapBySeverity);
+			
+			filteredResultsByScannerType.put(scanner, children);
+		});
 	}
 	
 	/**
-	 * Group results by query name
+	 * Group vulnerabilities by query name based on groupBySeverity state
 	 * 
 	 * @param results
 	 */
-	private void filterResultsByQueryName(Map<String, List<DisplayModel>> results) {
-		for (Map.Entry<String, List<DisplayModel>> entry : results.entrySet()) {
-			
-			String severityOrScannerType = entry.getKey();
-			List<DisplayModel> vulnerabilities = entry.getValue();
-			
-			Map<String, List<DisplayModel>> filteredByQueryName = new HashMap<>();
-
-			for (DisplayModel result : vulnerabilities) {
-				
-				String queryName = result.getName();
-				
-				if (filteredByQueryName.containsKey(queryName)) {
-					List<DisplayModel> mapResultList = filteredByQueryName.get(queryName);
-					mapResultList.add(result);
-				} else {
-					List<DisplayModel> mapResultList = new ArrayList<>();
-					mapResultList.add(result);
-					filteredByQueryName.put(queryName, mapResultList);
-				}
-			}
-			
-			Map<Integer, List<DisplayModel>> parentModelList = createParentNodeByScanner(filteredByQueryName);
-			Integer sastCount = parentModelList.keySet().stream().findFirst().get();
-			List<DisplayModel> children = parentModelList.get(sastCount);
-			results.put(severityOrScannerType, children);
+	private void groupResultsByQueryName(Map<String, List<DisplayModel>> results) {
+		if(FilterState.groupBySeverity) {
+			results.entrySet().stream().forEach(entry -> entry.getValue().stream().forEach(severity -> severity.setChildren(groupByQueryName(severity.getChildren()))));
+		}else {
+			results.entrySet().stream().forEach(entry -> results.put(entry.getKey(), groupByQueryName(entry.getValue())));
 		}
+	}
+	
+	/**
+	 * Group vulnerabilities by query name
+	 * 
+	 * @param children
+	 * @return
+	 */
+	private List<DisplayModel> groupByQueryName(List<DisplayModel> vulnerabilities){
+		Map<String, List<DisplayModel>> filteredByQueryName = new HashMap<>();
+		
+		for (DisplayModel vulnerability : vulnerabilities) {
+			
+			String queryName = vulnerability.getName();
+			
+			if (filteredByQueryName.containsKey(queryName)) {
+				filteredByQueryName.get(queryName).add(vulnerability);
+			} else {
+				filteredByQueryName.put(queryName, new ArrayList<>(Arrays.asList(vulnerability)));
+			}
+		}
+		
+		return createParentNodeByScanner(filteredByQueryName);
 	}
 	
 	/**
@@ -466,10 +431,8 @@ public class DataProvider {
 	 * @param map
 	 * @return
 	 */
-	private Map<Integer, List<DisplayModel>> createParentNodeByScanner(Map<String, List<DisplayModel>> map){
-		Map<Integer, List<DisplayModel>> result = new HashMap<>();
+	private List<DisplayModel> createParentNodeByScanner(Map<String, List<DisplayModel>> map){
 		List<DisplayModel> resultList = new ArrayList<>();
-		int counter = 0;
 		
 		for (Map.Entry<String, List<DisplayModel>> mapEntry : map.entrySet()) {
 
@@ -482,18 +445,14 @@ public class DataProvider {
 					childCounter = childCounter + dm.getChildren().size();
 				}
 			}
-			
-			counter += childCounter == 0 ? listForEachSeverity.size() : childCounter;
-			
+						
 			int parentCounter = childCounter > 0 ? childCounter : listForEachSeverity.size();
 			DisplayModel parentModel = new DisplayModel.DisplayModelBuilder(mapEntry.getKey() + " (" + parentCounter + ")").setChildren(listForEachSeverity).build();
 			
 			resultList.add(parentModel);
 		}
-		
-		result.put(counter, resultList);
-		
-		return result;
+				
+		return resultList;
 	}
 	
 	/**
@@ -540,20 +499,65 @@ public class DataProvider {
 	}
 	
 	/**
-	 * Filter results based on current filter
-	 * 
-	 * @return
-	 */
-	public List<DisplayModel> filterResults(){		
-		return processResults(getCurrentResults(), getCurrentScanId());
-	}
-	
-	/**
 	 * Check if plugin has results loaded
 	 * 
 	 * @return
 	 */
 	public boolean containsResults() {
 		return getCurrentResults() != null && getCurrentResults().getResults() != null && !getCurrentResults().getResults().isEmpty();
+	}
+	
+	/**
+	 * Get AST Triage details
+	 * 
+	 * @return
+	 * @throws Exception 
+	 */
+	public List<Predicate> getTriageShow(UUID projectID, String similarityID, String scanType) throws Exception {
+		List<Predicate> triageList = new ArrayList<Predicate>();
+
+		CxWrapper cxWrapper = authenticateWithAST();
+		
+		// TODO: remove this condition when CLI is updated to manage these checks
+		if(scanType.equals(PluginConstants.KICS_INFRASTRUCTURE)) {
+			scanType = "kics";
+		}
+
+		if (cxWrapper != null) {
+			try {
+				triageList = cxWrapper.triageShow(projectID, similarityID, scanType);
+
+			} catch (IOException | InterruptedException | CxException e) {
+				CxLogger.error(String.format(PluginConstants.ERROR_GETTING_TRIAGE_DETAILS, e.getMessage()), e);
+			}
+		}
+
+		return triageList;
+	}
+
+	/**
+	 * Update a vulnerability severity or state
+	 * 
+	 * @param projectId
+	 * @param similarityId
+	 * @param engineType
+	 * @param state
+	 * @param comment
+	 * @param severity
+	 */
+	public boolean triageUpdate(UUID projectId, String similarityId, String engineType, String state, String comment, String severity) {
+
+		try {
+			CxWrapper cxWrapper = authenticateWithAST();
+			
+			if (cxWrapper != null) {
+				cxWrapper.triageUpdate(projectId, similarityId, engineType, state, comment, severity);
+			}
+			
+			return true;
+		} catch (Exception e) {
+			CxLogger.error(String.format(PluginConstants.ERROR_UPDATING_TRIAGE, e.getMessage()), e);
+			return false;
+		}
 	}
 }
