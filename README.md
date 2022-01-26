@@ -101,7 +101,7 @@ Project Link: [https://github.com/Checkmarx/ast-eclipse-plugin](https://github.c
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
 [contributors-shield]: https://img.shields.io/github/contributors/Checkmarx/ast-eclipse-plugin.svg?style=flat-square
 [contributors-url]: https://github.com/Checkmarx/ast-eclipse-plugin/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/Checkmarx/ast-eclipse-plugini.svg?style=flat-square
+[forks-shield]: https://img.shields.io/github/forks/Checkmarx/ast-eclipse-plugin.svg?style=flat-square
 [forks-url]: https://github.com/Checkmarx/ast-eclipse-plugin/network/members
 [stars-shield]: https://img.shields.io/github/stars/Checkmarx/ast-eclipse-plugin.svg?style=flat-square
 [stars-url]: https://github.com/Checkmarx/ast-eclipse-plugin/stargazers
