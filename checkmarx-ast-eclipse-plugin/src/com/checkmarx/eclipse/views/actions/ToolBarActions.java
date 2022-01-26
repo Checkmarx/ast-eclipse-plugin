@@ -77,7 +77,7 @@ public class ToolBarActions {
 			@Override
 			public void run() {
 				FilterState.setState(Severity.GROUP_BY_SEVERITY);
-				pluginEventBus.post(new PluginListenerDefinition(PluginListenerType.FILTER_CHANGED, DataProvider.getInstance().filterResults()));
+				pluginEventBus.post(new PluginListenerDefinition(PluginListenerType.FILTER_CHANGED, DataProvider.getInstance().sortResults()));
 			}
 		};
 		
@@ -88,7 +88,7 @@ public class ToolBarActions {
 			@Override
 			public void run() {
 				FilterState.setState(Severity.GROUP_BY_QUERY_NAME);
-				pluginEventBus.post(new PluginListenerDefinition(PluginListenerType.FILTER_CHANGED, DataProvider.getInstance().filterResults()));
+				pluginEventBus.post(new PluginListenerDefinition(PluginListenerType.FILTER_CHANGED, DataProvider.getInstance().sortResults()));
 			}
 		};
 		

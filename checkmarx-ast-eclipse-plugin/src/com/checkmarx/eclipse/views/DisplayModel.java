@@ -13,6 +13,7 @@ public class DisplayModel {
     public String name;
     public String type;
     public String severity;
+    public String state;
     
     public Result result;
 
@@ -22,7 +23,7 @@ public class DisplayModel {
     	this.severity = builder.severity;
     	this.result = builder.result;
     	this.children = builder.children;
-    	
+    	this.state = builder.state;    	
     }
     
 	public DisplayModel getParent() {
@@ -64,6 +65,14 @@ public class DisplayModel {
 	public void setSeverity(String severity) {
 		this.severity = severity;
 	}
+	
+	public String getState() {
+		return state;
+	}
+
+	public void setState(String state) {
+		this.state = state;
+	}
 
 	public Result getResult() {
 		return result;
@@ -80,6 +89,7 @@ public class DisplayModel {
 	    public String name;
 	    public String type;
 	    public String severity;
+	    public String state;
 	    
 	    public Result result;
 
@@ -114,6 +124,11 @@ public class DisplayModel {
 
 		public DisplayModelBuilder setResult(Result result) {
 			this.result = result;
+			return this;
+		}
+		
+		public DisplayModelBuilder setSate(String state) {
+			this.state = state;
 			return this;
 		}
 	    

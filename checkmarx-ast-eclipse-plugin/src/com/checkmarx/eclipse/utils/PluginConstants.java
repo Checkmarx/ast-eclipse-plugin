@@ -11,6 +11,11 @@ public class PluginConstants {
 	public static final String COMBOBOX_SCAND_ID_NO_SCANS_AVAILABLE = "No scans available. Select a project or paste a Scan Id here and hit Enter.";
 	public static final String COMBOBOX_BRANCH_CHANGING = "Changing branch...";
 	public static final String BTN_OPEN_SETTINGS = "Open Settings";
+	public static final String LOADING_CHANGES = "Loading changes...";
+	public static final String NO_CHANGES = "No changes...";
+	public static final String BTN_UPDATE = "Update";
+	public static final String BTN_LOADING = "Loading";
+	public static final String DEFAULT_COMMENT_TXT = "Enter comment";
 	
 	/******************************** LOG VIEW: ERRORS ********************************/
 	public static final String ERROR_AUTHENTICATING_AST = "An error occurred while trying to authenticate to AST: %s";
@@ -24,6 +29,8 @@ public class PluginConstants {
 	public static final String ERROR_GETTING_GIT_BRANCH = "An error occurred while getting git branch: %s";
 	public static final String ERROR_BUILDING_CX_WRAPPER = "An error occurred while instantiating a CxWrapper: %s";
 	public static final String ERROR_FINDING_OR_DELETING_MARKER = "An error occurred while finding or deleting a marker from Problems View: %s";
+	public static final String ERROR_UPDATING_TRIAGE = "An error occurred while updating triage similarity id: %s";
+	public static final String ERROR_GETTING_TRIAGE_DETAILS = "An error occurred while getting triage details: %s";
 	
 	/******************************** LOG VIEW: INFO ********************************/
 	public static final String INFO_AUTHENTICATION_STATUS = "Authentication Status: %s";
