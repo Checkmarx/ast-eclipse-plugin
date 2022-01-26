@@ -37,7 +37,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
       - name: Checkmarx AST CLI Action
-        uses: checkmarxDev/ast-github-action@master
+        uses: checkmarxDev/ast-github-action@main
         with:
           project_name: ast-eclipse-plugin
           branch: master
