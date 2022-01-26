@@ -143,7 +143,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 	private boolean alreadyRunning = false;
 
-	Font boldFont;
+	Font boldFont,titleFont;
 
 	private Text attackVectorValueLinkText;
 
@@ -192,6 +192,10 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		
 		if(boldFont != null && !boldFont.isDisposed()) {
 			boldFont.dispose();
+		}
+		
+		if(titleFont != null && !titleFont.isDisposed()) {
+			titleFont.dispose();
 		}
 		
 		if(pluginEventBus != null) {
@@ -529,39 +533,64 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		Display display = parent.getShell().getDisplay();
 		FontData systemFontData = display.getSystemFont().getFontData()[0];
 		boldFont = new Font(display, systemFontData.getName(), systemFontData.getHeight(), SWT.BOLD);
-		Font titleFont = new Font(display, systemFontData.getName(), systemFontData.getHeight() + 2, SWT.BOLD);
+		titleFont = new Font(display, systemFontData.getName(), systemFontData.getHeight() + 2, SWT.BOLD);
 
 		resultViewComposite = new Composite(resultsComposite, SWT.BORDER);
-		resultViewComposite.setLayout(new GridLayout(1, false));
+		GridLayout gl_resultViewComposite = new GridLayout(1, false);
+		gl_resultViewComposite.marginWidth = 0;
+		gl_resultViewComposite.marginHeight = 0;
+		gl_resultViewComposite.verticalSpacing = 0;
+		resultViewComposite.setLayout(gl_resultViewComposite);
 
 		titleLabel = new CLabel(resultViewComposite, SWT.NONE);
 		titleLabel.setFont(titleFont);
-		titleLabel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false, 1, 1));
+		titleLabel.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false, 1, 1));
 		
 		Composite triageView = new Composite(resultViewComposite,SWT.NONE);
-		triageView.setLayout(new GridLayout(3, false));
+		//triageView.setLayout(new GridLayout(3, false)); //columneEqualWidth = true
+		GridLayout gl_triageView = new GridLayout(3,false);
+		gl_triageView.marginHeight = 10;
+		triageView.setLayout(gl_triageView);
+		triageView.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false, 1, 1));
 		
-		triageSeverityComboViewew = new ComboViewer(triageView, SWT.NONE);
+		triageSeverityComboViewew = new ComboViewer(triageView, SWT.READ_ONLY);
 		Combo combo_1 = triageSeverityComboViewew.getCombo();
-		GridData gd_combo_1 = new GridData(SWT.LEFT, SWT.CENTER, true, false, 1, 1);
-		gd_combo_1.widthHint = 180;
+		GridData gd_combo_1 = new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1); 
+		gd_combo_1.widthHint = SWT.DEFAULT;  
 		combo_1.setLayoutData(gd_combo_1);
 		
-		triageStateComboViewer = new ComboViewer(triageView, SWT.NONE);
+		triageStateComboViewer = new ComboViewer(triageView, SWT.READ_ONLY);
 		Combo combo_2 = triageStateComboViewer.getCombo();
-		GridData gd_combo_2 = new GridData(SWT.LEFT, SWT.CENTER, true, false, 1, 1);
+		GridData gd_combo_2 = new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1);
 		gd_combo_2.widthHint = 180;
 		combo_2.setLayoutData(gd_combo_2);
 		
-		triageButton = new Button(triageView, SWT.PUSH);
-		triageButton.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false, 1, 1));
-		triageButton.setText("Update");
+		triageButton = new Button(triageView, SWT.FLAT | SWT.CENTER);
+		triageButton.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, true, 1, 1));
+		triageButton.setText(PluginConstants.BTN_UPDATE);
 		
 		commentText = new Text(triageView,SWT.BORDER);
-		commentText.setText("Comment");
-		GridData commentData = new GridData(SWT.FILL,SWT.BEGINNING,true,true,3,1);
+		commentText.setText(PluginConstants.DEFAULT_COMMENT_TXT);
+		GridData commentData = new GridData(SWT.FILL,SWT.FILL,true,true,3,1);
 		commentText.setEnabled(true);
 		commentText.setLayoutData(commentData);
+		
+		commentText.addListener(SWT.FocusIn, new Listener() {
+		      public void handleEvent(Event e) {
+		        commentText.setText("");
+		        resultViewComposite.layout();
+		      }
+		    });
+		
+		commentText.addListener(SWT.FocusOut, new Listener() {
+		      public void handleEvent(Event e) {
+		    	  Text textReceived = (Text) e.widget;
+		    	  if(textReceived.getText() == null || textReceived.getText() =="") {
+		    		  commentText.setText(PluginConstants.DEFAULT_COMMENT_TXT);
+		    		  resultViewComposite.layout();
+		    	  }
+		      }
+		    });
 
 		scrolledComposite = new ScrolledComposite(resultViewComposite, SWT.H_SCROLL| SWT.V_SCROLL);		
 	    scrolledComposite.setExpandHorizontal(true);
@@ -1135,14 +1164,16 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					String similarityId = currentDisplayModel.getResult().getSimilarityId();
 					String engineType = currentDisplayModel.getResult().getType();
 					triageButton.setEnabled(false);
-					triageButton.setText("Loading");
+					triageButton.setText(PluginConstants.BTN_LOADING);
 					commentText.setEnabled(false);
 					commentText.setEditable(false);
 					
 					
 					Display.getDefault().asyncExec(new Runnable() {
 					    public void run() {	
-					    	boolean successfullyUpdate = DataProvider.getInstance().triageUpdate(projectId, similarityId, engineType, selectedState, commentText.getText() != null ? commentText.getText() : "", selectedSeverity);
+					    	
+					    	String comment = commentText.getText() != null && !commentText.getText().equalsIgnoreCase("Enter comment") ? commentText.getText() : ""; 
+					    	boolean successfullyUpdate = DataProvider.getInstance().triageUpdate(projectId, similarityId, engineType, selectedState, comment, selectedSeverity);
 							
 					    	if(successfullyUpdate) {
 					    		currentDisplayModel.setSeverity(selectedSeverity);
@@ -1154,9 +1185,9 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 								alreadyRunning = true;
 								updateResultsTree(DataProvider.getInstance().sortResults());
 								triageButton.setEnabled(true);
-								triageButton.setText("Update");
+								triageButton.setText(PluginConstants.BTN_UPDATE);
 								commentText.setEnabled(true);
-								commentText.setText("Comment");
+								commentText.setText(PluginConstants.DEFAULT_COMMENT_TXT);
 								commentText.setEditable(true);
 								
 								// TODO: open the selectedItem in the tree - check hidden filter scenario
@@ -1192,9 +1223,11 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				tbtmChanges.setText("Changes");
 				
 				Composite changesComposite = new Composite(tabFolder, SWT.NONE);
-				changesComposite.setLayout(new FillLayout(SWT.VERTICAL));
+				GridLayout gl_detailsComposite = new GridLayout(1, false);
+				gl_detailsComposite.marginWidth = 0;
+				gl_detailsComposite.marginHeight = 0;
+				changesComposite.setLayout(gl_detailsComposite);
 				tbtmChanges.setControl(changesComposite);
-				changesComposite.setLayoutData(new GridData(SWT.FILL, SWT.BEGINNING, true, true, 1, 1));
 				
 				
 				List<Predicate> triageDetails = getTriageInfo(UUID.fromString(currentProjectId), selectedItem.getResult().getSimilarityId(), selectedItem.getResult().getType());
@@ -1212,7 +1245,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				}
 				
 				scrolledComposite.setContent(tabFolder);
-				scrolledComposite.setMinSize(tabFolder.computeSize(SWT.DEFAULT, SWT.DEFAULT));
+				scrolledComposite.setMinSize(changesComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT));
 			}
 			
 			
@@ -1258,7 +1291,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				}
 				
 				Label label = new Label(changesComposite, SWT.SEPARATOR | SWT.HORIZONTAL);
-				label.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 0));
+				label.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
 				
 			}
 
@@ -1272,13 +1305,15 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				
 				
 				Composite detailsComposite = new Composite(tabFolder, SWT.NONE);
-				detailsComposite.setLayout(new GridLayout(1, false));
+				GridLayout gl_detailsComposite = new GridLayout(1, false);
+				gl_detailsComposite.marginWidth = 0;
+				gl_detailsComposite.marginHeight = 0;
+				detailsComposite.setLayout(gl_detailsComposite);
 				tbtmDescription.setControl(detailsComposite);
-				detailsComposite.setLayoutData(new GridData(SWT.FILL, SWT.BEGINNING, false, false));
 
-				CLabel descriptionLabel = new CLabel(detailsComposite,SWT.WRAP | SWT.NONE);
-				descriptionLabel.setText(selectedItem.getResult().getData().getDescription() != null ? selectedItem.getResult().getData().getDescription() : "No data");
-				descriptionLabel.setLayoutData(new GridData(SWT.LEFT, SWT.BEGINNING, false, false, 1, 1));
+				Text descriptionTxt = new Text(detailsComposite, SWT.READ_ONLY | SWT.WRAP | SWT.MULTI);
+				descriptionTxt.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
+				descriptionTxt.setText(selectedItem.getResult().getDescription() != null ? selectedItem.getResult().getDescription() : "No data");
 				
 			}
 
@@ -1317,8 +1352,10 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		loadingLabel.setText(PluginConstants.LOADING_CHANGES);
 		loadingLabel.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
 		
+		commentText.setText(PluginConstants.DEFAULT_COMMENT_TXT);
+		
 		scrolledComposite.setContent(loadingScreen);
-		scrolledComposite.setMinSize(loadingScreen.computeSize(SWT.DEFAULT, SWT.DEFAULT));
+		//scrolledComposite.setMinSize(loadingScreen.computeSize(SWT.DEFAULT, SWT.DEFAULT));
 	}
 
 	/**

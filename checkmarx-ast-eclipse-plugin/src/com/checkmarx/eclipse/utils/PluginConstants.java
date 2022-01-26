@@ -13,6 +13,9 @@ public class PluginConstants {
 	public static final String BTN_OPEN_SETTINGS = "Open Settings";
 	public static final String LOADING_CHANGES = "Loading changes...";
 	public static final String NO_CHANGES = "No changes...";
+	public static final String BTN_UPDATE = "Update";
+	public static final String BTN_LOADING = "Loading";
+	public static final String DEFAULT_COMMENT_TXT = "Enter comment";
 	
 	/******************************** LOG VIEW: ERRORS ********************************/
 	public static final String ERROR_AUTHENTICATING_AST = "An error occurred while trying to authenticate to AST: %s";
