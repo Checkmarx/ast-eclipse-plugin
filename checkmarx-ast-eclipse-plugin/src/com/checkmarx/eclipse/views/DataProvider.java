@@ -277,9 +277,42 @@ public class DataProvider {
 			groupResultsByQueryName(filteredResultsByScannerType);
 		}
 		
+		if(FilterState.groupByStateName) {
+			groupResultsByStateName(filteredResultsByScannerType);
+		}
+		
 		return addResults(scanId, filteredResultsByScannerType);
 	}
 	
+	private void groupResultsByStateName(Map<String, List<DisplayModel>> results) {
+		// TODO Auto-generated method stub
+		if(FilterState.groupBySeverity) {
+			results.entrySet().stream().forEach(entry -> entry.getValue().stream().forEach(severity -> severity.setChildren(groupByStateName(severity.getChildren()))));
+		}else {
+			results.entrySet().stream().forEach(entry -> results.put(entry.getKey(), groupByStateName(entry.getValue())));
+		}
+		
+	}
+
+	private List<DisplayModel> groupByStateName(List<DisplayModel> vulnerabilities) {
+		Map<String, List<DisplayModel>> filteredByStateName = new HashMap<>();
+		
+		for (DisplayModel vulnerability : vulnerabilities) {
+			
+			//String queryName = vulnerability.getState();
+			
+			String queryName = vulnerability.getChildren().get(0).getState();
+			
+			if (filteredByStateName.containsKey(queryName)) {
+				filteredByStateName.get(queryName).add(vulnerability);
+			} else {
+				filteredByStateName.put(queryName, new ArrayList<>(Arrays.asList(vulnerability)));
+			}
+		}
+		
+		return createParentNodeByScanner(filteredByStateName);
+	}
+
 	/**
 	 *  Evaluates if each engine has results and adds it to the final map
 	 * 

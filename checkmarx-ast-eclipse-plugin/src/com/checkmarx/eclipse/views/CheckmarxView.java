@@ -1739,7 +1739,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		for(Action action : toolBarActions.getToolBarActions()) {
 			String actionName = action.getId();
 			
-			if(actionName.equals(ActionName.ABORT_RESULTS.name()) || actionName.equals(ActionName.GROUP_BY_SEVERITY.name()) && !actionName.equals(ActionName.GROUP_BY_QUERY_NAME.name())) {
+			if(actionName.equals(ActionName.ABORT_RESULTS.name()) || actionName.equals(ActionName.GROUP_BY_SEVERITY.name())&& !actionName.equals(ActionName.GROUP_BY_STATE_NAME.name()) && !actionName.equals(ActionName.GROUP_BY_QUERY_NAME.name())) {
 				continue;
 			}
 			

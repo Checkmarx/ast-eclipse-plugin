@@ -9,17 +9,21 @@ public class FilterState {
 	public static boolean medium = true;
 	public static boolean low = false;
 	public static boolean info = false;
+	public static boolean state = false;
 	public static boolean groupBySeverity = true;
 	public static boolean groupByQueryName = true;
+	public static boolean groupByStateName = true;
 	
 	
 	public static void loadFiltersFromSettings() {
 		high = Boolean.parseBoolean(GlobalSettings.getFromPreferences(Severity.HIGH.name(), "true"));
 		medium = Boolean.parseBoolean(GlobalSettings.getFromPreferences(Severity.MEDIUM.name(), "true"));
 		low = Boolean.parseBoolean(GlobalSettings.getFromPreferences(Severity.LOW.name(), "false"));
+		state = Boolean.parseBoolean(GlobalSettings.getFromPreferences(Severity.STATE.name(), "false"));
 		info = Boolean.parseBoolean(GlobalSettings.getFromPreferences(Severity.INFO.name(), "false"));
 		groupBySeverity = Boolean.parseBoolean(GlobalSettings.getFromPreferences(Severity.GROUP_BY_SEVERITY.name(), "true"));
 		groupByQueryName = Boolean.parseBoolean(GlobalSettings.getFromPreferences(Severity.GROUP_BY_QUERY_NAME.name(), "true"));
+		groupByStateName = Boolean.parseBoolean(GlobalSettings.getFromPreferences(Severity.GROUP_BY_STATE_NAME.name(), "true"));
 	}
 	
 	/**
@@ -52,7 +56,14 @@ public class FilterState {
 			case GROUP_BY_QUERY_NAME:
 				groupByQueryName = !groupByQueryName;
 				GlobalSettings.storeInPreferences(Severity.GROUP_BY_QUERY_NAME.name(), String.valueOf(groupByQueryName));
+			case GROUP_BY_STATE_NAME:
+				groupByStateName = !groupByStateName;
+				GlobalSettings.storeInPreferences(Severity.GROUP_BY_STATE_NAME.name(), String.valueOf(groupByStateName));	
 				break;
+			case STATE:
+				state = !state;
+				GlobalSettings.storeInPreferences(Severity.STATE.name(), String.valueOf(state));	
+				break;	
 		default:
 			break;
 		}
@@ -72,6 +83,8 @@ public class FilterState {
 			case INFO: return info;
 			case GROUP_BY_SEVERITY: return groupBySeverity;
 			case GROUP_BY_QUERY_NAME: return groupByQueryName;
+			case GROUP_BY_STATE_NAME: return groupByStateName;
+			case STATE: return state;
 		default:
 			break;
 		}
@@ -87,7 +100,9 @@ public class FilterState {
 		medium = true;
 		low = false;
 		info = false;
+		state=false;
 		groupBySeverity = true;
 		groupByQueryName = true;
+		groupByStateName = true;
 	}
 }
