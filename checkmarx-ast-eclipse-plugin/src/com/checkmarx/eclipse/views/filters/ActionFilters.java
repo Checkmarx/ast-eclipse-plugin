@@ -27,8 +27,6 @@ public class ActionFilters {
 	private static final String ACTION_FILTER_INFO_TOOLTIP = "Info";
 	private static final String ACTION_FILTER_INFO_ICON_PATH = "/icons/info_untoggle.png";
 	
-	private static final String ACTION_FILTER_STATE_TOOLTIP = "State";
-	private static final String ACTION_FILTER_STATE_ICON_PATH = "/icons/state.png";
 	
 	
 	private EventBus pluginEventBus;
@@ -49,29 +47,14 @@ public class ActionFilters {
 		Action filterMediumAction = createFilterAction(ACTION_FILTER_MEDIUM_TOOLTIP, ACTION_FILTER_MEDIUM_ICON_PATH, Severity.MEDIUM, ActionName.MEDIUM);
 		Action filterLowAction = createFilterAction(ACTION_FILTER_LOW_TOOLTIP, ACTION_FILTER_LOW_ICON_PATH, Severity.LOW, ActionName.LOW);
 		Action filterInfoAction = createFilterAction(ACTION_FILTER_INFO_TOOLTIP, ACTION_FILTER_INFO_ICON_PATH, Severity.INFO, ActionName.INFO);
-		
-		Action filterStateAction = createFilterStateAction(ACTION_FILTER_STATE_TOOLTIP, ACTION_FILTER_STATE_ICON_PATH, ActionName.FILTER_STATE);
-		
+				
 		filters.add(filterHighAction);
 		filters.add(filterMediumAction);
 		filters.add(filterLowAction);
-		filters.add(filterInfoAction);
-		filters.add(filterStateAction);
-		
+		filters.add(filterInfoAction);		
 		return filters;
 	}
 	
-	private Action createFilterStateAction(String actionFilterStateTooltip, String actionFilterStateIconPath,
-			ActionName filterState) {
-		// TODO Auto-generated method stub
-		Action filterAction = new Action() {
-			public void run() {
-				// must show the list of all the states as a dropdown menu
-				
-			}
-		};
-		return null;
-	}
 
 	/**
 	 * Creates a filter action

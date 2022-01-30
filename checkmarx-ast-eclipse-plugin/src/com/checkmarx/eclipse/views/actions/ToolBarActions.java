@@ -25,14 +25,13 @@ public class ToolBarActions {
 	public static final String MENU_GROUP_BY = "Group By";
 	public static final String GROUP_BY_SEVERITY = "Severity";
 	public static final String GROUP_BY_QUERY_NAME = "Query Name";
-	public static final String GROUP_BY_STATE_NAME = "State";
 	
 	/*
 	 * Filter state
 	 * 
 	 */
 	
-	public static final String MENU_FILTER_BY = "Filter State";
+	public static final String MENU_FILTER_BY = "Filter By";
 	
 
 	private List<Action> toolBarActions = new ArrayList<>();
@@ -49,7 +48,7 @@ public class ToolBarActions {
 	private Action abortResultsAction;
 	private Action groupBySeverityAction;
 	private Action groupByQueryNameAction;
-	private Action groupByStateNameAction;
+
 	private List<Action> filterActions;
 		
 	private ToolBarActions(ToolBarActionsBuilder toolBarActionsBuilder) {
@@ -105,26 +104,15 @@ public class ToolBarActions {
 		groupByQueryNameAction.setId(ActionName.GROUP_BY_QUERY_NAME.name());
 		groupByQueryNameAction.setChecked(FilterState.groupByQueryName);
 		
-		groupByStateNameAction = new Action(GROUP_BY_STATE_NAME, IAction.AS_CHECK_BOX) {
-			@Override
-			public void run() {
-				FilterState.setState(Severity.GROUP_BY_STATE_NAME);
-				pluginEventBus.post(new PluginListenerDefinition(PluginListenerType.FILTER_CHANGED, DataProvider.getInstance().sortResults()));
-			}
-		};
-		
-		groupByStateNameAction.setId(ActionName.GROUP_BY_STATE_NAME.name());
-		groupByStateNameAction.setChecked(FilterState.groupByStateName);
 		
 		filterActions.add(groupBySeverityAction);
 		filterActions.add(groupByQueryNameAction);
-		filterActions.add(groupByStateNameAction);
 		
 		IMenuManager dropDownMenu = actionBars.getMenuManager();
 		MenuManager subMenu = new MenuManager(MENU_GROUP_BY, MENU_GROUP_BY);
 		subMenu.add(groupBySeverityAction);
 		subMenu.add(groupByQueryNameAction);
-		subMenu.add(groupByStateNameAction);
+
 		dropDownMenu.add(subMenu);
 		
 		actionBars.updateActionBars();
