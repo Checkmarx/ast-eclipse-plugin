@@ -1496,7 +1496,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				@Override
 				public void mouseEnter(MouseEvent e) {
 					ITheme currentTheme = PlatformUI.getWorkbench().getThemeManager().getCurrentTheme();
-					Color c = currentTheme.getColorRegistry().get("org.eclipse.ui.workbench.HOVER_BACKGROUND");
+					Color c = currentTheme.getColorRegistry().get("org.eclipse.ui.workbench.HOVER_FOREGROUND");
 					listComposite.setBackground(c);
 					label.setBackground(c);
 					fileNameValueLinkText.setBackground(c);			
@@ -1518,6 +1518,12 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				}
 				
 			};
+			listComposite.addMouseTrackListener(hoverListener);
+			label.addMouseTrackListener(hoverListener);
+			attackVectorValueLinkText.addMouseTrackListener(hoverListener);
+			listComposite.layout();
+			itemComposite.layout();
+			attackVectorCompositePanel.layout();
 		}
 
 		if (selectedItem.getType().equalsIgnoreCase(PluginConstants.SAST)) {
@@ -1582,6 +1588,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					indexLabel.addMouseTrackListener(hoverListener);
 					attackVectorValueLinkText.addMouseTrackListener(hoverListener);
 					listComposite.layout();
+					itemComposite.layout();
+					attackVectorCompositePanel.layout();
 				}
 			} else {
 				if (attackVectorValueLinkText != null) {
