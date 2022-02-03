@@ -30,6 +30,7 @@ import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.viewers.StructuredSelection;
+import org.eclipse.jface.viewers.TreePath;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.jface.viewers.TreeViewerColumn;
 import org.eclipse.jgit.events.RefsChangedEvent;
@@ -40,9 +41,11 @@ import org.eclipse.swt.custom.CLabel;
 import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.FontData;
 import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -136,7 +139,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private Text commentText;
 	private DisplayModel rootModel;
 	private String selectedSeverity, selectedState;
-	private DisplayModel currentDisplayModel;
 	private Button triageButton;
 	private Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell();
 
@@ -429,7 +431,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 						Display.getDefault().asyncExec(new Runnable() {
 						    public void run() {
 						    	alreadyRunning = true;
-						    	updateResultsTree(DataProvider.getInstance().getResultsForScanId(currentScanId));
+						    	updateResultsTree(DataProvider.getInstance().getResultsForScanId(currentScanId), null);
 						    }
 						});
 					}else {
@@ -594,7 +596,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		      }
 		    });
 
-		scrolledComposite = new ScrolledComposite(resultViewComposite, SWT.H_SCROLL| SWT.V_SCROLL);		
+		scrolledComposite = new ScrolledComposite(resultViewComposite, SWT.V_SCROLL);		
 	    scrolledComposite.setExpandHorizontal(true);
 	    scrolledComposite.setExpandVertical(true);
 		scrolledComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
@@ -929,7 +931,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					Display.getDefault().asyncExec(new Runnable() {
 					    public void run() {
 					    	alreadyRunning = true;
-							updateResultsTree(DataProvider.getInstance().getResultsForScanId(selectedScan.getID()));
+							updateResultsTree(DataProvider.getInstance().getResultsForScanId(selectedScan.getID()), null);
 					    }
 					});
 				}
@@ -1154,7 +1156,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 * @param selectedItem
 	 */
 	private void createTriageSeverityAndStateCombos(DisplayModel selectedItem) {
-		currentDisplayModel = selectedItem;
 		
 		String currentSeverity = selectedItem.getSeverity();
 		selectedSeverity = selectedItem.getSeverity();
@@ -1199,8 +1200,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				// Call triage update. triageButton.isEnabled() is used to avoid nonsense randomly clicks triggered
 				if(selectedSeverity != null && selectedState != null && triageButton.isEnabled()) {
 					UUID projectId = UUID.fromString(currentProjectId);
-					String similarityId = currentDisplayModel.getResult().getSimilarityId();
-					String engineType = currentDisplayModel.getResult().getType();
+					String similarityId = selectedItem.getResult().getSimilarityId();
+					String engineType = selectedItem.getResult().getType();
 					triageButton.setEnabled(false);
 					triageButton.setText(PluginConstants.BTN_LOADING);
 					commentText.setEnabled(false);
@@ -1214,23 +1215,19 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					    	boolean successfullyUpdate = DataProvider.getInstance().triageUpdate(projectId, similarityId, engineType, selectedState, comment, selectedSeverity);
 							
 					    	if(successfullyUpdate) {
-					    		currentDisplayModel.setSeverity(selectedSeverity);
-					    		currentDisplayModel.setState(selectedState);
-								titleLabel.setImage(findSeverityImage(currentDisplayModel));
-								titleLabel.setText(currentDisplayModel.getName());
-								populateTriageChanges(currentDisplayModel);
+					    		selectedItem.setSeverity(selectedSeverity);
+					    		selectedItem.setState(selectedState);
+								titleLabel.setImage(findSeverityImage(selectedItem));
+								titleLabel.setText(selectedItem.getName());
+								populateTriageChanges(selectedItem);
 								
 								alreadyRunning = true;
-								updateResultsTree(DataProvider.getInstance().sortResults());
+								updateResultsTree(DataProvider.getInstance().sortResults(), selectedItem);
 								triageButton.setEnabled(true);
 								triageButton.setText(PluginConstants.BTN_UPDATE);
 								commentText.setEnabled(true);
 								commentText.setText(PluginConstants.DEFAULT_COMMENT_TXT);
 								commentText.setEditable(true);
-								
-								// TODO: open the selectedItem in the tree - check hidden filter scenario
-								
-								
 					    	}else {
 					    		// TODO: inform the user that update failed?
 					    	}
@@ -1255,16 +1252,30 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		Display.getDefault().asyncExec(new Runnable() {
 			public void run() {
 
-				createDescriptionInfo(selectedItem);
+				tabFolder = new TabFolder(scrolledComposite, SWT.NONE);
+				TabItem tbtmDescription = new TabItem(tabFolder, SWT.NONE);
+				tbtmDescription.setText("Description");
+				
+				
+				Composite detailsComposite = new Composite(tabFolder, SWT.NONE);
+				GridLayout gl_detailsComposite = new GridLayout(1, false);
+				gl_detailsComposite.marginWidth = 0;
+				gl_detailsComposite.marginHeight = 0;
+				detailsComposite.setLayout(gl_detailsComposite);
+				tbtmDescription.setControl(detailsComposite);
+
+				Text descriptionTxt = new Text(detailsComposite, SWT.READ_ONLY | SWT.WRAP | SWT.MULTI);
+				descriptionTxt.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
+				descriptionTxt.setText(selectedItem.getResult().getDescription() != null ? selectedItem.getResult().getDescription() : "No data");
 				
 				TabItem tbtmChanges = new TabItem(tabFolder, SWT.NONE);
 				tbtmChanges.setText("Changes");
 				
 				Composite changesComposite = new Composite(tabFolder, SWT.NONE);
-				GridLayout gl_detailsComposite = new GridLayout(1, false);
-				gl_detailsComposite.marginWidth = 0;
-				gl_detailsComposite.marginHeight = 0;
-				changesComposite.setLayout(gl_detailsComposite);
+				GridLayout gl_changesComposite = new GridLayout(1, false);
+				gl_changesComposite.marginWidth = 0;
+				gl_changesComposite.marginHeight = 0;
+				changesComposite.setLayout(gl_changesComposite);
 				tbtmChanges.setControl(changesComposite);
 				
 				
@@ -1283,7 +1294,21 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				}
 				
 				scrolledComposite.setContent(tabFolder);
-				scrolledComposite.setMinSize(changesComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT));
+				scrolledComposite.setMinSize(scrolledComposite.getSize().x, detailsComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT).y);
+				tabFolder.addSelectionListener(new SelectionListener() {
+					
+					@Override
+					public void widgetSelected(SelectionEvent arg0) {
+						String tab = tabFolder.getSelection()[0].getText();
+						Composite curComposite = tab.equals("Description") ? detailsComposite : changesComposite;
+						scrolledComposite.setMinSize(scrolledComposite.getSize().x, curComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT).y);						
+					}
+					
+					@Override
+					public void widgetDefaultSelected(SelectionEvent arg0) {
+						widgetSelected(arg0);
+					}
+				});
 			}
 			
 			
@@ -1332,30 +1357,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				label.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
 				
 			}
-
-
-
-			private void createDescriptionInfo(DisplayModel selectedItem) {
-
-				tabFolder = new TabFolder(scrolledComposite, SWT.NONE);
-				TabItem tbtmDescription = new TabItem(tabFolder, SWT.NONE);
-				tbtmDescription.setText("Description");
-				
-				
-				Composite detailsComposite = new Composite(tabFolder, SWT.NONE);
-				GridLayout gl_detailsComposite = new GridLayout(1, false);
-				gl_detailsComposite.marginWidth = 0;
-				gl_detailsComposite.marginHeight = 0;
-				detailsComposite.setLayout(gl_detailsComposite);
-				tbtmDescription.setControl(detailsComposite);
-
-				Text descriptionTxt = new Text(detailsComposite, SWT.READ_ONLY | SWT.WRAP | SWT.MULTI);
-				descriptionTxt.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
-				descriptionTxt.setText(selectedItem.getResult().getDescription() != null ? selectedItem.getResult().getDescription() : "No data");
-				
-			}
-
-
 
 			private Image findSeverityImageString(String severity) {
 				if (severity == null)
@@ -1650,7 +1651,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		switch (definition.getListenerType()) {
 		case FILTER_CHANGED:
 		case GET_RESULTS:
-			updateResultsTree(definition.getResutls());
+			updateResultsTree(definition.getResutls(), null);
 			break;
 		case CLEAN_AND_REFRESH:
 			clearAndRefreshPlugin();
@@ -1667,11 +1668,18 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 * Update results tree
 	 * 
 	 * @param results
+	 * @param selectedItem TODO
+	 * @param selectedModel TODO
 	 */
-	private void updateResultsTree(List<DisplayModel> results) {
+	private void updateResultsTree(List<DisplayModel> results, DisplayModel selectedItem) {
 		rootModel.children.clear();
 		rootModel.children.addAll(results);
-		resultsTree.getTree().getDisplay().asyncExec(() -> resultsTree.refresh());
+		resultsTree.getTree().getDisplay().asyncExec(() -> {
+			resultsTree.refresh();
+			if (selectedItem != null) {
+				resultsTree.expandToLevel(selectedItem, 1);
+			}
+		});
 		toolBarActions.getScanResultsAction().setEnabled(true);
 		toolBarActions.getAbortResultsAction().setEnabled(false);
 		toolBarActions.getClearAndRefreshAction().setEnabled(true);
