@@ -11,7 +11,7 @@ import org.eclipse.ui.themes.ITheme;
 
 public class HoverListener implements MouseTrackListener {
 
-	private static final String HOVER_COLOR_KEY = "org.eclipse.ui.workbench.HOVER_BACKGROUND";
+	private static final String HOVER_COLOR_KEY = "org.eclipse.jdt.ui.interfaceHighlighting";
 	private final List<Control> controls;
 	private final Color defaultColor;
 
@@ -23,7 +23,8 @@ public class HoverListener implements MouseTrackListener {
 	@Override
 	public void mouseEnter(MouseEvent arg0) {
 		ITheme currentTheme = PlatformUI.getWorkbench().getThemeManager().getCurrentTheme();
-		Color c = currentTheme.getColorRegistry().get(HOVER_COLOR_KEY);
+		Color themeColor = currentTheme.getColorRegistry().get(HOVER_COLOR_KEY);
+		Color c = new Color(themeColor.getRed(), themeColor.getGreen(), themeColor.getBlue(), 32);
 		controls.forEach(control -> control.setBackground(c));		
 	}
 
