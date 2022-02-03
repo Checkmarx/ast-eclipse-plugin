@@ -46,6 +46,7 @@ import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.layout.RowData;
 import org.eclipse.swt.layout.RowLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
@@ -1430,7 +1431,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		itemCompositeGridData.grabExcessVerticalSpace = true;
 
 		itemComposite.setLayoutData(itemCompositeGridData);
-		itemComposite.setLayout(new RowLayout(SWT.VERTICAL));
+		itemComposite.setLayout(new GridLayout(1, false));
 
 		if (selectedItem.getType().equalsIgnoreCase(PluginConstants.SCA_DEPENDENCY)) {
 			drawPackageData(itemComposite, selectedItem);
@@ -1530,6 +1531,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		layout.marginHeight = 10;
 		layout.numColumns = 2;
 		rowComposite.setLayout(layout);
+		rowComposite.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
 		return rowComposite;
 	}
 	
