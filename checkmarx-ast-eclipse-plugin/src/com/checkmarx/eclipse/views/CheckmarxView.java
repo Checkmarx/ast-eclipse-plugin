@@ -2,6 +2,7 @@ package com.checkmarx.eclipse.views;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -24,7 +25,6 @@ import org.eclipse.jface.preference.PreferenceDialog;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.ColumnViewerToolTipSupport;
 import org.eclipse.jface.viewers.ComboViewer;
-import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.ISelectionChangedListener;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.LabelProvider;
@@ -32,7 +32,6 @@ import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.viewers.StructuredSelection;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.jface.viewers.TreeViewerColumn;
-import org.eclipse.jface.viewers.ViewerFilter;
 import org.eclipse.jgit.events.RefsChangedEvent;
 import org.eclipse.jgit.events.RefsChangedListener;
 import org.eclipse.jgit.lib.Repository;
@@ -47,6 +46,7 @@ import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.layout.RowData;
 import org.eclipse.swt.layout.RowLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
@@ -55,7 +55,6 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Label;
-import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Link;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Menu;
@@ -70,6 +69,7 @@ import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.dialogs.PreferencesUtil;
 import org.eclipse.ui.ide.IDE;
 import org.eclipse.ui.part.ViewPart;
+import org.eclipse.ui.themes.ITheme;
 import org.osgi.service.event.EventHandler;
 
 import com.checkmarx.ast.predicate.Predicate;
@@ -104,7 +104,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private static final String NO_BRANCHES_AVAILABLE = "No branches available.";
 	private static final String NO_PROJECTS_AVAILABLE = "No projects available.";
 	private static final String FORMATTED_SCAN_LABEL = "%s (%s)";
-
 	/**
 	 * The ID of the view as specified by the extension.
 	 */
@@ -145,14 +144,15 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 	Font boldFont,titleFont;
 
-	private Text attackVectorValueLinkText;
-
 	private Composite resultViewComposite;
 	private Composite attackVectorCompositePanel;
+	private ScrolledComposite attackVectorScrolledComposite;
+	private Composite attackVectorContentComposite;
 	private Composite openSettingsComposite;
 	private CLabel titleLabel;
 
-	private Label attackVectorLabel;
+	private CLabel attackVectorLabel;
+	private Label attackVectorSeparator;
 	private ToolBarActions toolBarActions;
 
 	private EventBus pluginEventBus;
@@ -546,8 +546,10 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		titleLabel.setFont(titleFont);
 		titleLabel.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false, 1, 1));
 		
+		Label separator = new Label(resultViewComposite, SWT.HORIZONTAL | SWT.SEPARATOR);
+	    separator.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+		
 		Composite triageView = new Composite(resultViewComposite,SWT.NONE);
-		//triageView.setLayout(new GridLayout(3, false)); //columneEqualWidth = true
 		GridLayout gl_triageView = new GridLayout(3,false);
 		gl_triageView.marginHeight = 10;
 		triageView.setLayout(gl_triageView);
@@ -607,18 +609,53 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 * @param resultsComposite
 	 */
 	private void createResultVulnerabilitiesPanel(Composite resultsComposite) {
-		attackVectorCompositePanel = new Composite(resultsComposite, SWT.BORDER);
+		
+		attackVectorCompositePanel = new Composite(resultsComposite, SWT.BORDER);		
+		GridLayout attackVectorCompositePanelLayout = new GridLayout(1, false);
+		attackVectorCompositePanelLayout.marginWidth = 0;
+		attackVectorCompositePanelLayout.marginHeight = 0;
+		attackVectorCompositePanelLayout.verticalSpacing = 0;
+		attackVectorCompositePanel.setLayout(attackVectorCompositePanelLayout);	
+		
+		attackVectorScrolledComposite = new ScrolledComposite(attackVectorCompositePanel, SWT.H_SCROLL | SWT.V_SCROLL);		
+		GridLayout attackVectorScrolledCompositeLayout = new GridLayout(1, false);
+		attackVectorScrolledCompositeLayout.marginWidth = 0;
+		attackVectorScrolledCompositeLayout.marginHeight = 0;
+		attackVectorScrolledCompositeLayout.verticalSpacing = 0;
+		attackVectorScrolledComposite.setExpandHorizontal(true);
+		attackVectorScrolledComposite.setExpandVertical(true);
+		attackVectorScrolledComposite.setLayout(attackVectorScrolledCompositeLayout);
+		GridData scrollGridData = new GridData();
+		scrollGridData.horizontalAlignment = GridData.FILL;
+		scrollGridData.verticalAlignment = GridData.BEGINNING;
+		scrollGridData.grabExcessHorizontalSpace = true;
+		scrollGridData.grabExcessVerticalSpace = true;
+		attackVectorScrolledComposite.setLayoutData(scrollGridData);
+		
+		attackVectorContentComposite = new Composite(attackVectorScrolledComposite, SWT.NONE);
+		attackVectorScrolledComposite.setContent(attackVectorContentComposite);
+		ITheme currentTheme = PlatformUI.getWorkbench().getThemeManager().getCurrentTheme();
+		attackVectorContentComposite.setBackground(currentTheme.getColorRegistry().get("org.eclipse.debug.ui.console.background"));
 
-		GridData attackVectorCompositePanelGridData = new GridData();
-		attackVectorCompositePanelGridData.horizontalAlignment = GridData.END;
-		attackVectorCompositePanelGridData.grabExcessHorizontalSpace = true;
-		attackVectorCompositePanelGridData.grabExcessVerticalSpace = true;
+		GridData attackVectorContentCompositeGridData = new GridData();
+		attackVectorContentCompositeGridData.horizontalAlignment = GridData.FILL;
+		attackVectorContentCompositeGridData.grabExcessHorizontalSpace = true;
+		attackVectorContentCompositeGridData.grabExcessVerticalSpace = true;
+		attackVectorContentComposite.setLayoutData(attackVectorContentCompositeGridData);
+		
+		GridLayout attackVectorContentCompositeLayout = new GridLayout(1, false);
+		attackVectorContentCompositeLayout.marginWidth = 0;
+		attackVectorContentCompositeLayout.marginHeight = 0;
+		attackVectorContentCompositeLayout.verticalSpacing = 0;
+		attackVectorContentComposite.setLayout(attackVectorContentCompositeLayout);		
 
-		attackVectorCompositePanel.setLayoutData(attackVectorCompositePanelGridData);
-		attackVectorCompositePanel.setLayout(new RowLayout(SWT.VERTICAL));
-
-		attackVectorLabel = new Label(attackVectorCompositePanel, SWT.NONE);
-		attackVectorLabel.setFont(boldFont);
+		attackVectorLabel = new CLabel(attackVectorContentComposite, SWT.NONE);
+		attackVectorLabel.setFont(titleFont);
+		attackVectorLabel.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false, 1, 1));
+		attackVectorLabel.setBackground(attackVectorContentComposite.getBackground());
+		
+		attackVectorSeparator = new Label(attackVectorContentComposite, SWT.HORIZONTAL | SWT.SEPARATOR);
+		attackVectorSeparator.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
 
 		attackVectorCompositePanel.setVisible(false);
 	}
@@ -1381,88 +1418,146 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	}
 
 	private void updateAttackVectorForSelectedTreeItem(DisplayModel selectedItem) {
-		clearAttackVectorSection(attackVectorCompositePanel);
+		clearAttackVectorSection(attackVectorContentComposite);
 		attackVectorCompositePanel.setVisible(true);
 
+		Composite itemComposite = new Composite(attackVectorContentComposite, SWT.NONE);
+		itemComposite.setBackground(attackVectorContentComposite.getBackground());
+
+		GridData itemCompositeGridData = new GridData();
+		itemCompositeGridData.horizontalAlignment = GridData.FILL;
+		itemCompositeGridData.verticalAlignment = GridData.BEGINNING;
+		itemCompositeGridData.grabExcessHorizontalSpace = true;
+		itemCompositeGridData.grabExcessVerticalSpace = true;
+
+		itemComposite.setLayoutData(itemCompositeGridData);
+		itemComposite.setLayout(new GridLayout(1, false));
+
 		if (selectedItem.getType().equalsIgnoreCase(PluginConstants.SCA_DEPENDENCY)) {
-			attackVectorLabel.setText("Package Data: ");
-			List<PackageData> packageDataList = selectedItem.getResult().getData().getPackageData();
-
-			if (packageDataList != null && !packageDataList.isEmpty()) {
-
-				for (PackageData packageDataItem : packageDataList) {
-					Text packageDataTypeLabel = new Text(attackVectorCompositePanel, SWT.READ_ONLY);
-					packageDataTypeLabel.setFont(boldFont);
-					packageDataTypeLabel.setText(packageDataItem.getType());
-
-					Link packageDataLink = new Link(attackVectorCompositePanel, SWT.NONE);
-					packageDataLink.setText("<a>" + packageDataItem.getUrl() + "</a>");
-				}
-
-				attackVectorCompositePanel.layout();
-
-			} else {
-				if (attackVectorValueLinkText != null) {
-					attackVectorValueLinkText.setText("Not Available.");
-				}
-			}
-
+			drawPackageData(itemComposite, selectedItem);
 		}
 
 		if (selectedItem.getType().equalsIgnoreCase(PluginConstants.KICS_INFRASTRUCTURE)) {
-			attackVectorLabel.setText("Location: ");
-
-			Link fileNameValueLinkText = new Link(attackVectorCompositePanel, SWT.NONE);
-			String text = "<a>" + selectedItem.getResult().getData().getFileName() + "["
-					+ selectedItem.getResult().getData().getLine() + "]" + "</a>";
-			fileNameValueLinkText.setText(text);
-			fileNameValueLinkText.addListener(SWT.Selection, new Listener() {
-				public void handleEvent(Event event) {
-					openTheSelectedFile(selectedItem.getResult().getData().getFileName(),
-							selectedItem.getResult().getData().getLine(), null);
-				}
-			});
-
-			attackVectorCompositePanel.layout();
+			drawVulnerabilityLocation(itemComposite, selectedItem);
 		}
 
 		if (selectedItem.getType().equalsIgnoreCase(PluginConstants.SAST)) {
-			attackVectorLabel.setText("Attack Vector: ");
-
-			String queryName = selectedItem.getResult().getData().getQueryName();
-			String groupName = selectedItem.getResult().getData().getGroup();
-
-			List<Node> nodesList = selectedItem.getResult().getData().getNodes();
-			if (nodesList != null && nodesList.size() > 0) {
-				for (Node node : nodesList) {
-
-					String nodeName = node.getName();
-					String markerDescription = groupName + "_" + queryName + "_" + nodeName;
-
-					Link attackVectorValueLinkText = new Link(attackVectorCompositePanel, SWT.NONE);
-					String text = "<a>" + node.getFileName() + "[" + node.getLine() + "," + node.getColumn() + "]"
-							+ "</a>";
-					attackVectorValueLinkText.setText(text);
-					attackVectorValueLinkText.addListener(SWT.Selection, new Listener() {
-						public void handleEvent(Event event) {
-							openTheSelectedFile(node.getFileName(), node.getLine(), markerDescription);
-						}
-					});
-
-					attackVectorCompositePanel.layout();
-				}
-			} else {
-				if (attackVectorValueLinkText != null) {
-					attackVectorValueLinkText.setText("Not Available.");
-				}
-			}
+			drawAttackVector(itemComposite, selectedItem);
 		}
+		itemComposite.layout();
+		attackVectorScrolledComposite.setMinSize(attackVectorContentComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT));
+		attackVectorScrolledComposite.layout();
+		attackVectorCompositePanel.layout();
+	}
+	
+	private void drawPackageData(Composite parent, DisplayModel selectedItem) {
+		attackVectorLabel.setText("Package Data");
+		
+		List<PackageData> packageDataList = selectedItem.getResult().getData().getPackageData();
+
+		if (packageDataList != null && !packageDataList.isEmpty()) {
+
+			for (PackageData packageDataItem : packageDataList) {
+				
+				Composite listComposite = createRowComposite(parent);
+
+				Label label = createRowLabel(listComposite, String.format("%s | ", packageDataItem.getType()));
+
+				Link packageDataLink = createRowLink(listComposite, "<a>" + packageDataItem.getUrl() + "</a>", null);
+				
+				HoverListener hoverListener = new HoverListener(Arrays.asList(listComposite, label, packageDataLink));
+				hoverListener.apply();
+			}
+		} else {
+			createRowLabel(parent, "Not available.");
+		}
+	}
+	
+	private void drawAttackVector(Composite parent, DisplayModel selectedItem) {
+		attackVectorLabel.setText("Attack Vector");
+
+		String queryName = selectedItem.getResult().getData().getQueryName();
+		String groupName = selectedItem.getResult().getData().getGroup();
+
+		List<Node> nodesList = selectedItem.getResult().getData().getNodes();
+		if (nodesList != null && !nodesList.isEmpty()) {
+			for (int i = 0; i < nodesList.size(); i++) {
+				
+				Node node = nodesList.get(i);
+				
+				Composite listComposite = createRowComposite(parent);
+				
+				Label label = createRowLabel(listComposite, String.format("%s | %s", i, node.getName()));
+				
+				Link attackVectorValueLinkText = createRowLink(listComposite,
+						String.format("<a>%s[%d,%d]</a>",node.getFileName(), node.getLine(), node.getColumn()),
+						new Listener() {
+							public void handleEvent(Event event) {
+								openTheSelectedFile(node.getFileName(), node.getLine(), groupName + "_" + queryName + "_" + node.getName());
+							}
+				});
+				
+				HoverListener hoverListener = new HoverListener(Arrays.asList(listComposite, label, attackVectorValueLinkText));
+				hoverListener.apply();
+			}
+		} else {
+			createRowLabel(parent, "Not available.");
+		}
+	}
+	
+	private void drawVulnerabilityLocation(Composite parent, DisplayModel selectedItem) {
+		attackVectorLabel.setText("Location");
+
+		Composite listComposite = createRowComposite(parent);
+
+		Label label = createRowLabel(listComposite, "Location | ");
+		
+		Link fileNameValueLinkText = createRowLink(listComposite, "<a>" + selectedItem.getResult().getData().getFileName() + "["
+				+ selectedItem.getResult().getData().getLine() + "]" + "</a>", new Listener() {
+			public void handleEvent(Event event) {
+				openTheSelectedFile(selectedItem.getResult().getData().getFileName(),
+						selectedItem.getResult().getData().getLine(), null);
+			}
+		});
+		
+		HoverListener hoverListener = new HoverListener(Arrays.asList(listComposite, label, fileNameValueLinkText));
+		hoverListener.apply();
+	}
+	
+	private static Composite createRowComposite(Composite parent) {
+		Composite rowComposite = new Composite(parent, SWT.NONE);
+		rowComposite.setBackground(parent.getBackground());
+		GridLayout layout = new GridLayout();
+		layout.marginHeight = 10;
+		layout.numColumns = 2;
+		rowComposite.setLayout(layout);
+		rowComposite.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+		return rowComposite;
+	}
+	
+	private Label createRowLabel(Composite rowComposite, String text) {
+		Label label = new Label(rowComposite, SWT.NONE);
+		label.setBackground(rowComposite.getBackground());
+		label.setFont(boldFont);
+		label.setText(text);
+		return label;
+	}
+	
+	private Link createRowLink(Composite rowComposite, String text, Listener selectionListener) {
+		Link link = new Link(rowComposite, SWT.NONE);
+		link.setBackground(rowComposite.getBackground());
+		link.setText(text);
+		if (selectionListener != null) {
+			link.addListener(SWT.Selection, selectionListener);	
+		}
+		return link;
 	}
 
 	private void clearAttackVectorSection(Composite attackVectorCompositePanel) {
 		for (Control child : attackVectorCompositePanel.getChildren()) {
-			if (!(child instanceof Label))
+			if (child != attackVectorLabel && child != attackVectorSeparator) {
 				child.dispose();
+			}
 		}
 	}
 
