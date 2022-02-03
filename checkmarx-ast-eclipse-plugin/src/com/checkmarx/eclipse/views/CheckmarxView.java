@@ -549,8 +549,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	    separator.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
 		
 		Composite triageView = new Composite(resultViewComposite,SWT.NONE);
-		System.out.println(triageView.getBackground().toString());
-		//triageView.setLayout(new GridLayout(3, false)); //columneEqualWidth = true
 		GridLayout gl_triageView = new GridLayout(3,false);
 		gl_triageView.marginHeight = 10;
 		triageView.setLayout(gl_triageView);
@@ -645,11 +643,9 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		attackVectorContentComposite.setLayoutData(attackVectorContentCompositeGridData);
 		
 		GridLayout attackVectorContentCompositeLayout = new GridLayout(1, false);
-		int marginHeight = attackVectorContentCompositeLayout.marginHeight;
 		attackVectorContentCompositeLayout.marginWidth = 0;
 		attackVectorContentCompositeLayout.marginHeight = 0;
-		//attackVectorContentCompositeLayout.marginLeft = marginWidth;
-		attackVectorContentCompositeLayout.marginBottom = marginHeight;
+		attackVectorContentCompositeLayout.verticalSpacing = 0;
 		attackVectorContentComposite.setLayout(attackVectorContentCompositeLayout);		
 
 		attackVectorLabel = new CLabel(attackVectorContentComposite, SWT.NONE);
@@ -1558,10 +1554,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private void clearAttackVectorSection(Composite attackVectorCompositePanel) {
 		for (Control child : attackVectorCompositePanel.getChildren()) {
 			if (child != attackVectorLabel && child != attackVectorSeparator) {
-				System.out.println("Disposing child " + child.getClass() + " " + child.toString());
 				child.dispose();
-			} else {
-				System.out.println("Not disposing child " + child.getClass() + " " + child.toString());				
 			}
 		}
 	}
