@@ -13,17 +13,19 @@ public class DisplayModel {
     public String name;
     public String type;
     public String severity;
+    public String queryName;
     public String state;
-    
     public Result result;
+    
 
     private DisplayModel(DisplayModelBuilder builder) {
     	this.name = builder.name;
     	this.type = builder.type;
     	this.severity = builder.severity;
-    	this.result = builder.result;
+    	this.queryName = builder.queryName;
     	this.children = builder.children;
     	this.state = builder.state;    	
+    	this.result = builder.result;
     }
     
 	public DisplayModel getParent() {
@@ -65,6 +67,14 @@ public class DisplayModel {
 	public void setSeverity(String severity) {
 		this.severity = severity;
 	}
+
+	public String getQueryName() {
+		return queryName;
+	}
+
+	public void setQueryName(String queryName) {
+		this.queryName = queryName;
+	}
 	
 	public String getState() {
 		return state;
@@ -89,6 +99,7 @@ public class DisplayModel {
 	    public String name;
 	    public String type;
 	    public String severity;
+	    public String queryName;
 	    public String state;
 	    
 	    public Result result;
@@ -119,6 +130,11 @@ public class DisplayModel {
 
 		public DisplayModelBuilder setSeverity(String severity) {
 			this.severity = severity;
+			return this;
+		}
+
+		public DisplayModelBuilder setQueryName(String queryName) {
+			this.queryName = queryName;
 			return this;
 		}
 

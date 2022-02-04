@@ -30,7 +30,6 @@ import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.viewers.StructuredSelection;
-import org.eclipse.jface.viewers.TreePath;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.jface.viewers.TreeViewerColumn;
 import org.eclipse.jgit.events.RefsChangedEvent;
@@ -41,16 +40,12 @@ import org.eclipse.swt.custom.CLabel;
 import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
-import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.FontData;
 import org.eclipse.swt.graphics.Image;
-import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
-import org.eclipse.swt.layout.RowData;
-import org.eclipse.swt.layout.RowLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
@@ -600,6 +595,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	    scrolledComposite.setExpandHorizontal(true);
 	    scrolledComposite.setExpandVertical(true);
 		scrolledComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+		scrolledComposite.setMinSize(resultViewComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT));
 
 		
 		resultViewComposite.setVisible(false);
@@ -1256,27 +1252,40 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				TabItem tbtmDescription = new TabItem(tabFolder, SWT.NONE);
 				tbtmDescription.setText("Description");
 				
+				ScrolledComposite descriptionScrolledComposite = new ScrolledComposite(tabFolder, SWT.V_SCROLL);		
+				descriptionScrolledComposite.setExpandHorizontal(true);
+				descriptionScrolledComposite.setExpandVertical(true);
+				descriptionScrolledComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 				
-				Composite detailsComposite = new Composite(tabFolder, SWT.NONE);
+				Composite detailsComposite = new Composite(descriptionScrolledComposite, SWT.NONE);
 				GridLayout gl_detailsComposite = new GridLayout(1, false);
 				gl_detailsComposite.marginWidth = 0;
 				gl_detailsComposite.marginHeight = 0;
 				detailsComposite.setLayout(gl_detailsComposite);
-				tbtmDescription.setControl(detailsComposite);
+				tbtmDescription.setControl(descriptionScrolledComposite);
 
 				Text descriptionTxt = new Text(detailsComposite, SWT.READ_ONLY | SWT.WRAP | SWT.MULTI);
 				descriptionTxt.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
 				descriptionTxt.setText(selectedItem.getResult().getDescription() != null ? selectedItem.getResult().getDescription() : "No data");
+
+				descriptionScrolledComposite.setContent(detailsComposite);
+				descriptionScrolledComposite.setMinSize(descriptionScrolledComposite.getSize().x, detailsComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT, true).y);
+				
 				
 				TabItem tbtmChanges = new TabItem(tabFolder, SWT.NONE);
 				tbtmChanges.setText("Changes");
 				
-				Composite changesComposite = new Composite(tabFolder, SWT.NONE);
+				ScrolledComposite changesScrolledComposite = new ScrolledComposite(tabFolder, SWT.V_SCROLL);		
+				changesScrolledComposite.setExpandHorizontal(true);
+				changesScrolledComposite.setExpandVertical(true);
+				changesScrolledComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+				
+				Composite changesComposite = new Composite(changesScrolledComposite, SWT.NONE);
 				GridLayout gl_changesComposite = new GridLayout(1, false);
 				gl_changesComposite.marginWidth = 0;
 				gl_changesComposite.marginHeight = 0;
 				changesComposite.setLayout(gl_changesComposite);
-				tbtmChanges.setControl(changesComposite);
+				tbtmChanges.setControl(changesScrolledComposite);
 				
 				
 				List<Predicate> triageDetails = getTriageInfo(UUID.fromString(currentProjectId), selectedItem.getResult().getSimilarityId(), selectedItem.getResult().getType());
@@ -1292,23 +1301,30 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					populateNoChangesData(changesComposite,tbtmChanges);
 					
 				}
+
+				changesScrolledComposite.setContent(changesComposite);
+				changesScrolledComposite.setMinSize(changesScrolledComposite.getSize().x, changesComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT, true).y);
 				
 				scrolledComposite.setContent(tabFolder);
-				scrolledComposite.setMinSize(scrolledComposite.getSize().x, detailsComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT).y);
+				/*scrolledComposite.setMinSize(detailsComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT, true));
 				tabFolder.addSelectionListener(new SelectionListener() {
 					
 					@Override
 					public void widgetSelected(SelectionEvent arg0) {
 						String tab = tabFolder.getSelection()[0].getText();
+						Point tabFolderSize = tabFolder.computeSize(SWT.DEFAULT, SWT.DEFAULT, true);
 						Composite curComposite = tab.equals("Description") ? detailsComposite : changesComposite;
-						scrolledComposite.setMinSize(scrolledComposite.getSize().x, curComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT).y);						
+						Point curCompositeSize = curComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT, true);
+						System.out.println("tabFolderY: " + tabFolderSize.y);
+						System.out.println("curCompositeY: " + curCompositeSize.y);
+						scrolledComposite.setMinSize(curCompositeSize.x , curCompositeSize.y);						
 					}
 					
 					@Override
 					public void widgetDefaultSelected(SelectionEvent arg0) {
 						widgetSelected(arg0);
 					}
-				});
+				});*/
 			}
 			
 			
@@ -1394,7 +1410,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		commentText.setText(PluginConstants.DEFAULT_COMMENT_TXT);
 		
 		scrolledComposite.setContent(loadingScreen);
-		//scrolledComposite.setMinSize(loadingScreen.computeSize(SWT.DEFAULT, SWT.DEFAULT));
 	}
 
 	/**
