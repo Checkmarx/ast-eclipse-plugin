@@ -1306,25 +1306,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				changesScrolledComposite.setMinSize(changesScrolledComposite.getSize().x, changesComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT, true).y);
 				
 				scrolledComposite.setContent(tabFolder);
-				/*scrolledComposite.setMinSize(detailsComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT, true));
-				tabFolder.addSelectionListener(new SelectionListener() {
-					
-					@Override
-					public void widgetSelected(SelectionEvent arg0) {
-						String tab = tabFolder.getSelection()[0].getText();
-						Point tabFolderSize = tabFolder.computeSize(SWT.DEFAULT, SWT.DEFAULT, true);
-						Composite curComposite = tab.equals("Description") ? detailsComposite : changesComposite;
-						Point curCompositeSize = curComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT, true);
-						System.out.println("tabFolderY: " + tabFolderSize.y);
-						System.out.println("curCompositeY: " + curCompositeSize.y);
-						scrolledComposite.setMinSize(curCompositeSize.x , curCompositeSize.y);						
-					}
-					
-					@Override
-					public void widgetDefaultSelected(SelectionEvent arg0) {
-						widgetSelected(arg0);
-					}
-				});*/
 			}
 			
 			
