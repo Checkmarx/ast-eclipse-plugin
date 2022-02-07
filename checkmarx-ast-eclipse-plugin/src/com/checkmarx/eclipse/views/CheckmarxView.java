@@ -134,10 +134,12 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 	private TreeViewer resultsTree;
 	private ComboViewer scanIdComboViewer, projectComboViewer, branchComboViewer, triageSeverityComboViewew, triageStateComboViewer;
+	private ISelectionChangedListener triageSeverityComboViewerListener, triageStateComboViewerListener;
 	private Text commentText;
 	private DisplayModel rootModel;
 	private String selectedSeverity, selectedState;
 	private Button triageButton;
+	private SelectionAdapter triageButtonAdapter;
 	private Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell();
 
 	private boolean alreadyRunning = false;
@@ -1154,8 +1156,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 * 
 	 * @param selectedItem
 	 */
-	private void createTriageSeverityAndStateCombos(DisplayModel selectedItem) {
-		
+	private void createTriageSeverityAndStateCombos(DisplayModel selectedItem) {		
 		String currentSeverity = selectedItem.getSeverity();
 		selectedSeverity = selectedItem.getSeverity();
 		String[] severity = {"HIGH","MEDIUM","LOW","INFO"};
@@ -1164,7 +1165,10 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		triageSeverityComboViewew.setInput(severity);
 		PluginUtils.setTextForComboViewer(triageSeverityComboViewew, currentSeverity);
 		
-		triageSeverityComboViewew.addSelectionChangedListener(new ISelectionChangedListener() {
+		if (triageSeverityComboViewerListener != null) {
+			triageSeverityComboViewew.removeSelectionChangedListener(triageSeverityComboViewerListener);
+		}
+		triageSeverityComboViewerListener = new ISelectionChangedListener() {
 
 			@Override
 			public void selectionChanged(SelectionChangedEvent event) {
@@ -1173,7 +1177,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					selectedSeverity = ((String) selection.getFirstElement());
 				}
 			}
-		});
+		};
+		triageSeverityComboViewew.addSelectionChangedListener(triageSeverityComboViewerListener);
 		
 		String currentState = selectedItem.getState();
 		selectedState = selectedItem.getResult().getState();
@@ -1183,7 +1188,10 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		triageStateComboViewer.setInput(state);
 		PluginUtils.setTextForComboViewer(triageStateComboViewer, currentState);
 		
-		triageStateComboViewer.addSelectionChangedListener(new ISelectionChangedListener() {
+		if (triageStateComboViewerListener != null) {
+			triageStateComboViewer.removeSelectionChangedListener(triageStateComboViewerListener);
+		}
+		triageStateComboViewerListener = new ISelectionChangedListener() {
 			@Override
 			public void selectionChanged(SelectionChangedEvent event) {
 				IStructuredSelection selection = (IStructuredSelection) event.getSelection();
@@ -1191,9 +1199,13 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					selectedState = ((String) selection.getFirstElement());
 				}
 			}
-		});
+		};
+		triageStateComboViewer.addSelectionChangedListener(triageStateComboViewerListener);
 		
-		triageButton.addSelectionListener(new SelectionAdapter() {
+		if (triageButtonAdapter != null) {
+			triageButton.removeSelectionListener(triageButtonAdapter);
+		}
+		triageButtonAdapter = new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent event) {
 				// Call triage update. triageButton.isEnabled() is used to avoid nonsense randomly clicks triggered
@@ -1205,7 +1217,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					triageButton.setText(PluginConstants.BTN_LOADING);
 					commentText.setEnabled(false);
 					commentText.setEditable(false);
-					
 					
 					Display.getDefault().asyncExec(new Runnable() {
 					    public void run() {	
@@ -1236,7 +1247,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					resultViewComposite.layout();
 				}
 			}
-		});
+		};
+		triageButton.addSelectionListener(triageButtonAdapter);
 	}
 	
 	/**
