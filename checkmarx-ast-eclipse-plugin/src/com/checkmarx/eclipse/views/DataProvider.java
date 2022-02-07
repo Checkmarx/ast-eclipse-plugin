@@ -1,5 +1,6 @@
 package com.checkmarx.eclipse.views;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -7,6 +8,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -17,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import com.checkmarx.ast.predicate.Predicate;
 import com.checkmarx.ast.project.Project;
 import com.checkmarx.ast.results.Results;
+import com.checkmarx.ast.results.result.Node;
 import com.checkmarx.ast.results.result.Result;
 import com.checkmarx.ast.scan.Scan;
 import com.checkmarx.ast.wrapper.CxConfig;
@@ -333,9 +336,21 @@ public class DataProvider {
 	 * @return
 	 */
 	private DisplayModel transform(Result resultItem) {
-		String displayName = resultItem.getType().equals(PluginConstants.SCA_DEPENDENCY) ? resultItem.getSimilarityId() : resultItem.getData().getQueryName();
+        List<Node> nodes = Optional.ofNullable(resultItem.getData().getNodes()).orElse(Collections.emptyList());
+        String queryName = resultItem.getData().getQueryName() != null ? resultItem.getData().getQueryName() : resultItem.getSimilarityId();
+		String displayName = queryName;
+		if (nodes.size() > 0) {
+            Node node = nodes.get(0);
+            displayName += String.format(" (%s:%d)", new File(node.getFileName()).getName(), node.getLine());
+        }
 		
-		return new DisplayModel.DisplayModelBuilder(displayName).setSeverity(resultItem.getSeverity()).setType(resultItem.getType()).setResult(resultItem).setSate(resultItem.getState()).build();
+		return new DisplayModel.DisplayModelBuilder(displayName)
+				.setSeverity(resultItem.getSeverity())
+				.setType(resultItem.getType())
+				.setResult(resultItem)
+				.setSate(resultItem.getState())
+				.setQueryName(queryName)
+				.build();
 	}
 
 	/**
@@ -413,7 +428,7 @@ public class DataProvider {
 		
 		for (DisplayModel vulnerability : vulnerabilities) {
 			
-			String queryName = vulnerability.getName();
+			String queryName = vulnerability.getQueryName();
 			
 			if (filteredByQueryName.containsKey(queryName)) {
 				filteredByQueryName.get(queryName).add(vulnerability);
