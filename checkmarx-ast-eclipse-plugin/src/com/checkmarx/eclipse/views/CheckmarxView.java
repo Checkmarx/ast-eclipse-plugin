@@ -4,8 +4,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.eclipse.core.resources.IFile;
@@ -74,6 +76,7 @@ import com.checkmarx.ast.predicate.Predicate;
 import com.checkmarx.ast.project.Project;
 import com.checkmarx.ast.results.result.Node;
 import com.checkmarx.ast.results.result.PackageData;
+import com.checkmarx.ast.results.result.Result;
 import com.checkmarx.ast.scan.Scan;
 import com.checkmarx.eclipse.Activator;
 import com.checkmarx.eclipse.enums.ActionName;
@@ -426,7 +429,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 						Display.getDefault().asyncExec(new Runnable() {
 						    public void run() {
 						    	alreadyRunning = true;
-						    	updateResultsTree(DataProvider.getInstance().getResultsForScanId(currentScanId), null);
+						    	updateResultsTree(DataProvider.getInstance().getResultsForScanId(currentScanId), false);
 						    }
 						});
 					}else {
@@ -927,7 +930,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					Display.getDefault().asyncExec(new Runnable() {
 					    public void run() {
 					    	alreadyRunning = true;
-							updateResultsTree(DataProvider.getInstance().getResultsForScanId(selectedScan.getID()), null);
+							updateResultsTree(DataProvider.getInstance().getResultsForScanId(selectedScan.getID()), false);
 					    }
 					});
 				}
@@ -1218,7 +1221,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 								populateTriageChanges(selectedItem);
 								
 								alreadyRunning = true;
-								updateResultsTree(DataProvider.getInstance().sortResults(), selectedItem);
+								updateResultsTree(DataProvider.getInstance().sortResults(), true);
 								triageButton.setEnabled(true);
 								triageButton.setText(PluginConstants.BTN_UPDATE);
 								commentText.setEnabled(true);
@@ -1647,7 +1650,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		switch (definition.getListenerType()) {
 		case FILTER_CHANGED:
 		case GET_RESULTS:
-			updateResultsTree(definition.getResutls(), null);
+			updateResultsTree(definition.getResutls(), false);
 			break;
 		case CLEAN_AND_REFRESH:
 			clearAndRefreshPlugin();
@@ -1664,16 +1667,28 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 * Update results tree
 	 * 
 	 * @param results
-	 * @param selectedItem TODO
-	 * @param selectedModel TODO
+	 * @param expand try expanding tree to previous state
 	 */
-	private void updateResultsTree(List<DisplayModel> results, DisplayModel selectedItem) {
+	private void updateResultsTree(List<DisplayModel> results, boolean expand) {
 		rootModel.children.clear();
 		rootModel.children.addAll(results);
 		resultsTree.getTree().getDisplay().asyncExec(() -> {
+			Object[] expanded = resultsTree.getExpandedElements();
 			resultsTree.refresh();
-			if (selectedItem != null) {
-				resultsTree.expandToLevel(selectedItem, 1);
+			if (expand) {
+				Set<String> expandedDMNames = new HashSet<>(); 
+				Set<Result> visibleResults = new HashSet<>();
+				for (Object o : expanded) {
+					DisplayModel dm = (DisplayModel) o;
+					expandedDMNames.add(removeCount(dm.getName()));
+					for (DisplayModel child : dm.getChildren()) {
+						Result r = child.getResult();
+						if (r != null) {
+							visibleResults.add(r);
+						}
+					}
+				}
+				expand(visibleResults, expandedDMNames, rootModel);
 			}
 		});
 		toolBarActions.getScanResultsAction().setEnabled(true);
@@ -1689,6 +1704,37 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		}
 		
 		PluginUtils.updateFiltersEnabledAndCheckedState(toolBarActions.getFilterActions());
+	}
+	
+	/**
+	 * iterate tree and expand previously visible nodes and leafs.
+	 * when finding a leaf to expand, recursively expand parents as it could have changed to a previously collapsed severity
+	 * @param visibleResults
+	 * @param expandedNodes
+	 * @param current
+	 */
+	private void expand(Set<Result> visibleResults, Set<String> expandedNodes, DisplayModel current) {
+		for (DisplayModel child : current.getChildren()) {
+			child.parent = current;
+			if (visibleResults.contains(child.getResult())) {
+				resultsTree.setExpandedState(child, true);
+				DisplayModel parent = child.parent;
+				while (parent != null) {
+					resultsTree.setExpandedState(parent, true);
+					parent = parent.parent;
+				}
+			} else if (expandedNodes.contains(removeCount(child.getName()))) {
+				resultsTree.setExpandedState(child, true);
+			}
+			expand(visibleResults, expandedNodes, child);
+		}
+	}
+	
+	/**
+	 * name should end in " (XYZ)" so lastIndexOf is always the token with the child count
+	 */
+	private static String removeCount(String name) {
+		return name.substring(0, name.lastIndexOf('(') - 1);
 	}
 
 	/**
