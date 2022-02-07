@@ -4,8 +4,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.eclipse.core.resources.IFile;
@@ -46,8 +48,6 @@ import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
-import org.eclipse.swt.layout.RowData;
-import org.eclipse.swt.layout.RowLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
@@ -76,6 +76,7 @@ import com.checkmarx.ast.predicate.Predicate;
 import com.checkmarx.ast.project.Project;
 import com.checkmarx.ast.results.result.Node;
 import com.checkmarx.ast.results.result.PackageData;
+import com.checkmarx.ast.results.result.Result;
 import com.checkmarx.ast.scan.Scan;
 import com.checkmarx.eclipse.Activator;
 import com.checkmarx.eclipse.enums.ActionName;
@@ -133,11 +134,12 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 	private TreeViewer resultsTree;
 	private ComboViewer scanIdComboViewer, projectComboViewer, branchComboViewer, triageSeverityComboViewew, triageStateComboViewer;
+	private ISelectionChangedListener triageSeverityComboViewerListener, triageStateComboViewerListener;
 	private Text commentText;
 	private DisplayModel rootModel;
 	private String selectedSeverity, selectedState;
-	private DisplayModel currentDisplayModel;
 	private Button triageButton;
+	private SelectionAdapter triageButtonAdapter;
 	private Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell();
 
 	private boolean alreadyRunning = false;
@@ -429,7 +431,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 						Display.getDefault().asyncExec(new Runnable() {
 						    public void run() {
 						    	alreadyRunning = true;
-						    	updateResultsTree(DataProvider.getInstance().getResultsForScanId(currentScanId));
+						    	updateResultsTree(DataProvider.getInstance().getResultsForScanId(currentScanId), false);
 						    }
 						});
 					}else {
@@ -594,10 +596,11 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		      }
 		    });
 
-		scrolledComposite = new ScrolledComposite(resultViewComposite, SWT.H_SCROLL| SWT.V_SCROLL);		
+		scrolledComposite = new ScrolledComposite(resultViewComposite, SWT.V_SCROLL);		
 	    scrolledComposite.setExpandHorizontal(true);
 	    scrolledComposite.setExpandVertical(true);
 		scrolledComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+		scrolledComposite.setMinSize(resultViewComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT));
 
 		
 		resultViewComposite.setVisible(false);
@@ -929,7 +932,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					Display.getDefault().asyncExec(new Runnable() {
 					    public void run() {
 					    	alreadyRunning = true;
-							updateResultsTree(DataProvider.getInstance().getResultsForScanId(selectedScan.getID()));
+							updateResultsTree(DataProvider.getInstance().getResultsForScanId(selectedScan.getID()), false);
 					    }
 					});
 				}
@@ -1153,9 +1156,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 * 
 	 * @param selectedItem
 	 */
-	private void createTriageSeverityAndStateCombos(DisplayModel selectedItem) {
-		currentDisplayModel = selectedItem;
-		
+	private void createTriageSeverityAndStateCombos(DisplayModel selectedItem) {		
 		String currentSeverity = selectedItem.getSeverity();
 		selectedSeverity = selectedItem.getSeverity();
 		String[] severity = {"HIGH","MEDIUM","LOW","INFO"};
@@ -1164,7 +1165,10 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		triageSeverityComboViewew.setInput(severity);
 		PluginUtils.setTextForComboViewer(triageSeverityComboViewew, currentSeverity);
 		
-		triageSeverityComboViewew.addSelectionChangedListener(new ISelectionChangedListener() {
+		if (triageSeverityComboViewerListener != null) {
+			triageSeverityComboViewew.removeSelectionChangedListener(triageSeverityComboViewerListener);
+		}
+		triageSeverityComboViewerListener = new ISelectionChangedListener() {
 
 			@Override
 			public void selectionChanged(SelectionChangedEvent event) {
@@ -1173,7 +1177,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					selectedSeverity = ((String) selection.getFirstElement());
 				}
 			}
-		});
+		};
+		triageSeverityComboViewew.addSelectionChangedListener(triageSeverityComboViewerListener);
 		
 		String currentState = selectedItem.getState();
 		selectedState = selectedItem.getResult().getState();
@@ -1183,7 +1188,10 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		triageStateComboViewer.setInput(state);
 		PluginUtils.setTextForComboViewer(triageStateComboViewer, currentState);
 		
-		triageStateComboViewer.addSelectionChangedListener(new ISelectionChangedListener() {
+		if (triageStateComboViewerListener != null) {
+			triageStateComboViewer.removeSelectionChangedListener(triageStateComboViewerListener);
+		}
+		triageStateComboViewerListener = new ISelectionChangedListener() {
 			@Override
 			public void selectionChanged(SelectionChangedEvent event) {
 				IStructuredSelection selection = (IStructuredSelection) event.getSelection();
@@ -1191,21 +1199,24 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					selectedState = ((String) selection.getFirstElement());
 				}
 			}
-		});
+		};
+		triageStateComboViewer.addSelectionChangedListener(triageStateComboViewerListener);
 		
-		triageButton.addSelectionListener(new SelectionAdapter() {
+		if (triageButtonAdapter != null) {
+			triageButton.removeSelectionListener(triageButtonAdapter);
+		}
+		triageButtonAdapter = new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent event) {
 				// Call triage update. triageButton.isEnabled() is used to avoid nonsense randomly clicks triggered
 				if(selectedSeverity != null && selectedState != null && triageButton.isEnabled()) {
 					UUID projectId = UUID.fromString(currentProjectId);
-					String similarityId = currentDisplayModel.getResult().getSimilarityId();
-					String engineType = currentDisplayModel.getResult().getType();
+					String similarityId = selectedItem.getResult().getSimilarityId();
+					String engineType = selectedItem.getResult().getType();
 					triageButton.setEnabled(false);
 					triageButton.setText(PluginConstants.BTN_LOADING);
 					commentText.setEnabled(false);
 					commentText.setEditable(false);
-					
 					
 					Display.getDefault().asyncExec(new Runnable() {
 					    public void run() {	
@@ -1214,23 +1225,19 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					    	boolean successfullyUpdate = DataProvider.getInstance().triageUpdate(projectId, similarityId, engineType, selectedState, comment, selectedSeverity);
 							
 					    	if(successfullyUpdate) {
-					    		currentDisplayModel.setSeverity(selectedSeverity);
-					    		currentDisplayModel.setState(selectedState);
-								titleLabel.setImage(findSeverityImage(currentDisplayModel));
-								titleLabel.setText(currentDisplayModel.getName());
-								populateTriageChanges(currentDisplayModel);
+					    		selectedItem.setSeverity(selectedSeverity);
+					    		selectedItem.setState(selectedState);
+								titleLabel.setImage(findSeverityImage(selectedItem));
+								titleLabel.setText(selectedItem.getName());
+								populateTriageChanges(selectedItem);
 								
 								alreadyRunning = true;
-								updateResultsTree(DataProvider.getInstance().sortResults());
+								updateResultsTree(DataProvider.getInstance().sortResults(), true);
 								triageButton.setEnabled(true);
 								triageButton.setText(PluginConstants.BTN_UPDATE);
 								commentText.setEnabled(true);
 								commentText.setText(PluginConstants.DEFAULT_COMMENT_TXT);
 								commentText.setEditable(true);
-								
-								// TODO: open the selectedItem in the tree - check hidden filter scenario
-								
-								
 					    	}else {
 					    		// TODO: inform the user that update failed?
 					    	}
@@ -1240,7 +1247,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					resultViewComposite.layout();
 				}
 			}
-		});
+		};
+		triageButton.addSelectionListener(triageButtonAdapter);
 	}
 	
 	/**
@@ -1255,17 +1263,44 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		Display.getDefault().asyncExec(new Runnable() {
 			public void run() {
 
-				createDescriptionInfo(selectedItem);
+				tabFolder = new TabFolder(scrolledComposite, SWT.NONE);
+				TabItem tbtmDescription = new TabItem(tabFolder, SWT.NONE);
+				tbtmDescription.setText("Description");
+				
+				ScrolledComposite descriptionScrolledComposite = new ScrolledComposite(tabFolder, SWT.V_SCROLL);		
+				descriptionScrolledComposite.setExpandHorizontal(true);
+				descriptionScrolledComposite.setExpandVertical(true);
+				descriptionScrolledComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+				
+				Composite detailsComposite = new Composite(descriptionScrolledComposite, SWT.NONE);
+				GridLayout gl_detailsComposite = new GridLayout(1, false);
+				gl_detailsComposite.marginWidth = 0;
+				gl_detailsComposite.marginHeight = 0;
+				detailsComposite.setLayout(gl_detailsComposite);
+				tbtmDescription.setControl(descriptionScrolledComposite);
+
+				Text descriptionTxt = new Text(detailsComposite, SWT.READ_ONLY | SWT.WRAP | SWT.MULTI);
+				descriptionTxt.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
+				descriptionTxt.setText(selectedItem.getResult().getDescription() != null ? selectedItem.getResult().getDescription() : "No data");
+
+				descriptionScrolledComposite.setContent(detailsComposite);
+				descriptionScrolledComposite.setMinSize(descriptionScrolledComposite.getSize().x, detailsComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT, true).y);
+				
 				
 				TabItem tbtmChanges = new TabItem(tabFolder, SWT.NONE);
 				tbtmChanges.setText("Changes");
 				
-				Composite changesComposite = new Composite(tabFolder, SWT.NONE);
-				GridLayout gl_detailsComposite = new GridLayout(1, false);
-				gl_detailsComposite.marginWidth = 0;
-				gl_detailsComposite.marginHeight = 0;
-				changesComposite.setLayout(gl_detailsComposite);
-				tbtmChanges.setControl(changesComposite);
+				ScrolledComposite changesScrolledComposite = new ScrolledComposite(tabFolder, SWT.V_SCROLL);		
+				changesScrolledComposite.setExpandHorizontal(true);
+				changesScrolledComposite.setExpandVertical(true);
+				changesScrolledComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+				
+				Composite changesComposite = new Composite(changesScrolledComposite, SWT.NONE);
+				GridLayout gl_changesComposite = new GridLayout(1, false);
+				gl_changesComposite.marginWidth = 0;
+				gl_changesComposite.marginHeight = 0;
+				changesComposite.setLayout(gl_changesComposite);
+				tbtmChanges.setControl(changesScrolledComposite);
 				
 				
 				List<Predicate> triageDetails = getTriageInfo(UUID.fromString(currentProjectId), selectedItem.getResult().getSimilarityId(), selectedItem.getResult().getType());
@@ -1281,9 +1316,11 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					populateNoChangesData(changesComposite,tbtmChanges);
 					
 				}
+
+				changesScrolledComposite.setContent(changesComposite);
+				changesScrolledComposite.setMinSize(changesScrolledComposite.getSize().x, changesComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT, true).y);
 				
 				scrolledComposite.setContent(tabFolder);
-				scrolledComposite.setMinSize(changesComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT));
 			}
 			
 			
@@ -1333,30 +1370,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				
 			}
 
-
-
-			private void createDescriptionInfo(DisplayModel selectedItem) {
-
-				tabFolder = new TabFolder(scrolledComposite, SWT.NONE);
-				TabItem tbtmDescription = new TabItem(tabFolder, SWT.NONE);
-				tbtmDescription.setText("Description");
-				
-				
-				Composite detailsComposite = new Composite(tabFolder, SWT.NONE);
-				GridLayout gl_detailsComposite = new GridLayout(1, false);
-				gl_detailsComposite.marginWidth = 0;
-				gl_detailsComposite.marginHeight = 0;
-				detailsComposite.setLayout(gl_detailsComposite);
-				tbtmDescription.setControl(detailsComposite);
-
-				Text descriptionTxt = new Text(detailsComposite, SWT.READ_ONLY | SWT.WRAP | SWT.MULTI);
-				descriptionTxt.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
-				descriptionTxt.setText(selectedItem.getResult().getDescription() != null ? selectedItem.getResult().getDescription() : "No data");
-				
-			}
-
-
-
 			private Image findSeverityImageString(String severity) {
 				if (severity == null)
 					return null;
@@ -1393,7 +1406,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		commentText.setText(PluginConstants.DEFAULT_COMMENT_TXT);
 		
 		scrolledComposite.setContent(loadingScreen);
-		//scrolledComposite.setMinSize(loadingScreen.computeSize(SWT.DEFAULT, SWT.DEFAULT));
 	}
 
 	/**
@@ -1650,7 +1662,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		switch (definition.getListenerType()) {
 		case FILTER_CHANGED:
 		case GET_RESULTS:
-			updateResultsTree(definition.getResutls());
+			updateResultsTree(definition.getResutls(), false);
 			break;
 		case CLEAN_AND_REFRESH:
 			clearAndRefreshPlugin();
@@ -1667,11 +1679,30 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 * Update results tree
 	 * 
 	 * @param results
+	 * @param expand try expanding tree to previous state
 	 */
-	private void updateResultsTree(List<DisplayModel> results) {
+	private void updateResultsTree(List<DisplayModel> results, boolean expand) {
 		rootModel.children.clear();
 		rootModel.children.addAll(results);
-		resultsTree.getTree().getDisplay().asyncExec(() -> resultsTree.refresh());
+		resultsTree.getTree().getDisplay().asyncExec(() -> {
+			Object[] expanded = resultsTree.getExpandedElements();
+			resultsTree.refresh();
+			if (expand) {
+				Set<String> expandedDMNames = new HashSet<>(); 
+				Set<Result> visibleResults = new HashSet<>();
+				for (Object o : expanded) {
+					DisplayModel dm = (DisplayModel) o;
+					expandedDMNames.add(removeCount(dm.getName()));
+					for (DisplayModel child : dm.getChildren()) {
+						Result r = child.getResult();
+						if (r != null) {
+							visibleResults.add(r);
+						}
+					}
+				}
+				expand(visibleResults, expandedDMNames, rootModel);
+			}
+		});
 		toolBarActions.getScanResultsAction().setEnabled(true);
 		toolBarActions.getAbortResultsAction().setEnabled(false);
 		toolBarActions.getClearAndRefreshAction().setEnabled(true);
@@ -1685,6 +1716,37 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		}
 		
 		PluginUtils.updateFiltersEnabledAndCheckedState(toolBarActions.getFilterActions());
+	}
+	
+	/**
+	 * iterate tree and expand previously visible nodes and leafs.
+	 * when finding a leaf to expand, recursively expand parents as it could have changed to a previously collapsed severity
+	 * @param visibleResults
+	 * @param expandedNodes
+	 * @param current
+	 */
+	private void expand(Set<Result> visibleResults, Set<String> expandedNodes, DisplayModel current) {
+		for (DisplayModel child : current.getChildren()) {
+			child.parent = current;
+			if (visibleResults.contains(child.getResult())) {
+				resultsTree.setExpandedState(child, true);
+				DisplayModel parent = child.parent;
+				while (parent != null) {
+					resultsTree.setExpandedState(parent, true);
+					parent = parent.parent;
+				}
+			} else if (expandedNodes.contains(removeCount(child.getName()))) {
+				resultsTree.setExpandedState(child, true);
+			}
+			expand(visibleResults, expandedNodes, child);
+		}
+	}
+	
+	/**
+	 * name should end in " (XYZ)" so lastIndexOf is always the token with the child count
+	 */
+	private static String removeCount(String name) {
+		return name.substring(0, name.lastIndexOf('(') - 1);
 	}
 
 	/**
