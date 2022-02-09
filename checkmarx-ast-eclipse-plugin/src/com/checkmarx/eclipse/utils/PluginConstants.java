@@ -60,5 +60,12 @@ public class PluginConstants {
 	
 	/******************************** PROBLEMS VIEW ********************************/
 	public static final String PROBLEM_SOURCE_ID = "CheckmarxEclipsePlugin";
+	
+	/******************************** WIDGET IDS ********************************/
+	public static final String DATA_ID_KEY = "org.eclipse.swtbot.widget.key";
+	public static final String TRIAGE_SEVERITY_COMBO_ID = "cx.triageSeverityCombo";
+	public static final String TRIAGE_STATE_COMBO_ID = "cx.triageStateCombo";
+	public static final String TRIAGE_BUTTON_ID = "cx.triageButton";
+	public static final String CHANGES_TAB_ID = "cx.changesTab";
 
 }

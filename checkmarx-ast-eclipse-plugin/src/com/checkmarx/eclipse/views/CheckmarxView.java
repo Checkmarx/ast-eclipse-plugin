@@ -559,17 +559,20 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		
 		triageSeverityComboViewew = new ComboViewer(triageView, SWT.READ_ONLY);
 		Combo combo_1 = triageSeverityComboViewew.getCombo();
+		combo_1.setData(PluginConstants.DATA_ID_KEY, PluginConstants.TRIAGE_SEVERITY_COMBO_ID);
 		GridData gd_combo_1 = new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1); 
 		gd_combo_1.widthHint = SWT.DEFAULT;  
 		combo_1.setLayoutData(gd_combo_1);
 		
 		triageStateComboViewer = new ComboViewer(triageView, SWT.READ_ONLY);
 		Combo combo_2 = triageStateComboViewer.getCombo();
+		combo_2.setData(PluginConstants.DATA_ID_KEY, PluginConstants.TRIAGE_STATE_COMBO_ID);
 		GridData gd_combo_2 = new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1);
 		gd_combo_2.widthHint = 180;
 		combo_2.setLayoutData(gd_combo_2);
 		
 		triageButton = new Button(triageView, SWT.FLAT | SWT.CENTER);
+		triageButton.setData(PluginConstants.DATA_ID_KEY, PluginConstants.TRIAGE_BUTTON_ID);
 		triageButton.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, true, 1, 1));
 		triageButton.setText(PluginConstants.BTN_UPDATE);
 		
@@ -1263,6 +1266,9 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		Display.getDefault().asyncExec(new Runnable() {
 			public void run() {
 
+				if (tabFolder != null) {
+					tabFolder.dispose();
+				}
 				tabFolder = new TabFolder(scrolledComposite, SWT.NONE);
 				TabItem tbtmDescription = new TabItem(tabFolder, SWT.NONE);
 				tbtmDescription.setText("Description");
@@ -1288,6 +1294,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				
 				
 				TabItem tbtmChanges = new TabItem(tabFolder, SWT.NONE);
+				tbtmChanges.setData(PluginConstants.DATA_ID_KEY, PluginConstants.CHANGES_TAB_ID);
 				tbtmChanges.setText("Changes");
 				
 				ScrolledComposite changesScrolledComposite = new ScrolledComposite(tabFolder, SWT.V_SCROLL);		
@@ -1735,7 +1742,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					resultsTree.setExpandedState(parent, true);
 					parent = parent.parent;
 				}
-			} else if (expandedNodes.contains(removeCount(child.getName()))) {
+			} else if (child.getChildren().size() > 0 && expandedNodes.contains(removeCount(child.getName()))) {
 				resultsTree.setExpandedState(child, true);
 			}
 			expand(visibleResults, expandedNodes, child);
