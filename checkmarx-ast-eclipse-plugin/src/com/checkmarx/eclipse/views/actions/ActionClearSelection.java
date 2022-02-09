@@ -15,7 +15,7 @@ import com.google.common.eventbus.EventBus;
 
 public class ActionClearSelection extends CxBaseAction {
 	
-	private static final String ACTION_CLEAR_SELECTION_TOOLTIP = "Clear the selected scanId and the results view.";
+	public static final String ACTION_CLEAR_SELECTION_TOOLTIP = "Clear the selected scanId and the results view.";
 	private static final String ACTION_CLEAR_SELECTION_ICON_PATH = "platform:/plugin/org.eclipse.ui.views.log/icons/elcl16/refresh.png";
 	
 	private EventBus pluginEventBus;

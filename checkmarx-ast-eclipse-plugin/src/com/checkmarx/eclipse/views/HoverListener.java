@@ -37,8 +37,10 @@ public class HoverListener implements MouseTrackListener {
 			controls.forEach(control -> {
 				control.setBackground(defaultColor);	
 			});
-			customColor.dispose();
-			customColor = null;
+			if (customColor != null) {
+				customColor.dispose();
+				customColor = null;
+			}
 		}		
 	}
 
