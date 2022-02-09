@@ -28,10 +28,7 @@ import checkmarx.ast.eclipse.plugin.tests.common.Environment;
 public class TestUI extends BaseUITest {
 	
 	private static final String ERROR_SERVER_URL_NOT_SET = "Checkmarx server URL is not set";
-
-	private static final String INFO_SUCCESSFUL_CONNECTION = "Successfully authenticated to AST server!";
 	
-	private static final String ASSERT_FILTER_ACTIONS_IN_TOOLBAR = "All filter actions must be in the tool bar";
 	private static final String ASSERT_GROUP_BY_ACTIONS_IN_TOOLBAR = "All group by actions must be in the tool bar";
 	private static final String ASSERT_TREE_CONSTAIN_HIGH_MEDIUM = "Results must contain results grouped by High and Medium";
 	private static final String ASSERT_TREE_CONSTAIN_HIGH_MEDIUM_LOW = "Results must contain results grouped by High, Medium and Low";
@@ -41,8 +38,6 @@ public class TestUI extends BaseUITest {
 	private static final String ASSERT_NO_CHINDREN = "One group by severity and group by query name are not selected, this node shouldn't have children";
 	private static final String ASSERT_GROUP_BY_SEVERITY_NOT_SELECTED = "Engine child should not be HIGH, MEDIUM, LOW or INFO once the group by severity is not enabled";
 	private static final String ASSERT_CREDENTIALS_PANEL = "The  credentials panel must appear once Checkmarx credentials are not defined";
-	
-	private static boolean _cxSettingsDefined = false;
 
 	@Test
 	public void testSuccessfulConnetion() throws TimeoutException {
@@ -51,6 +46,8 @@ public class TestUI extends BaseUITest {
 
 	@Test
 	public void testAddCheckmarxASTPlugin() throws TimeoutException {
+		clearCheckmarxCredentials();
+		
 		// Add Checkmarx plugin to the eclipse view
 		addCheckmarxPlugin(false);
 
@@ -236,6 +233,10 @@ public class TestUI extends BaseUITest {
 		assertTrue(ASSERT_NO_CHINDREN, _bot.tree().expandNode(firstNodeName).expandNode(secondNodeName).getNode(0).getNodes().isEmpty());
 		assertTrue(ASSERT_GROUP_BY_SEVERITY_NOT_SELECTED, engineChildDontStartWithHIGH && engineChildDontStartWithMEDIUM && engineChildDontStartWithLOW && engineChildDontStartWithINFO);
 		
+		// re-enable group by and severity
+		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(ToolBarActions.GROUP_BY_QUERY_NAME).click();
+		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(ToolBarActions.GROUP_BY_SEVERITY).click();
+		
 		// Close Checkmarx AST Scan view
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
 	}
@@ -256,47 +257,6 @@ public class TestUI extends BaseUITest {
 		
 		// Button Open Settings must not be present at this moment so we are expecting WidgetNotFoundException in this test
 		_bot.button(PluginConstants.BTN_OPEN_SETTINGS);
-	}
-	
-	/**
-	 * Set up checkmarx plugin
-	 * 
-	 * 		-> Set credentials
-	 * 		-> Test connection
-	 * 		-> Add checkmarx plugin
-	 * 
-	 * @throws TimeoutException
-	 */
-	private void setUpCheckmarxPlugin(boolean ignoreWrongScanValidation) throws TimeoutException{
-		// Test Connection
-		testSuccessfulConnection(false);
-
-		// Add Checkmarx AST Plugin
-		addCheckmarxPlugin(true);
-		
-		preventWidgetWasNullInCIEnvironment();
-		
-		if(!ignoreWrongScanValidation) {
-			// Test incorrect Scan ID format
-			_bot.comboBox(2).setText("invalid-scan-id");
-			_bot.comboBox(2).pressShortcut(Keystrokes.LF);
-
-			sleep(1000);
-
-			assertEquals("The tree must contain one row with an error message", _bot.tree().rowCount(), 1);
-			assertEquals("An incorrect scanId format message must be displayed", PluginConstants.TREE_INVALID_SCAN_ID_FORMAT, _bot.tree().cell(0, 0));
-		}
-		
-		// type a valid and existing Scan ID
-		typeValidScanID();
-
-		assertEquals("The tree must contain one row", _bot.tree().rowCount(), 1);		
-		boolean retrievingOrRetrievedResults = _bot.tree().cell(0, 0).contains(Environment.SCAN_ID);
-		assertTrue("The plugin should have or should be retrieving results", retrievingOrRetrievedResults);
-
-		waitWhileTreeNodeEqualsTo(String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, Environment.SCAN_ID));
-		
-		assertTrue("The plugin should retrieve results", _bot.tree().cell(0, 0).startsWith(Environment.SCAN_ID));
 	}
 	
 	/**
@@ -324,77 +284,6 @@ public class TestUI extends BaseUITest {
 	}
 
 	/**
-	 * Test successful connection
-	 * 
-	 * @throws TimeoutException
-	 */
-	private void testSuccessfulConnection(boolean openFromInitialPanel) throws TimeoutException {
-		preventWidgetWasNullInCIEnvironment();
-		
-		if(_cxSettingsDefined) return;
-		
-		if(!openFromInitialPanel) {
-			_bot.menu(TAB_WINDOW).menu(ITEM_PREFERENCES).click();
-			_bot.shell(ITEM_PREFERENCES).activate();
-			_bot.tree().select(ITEM_CHECKMARX_AST);
-		}
-
-		_bot.sleep(1000);
-
-		_bot.shell(ITEM_PREFERENCES).setFocus(); // Need to set focus to avoid failing in CI environment
-		
-		_bot.textWithLabel(PluginConstants.PREFERENCES_SERVER_URL).setText(Environment.BASE_URL);
-		_bot.textWithLabel(PluginConstants.PREFERENCES_TENANT).setText(Environment.TENANT);
-		_bot.textWithLabel(PluginConstants.PREFERENCES_API_KEY).setText(Environment.API_KEY);
-
-		_bot.button(BTN_APPLY).click();
-		_bot.button(BTN_TEST_CONNECTION).click();
-		
-		//Do waitUntil Method to get text from text(6)
-		waitForConnectionResponse();
-		
-		assertEquals(INFO_SUCCESSFUL_CONNECTION, _bot.text(6).getText());
-			
-		_bot.shell(ITEM_PREFERENCES).setFocus(); // Need to set focus to avoid failing in CI environment
-		_bot.button(BTN_APPLY_AND_CLOSE).click();
-
-		_cxSettingsDefined = true;
-	}
-
-	/**
-	 * Add Checkmarx plugin in the show view perspective
-	 * 
-	 * @throws TimeoutException 
-	 */
-	private void addCheckmarxPlugin(boolean waitUntilPluginEnable) throws TimeoutException {
-		preventWidgetWasNullInCIEnvironment();
-		
-		_bot.menu(TAB_WINDOW).menu(ITEM_SHOW_VIEW).menu(ITEM_OTHER).click();
-		_bot.shell(ITEM_SHOW_VIEW).activate();
-		_bot.tree().expandNode(ITEM_CHECKMARX).select(ITEM_CHECKMARX_AST_SCAN);
-		_bot.button(BTN_OPEN).click();
-		
-		if(waitUntilPluginEnable) {
-			waitUntilBranchComboIsEnabled();	
-		}
-		
-	}
-
-	/**
-	 * Type a valid Scan ID to get results
-	 * 
-	 * @throws TimeoutException 
-	 */
-	private void typeValidScanID() throws TimeoutException {
-		preventWidgetWasNullInCIEnvironment();
-		
-		_bot.comboBox(2).setText(Environment.SCAN_ID);
-		_bot.comboBox(2).pressShortcut(Keystrokes.LF);
-		
-		waitUntilBranchComboIsEnabled();
-	}
-
-	/**
 	 * Clear all Checkmarx credentials
 	 */
 	private void clearCheckmarxCredentials() {
@@ -416,85 +305,5 @@ public class TestUI extends BaseUITest {
 		_bot.button(BTN_APPLY_AND_CLOSE).click();
 
 		_cxSettingsDefined = false;
-	}
-	
-	/**
-	 * Wait while tree node equals to a a specific message. Fails after 10 retries
-	 * 
-	 * @param nodeText
-	 * @throws TimeoutException
-	 */
-	private static void waitWhileTreeNodeEqualsTo(String nodeText) throws TimeoutException {
-		int retryIdx = 0;
-
-		while (_bot.tree().getAllItems()[0].getText().equals(nodeText)) {
-
-			if (retryIdx == 10) {
-				break;
-			}
-
-			_bot.sleep(1000);
-
-			retryIdx++;
-		}
-
-		if (retryIdx == 10) {
-			throw new TimeoutException("Timeout after 5000ms. Scan results should be retrieved");
-		}
-	}
-	
-	/**
-	 * Wait until branch combobox is enabled
-	 * 
-	 * @throws TimeoutException
-	 */
-	private static void waitUntilBranchComboIsEnabled() throws TimeoutException {
-		preventWidgetWasNullInCIEnvironment();
-		
-		boolean emptyScanId = _bot.comboBox(2).getText().isEmpty() || _bot.comboBox(2).getText().equals(PluginConstants.COMBOBOX_SCAND_ID_PLACEHOLDER);
-		
-		if(emptyScanId) {
-			return;
-		}
-		
-		int retryIdx = 0;
-
-		while (!_bot.comboBox(1).isEnabled()) {
-
-			if (retryIdx == 10) {
-				break;
-			}
-
-			_bot.sleep(1000);
-
-			retryIdx++;
-		}
-
-		if (retryIdx == 10) {
-			throw new TimeoutException("Timeout after 5000ms. Branches' combobox must be enabled");
-		}
-	}
-	
-	/**
-	 * Wait while tree node equals to a a specific message. Fails after 10 retries
-	 * 
-	 * @param nodeText
-	 * @throws TimeoutException
-	 */
-	private static void waitForConnectionResponse() throws TimeoutException {
-		int retryIdx = 0;
-
-		while (!_bot.text(6).getText().equals(INFO_SUCCESSFUL_CONNECTION)) {
-			if (retryIdx == 10) {
-				break;
-			}
-
-			_bot.sleep(1000);
-			retryIdx++;
-		}
-
-		if (retryIdx == 10) {
-			throw new TimeoutException("Connection validation timeout after 10000ms.");
-		}
 	}
 }
