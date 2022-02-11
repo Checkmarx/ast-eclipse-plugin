@@ -35,3 +35,15 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: ./com.checkmarx.eclipse.site/target/com.checkmarx.eclipse.site-*.zip
+
+      - name: Create update site
+        uses: cpina/github-action-push-to-another-repository@main
+        env:
+          API_TOKEN_GITHUB: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        with:
+          source-directory: './com.checkmarx.eclipse.site/target/repository/'
+          destination-github-username: 'cylon-bot'
+          destination-repository-username: 'CheckmarxDev'
+          destination-repository-name: 'ast-eclipse-plugin-update-site'
+          user-email: cylon-bot@checkmarx.com
+          target-branch: main
