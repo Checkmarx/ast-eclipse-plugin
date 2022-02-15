@@ -131,6 +131,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	public static final Image CREATED_AT_IMAGE = Activator.getImageDescriptor("/icons/date.png").createImage();
 	
 	public static final Image COMMENT = Activator.getImageDescriptor("/icons/comment.png").createImage();
+	
+	public static final Image STATE = Activator.getImageDescriptor("/icons/state.png").createImage();
 
 	private TreeViewer resultsTree;
 	private ComboViewer scanIdComboViewer, projectComboViewer, branchComboViewer, triageSeverityComboViewew, triageStateComboViewer;
@@ -306,6 +308,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 			toolBarActions.getAbortResultsAction().setEnabled(false);
 			toolBarActions.getScanResultsAction().setEnabled(true);
 			toolBarActions.getClearAndRefreshAction().setEnabled(true);
+			toolBarActions.getStateFilterAction().setEnabled(true);
 		}
 		
 		actionBars.updateActionBars();
@@ -706,6 +709,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 							PluginUtils.updateFiltersEnabledAndCheckedState(toolBarActions.getFilterActions());
 							toolBarActions.getScanResultsAction().setEnabled(true);
 							toolBarActions.getClearAndRefreshAction().setEnabled(true);
+							toolBarActions.getStateFilterAction().setEnabled(true);
 							
 							PluginUtils.enableComboViewer(branchComboViewer, true);
 							PluginUtils.enableComboViewer(scanIdComboViewer, true);
@@ -807,6 +811,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 							PluginUtils.updateFiltersEnabledAndCheckedState(toolBarActions.getFilterActions());
 							toolBarActions.getScanResultsAction().setEnabled(true);
 							toolBarActions.getClearAndRefreshAction().setEnabled(true);
+							toolBarActions.getStateFilterAction().setEnabled(true);
+							
 					    }
 					});
 					
@@ -1284,6 +1290,11 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				severity.setText(detail.getSeverity());
 				severity.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
 				
+				CLabel state = new CLabel(changesComposite,SWT.NONE);
+				state.setImage(STATE);
+				state.setText(detail.getState());
+				state.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+				
 				if(detail.getComment() != null && detail.getComment() != "") {
 					CLabel comment = new CLabel(changesComposite,SWT.NONE);
 					comment.setImage(COMMENT);
@@ -1553,7 +1564,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	@Subscribe
 	private void listener(PluginListenerDefinition definition) {
 		switch (definition.getListenerType()) {
-		case FILTER_CHANGED:
+		case FILTER_CHANGED:	
 		case GET_RESULTS:
 			updateResultsTree(definition.getResutls());
 			break;
@@ -1580,6 +1591,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		toolBarActions.getScanResultsAction().setEnabled(true);
 		toolBarActions.getAbortResultsAction().setEnabled(false);
 		toolBarActions.getClearAndRefreshAction().setEnabled(true);
+		toolBarActions.getStateFilterAction().setEnabled(true);
 		PluginUtils.enableComboViewer(projectComboViewer, true);
 		PluginUtils.enableComboViewer(branchComboViewer, !currentProjectId.isEmpty());
 		PluginUtils.enableComboViewer(scanIdComboViewer, true);
