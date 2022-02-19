@@ -292,7 +292,10 @@ public class DataProvider {
 	}
 	
 	private void filterStates(Map<String, List<DisplayModel>> filteredResultsByScannerType) {
-		filteredResultsByScannerType.entrySet().stream().forEach(entry -> entry.getValue().removeIf(x -> !FilterState.isFilterStateEnabled(x.getState())));
+		filteredResultsByScannerType.entrySet().stream().forEach(entry -> 
+		{	
+		entry.getValue().removeIf(x -> !FilterState.isFilterStateEnabled(x.getState().trim()));
+		});
 	
 	}
 
@@ -389,25 +392,6 @@ public class DataProvider {
 		}
 		return filteredMap;
 	}
-	
-	private Map<String, List<DisplayModel>> filterResultsByStateType(List<DisplayModel> allResultsTransformed) {
-		Map<String, List<DisplayModel>> filteredMap = new HashMap<>();
-
-		for (DisplayModel transformedResult : allResultsTransformed) {
-
-			String scanType = transformedResult.getState();
-
-			if (filteredMap.containsKey(scanType)) {
-				filteredMap.get(scanType).add(transformedResult);
-			} else {
-				filteredMap.put(scanType, new ArrayList<>(Arrays.asList(transformedResult)));
-			}
-
-		}
-		return filteredMap;
-	}
-	
-	
 	
 	/**
 	 * Group vulnerabilities by severity

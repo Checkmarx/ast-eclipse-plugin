@@ -6,9 +6,9 @@ public enum State {
 	NOT_EXPLOITABLE,
 	PROPOSED_NOT_EXPLOITABLE,
 	CONFIRMED,
-	URGENT,
 	NOT_IGNORED,
-	IGNORED;
+	IGNORED,
+	URGENT;
 	
 	public static State getState(String state) {
 		return State.valueOf(state);

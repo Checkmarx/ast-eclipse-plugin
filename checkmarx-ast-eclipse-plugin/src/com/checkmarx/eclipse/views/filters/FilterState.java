@@ -12,8 +12,8 @@ public class FilterState {
 	public static boolean low = false;
 	public static boolean info = false;
 	public static boolean groupBySeverity = true;
-	public static boolean groupByQueryName = true;
-	public static boolean groupByStateName = true;
+	public static boolean groupByQueryName = false;
+	public static boolean groupByStateName = false;
 	
 	/*FILTER STATE FLAGS
 	 * */
@@ -35,8 +35,8 @@ public class FilterState {
 		low = Boolean.parseBoolean(GlobalSettings.getFromPreferences(Severity.LOW.name(), "false"));
 		info = Boolean.parseBoolean(GlobalSettings.getFromPreferences(Severity.INFO.name(), "false"));
 		groupBySeverity = Boolean.parseBoolean(GlobalSettings.getFromPreferences(Severity.GROUP_BY_SEVERITY.name(), "true"));
-		groupByQueryName = Boolean.parseBoolean(GlobalSettings.getFromPreferences(Severity.GROUP_BY_QUERY_NAME.name(), "true"));
-		groupByStateName = Boolean.parseBoolean(GlobalSettings.getFromPreferences(Severity.GROUP_BY_STATE_NAME.name(), "true"));
+		groupByQueryName = Boolean.parseBoolean(GlobalSettings.getFromPreferences(Severity.GROUP_BY_QUERY_NAME.name(), "false"));
+		groupByStateName = Boolean.parseBoolean(GlobalSettings.getFromPreferences(Severity.GROUP_BY_STATE_NAME.name(), "false"));
 		
 		notExploitable = Boolean.parseBoolean(GlobalSettings.getFromPreferences(State.NOT_EXPLOITABLE.name(), "true"));
 		confirmed = Boolean.parseBoolean(GlobalSettings.getFromPreferences(State.CONFIRMED.name(), "true"));
