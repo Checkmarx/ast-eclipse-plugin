@@ -26,28 +26,24 @@ import com.checkmarx.eclipse.views.actions.ToolBarActions;
 @RunWith(SWTBotJunit4ClassRunner.class)
 public class TestFilterState extends BaseUITest{
 	
+	List<String> groupByActions = Arrays.asList(ToolBarActions.GROUP_BY_QUERY_NAME,ToolBarActions.GROUP_BY_SEVERITY,ToolBarActions.GROUP_BY_STATE_NAME);
 	
-	@Test
+	
+	@Test(timeout=100000)
 	public void testGroupByActionsInToolBar() throws TimeoutException {
+		
+		int SECOND_NODE = 2;
+		int THIRD_NODE = 3;
+		int FOURTH_NODE = 4;
 
 		
 		setUpCheckmarxPlugin(true);
-					
-		
-		
-		String firstNodeName = _bot.tree().cell(0, 0);
-		String secondNodeName = _bot.tree().getTreeItem(firstNodeName).expand().getNode(0).getText();
-		String thirdNodeName = _bot.tree().getTreeItem(firstNodeName).expand().getNode(0).expand().getNode(0).getText();
-		
-
-		String firstEngineChild = _bot.tree().expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).getText();
-		System.out.println(firstEngineChild);
-		assertTrue(firstEngineChild.length()>0);
 
 		// remove all groups and get the first individual node
-		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(ToolBarActions.GROUP_BY_QUERY_NAME).click();
-		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(ToolBarActions.GROUP_BY_SEVERITY).click();
-		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(ToolBarActions.GROUP_BY_STATE_NAME).click();
+		
+		//List<String> groupByActions = Arrays.asList(ToolBarActions.GROUP_BY_QUERY_NAME,ToolBarActions.GROUP_BY_SEVERITY,ToolBarActions.GROUP_BY_STATE_NAME);
+		disableAllGroupByActions(groupByActions);
+
 		
 		sleep(1000);
 		
@@ -57,41 +53,69 @@ public class TestFilterState extends BaseUITest{
 		assertTrue(!severityFilters.contains(ll.getText()));
 		
 		//enable group by severity (1st level group)
-		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(ToolBarActions.GROUP_BY_SEVERITY).click();
 		
+		enableGroup(ToolBarActions.GROUP_BY_SEVERITY);
 		sleep(1000);
-		String severityFilter = _bot.tree().getTreeItem(_bot.tree().cell(0, 0)).expand().getNode(0).expand().getNode(0).getText().split(" ")[0];
+		String severityFilter = getNodeLabel(SECOND_NODE);
+		//String severityFilter = _bot.tree().getTreeItem(_bot.tree().cell(0, 0)).expand().getNode(0).expand().getNode(0).getText().split(" ")[0];
 		assertTrue(severityFilters.contains(severityFilter));
 		
 		
 		// enable group by state (2nd level group)
-		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(ToolBarActions.GROUP_BY_STATE_NAME).click();
+		enableGroup(ToolBarActions.GROUP_BY_STATE_NAME);
 		sleep(1000);
-		String stateFilter = _bot.tree().getTreeItem(_bot.tree().cell(0, 0)).expand().getNode(0).expand().getNode(0).expand().getNode(0).getText().split("\\(")[0].trim();
+		//String stateFilter = _bot.tree().getTreeItem(_bot.tree().cell(0, 0)).expand().getNode(0).expand().getNode(0).expand().getNode(0).getText().split("\\(")[0].trim();
+		String stateFilter = getNodeLabel(THIRD_NODE);
 		assertTrue(stateFilters.contains(stateFilter));
 		
 		
 		// enable group by query name (3rd level group)
-		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(ToolBarActions.GROUP_BY_QUERY_NAME).click();
+		enableGroup(ToolBarActions.GROUP_BY_QUERY_NAME);
 		sleep(1000);
-		String queryNameFilter= _bot.tree().getTreeItem(_bot.tree().cell(0, 0)).expand().getNode(0).expand().getNode(0).expand().getNode(0).expand().getNode(0).getText().split(" ")[0];
+		//String queryNameFilter= _bot.tree().getTreeItem(_bot.tree().cell(0, 0)).expand().getNode(0).expand().getNode(0).expand().getNode(0).expand().getNode(0).getText().split(" ")[0];
+		String queryNameFilter = getNodeLabel(FOURTH_NODE);
 		assertTrue(queryNameFilter.startsWith(ll.getText()));
-		
-		
-		
+
 		// Close Checkmarx AST Scan view
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
 	}
 	
-	
+
+
+	private String getNodeLabel(int i) {
+		SWTBotTreeItem treeNode = _bot.tree().getTreeItem(_bot.tree().cell(0, 0));
+		String value = "";
+		while(i>0) {
+			treeNode = treeNode.expand().getNode(0);
+			i--;
+		}
+		value= treeNode.getText().split("\\(")[0].trim();
+		return value;
+	}
+
+
+
+	private void enableGroup(String groupBy) {
+		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(groupBy).click();
+	}
+
+
+	private void disableAllGroupByActions(List<String> groupByActions) {
+		for(String action : groupByActions) {
+			SWTBotMenu groupMenu = _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(action);
+			if(groupMenu.isChecked())
+				groupMenu.click();
+		}
+		
+	}
+
+
 	@Test
 	public void testFilterStateActionsInToolBar() throws TimeoutException, ParseException{
 		setUpCheckmarxPlugin(true);
 		
 		// deselect all group by actions and enable only the state group by
-		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(ToolBarActions.GROUP_BY_QUERY_NAME).click();
-		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(ToolBarActions.GROUP_BY_SEVERITY).click();
-		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(ToolBarActions.GROUP_BY_STATE_NAME).click();
+		disableAllGroupByActions(groupByActions);
 		
 		sleep(1000);
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(ToolBarActions.GROUP_BY_STATE_NAME).click();
