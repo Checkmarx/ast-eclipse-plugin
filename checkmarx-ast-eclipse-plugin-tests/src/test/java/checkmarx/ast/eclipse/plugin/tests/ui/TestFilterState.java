@@ -29,7 +29,7 @@ public class TestFilterState extends BaseUITest{
 	List<String> groupByActions = Arrays.asList(ToolBarActions.GROUP_BY_QUERY_NAME,ToolBarActions.GROUP_BY_SEVERITY,ToolBarActions.GROUP_BY_STATE_NAME);
 	
 	
-	@Test(timeout=100000)
+	@Test
 	public void testGroupByActionsInToolBar() throws TimeoutException {
 		
 		int SECOND_NODE = 2;
