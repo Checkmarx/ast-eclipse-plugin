@@ -38,13 +38,13 @@ public class FilterState {
 		groupByQueryName = Boolean.parseBoolean(GlobalSettings.getFromPreferences(Severity.GROUP_BY_QUERY_NAME.name(), "false"));
 		groupByStateName = Boolean.parseBoolean(GlobalSettings.getFromPreferences(Severity.GROUP_BY_STATE_NAME.name(), "false"));
 		
-		notExploitable = Boolean.parseBoolean(GlobalSettings.getFromPreferences(State.NOT_EXPLOITABLE.name(), "true"));
+		notExploitable = Boolean.parseBoolean(GlobalSettings.getFromPreferences(State.NOT_EXPLOITABLE.name(), "false"));
 		confirmed = Boolean.parseBoolean(GlobalSettings.getFromPreferences(State.CONFIRMED.name(), "true"));
 		to_verify = Boolean.parseBoolean(GlobalSettings.getFromPreferences(State.TO_VERIFY.name(), "true"));
 		urgent = Boolean.parseBoolean(GlobalSettings.getFromPreferences(State.URGENT.name(), "true"));
 		ignored = Boolean.parseBoolean(GlobalSettings.getFromPreferences(State.IGNORED.name(), "true"));
 		not_ignored = Boolean.parseBoolean(GlobalSettings.getFromPreferences(State.NOT_IGNORED.name(), "true"));
-		proposedNotExploitable = Boolean.parseBoolean(GlobalSettings.getFromPreferences(State.PROPOSED_NOT_EXPLOITABLE.name(), "true"));
+		proposedNotExploitable = Boolean.parseBoolean(GlobalSettings.getFromPreferences(State.PROPOSED_NOT_EXPLOITABLE.name(), "false"));
 	}
 	
 	/**

@@ -52,8 +52,6 @@ public class ToolBarActions {
 	private Action groupBySeverityAction;
 	private Action groupByQueryNameAction;
 	private Action groupByStateNameAction;
-	
-	
 	private Action stateFilter;
 	
 	private List<Action> filterActions;
@@ -76,7 +74,6 @@ public class ToolBarActions {
 		clearAndRefreshAction = new ActionClearSelection(rootModel, resultsTree, pluginEventBus).createAction();
 		abortResultsAction = new ActionAbortScanResults(rootModel, resultsTree).createAction();
 		scanResultsAction = new ActionGetScanResults(rootModel, resultsTree, pluginEventBus).createAction();
-	    //stateFilter = new ActionFilterResultsState(rootModel, resultsTree,pluginEventBus,this.actionBars).createAction();
 		stateFilter = new ActionFilterStatePreference(pluginEventBus);
 		
 		toolBarActions.addAll(filterActions);

@@ -83,48 +83,51 @@ class ActionFilterStatePreference extends Action implements IMenuCreator
     if (menu != null) {
       menu.dispose();
     }
-
     menu = new Menu(parent);
-    MenuItem item = new MenuItem(menu, SWT.CHECK);
-    item.setText(FILTER_NOT_EXPLOITABLE);
-    item.setSelection(FilterState.notExploitable);
-    item.addSelectionListener(StateFilterSectionListener(State.NOT_EXPLOITABLE));
-    
-    MenuItem item2 = new MenuItem(menu, SWT.CHECK);
-    item2.setText(FILTER_CONFIRMED);
-    item2.setSelection(FilterState.confirmed);
-    item2.addSelectionListener(StateFilterSectionListener(State.CONFIRMED));
-    
-    MenuItem item3 = new MenuItem(menu, SWT.CHECK);
-    item3.setText(FILTER_PROPOSED_NON_EXPLOITABLE);
-    item3.setSelection(FilterState.proposedNotExploitable);
-    item3.addSelectionListener(StateFilterSectionListener(State.PROPOSED_NOT_EXPLOITABLE));
-    
-    MenuItem item4 = new MenuItem(menu, SWT.CHECK);
-    item4.setText(FILTER_IGNORED);
-    item4.setSelection(FilterState.ignored);
-    item4.addSelectionListener(StateFilterSectionListener(State.IGNORED));
-    
-    MenuItem item5 = new MenuItem(menu, SWT.CHECK);
-    item5.setText(FILTER_TO_VERIFY);
-    item5.setSelection(FilterState.to_verify);
-    item5.addSelectionListener(StateFilterSectionListener(State.TO_VERIFY));
-    
-    MenuItem item6 = new MenuItem(menu, SWT.CHECK);
-    item6.setText(FILTER_NOT_IGNORED);
-    item6.setSelection(FilterState.not_ignored);
-    item6.addSelectionListener(StateFilterSectionListener(State.NOT_IGNORED));
-    
-    MenuItem item7 = new MenuItem(menu, SWT.CHECK);
-    item7.setText(FILTER_URGENT);
-    item7.setSelection(FilterState.urgent);
-    item7.addSelectionListener(StateFilterSectionListener(State.URGENT));
-    
-
+    createMenuItem(menu);
     return menu;
   }   
 
-  private SelectionListener StateFilterSectionListener(State state) {
+  private void createMenuItem(Menu menu) {
+	  MenuItem item = new MenuItem(menu, SWT.CHECK);
+	    item.setText(FILTER_NOT_EXPLOITABLE);
+	    item.setSelection(FilterState.notExploitable);
+	    item.addSelectionListener(StateFilterSectionListener(State.NOT_EXPLOITABLE));
+	    
+	    MenuItem item2 = new MenuItem(menu, SWT.CHECK);
+	    item2.setText(FILTER_CONFIRMED);
+	    item2.setSelection(FilterState.confirmed);
+	    item2.addSelectionListener(StateFilterSectionListener(State.CONFIRMED));
+	    
+	    MenuItem item3 = new MenuItem(menu, SWT.CHECK);
+	    item3.setText(FILTER_PROPOSED_NON_EXPLOITABLE);
+	    item3.setSelection(FilterState.proposedNotExploitable);
+	    item3.addSelectionListener(StateFilterSectionListener(State.PROPOSED_NOT_EXPLOITABLE));
+	    
+	    MenuItem item4 = new MenuItem(menu, SWT.CHECK);
+	    item4.setText(FILTER_IGNORED);
+	    item4.setSelection(FilterState.ignored);
+	    item4.addSelectionListener(StateFilterSectionListener(State.IGNORED));
+	    
+	    MenuItem item5 = new MenuItem(menu, SWT.CHECK);
+	    item5.setText(FILTER_TO_VERIFY);
+	    item5.setSelection(FilterState.to_verify);
+	    item5.addSelectionListener(StateFilterSectionListener(State.TO_VERIFY));
+	    
+	    MenuItem item6 = new MenuItem(menu, SWT.CHECK);
+	    item6.setText(FILTER_NOT_IGNORED);
+	    item6.setSelection(FilterState.not_ignored);
+	    item6.addSelectionListener(StateFilterSectionListener(State.NOT_IGNORED));
+	    
+	    MenuItem item7 = new MenuItem(menu, SWT.CHECK);
+	    item7.setText(FILTER_URGENT);
+	    item7.setSelection(FilterState.urgent);
+	    item7.addSelectionListener(StateFilterSectionListener(State.URGENT));
+	
+}
+
+
+private SelectionListener StateFilterSectionListener(State state) {
 	  return new SelectionAdapter() {
 			public void widgetSelected(SelectionEvent e) {
 				FilterState.setFilterState(state);

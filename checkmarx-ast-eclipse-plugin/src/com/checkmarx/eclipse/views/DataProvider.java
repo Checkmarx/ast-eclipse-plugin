@@ -427,29 +427,21 @@ public class DataProvider {
 	 * @param results
 	 */
 	private void groupResultsByQueryName(Map<String, List<DisplayModel>> results) {
-//		if(FilterState.groupBySeverity) {
-//			results.entrySet().stream().forEach(entry -> entry.getValue().stream().forEach(severity -> severity.setChildren(groupByQueryName(severity.getChildren()))));
-//		}
-	
-		
-	//	results.entrySet().stream().forEach(entry -> results.put(entry.getKey(), groupByQueryName(entry.getValue())));
-	
+
 		
 		// when group by state is enabled, the query names but be grouped by and created as children to state label
-		
-		//working but reverse order. Group By query is created as parent
 		if(FilterState.groupByStateName || FilterState.groupBySeverity) {
 			results.entrySet().stream().forEach(entry -> entry.getValue().stream().forEach(severity ->
 			{
 				// here check if severity is enabled or state is enabled and we need to populate the children based on the state and severity filters selected
 				// when both the filters are selected
 				if(FilterState.groupBySeverity && FilterState.groupByStateName) {
-				if(severity.getChildren() != null && severity.getChildren().size()>0) {
+					if(severity.getChildren() != null && severity.getChildren().size()>0) {
 					severity.getChildren().stream().forEach( state -> {
 						state.setChildren(groupByQueryName(state.getChildren()));
 					});
 				}
-				}
+			}
 				// when only one group by filter is selected
 				else {
 					severity.setChildren(groupByQueryName(severity.getChildren()));
@@ -474,12 +466,8 @@ public class DataProvider {
 	private List<DisplayModel> groupByQueryName(List<DisplayModel> vulnerabilities){
 		Map<String, List<DisplayModel>> filteredByQueryName = new HashMap<>();
 		
-		for (DisplayModel vulnerability : vulnerabilities) {
-			
-			//String queryName = vulnerability.getChildren().get(0).getName();
-			
+		for (DisplayModel vulnerability : vulnerabilities) {	
 			String queryName = vulnerability.getName();
-			
 			if (filteredByQueryName.containsKey(queryName)) {
 				filteredByQueryName.get(queryName).add(vulnerability);
 			} else {
@@ -491,8 +479,6 @@ public class DataProvider {
 		
 		
 	}
-	
-	
 	
 	private void groupResultsByStateName(Map<String, List<DisplayModel>> results) {
 		if(FilterState.groupBySeverity) {
@@ -509,11 +495,7 @@ public class DataProvider {
 		Map<String, List<DisplayModel>> filteredByStateName = new HashMap<>();
 		
 		for (DisplayModel vulnerability : vulnerabilities) {
-			
 			String queryName = vulnerability.getState();
-			
-			//String queryName = vulnerability.getChildren().get(0).getState();
-			
 			if (filteredByStateName.containsKey(queryName)) {
 				filteredByStateName.get(queryName).add(vulnerability);
 			} else {
