@@ -1,10 +1,12 @@
 package checkmarx.ast.eclipse.plugin.tests.ui;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
 
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
 
 import org.eclipse.swtbot.swt.finder.SWTBot;
 import org.eclipse.swtbot.swt.finder.junit.SWTBotJunit4ClassRunner;
@@ -46,6 +48,7 @@ public class TestTriage  extends BaseUITest {
 	public void testTriage() throws TimeoutException {
 		setUpCheckmarxPlugin(true);
 		
+		
 		SWTBotTreeItem resultNode = getFirstResultNode();
 		String resultName = resultNode
 				.getText();
@@ -85,8 +88,12 @@ public class TestTriage  extends BaseUITest {
 		
 		
 		// check the first result is again the selected one after the revert
-		assertEquals(resultName, getFirstResultNode().getText());
-				
+		
+
+		//assertEquals(resultName, getFirstToVerifyResultNode().getText());
+		// since the order of the list changes, we need to make sure that the changed result is in HIGH -> TO_VERIFY nodes
+		List<String> stateResults = getStateResultNodes("TO_VERIFY").stream().map(element -> (element.split(" ")[0] +" " +element.split(" ")[1]).trim()).collect(Collectors.toList());
+		assertTrue(stateResults.contains(resultName));
 		// open changes tab
 		SWTBotTabItem changesTab = _bot.tabItemWithId(PluginConstants.CHANGES_TAB_ID);
 		changesTab.activate();
@@ -97,7 +104,21 @@ public class TestTriage  extends BaseUITest {
 		// Close Checkmarx AST Scan view
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
 	}
-	
+
+	private List<String> getStateResultNodes(String state) throws TimeoutException {
+		String firstNodeName = _bot.tree().cell(0, 0);
+		SWTBotTreeItem node = _bot.tree().getTreeItem(firstNodeName);
+		List<String> sastHigh = node.expand().getNode(0).expand().getNode(0).expand().getNodes();
+		List<String> result = null;
+		for(int toVerifyIndex=0;toVerifyIndex < sastHigh.size();toVerifyIndex++) {
+			if(sastHigh.get(toVerifyIndex).startsWith(state)) {
+			result = node.expand().getNode(0).expand().getNode(0).expand().getNode(toVerifyIndex).expand().getNodes();
+			}
+		}
+		return result;
+	}
+
+
 	private SWTBotTreeItem getFirstResultNode() {
 		String firstNodeName = _bot.tree().cell(0, 0);
 		SWTBotTreeItem node = _bot.tree().getTreeItem(firstNodeName);

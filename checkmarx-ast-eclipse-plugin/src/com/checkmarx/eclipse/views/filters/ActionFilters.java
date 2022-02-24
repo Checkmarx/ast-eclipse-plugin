@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.jface.action.Action;
-
 import com.checkmarx.eclipse.Activator;
 import com.checkmarx.eclipse.enums.ActionName;
 import com.checkmarx.eclipse.enums.PluginListenerType;
@@ -27,6 +26,8 @@ public class ActionFilters {
 	private static final String ACTION_FILTER_INFO_TOOLTIP = "Info";
 	private static final String ACTION_FILTER_INFO_ICON_PATH = "/icons/info_untoggle.png";
 	
+	
+	
 	private EventBus pluginEventBus;
 	
 	public ActionFilters(EventBus pluginEventBus) {		
@@ -46,14 +47,15 @@ public class ActionFilters {
 		Action filterLowAction = createFilterAction(ACTION_FILTER_LOW_TOOLTIP, ACTION_FILTER_LOW_ICON_PATH, Severity.LOW, ActionName.LOW);
 		Action filterInfoAction = createFilterAction(ACTION_FILTER_INFO_TOOLTIP, ACTION_FILTER_INFO_ICON_PATH, Severity.INFO, ActionName.INFO);
 		
+		
 		filters.add(filterHighAction);
 		filters.add(filterMediumAction);
 		filters.add(filterLowAction);
-		filters.add(filterInfoAction);
-		
+		filters.add(filterInfoAction);	
 		return filters;
 	}
 	
+
 	/**
 	 * Creates a filter action
 	 * 
@@ -68,7 +70,8 @@ public class ActionFilters {
 			@Override
 			public void run() {
 				FilterState.setState(severity);
-				pluginEventBus.post(new PluginListenerDefinition(PluginListenerType.FILTER_CHANGED, DataProvider.getInstance().sortResults()));
+				pluginEventBus.post(new PluginListenerDefinition(
+						PluginListenerType.FILTER_CHANGED, DataProvider.getInstance().sortResults()));
 			}
 		};
 
