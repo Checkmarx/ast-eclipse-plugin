@@ -467,7 +467,7 @@ public class DataProvider {
 		Map<String, List<DisplayModel>> filteredByQueryName = new HashMap<>();
 		
 		for (DisplayModel vulnerability : vulnerabilities) {	
-			String queryName = vulnerability.getName();
+			String queryName = vulnerability.getQueryName();
 			if (filteredByQueryName.containsKey(queryName)) {
 				filteredByQueryName.get(queryName).add(vulnerability);
 			} else {
