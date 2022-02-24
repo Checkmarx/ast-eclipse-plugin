@@ -8,7 +8,8 @@ public enum Severity {
 	LOW,
 	INFO,
 	GROUP_BY_SEVERITY,
-	GROUP_BY_QUERY_NAME;
+	GROUP_BY_QUERY_NAME,
+	GROUP_BY_STATE_NAME;
 	
 	public static Severity getSeverity(String severity) {
 		return Severity.valueOf(severity);

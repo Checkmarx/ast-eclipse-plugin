@@ -25,7 +25,10 @@ public class ToolBarActions {
 	public static final String MENU_GROUP_BY = "Group By";
 	public static final String GROUP_BY_SEVERITY = "Severity";
 	public static final String GROUP_BY_QUERY_NAME = "Query Name";
-
+	public static final String GROUP_BY_STATE_NAME = "State Name";
+	
+	public static final String MENU_FILTER_BY = "Filter By";
+	
 	private List<Action> toolBarActions = new ArrayList<>();
 	
 	private IActionBars actionBars;
@@ -40,6 +43,9 @@ public class ToolBarActions {
 	private Action abortResultsAction;
 	private Action groupBySeverityAction;
 	private Action groupByQueryNameAction;
+	private Action groupByStateNameAction;
+	private Action stateFilter;
+	
 	private List<Action> filterActions;
 		
 	private ToolBarActions(ToolBarActionsBuilder toolBarActionsBuilder) {
@@ -60,15 +66,18 @@ public class ToolBarActions {
 		clearAndRefreshAction = new ActionClearSelection(rootModel, resultsTree, pluginEventBus).createAction();
 		abortResultsAction = new ActionAbortScanResults(rootModel, resultsTree).createAction();
 		scanResultsAction = new ActionGetScanResults(rootModel, resultsTree, pluginEventBus).createAction();
-	     
+		stateFilter = new ActionFilterStatePreference(pluginEventBus);
+		
 		toolBarActions.addAll(filterActions);
 		toolBarActions.add(clearAndRefreshAction);
 		toolBarActions.add(scanResultsAction);
 		toolBarActions.add(abortResultsAction);
+		toolBarActions.add(stateFilter);
 		
 		createGroupByActions();
 	}
 	
+
 	/**
 	 * Create Group By actions (Severity & Query Name)
 	 */
@@ -95,13 +104,28 @@ public class ToolBarActions {
 		groupByQueryNameAction.setId(ActionName.GROUP_BY_QUERY_NAME.name());
 		groupByQueryNameAction.setChecked(FilterState.groupByQueryName);
 		
+		groupByStateNameAction = new Action(GROUP_BY_STATE_NAME, IAction.AS_CHECK_BOX) {
+			@Override
+			public void run() {
+				FilterState.setState(Severity.GROUP_BY_STATE_NAME);
+				pluginEventBus.post(new PluginListenerDefinition(PluginListenerType.FILTER_CHANGED, DataProvider.getInstance().sortResults()));
+			}
+		};
+		
+		groupByStateNameAction.setId(ActionName.GROUP_BY_STATE_NAME.name());
+		groupByStateNameAction.setChecked(FilterState.groupByStateName);
+		
+		
 		filterActions.add(groupBySeverityAction);
-		filterActions.add(groupByQueryNameAction);		
+		filterActions.add(groupByQueryNameAction);
+		filterActions.add(groupByStateNameAction);
 		
 		IMenuManager dropDownMenu = actionBars.getMenuManager();
 		MenuManager subMenu = new MenuManager(MENU_GROUP_BY, MENU_GROUP_BY);
 		subMenu.add(groupBySeverityAction);
 		subMenu.add(groupByQueryNameAction);
+		subMenu.add(groupByStateNameAction);
+
 		dropDownMenu.add(subMenu);
 		
 		actionBars.updateActionBars();
@@ -141,6 +165,15 @@ public class ToolBarActions {
 	 */
 	public Action getAbortResultsAction() {
 		return abortResultsAction;
+	}
+	
+	/**
+	 * Get filter state action
+	 * 
+	 * @return
+	 */
+	public Action getStateFilterAction() {
+		return stateFilter;
 	}
 	
 	/**

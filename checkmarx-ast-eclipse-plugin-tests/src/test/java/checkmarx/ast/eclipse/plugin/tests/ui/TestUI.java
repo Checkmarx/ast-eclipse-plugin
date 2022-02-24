@@ -33,9 +33,9 @@ public class TestUI extends BaseUITest {
 	private static final String ASSERT_TREE_CONSTAIN_HIGH_MEDIUM = "Results must contain results grouped by High and Medium";
 	private static final String ASSERT_TREE_CONSTAIN_HIGH_MEDIUM_LOW = "Results must contain results grouped by High, Medium and Low";
 	private static final String ASSERT_TREE_CONSTAIN_HIGH_MEDIUM_LOW_INFO = "Results must contain results grouped by High, Medium, Low and Info";
-	private static final String ASSERT_TREE_WITH_NO_ISSUES = "The tree mustn't have results once we are grouping by severity and no severity is selected";
+	protected static final String ASSERT_TREE_WITH_NO_ISSUES = "The tree mustn't have results once we are grouping by severity and no severity is selected";
 	private static final String ASSERT_GROUP_BY_QUERY_NAME = "Child name must contain the parent name once it is grouped by query name";
-	private static final String ASSERT_NO_CHINDREN = "One group by severity and group by query name are not selected, this node shouldn't have children";
+	protected static final String ASSERT_NO_CHINDREN = "One group by severity and group by query name are not selected, this node shouldn't have children";
 	private static final String ASSERT_GROUP_BY_SEVERITY_NOT_SELECTED = "Engine child should not be HIGH, MEDIUM, LOW or INFO once the group by severity is not enabled";
 	private static final String ASSERT_CREDENTIALS_PANEL = "The  credentials panel must appear once Checkmarx credentials are not defined";
 
@@ -201,11 +201,11 @@ public class TestUI extends BaseUITest {
 		String thirdNodeName = _bot.tree().getTreeItem(firstNodeName).expand().getNode(0).expand().getNode(0).getText();
 		
 		// Expand nodes until the first vulnerability
-		String groupByQueryNameParent = _bot.tree().expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).getText();
-		String groupByQueryNameChild = _bot.tree().expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).expand().getNode(0).getText();
+		String groupByQueryNameParent = _bot.tree().expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).expand().getNode(0).getText();
+		String groupByQueryNameChild = _bot.tree().expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).expand().getNode(0).expand().getNode(0).getText();
 		
 		// Select the first vulnerability
-		_bot.tree().expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).expand().getNode(0).select();
+		_bot.tree().expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).expand().getNode(0).expand().getNode(0).select();
 		
 		// Asserts that the vulnerability has the same name as the parent node which means it is grouped by query name
 		assertTrue(ASSERT_GROUP_BY_QUERY_NAME, groupByQueryNameChild.contains(groupByQueryNameParent.split("\\(")[0].trim()));
@@ -213,6 +213,8 @@ public class TestUI extends BaseUITest {
 		// Remove either group by severity and query name
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(ToolBarActions.GROUP_BY_QUERY_NAME).click();
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(ToolBarActions.GROUP_BY_SEVERITY).click();
+		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(ToolBarActions.GROUP_BY_STATE_NAME).click();
+		
 		
 		sleep(1000);
 		

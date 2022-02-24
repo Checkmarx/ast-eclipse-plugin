@@ -98,12 +98,17 @@ public class PluginUtils {
 	 */
 	public static void updateFiltersEnabledAndCheckedState(List<Action> filterActions) {
 		for (Action action : filterActions) {
-			// avoid to disable group by severity and group by query name actions
-			if (!action.getId().equals(ActionName.GROUP_BY_SEVERITY.name()) && !action.getId().equals(ActionName.GROUP_BY_QUERY_NAME.name())) {
+			// avoid to disable group by severity , group by query name and group by state actions
+			if (!action.getId().equals(ActionName.GROUP_BY_SEVERITY.name()) && !action.getId().equals(ActionName.GROUP_BY_QUERY_NAME.name()) && !action.getId().equals(ActionName.GROUP_BY_STATE_NAME.name()) ) {
 				action.setEnabled(DataProvider.getInstance().containsResults());
 			}
+			
+			if(!action.getId().equals(ActionName.FILTER_CHANGED.name())) {
+//				action.setChecked(FilterState.isFilterStateEnabled(action.getId()));
+				action.setChecked(FilterState.isSeverityEnabled(action.getId()));
+			}
 
-			action.setChecked(FilterState.isSeverityEnabled(action.getId()));
+			
 		}
 	}
 	

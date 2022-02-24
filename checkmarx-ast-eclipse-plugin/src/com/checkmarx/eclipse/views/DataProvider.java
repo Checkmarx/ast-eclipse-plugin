@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -26,6 +27,7 @@ import com.checkmarx.ast.wrapper.CxConfig;
 import com.checkmarx.ast.wrapper.CxConfig.InvalidCLIConfigException;
 import com.checkmarx.ast.wrapper.CxException;
 import com.checkmarx.ast.wrapper.CxWrapper;
+import com.checkmarx.eclipse.enums.State;
 import com.checkmarx.eclipse.properties.Preferences;
 import com.checkmarx.eclipse.runner.Authenticator;
 import com.checkmarx.eclipse.utils.CxLogger;
@@ -255,7 +257,8 @@ public class DataProvider {
 	public List<DisplayModel> sortResults(){
 		// Divide all the results by scanner type
 		Map<String, List<DisplayModel>> filteredResultsByScannerType = filterResultsByScannerType(currentResultsTransformed);
-
+		// filter based on filter states
+		filterStates(filteredResultsByScannerType);	
 		// build results based on selected filters
 		return buildResults(getCurrentScanId(), filteredResultsByScannerType);
 	}
@@ -276,12 +279,26 @@ public class DataProvider {
 			groupResultsBySeverity(filteredResultsByScannerType);
 		}
 		
+		if(FilterState.groupByStateName) {
+			groupResultsByStateName(filteredResultsByScannerType);
+		}
+		
 		if(FilterState.groupByQueryName) {
 			groupResultsByQueryName(filteredResultsByScannerType);
 		}
 		
+		
 		return addResults(scanId, filteredResultsByScannerType);
 	}
+	
+	private void filterStates(Map<String, List<DisplayModel>> filteredResultsByScannerType) {
+		filteredResultsByScannerType.entrySet().stream().forEach(entry -> 
+		{	
+		entry.getValue().removeIf(x -> !FilterState.isFilterStateEnabled(x.getState().trim()));
+		});
+	
+	}
+
 	
 	/**
 	 *  Evaluates if each engine has results and adds it to the final map
@@ -410,11 +427,34 @@ public class DataProvider {
 	 * @param results
 	 */
 	private void groupResultsByQueryName(Map<String, List<DisplayModel>> results) {
-		if(FilterState.groupBySeverity) {
-			results.entrySet().stream().forEach(entry -> entry.getValue().stream().forEach(severity -> severity.setChildren(groupByQueryName(severity.getChildren()))));
-		}else {
+
+		
+		// when group by state is enabled, the query names but be grouped by and created as children to state label
+		if(FilterState.groupByStateName || FilterState.groupBySeverity) {
+			results.entrySet().stream().forEach(entry -> entry.getValue().stream().forEach(severity ->
+			{
+				// here check if severity is enabled or state is enabled and we need to populate the children based on the state and severity filters selected
+				// when both the filters are selected
+				if(FilterState.groupBySeverity && FilterState.groupByStateName) {
+					if(severity.getChildren() != null && severity.getChildren().size()>0) {
+					severity.getChildren().stream().forEach( state -> {
+						state.setChildren(groupByQueryName(state.getChildren()));
+					});
+				}
+			}
+				// when only one group by filter is selected
+				else {
+					severity.setChildren(groupByQueryName(severity.getChildren()));
+				}
+				
+			
+			}));
+			
+		}
+		else {
 			results.entrySet().stream().forEach(entry -> results.put(entry.getKey(), groupByQueryName(entry.getValue())));
 		}
+		
 	}
 	
 	/**
@@ -426,10 +466,8 @@ public class DataProvider {
 	private List<DisplayModel> groupByQueryName(List<DisplayModel> vulnerabilities){
 		Map<String, List<DisplayModel>> filteredByQueryName = new HashMap<>();
 		
-		for (DisplayModel vulnerability : vulnerabilities) {
-			
-			String queryName = vulnerability.getQueryName();
-			
+		for (DisplayModel vulnerability : vulnerabilities) {	
+			String queryName = vulnerability.getName();
 			if (filteredByQueryName.containsKey(queryName)) {
 				filteredByQueryName.get(queryName).add(vulnerability);
 			} else {
@@ -438,8 +476,36 @@ public class DataProvider {
 		}
 		
 		return createParentNodeByScanner(filteredByQueryName);
+		
+		
 	}
 	
+	private void groupResultsByStateName(Map<String, List<DisplayModel>> results) {
+		if(FilterState.groupBySeverity) {
+			results.entrySet().stream().forEach(entry -> entry.getValue().stream().forEach(severity -> severity.setChildren(groupByStateName(severity.getChildren()))));
+			
+		}else {
+			results.entrySet().stream().forEach(entry -> results.put(entry.getKey(), groupByStateName(entry.getValue())));
+		}
+		
+	}
+
+
+	private List<DisplayModel> groupByStateName(List<DisplayModel> vulnerabilities) {
+		Map<String, List<DisplayModel>> filteredByStateName = new HashMap<>();
+		
+		for (DisplayModel vulnerability : vulnerabilities) {
+			String queryName = vulnerability.getState();
+			if (filteredByStateName.containsKey(queryName)) {
+				filteredByStateName.get(queryName).add(vulnerability);
+			} else {
+				filteredByStateName.put(queryName, new ArrayList<>(Arrays.asList(vulnerability)));
+			}
+		}
+		
+		return createParentNodeByScanner(filteredByStateName);
+	}
+
 	/**
 	 * Creates parent node for each scanner
 	 * 
@@ -470,23 +536,29 @@ public class DataProvider {
 		return resultList;
 	}
 	
+	
+	
 	/**
 	 * Counts the number of results evaluating if the model has children or not
 	 * 
 	 * @param results
 	 * @return
 	 */
+	
 	private int getParentCounter(List<DisplayModel> results) {
-		int counter = 0;
-
-		for (DisplayModel dm : results) {
-			if (dm.getChildren() != null && !dm.getChildren().isEmpty()) {
-				counter += dm.getChildren().size();
+		 int counter= 0;
+		 for(DisplayModel dm : results) {
+				if(dm.getChildren() != null && dm.getChildren().size() > 0) {
+					counter = counter + Integer.parseInt(dm.getName().substring(dm.getName().indexOf("(") + 1, dm.getName().indexOf(")")));
+				}
+				else {
+					counter = counter + 1;
+				}
 			}
-		}
-
-		return counter > 0 ? counter : results.size();
+		 
+		 return counter;
 	}
+	
 	
 	/**
 	 * Create a CxWrapper with current credentials
