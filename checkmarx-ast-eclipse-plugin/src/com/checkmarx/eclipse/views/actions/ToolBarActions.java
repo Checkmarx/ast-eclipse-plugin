@@ -13,7 +13,6 @@ import org.eclipse.ui.IActionBars;
 import com.checkmarx.eclipse.enums.ActionName;
 import com.checkmarx.eclipse.enums.PluginListenerType;
 import com.checkmarx.eclipse.enums.Severity;
-import com.checkmarx.eclipse.enums.State;
 import com.checkmarx.eclipse.views.DataProvider;
 import com.checkmarx.eclipse.views.DisplayModel;
 import com.checkmarx.eclipse.views.PluginListenerDefinition;
@@ -28,15 +27,8 @@ public class ToolBarActions {
 	public static final String GROUP_BY_QUERY_NAME = "Query Name";
 	public static final String GROUP_BY_STATE_NAME = "State Name";
 	
-	/*
-	 * Filter state
-	 * 
-	 */
-	
 	public static final String MENU_FILTER_BY = "Filter By";
 	
-	
-
 	private List<Action> toolBarActions = new ArrayList<>();
 	
 	private IActionBars actionBars;
