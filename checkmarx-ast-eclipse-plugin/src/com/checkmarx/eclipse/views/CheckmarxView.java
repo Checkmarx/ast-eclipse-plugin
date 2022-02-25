@@ -732,17 +732,17 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					Project selectedProject = ((Project) selection.getFirstElement());
 
 					// Avoid non-sense trigger changed when opening the combo
-					if(selectedProject.getID().equals(currentProjectId)) {
+					if(selectedProject.getId().equals(currentProjectId)) {
 						CxLogger.info(PluginConstants.INFO_CHANGE_PROJECT_EVENT_NOT_TRIGGERED);
 
 						return;
 					}		
           
-					onProjectChangePluginLoading(selectedProject.getID());
+					onProjectChangePluginLoading(selectedProject.getId());
 					
 					Display.getDefault().asyncExec(new Runnable() {
 					    public void run() {
-					    	currentBranches = DataProvider.getInstance().getBranchesForProject(selectedProject.getID());
+					    	currentBranches = DataProvider.getInstance().getBranchesForProject(selectedProject.getId());
 							
 							branchComboViewer.setInput(currentBranches);
 							PluginUtils.setTextForComboViewer(branchComboViewer, currentBranches.isEmpty() ? NO_BRANCHES_AVAILABLE : BRANCH_COMBO_VIEWER_TEXT);
@@ -805,7 +805,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 			return NO_PROJECTS_AVAILABLE;
 		}
 
-		Optional<Project> project = projects.stream().filter(p -> p.getID().equals(projectId)).findFirst();
+		Optional<Project> project = projects.stream().filter(p -> p.getId().equals(projectId)).findFirst();
 
 		return project.isPresent() ? project.get().getName() : PROJECT_COMBO_VIEWER_TEXT;
 	}
@@ -930,18 +930,18 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					Scan selectedScan = ((Scan) selection.getFirstElement());
 
 					// Avoid non-sense trigger changed when opening the combo
-					if(selectedScan.getID().equals(currentScanId) || alreadyRunning) {
-						CxLogger.info(String.format(PluginConstants.INFO_CHANGE_SCAN_EVENT_NOT_TRIGGERED, alreadyRunning, selectedScan.getID().equals(currentScanId)));
+					if(selectedScan.getId().equals(currentScanId) || alreadyRunning) {
+						CxLogger.info(String.format(PluginConstants.INFO_CHANGE_SCAN_EVENT_NOT_TRIGGERED, alreadyRunning, selectedScan.getId().equals(currentScanId)));
 
 						return;
 					}
 					
-					onScanChangePluginLoading(selectedScan.getID());
+					onScanChangePluginLoading(selectedScan.getId());
 
 					Display.getDefault().asyncExec(new Runnable() {
 					    public void run() {
 					    	alreadyRunning = true;
-							updateResultsTree(DataProvider.getInstance().getResultsForScanId(selectedScan.getID()), false);
+							updateResultsTree(DataProvider.getInstance().getResultsForScanId(selectedScan.getId()), false);
 					    }
 					});
 				}
@@ -987,7 +987,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 			return PluginConstants.COMBOBOX_SCAND_ID_NO_SCANS_AVAILABLE;
 		}
 		
-		Optional<Scan> scan = scans.stream().filter(s -> s.getID().equals(scanId)).findFirst();
+		Optional<Scan> scan = scans.stream().filter(s -> s.getId().equals(scanId)).findFirst();
 
 		return scan.isPresent() ? formatScanLabel(scan.get()) : SCAN_COMBO_VIEWER_TEXT;
 	}
@@ -1001,7 +1001,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private static String formatScanLabel(Scan scan) {
 		String updatedAtDate = PluginUtils.convertStringTimeStamp(scan.getUpdatedAt());
 		       
-        return String.format(FORMATTED_SCAN_LABEL, scan.getID(), updatedAtDate);
+        return String.format(FORMATTED_SCAN_LABEL, scan.getId(), updatedAtDate);
 
 	}
 
@@ -1050,7 +1050,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					return;
 				}
 		    	
-				String projectId = scan.getProjectID();
+				String projectId = scan.getProjectId();
 				
 		    	List<Project> projectList = getProjects();
 		    	
@@ -1065,7 +1065,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				GlobalSettings.storeInPreferences(GlobalSettings.PARAM_PROJECT_ID, currentProjectId);
 
 				setSelectionForBranchComboViewer(scan.getBranch(), projectId);
-				setSelectionForScanIdComboViewer(scan.getID(), scan.getBranch());
+				setSelectionForScanIdComboViewer(scan.getId(), scan.getBranch());
 		    }
 		});
 	}
@@ -1118,7 +1118,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 			return;
 		}
 		
-		Scan currentScan = scanList.stream().filter(scan -> scanId.equals(scan.getID())).findAny().orElse(null);
+		Scan currentScan = scanList.stream().filter(scan -> scanId.equals(scan.getId())).findAny().orElse(null);
 
 		scanIdComboViewer.setSelection(new StructuredSelection(currentScan != null ? currentScan : PluginConstants.EMPTY_STRING));
 	}
