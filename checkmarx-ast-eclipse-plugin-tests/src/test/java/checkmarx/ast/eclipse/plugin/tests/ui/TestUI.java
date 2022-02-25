@@ -93,7 +93,7 @@ public class TestUI extends BaseUITest {
 		sleep();
 
 		// After a sleep the missing Server Url message must be displayed
-		assertEquals(ERROR_SERVER_URL_NOT_SET, _bot.tree().cell(0, 0));
+		assertEquals( _bot.tree().cell(0, 0), ERROR_SERVER_URL_NOT_SET, _bot.tree().cell(0, 0));
 		
 		// Close Checkmarx AST Scan view
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
