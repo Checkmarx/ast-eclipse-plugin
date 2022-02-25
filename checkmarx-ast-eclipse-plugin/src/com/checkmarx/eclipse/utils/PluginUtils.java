@@ -104,7 +104,6 @@ public class PluginUtils {
 			}
 			
 			if(!action.getId().equals(ActionName.FILTER_CHANGED.name())) {
-//				action.setChecked(FilterState.isFilterStateEnabled(action.getId()));
 				action.setChecked(FilterState.isSeverityEnabled(action.getId()));
 			}
 
