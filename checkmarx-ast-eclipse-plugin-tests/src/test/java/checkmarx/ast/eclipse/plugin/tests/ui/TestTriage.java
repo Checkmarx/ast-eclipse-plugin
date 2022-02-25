@@ -85,15 +85,11 @@ public class TestTriage  extends BaseUITest {
 
 		// wait for button to be enabled
 		_bot.waitUntil(triageButtonEnabled);
-		
-		
-		// check the first result is again the selected one after the revert
-		
 
-		//assertEquals(resultName, getFirstToVerifyResultNode().getText());
 		// since the order of the list changes, we need to make sure that the changed result is in HIGH -> TO_VERIFY nodes
-		List<String> stateResults = getStateResultNodes("TO_VERIFY").stream().map(element -> (element.split(" ")[0] +" " +element.split(" ")[1]).trim()).collect(Collectors.toList());
-		assertTrue(stateResults.contains(resultName));
+		// split(" ")[0] provides the initial part of the name, which is the query id, both in the group and in resultName
+		List<String> stateResults = getStateResultNodes("TO_VERIFY").stream().map(element -> (element.split(" ")[0]).trim()).collect(Collectors.toList());		
+		assertTrue(String.format("%s - %s", stateResults.toString(), resultName), stateResults.contains(resultName.split(" ")[0]));
 		// open changes tab
 		SWTBotTabItem changesTab = _bot.tabItemWithId(PluginConstants.CHANGES_TAB_ID);
 		changesTab.activate();
