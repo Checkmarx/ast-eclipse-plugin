@@ -1348,13 +1348,13 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 							    	}
 							    	else {
 							    		// TODO: inform the user that update failed?
-							    		sync.asyncExec(() -> {
-							    			MessageBox box = new MessageBox(parent.getDisplay().getActiveShell(), SWT.CANCEL | SWT.OK);
-								    		box.setText("Triage failed");
-								    		// correct the message
-								    		box.setMessage("Triage update failed. Check logs");
-								    		box.open();
-							    		});
+//							    		sync.asyncExec(() -> {
+//							    			MessageBox box = new MessageBox(parent.getDisplay().getActiveShell(), SWT.CANCEL | SWT.OK);
+//								    		box.setText("Triage failed");
+//								    		// correct the message
+//								    		box.setMessage("Triage update failed. Check logs");
+//								    		box.open();
+//							    		});
 							    		
 							    		
 							    	}			
@@ -1364,6 +1364,11 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 								if(!triageButton.isEnabled()) {
 									triageButton.setEnabled(true);
 									triageButton.setText(PluginConstants.BTN_UPDATE);
+								}
+								if(!commentText.isEnabled()) {
+									commentText.setEnabled(true);
+									commentText.setText(PluginConstants.DEFAULT_COMMENT_TXT);
+									commentText.setEditable(true);
 								}
 							});
 							return Status.OK_STATUS;

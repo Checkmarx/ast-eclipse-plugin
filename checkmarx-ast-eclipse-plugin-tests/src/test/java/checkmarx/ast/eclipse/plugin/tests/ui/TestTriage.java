@@ -72,11 +72,17 @@ public class TestTriage  extends BaseUITest {
 		SWTBotButton triageButton = _bot.buttonWithId(PluginConstants.TRIAGE_BUTTON_ID);
 		triageButton.click();
 		
-		// check the first result is no longer the same after triage
-		assertNotEquals(resultName, getFirstResultNode().getText());
+		sleep(1000);
 		
 		// wait for button to be enabled
 		_bot.waitUntil(triageButtonEnabled);
+		
+		
+		// check the first result is no longer the same after triage
+		assertNotEquals(resultName, getFirstResultNode().getText());
+		
+//		// wait for button to be enabled
+//		_bot.waitUntil(triageButtonEnabled);
 		
 		// revert severity and state
 		severityCombo.setSelection(Severity.HIGH.toString());
