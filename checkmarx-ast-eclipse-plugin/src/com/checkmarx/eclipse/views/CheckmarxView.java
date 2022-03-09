@@ -10,6 +10,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
+import javax.inject.Inject;
+
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IResource;
@@ -17,7 +19,11 @@ import org.eclipse.core.resources.IResourceProxy;
 import org.eclipse.core.resources.IResourceProxyVisitor;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
@@ -42,6 +48,7 @@ import org.eclipse.swt.custom.CLabel;
 import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.FontData;
 import org.eclipse.swt.graphics.Image;
@@ -58,6 +65,7 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Link;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Menu;
+import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.TabFolder;
 import org.eclipse.swt.widgets.TabItem;
@@ -71,6 +79,7 @@ import org.eclipse.ui.ide.IDE;
 import org.eclipse.ui.part.ViewPart;
 import org.eclipse.ui.themes.ITheme;
 import org.osgi.service.event.EventHandler;
+import org.eclipse.e4.ui.di.UISynchronize;
 
 import com.checkmarx.ast.predicate.Predicate;
 import com.checkmarx.ast.project.Project;
@@ -148,6 +157,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 	Font boldFont,titleFont;
 
+	 @Inject UISynchronize sync;
+	
 	private Composite resultViewComposite;
 	private Composite attackVectorCompositePanel;
 	private ScrolledComposite attackVectorScrolledComposite;
@@ -365,6 +376,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	/**
 	 *  Panel where projects, branches and scans comboboxes will be drawn
 	 */
+	
 	private void createComboboxesPanel() {
 		Composite comboboxesComposite = new Composite(parent, SWT.NONE);
 		GridLayout topLayout = new GridLayout();
@@ -384,73 +396,84 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		loadComboboxes();
 	}
 	
+
+	
+	
 	private void loadComboboxes() {
 		loadingProjects();
 		loadingBranches();
 		loadingScans();
-		
-		Display.getDefault().asyncExec(new Runnable() {
-		    public void run() {
-		    	List<Project> projectList = getProjects();
-						    	
-		    	projectComboViewer.setInput(projectList);
+		Job job = new Job("Loading Projects, Branches and Scans") {
+
+			@Override
+			protected IStatus run(IProgressMonitor arg0) {
+				List<Project> projectList = getProjects();
+				sync.asyncExec(() -> {
+					projectComboViewer.setInput(projectList);
+					if(currentProjectId.isEmpty() || projectList.isEmpty()) {
+						PluginUtils.setTextForComboViewer(projectComboViewer, PROJECT_COMBO_VIEWER_TEXT);
+						PluginUtils.setTextForComboViewer(branchComboViewer, BRANCH_COMBO_VIEWER_TEXT);
+						PluginUtils.setTextForComboViewer(scanIdComboViewer, PluginConstants.COMBOBOX_SCAND_ID_PLACEHOLDER);
+						
+						PluginUtils.enableComboViewer(projectComboViewer, true);
+						PluginUtils.enableComboViewer(scanIdComboViewer, true);
+						PluginUtils.enableComboViewer(branchComboViewer, false);
+					}
+				});
 				
-				if(currentProjectId.isEmpty() || projectList.isEmpty()) {
-					PluginUtils.setTextForComboViewer(projectComboViewer, PROJECT_COMBO_VIEWER_TEXT);
+				//set project ID
+				String currentProjectName = getProjectFromId(projectList, currentProjectId);
+				sync.asyncExec(() -> {
+					PluginUtils.setTextForComboViewer(projectComboViewer, currentProjectName);
+				});
+				
+				//Get branches for project id
+				currentBranches = DataProvider.getInstance().getBranchesForProject(currentProjectId);
+				sync.asyncExec(() -> {
+					branchComboViewer.setInput(currentBranches);
 					PluginUtils.setTextForComboViewer(branchComboViewer, BRANCH_COMBO_VIEWER_TEXT);
 					PluginUtils.setTextForComboViewer(scanIdComboViewer, PluginConstants.COMBOBOX_SCAND_ID_PLACEHOLDER);
 					
-					PluginUtils.enableComboViewer(projectComboViewer, true);
-					PluginUtils.enableComboViewer(scanIdComboViewer, true);
-					PluginUtils.enableComboViewer(branchComboViewer, false);
-					
-					return;
-				}
-				
-				// Set project id
-				String currentProjectName = getProjectFromId(projectList, currentProjectId);
-				PluginUtils.setTextForComboViewer(projectComboViewer, currentProjectName);
-				
-				// Get branches for project id
-				currentBranches = DataProvider.getInstance().getBranchesForProject(currentProjectId);
-				branchComboViewer.setInput(currentBranches);
-				
-				PluginUtils.setTextForComboViewer(branchComboViewer, BRANCH_COMBO_VIEWER_TEXT);
-				PluginUtils.setTextForComboViewer(scanIdComboViewer, PluginConstants.COMBOBOX_SCAND_ID_PLACEHOLDER);
-				
+				});
 				if(!currentBranch.isEmpty()) {
-					PluginUtils.setTextForComboViewer(branchComboViewer, currentBranch);
-					
+					sync.asyncExec(()-> {
+						PluginUtils.setTextForComboViewer(branchComboViewer, currentBranch);
+					});
 					List<Scan> scanList = DataProvider.getInstance().getScansForProject(currentBranch);
-					scanIdComboViewer.setInput(scanList);
-					
-					PluginUtils.setTextForComboViewer(scanIdComboViewer, scanList.isEmpty() ? PluginConstants.COMBOBOX_SCAND_ID_NO_SCANS_AVAILABLE : SCAN_COMBO_VIEWER_TEXT);
+					sync.asyncExec(()-> {
+						scanIdComboViewer.setInput(scanList);
+						PluginUtils.setTextForComboViewer(scanIdComboViewer, scanList.isEmpty() ? PluginConstants.COMBOBOX_SCAND_ID_NO_SCANS_AVAILABLE : SCAN_COMBO_VIEWER_TEXT);
+					});
 					
 					if(!currentScanId.isEmpty()) {
 						String currentScanName = getScanNameFromId(scanList, currentScanId);
 						currentScanIdFormmated = currentScanName;
-						PluginUtils.setTextForComboViewer(scanIdComboViewer, currentScanName);
-
-						Display.getDefault().asyncExec(new Runnable() {
-						    public void run() {
-						    	alreadyRunning = true;
-						    	updateResultsTree(DataProvider.getInstance().getResultsForScanId(currentScanId), false);
-						    }
+						sync.asyncExec(() -> {
+							PluginUtils.setTextForComboViewer(scanIdComboViewer, currentScanName);
+							alreadyRunning = true;
+							updateResultsTree(DataProvider.getInstance().getResultsForScanId(currentScanId), false);
 						});
-					}else {
+					} else {
+						sync.asyncExec(() -> {
+							PluginUtils.enableComboViewer(projectComboViewer, true);
+							PluginUtils.enableComboViewer(scanIdComboViewer, true);
+							PluginUtils.enableComboViewer(branchComboViewer, true);
+						});
+					}
+				} else {
+					sync.asyncExec(() -> {
 						PluginUtils.enableComboViewer(projectComboViewer, true);
 						PluginUtils.enableComboViewer(scanIdComboViewer, true);
 						PluginUtils.enableComboViewer(branchComboViewer, true);
-					}
-				}else {
-					PluginUtils.enableComboViewer(projectComboViewer, true);
-					PluginUtils.enableComboViewer(scanIdComboViewer, true);
-					PluginUtils.enableComboViewer(branchComboViewer, true);
+					});
 				}
-		    }
-		});
-	}
 	
+				return Status.OK_STATUS;
+			}
+			
+		};
+		job.schedule();
+	}
 	/**
 	 * Create results panel
 	 */
@@ -519,13 +542,25 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 * Draw results' tree initial message
 	 */
 	private void drawResultsTreeInitialMessage() {
-		boolean gettingResults = globalSettings.getProjectId() != null && !globalSettings.getProjectId().isEmpty()
-				&& globalSettings.getScanId() != null && !globalSettings.getScanId().isEmpty();
-		boolean noProjectsAvailable = projectComboViewer.getCombo().getText().equals(NO_PROJECTS_AVAILABLE);
-		String message = gettingResults && !noProjectsAvailable
-				? String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, globalSettings.getScanId())
-				: PluginConstants.EMPTY_STRING;
-		PluginUtils.showMessage(rootModel, resultsTree, message);
+
+		Job job = new Job("Retrieving results") {
+			boolean gettingResults = globalSettings.getProjectId() != null && !globalSettings.getProjectId().isEmpty()
+					&& globalSettings.getScanId() != null && !globalSettings.getScanId().isEmpty();
+			boolean noProjectsAvailable = projectComboViewer.getCombo().getText().equals(NO_PROJECTS_AVAILABLE);
+			String message = gettingResults && !noProjectsAvailable
+					? String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, globalSettings.getScanId())
+					: PluginConstants.EMPTY_STRING;
+			@Override
+			protected IStatus run(IProgressMonitor arg0) {
+				
+				sync.asyncExec(() -> {
+					PluginUtils.showMessage(rootModel, resultsTree, message);
+				});
+				return Status.OK_STATUS;
+			}
+			
+		};
+		job.schedule();
 	}
 	
 	/**
@@ -740,25 +775,33 @@ public class CheckmarxView extends ViewPart implements EventHandler {
           
 					onProjectChangePluginLoading(selectedProject.getId());
 					
-					Display.getDefault().asyncExec(new Runnable() {
-					    public void run() {
-					    	currentBranches = DataProvider.getInstance().getBranchesForProject(selectedProject.getId());
-							
-							branchComboViewer.setInput(currentBranches);
-							PluginUtils.setTextForComboViewer(branchComboViewer, currentBranches.isEmpty() ? NO_BRANCHES_AVAILABLE : BRANCH_COMBO_VIEWER_TEXT);
-							
-							PluginUtils.enableComboViewer(branchComboViewer, true);
-							PluginUtils.enableComboViewer(scanIdComboViewer, true);
-							PluginUtils.updateFiltersEnabledAndCheckedState(toolBarActions.getFilterActions());
-							toolBarActions.getScanResultsAction().setEnabled(true);
-							toolBarActions.getClearAndRefreshAction().setEnabled(true);
-							toolBarActions.getStateFilterAction().setEnabled(true);
-							
-							PluginUtils.enableComboViewer(branchComboViewer, true);
-							PluginUtils.enableComboViewer(scanIdComboViewer, true);
-							PluginUtils.updateFiltersEnabledAndCheckedState(toolBarActions.getFilterActions());
-					    }
-					});
+					
+					Job job = new Job("on Project change") {
+
+						@Override
+						protected IStatus run(IProgressMonitor arg0) {
+							currentBranches = DataProvider.getInstance().getBranchesForProject(selectedProject.getId());
+							sync.asyncExec(()-> {
+								branchComboViewer.setInput(currentBranches);
+								PluginUtils.setTextForComboViewer(branchComboViewer, currentBranches.isEmpty() ? NO_BRANCHES_AVAILABLE : BRANCH_COMBO_VIEWER_TEXT);
+								
+								PluginUtils.enableComboViewer(branchComboViewer, true);
+								PluginUtils.enableComboViewer(scanIdComboViewer, true);
+								PluginUtils.updateFiltersEnabledAndCheckedState(toolBarActions.getFilterActions());
+								toolBarActions.getScanResultsAction().setEnabled(true);
+								toolBarActions.getClearAndRefreshAction().setEnabled(true);
+								toolBarActions.getStateFilterAction().setEnabled(true);
+								
+								PluginUtils.enableComboViewer(branchComboViewer, true);
+								PluginUtils.enableComboViewer(scanIdComboViewer, true);
+								PluginUtils.updateFiltersEnabledAndCheckedState(toolBarActions.getFilterActions());
+							});
+							return Status.OK_STATUS;
+						}
+						
+					};
+					job.schedule();
+					
 				}
 			}
 		});
@@ -923,6 +966,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		scanIdComboViewer.addSelectionChangedListener(new ISelectionChangedListener() {
 			@Override
 			public void selectionChanged(SelectionChangedEvent event) {
+				
+				
 				IStructuredSelection selection = (IStructuredSelection) event.getSelection();
 
 				if (selection.size() > 0) {
@@ -937,14 +982,23 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					}
 					
 					onScanChangePluginLoading(selectedScan.getId());
+					
+					Job job = new Job("Getting results") {
 
-					Display.getDefault().asyncExec(new Runnable() {
-					    public void run() {
-					    	alreadyRunning = true;
-							updateResultsTree(DataProvider.getInstance().getResultsForScanId(selectedScan.getId()), false);
-					    }
-					});
+						@Override
+						protected IStatus run(IProgressMonitor arg0) {
+							sync.asyncExec(() -> {
+								alreadyRunning=true;
+								updateResultsTree(DataProvider.getInstance().getResultsForScanId(selectedScan.getId()), false);
+							});
+							return Status.OK_STATUS;
+						}
+						
+					};
+					job.schedule();
+					
 				}
+			
 			}
 		});
 	}
@@ -1025,19 +1079,49 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		
 		// Disable all tool bar actions except the clear and refresh action
 		toolBarActions.getToolBarActions().forEach(action -> action.setEnabled(action.getId().equals(ActionName.ABORT_RESULTS.name())));
-		PluginUtils.showMessage(rootModel, resultsTree, String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, scanId));
-		loadingProjects();
-		loadingBranches();
-		resultViewComposite.setVisible(false);
-		attackVectorCompositePanel.setVisible(false);		
+
 		
-		Display.getDefault().asyncExec(new Runnable() {
-		    public void run() {
-		    	Scan scan;
-				
-		    	try {
+		Job job = new Job("set Selection for project") {
+
+			@Override
+			protected IStatus run(IProgressMonitor arg0) {
+				sync.asyncExec(() -> {
+					PluginUtils.showMessage(rootModel, resultsTree, String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, scanId));
+					loadingProjects();
+					loadingBranches();
+					resultViewComposite.setVisible(false);
+					attackVectorCompositePanel.setVisible(false);
+				});
+				Scan scan;
+				String projectId;
+				try {
 					scan = DataProvider.getInstance().getScanInformation(scanId);
-				} catch (Exception e) {
+					projectId = scan.getProjectId();
+					}
+				catch (Exception e) {
+					// need to move the ui modifications inside async
+					showExceptionMessage(e);
+					
+					
+					return null;
+				}
+				List<Project> projectList = getProjects();
+				if(projectList.isEmpty()) return null;
+				String projectName = getProjectFromId(projectList, projectId);
+				currentProjectId = projectId;
+				GlobalSettings.storeInPreferences(GlobalSettings.PARAM_PROJECT_ID, currentProjectId);
+
+				sync.asyncExec(() -> {
+					projectComboViewer.setInput(projectList);
+					PluginUtils.setTextForComboViewer(projectComboViewer, projectName);
+					setSelectionForBranchComboViewer(scan.getBranch(), projectId);
+					setSelectionForScanIdComboViewer(scan.getId(), scan.getBranch());
+				});
+				return Status.OK_STATUS;
+			}
+
+			private void showExceptionMessage(Exception e) {
+				sync.asyncExec(() -> {
 					String errorMessage = e.getCause() != null && e.getCause().getMessage() != null ? e.getCause().getMessage() : e.getMessage();
 					PluginUtils.showMessage(rootModel, resultsTree, errorMessage);
 					
@@ -1046,28 +1130,12 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					
 					PluginUtils.setTextForComboViewer(branchComboViewer, BRANCH_COMBO_VIEWER_TEXT);
 					PluginUtils.enableComboViewer(branchComboViewer, false);
-					
-					return;
-				}
-		    	
-				String projectId = scan.getProjectId();
+				});
 				
-		    	List<Project> projectList = getProjects();
-		    	
-		    	projectComboViewer.setInput(projectList);
-		    	
-		    	if(projectList.isEmpty()) return;
-				
-				String projectName = getProjectFromId(projectList, projectId);
-				PluginUtils.setTextForComboViewer(projectComboViewer, projectName);
-
-				currentProjectId = projectId;
-				GlobalSettings.storeInPreferences(GlobalSettings.PARAM_PROJECT_ID, currentProjectId);
-
-				setSelectionForBranchComboViewer(scan.getBranch(), projectId);
-				setSelectionForScanIdComboViewer(scan.getId(), scan.getBranch());
-		    }
-		});
+			}
+			
+		};
+		job.schedule();
 	}
 	
 	/**
@@ -1089,6 +1157,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		} else {
 			PluginUtils.setTextForComboViewer(branchComboViewer, NO_BRANCHES_AVAILABLE);
 		}
+		
 	}
 
 	/**
@@ -1121,6 +1190,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		Scan currentScan = scanList.stream().filter(scan -> scanId.equals(scan.getId())).findAny().orElse(null);
 
 		scanIdComboViewer.setSelection(new StructuredSelection(currentScan != null ? currentScan : PluginConstants.EMPTY_STRING));
+		
+		
 	}
 
 	private void configureTreeItemSelectionChangeEvent(TreeViewer viewer) {
@@ -1140,17 +1211,31 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 						return;
 					}
 					
-					if (selectedItem.getSeverity() != null) {
-						titleLabel.setImage(findSeverityImage(selectedItem));
-						titleLabel.setText(selectedItem.getName());
-					}
-					
-					if(selectedItem.getResult() != null && selectedItem.getResult().getSimilarityId() != null) {
-						createTriageSeverityAndStateCombos(selectedItem);			
-						populateTriageChanges(selectedItem);
+					Job job = new Job("Selection changed") {
 
+						@Override
+						protected IStatus run(IProgressMonitor arg0) {
+							if (selectedItem.getSeverity() != null) {
+								sync.asyncExec(() -> {
+									titleLabel.setImage(findSeverityImage(selectedItem));
+									titleLabel.setText(selectedItem.getName());
+								});
+								
+							}
+							
+							if(selectedItem.getResult() != null && selectedItem.getResult().getSimilarityId() != null) {
+								sync.asyncExec(() -> {
+									createTriageSeverityAndStateCombos(selectedItem);			
+									populateTriageChanges(selectedItem);
+								});
+								
+
+								}
+							return Status.OK_STATUS;
 						}
-					
+						
+					};
+					job.schedule();
 					resultViewComposite.setVisible(true);
 					resultViewComposite.layout();
 					
@@ -1170,9 +1255,13 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		selectedSeverity = selectedItem.getSeverity();
 		String[] severity = {"HIGH","MEDIUM","LOW","INFO"};
 		
-		triageSeverityComboViewew.setContentProvider(ArrayContentProvider.getInstance());
-		triageSeverityComboViewew.setInput(severity);
-		PluginUtils.setTextForComboViewer(triageSeverityComboViewew, currentSeverity);
+		
+		sync.asyncExec(() -> {
+			triageSeverityComboViewew.setContentProvider(ArrayContentProvider.getInstance());
+			triageSeverityComboViewew.setInput(severity);
+			PluginUtils.setTextForComboViewer(triageSeverityComboViewew, currentSeverity);
+		});
+
 		
 		if (triageSeverityComboViewerListener != null) {
 			triageSeverityComboViewew.removeSelectionChangedListener(triageSeverityComboViewerListener);
@@ -1193,9 +1282,12 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		selectedState = selectedItem.getResult().getState();
 		String[] state = {"TO_VERIFY", "NOT_EXPLOITABLE", "PROPOSED_NOT_EXPLOITABLE", "CONFIRMED", "URGENT"};
 		
-		triageStateComboViewer.setContentProvider(ArrayContentProvider.getInstance());
-		triageStateComboViewer.setInput(state);
-		PluginUtils.setTextForComboViewer(triageStateComboViewer, currentState);
+
+		sync.asyncExec(() -> {
+			triageStateComboViewer.setContentProvider(ArrayContentProvider.getInstance());
+			triageStateComboViewer.setInput(state);
+			PluginUtils.setTextForComboViewer(triageStateComboViewer, currentState);
+		});
 		
 		if (triageStateComboViewerListener != null) {
 			triageStateComboViewer.removeSelectionChangedListener(triageStateComboViewerListener);
@@ -1212,7 +1304,10 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		triageStateComboViewer.addSelectionChangedListener(triageStateComboViewerListener);
 		
 		if (triageButtonAdapter != null) {
-			triageButton.removeSelectionListener(triageButtonAdapter);
+			sync.asyncExec(() -> {
+				triageButton.removeSelectionListener(triageButtonAdapter);
+			});
+			
 		}
 		triageButtonAdapter = new SelectionAdapter() {
 			@Override
@@ -1227,39 +1322,67 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					commentText.setEnabled(false);
 					commentText.setEditable(false);
 					
-					Display.getDefault().asyncExec(new Runnable() {
-					    public void run() {	
-					    	
-					    	String comment = commentText.getText() != null && !commentText.getText().equalsIgnoreCase("Enter comment") ? commentText.getText() : ""; 
-					    	boolean successfullyUpdate = DataProvider.getInstance().triageUpdate(projectId, similarityId, engineType, selectedState, comment, selectedSeverity);
-							
-					    	if(successfullyUpdate) {
-					    		selectedItem.setSeverity(selectedSeverity);
-					    		selectedItem.setState(selectedState);
-								titleLabel.setImage(findSeverityImage(selectedItem));
-								titleLabel.setText(selectedItem.getName());
-								populateTriageChanges(selectedItem);
-								
-								alreadyRunning = true;
-								updateResultsTree(DataProvider.getInstance().sortResults(), true);
-								triageButton.setEnabled(true);
-								triageButton.setText(PluginConstants.BTN_UPDATE);
-								commentText.setEnabled(true);
-								commentText.setText(PluginConstants.DEFAULT_COMMENT_TXT);
-								commentText.setEditable(true);
-					    	}else {
-					    		// TODO: inform the user that update failed?
-					    	}
-					    }
-					});
+					
+					Job job = new Job("Update triage information") {
+						String comment = commentText.getText() != null && !commentText.getText().equalsIgnoreCase("Enter comment") ? commentText.getText() : "";
+						@Override
+						protected IStatus run(IProgressMonitor arg0) {	
+							    	boolean successfullyUpdate = DataProvider.getInstance().triageUpdate(projectId, similarityId, engineType, selectedState, comment, selectedSeverity);
+							    	if(successfullyUpdate) {
+							    		sync.asyncExec(() -> {
+							    			selectedItem.setSeverity(selectedSeverity);
+								    		selectedItem.setState(selectedState);
+											titleLabel.setImage(findSeverityImage(selectedItem));
+											titleLabel.setText(selectedItem.getName());
+											populateTriageChanges(selectedItem);
+											
+											alreadyRunning = true;
+											updateResultsTree(DataProvider.getInstance().sortResults(), true);
+											triageButton.setEnabled(true);
+											triageButton.setText(PluginConstants.BTN_UPDATE);
+											commentText.setEnabled(true);
+											commentText.setText(PluginConstants.DEFAULT_COMMENT_TXT);
+											commentText.setEditable(true);
+							    		});
+							    		
+							    	}
+							    	else {
+							    		// TODO: inform the user that update failed?
+							    		sync.asyncExec(() -> {
+							    			MessageBox box = new MessageBox(parent.getDisplay().getActiveShell(), SWT.CANCEL | SWT.OK);
+								    		box.setText("Triage failed");
+								    		// correct the message
+								    		box.setMessage("Triage update failed. Check logs");
+								    		box.open();
+							    		});
+							    		
+							    		
+							    	}			
+
+					    	// reset the triageButton when triage update fails
+							sync.asyncExec(() -> {
+								if(!triageButton.isEnabled()) {
+									triageButton.setEnabled(true);
+									triageButton.setText(PluginConstants.BTN_UPDATE);
+								}
+							});
+							return Status.OK_STATUS;
+						}
+						
+					};
+					job.schedule();
 					
 					resultViewComposite.layout();
 				}
 			}
 		};
-		triageButton.addSelectionListener(triageButtonAdapter);
+		sync.asyncExec(() -> {
+			triageButton.addSelectionListener(triageButtonAdapter);
+		});
+		
 	}
 	
+
 	/**
 	 * Populate list of changes for the selected vulnerability
 	 * 
@@ -1267,8 +1390,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 */
 	private void populateTriageChanges(DisplayModel selectedItem) {
 
-		populateLoadingScreen();
-
+		//populateLoadingScreen();
+		
 		Display.getDefault().asyncExec(new Runnable() {
 			public void run() {
 
@@ -1315,76 +1438,152 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				changesComposite.setLayout(gl_changesComposite);
 				tbtmChanges.setControl(changesScrolledComposite);
 				
-				
-				List<Predicate> triageDetails = getTriageInfo(UUID.fromString(currentProjectId), selectedItem.getResult().getSimilarityId(), selectedItem.getResult().getType());
-				if(triageDetails.size() >0) {
-					// populate changes composite based on the predicate
-					for(Predicate detail : triageDetails) {
-						// populate individual triage node details
-						populateIndChangesData(detail,changesComposite);
-					}
-				}
-				
-				else {
-					populateNoChangesData(changesComposite,tbtmChanges);
-					
-				}
-
 				changesScrolledComposite.setContent(changesComposite);
 				changesScrolledComposite.setMinSize(changesScrolledComposite.getSize().x, changesComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT, true).y);
 				
 				scrolledComposite.setContent(tabFolder);
+				
+				
+				tabFolder.addSelectionListener(new SelectionListener() {
+					
+					protected boolean changesLoaded = false;
+					public void widgetSelected(SelectionEvent e) {
+						TabItem item = (TabItem)e.item;
+						
+						if(item == null)
+							return;
+						if(item.getText().equalsIgnoreCase("Changes")) {
+							
+							Job job = new Job("Loading changes") {
+								
+								
+								protected void populateLoadingScreen() {
+									sync.asyncExec(() -> {
+										Composite loadingScreen = new Composite(scrolledComposite, SWT.NONE);
+										loadingScreen.setLayout(new GridLayout(1, false));
+										loadingScreen.setLayoutData(new GridData(SWT.FILL, SWT.BEGINNING, false, false));
+										
+										CLabel loadingLabel = new CLabel(loadingScreen,SWT.NONE);
+										loadingLabel.setText(PluginConstants.LOADING_CHANGES);
+										loadingLabel.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+										
+										commentText.setText(PluginConstants.DEFAULT_COMMENT_TXT);
+										
+										scrolledComposite.setContent(loadingScreen);
+										
+									});
+								}
+								@Override
+								protected IStatus run(IProgressMonitor arg0) {			
+									if(!changesLoaded) {
+										populateLoadingScreen();
+										List<Predicate> triageDetails = getTriageInfo(UUID.fromString(currentProjectId), selectedItem.getResult().getSimilarityId(), selectedItem.getResult().getType());
+										if(triageDetails.size() >0) {
+											// populate changes composite based on the predicate
+											for(Predicate detail : triageDetails) {
+												// populate individual triage node details
+												populateIndChangesData(detail,changesComposite);
+										}
+										sync.asyncExec(() -> {
+											changesComposite.layout();
+											changesScrolledComposite.setContent(changesComposite);
+											changesScrolledComposite.setMinSize(changesScrolledComposite.getSize().x, changesComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT, true).y);
+											scrolledComposite.setContent(tabFolder);
+										});		
+										changesLoaded = true;
+										
+									}
+									
+									else {
+										sync.asyncExec(() -> {
+											Composite changesComposite = new Composite(tabFolder,SWT.None);
+											changesComposite.setLayout(new GridLayout(1, false));
+											tbtmChanges.setControl(changesComposite);
+											changesComposite.setLayoutData(new GridData(SWT.FILL, SWT.BEGINNING, false, false));
+											
+											CLabel noChange = new CLabel(changesComposite,SWT.NONE);
+											noChange.setText(PluginConstants.NO_CHANGES);
+											noChange.setLayoutData(new GridData(SWT.FILL, SWT.BEGINNING, false, false, 1, 1));
+											changesComposite.layout();
+											changesScrolledComposite.setContent(changesComposite);
+											changesScrolledComposite.setMinSize(changesScrolledComposite.getSize().x, changesComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT, true).y);
+											scrolledComposite.setContent(tabFolder);
+											changesLoaded = true;
+										});	
+										
+									}	
+									}			
+									
+									return Status.OK_STATUS;
+								}
+								
+								
+							};
+							job.schedule();
+						}
+						else {
+							return;
+						}
+						
+					}
+
+					@Override
+					public void widgetDefaultSelected(SelectionEvent arg0) {
+						Composite loadingScreen = new Composite(scrolledComposite, SWT.NONE);
+						loadingScreen.setLayout(new GridLayout(1, false));
+						loadingScreen.setLayoutData(new GridData(SWT.FILL, SWT.BEGINNING, false, false));
+						
+						CLabel loadingLabel = new CLabel(loadingScreen,SWT.NONE);
+						loadingLabel.setText(PluginConstants.LOADING_CHANGES);
+						loadingLabel.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+						
+						commentText.setText(PluginConstants.DEFAULT_COMMENT_TXT);
+						
+						scrolledComposite.setContent(loadingScreen);
+						
+					}
+					
+					
+				});
+					
 			}
 			
-			
-
-			private void populateNoChangesData(Composite changesComposite, TabItem tbtmChanges) {
-				changesComposite = new Composite(tabFolder, SWT.NONE);
-				changesComposite.setLayout(new GridLayout(1, false));
-				tbtmChanges.setControl(changesComposite);
-				changesComposite.setLayoutData(new GridData(SWT.FILL, SWT.BEGINNING, false, false));
-				
-				CLabel noChange = new CLabel(changesComposite,SWT.NONE);
-				noChange.setText(PluginConstants.NO_CHANGES);
-				noChange.setLayoutData(new GridData(SWT.FILL, SWT.BEGINNING, false, false, 1, 1));
-				
-			}
-
-
-
 			private void populateIndChangesData(Predicate detail, Composite changesComposite) {
-				CLabel createdBy = new CLabel(changesComposite,SWT.NONE);
-				createdBy.setImage(USER);
-				String user = detail.getCreatedBy();
-				if(detail.getCreatedAt() != null) {
-				String time = PluginUtils.convertStringTimeStamp(detail.getCreatedAt());
-				createdBy.setText(user + " | " + time.replace("|", ""));
-				}
-				else {
-				createdBy.setText(user);	
-				}
-				createdBy.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+				sync.asyncExec(() -> {
+					CLabel createdBy = new CLabel(changesComposite,SWT.NONE);
+					createdBy.setImage(USER);
+					String user = detail.getCreatedBy();
+					if(detail.getCreatedAt() != null) {
+					String time = PluginUtils.convertStringTimeStamp(detail.getCreatedAt());
+					createdBy.setText(user + " | " + time.replace("|", ""));
+					}
+					else {
+					createdBy.setText(user);	
+					}
+					createdBy.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
 
+					
+					CLabel severity = new CLabel(changesComposite,SWT.NONE);
+					severity.setImage(findSeverityImageString(detail.getSeverity()));
+					severity.setText(detail.getSeverity());
+					severity.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+					
+					CLabel state = new CLabel(changesComposite,SWT.NONE);
+					state.setImage(STATE);
+					state.setText(detail.getState());
+					state.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+					
+					if(detail.getComment() != null && detail.getComment() != "") {
+						CLabel comment = new CLabel(changesComposite,SWT.NONE);
+						comment.setImage(COMMENT);
+						comment.setText(detail.getComment());
+						comment.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+					}
+					
+					Label label = new Label(changesComposite, SWT.SEPARATOR | SWT.HORIZONTAL);
+					label.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+				});
 				
-				CLabel severity = new CLabel(changesComposite,SWT.NONE);
-				severity.setImage(findSeverityImageString(detail.getSeverity()));
-				severity.setText(detail.getSeverity());
-				severity.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
-				
-				CLabel state = new CLabel(changesComposite,SWT.NONE);
-				state.setImage(STATE);
-				state.setText(detail.getState());
-				state.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
-				
-				if(detail.getComment() != null && detail.getComment() != "") {
-					CLabel comment = new CLabel(changesComposite,SWT.NONE);
-					comment.setImage(COMMENT);
-					comment.setText(detail.getComment());
-					comment.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
-				}
-				
-				Label label = new Label(changesComposite, SWT.SEPARATOR | SWT.HORIZONTAL);
-				label.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
 				
 			}
 
@@ -1405,25 +1604,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 				return null;
 			}
-		});
+		});	
 		
-		
-		
-		
-	}
-
-	private void populateLoadingScreen() {
-		Composite loadingScreen = new Composite(scrolledComposite, SWT.NONE);
-		loadingScreen.setLayout(new GridLayout(1, false));
-		loadingScreen.setLayoutData(new GridData(SWT.FILL, SWT.BEGINNING, false, false));
-		
-		CLabel loadingLabel = new CLabel(loadingScreen,SWT.NONE);
-		loadingLabel.setText(PluginConstants.LOADING_CHANGES);
-		loadingLabel.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
-		
-		commentText.setText(PluginConstants.DEFAULT_COMMENT_TXT);
-		
-		scrolledComposite.setContent(loadingScreen);
 	}
 
 	/**
@@ -1517,7 +1699,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				
 				Composite listComposite = createRowComposite(parent);
 				
-				Label label = createRowLabel(listComposite, String.format("%s | %s", i, node.getName()));
+				Label label = createRowLabel(listComposite, String.format("%s | %s", i + 1, node.getName()));
 				
 				Link attackVectorValueLinkText = createRowLink(listComposite,
 						String.format("<a>%s[%d,%d]</a>",node.getFileName(), node.getLine(), node.getColumn()),
@@ -1700,41 +1882,54 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 * @param expand try expanding tree to previous state
 	 */
 	private void updateResultsTree(List<DisplayModel> results, boolean expand) {
-		rootModel.children.clear();
-		rootModel.children.addAll(results);
-		resultsTree.getTree().getDisplay().asyncExec(() -> {
-			Object[] expanded = resultsTree.getExpandedElements();
-			resultsTree.refresh();
-			if (expand) {
-				Set<String> expandedDMNames = new HashSet<>(); 
-				Set<Result> visibleResults = new HashSet<>();
-				for (Object o : expanded) {
-					DisplayModel dm = (DisplayModel) o;
-					expandedDMNames.add(removeCount(dm.getName()));
-					for (DisplayModel child : dm.getChildren()) {
-						Result r = child.getResult();
-						if (r != null) {
-							visibleResults.add(r);
-						}
-					}
-				}
-				expand(visibleResults, expandedDMNames, rootModel);
-			}
-		});
-		toolBarActions.getScanResultsAction().setEnabled(true);
-		toolBarActions.getAbortResultsAction().setEnabled(false);
-		toolBarActions.getClearAndRefreshAction().setEnabled(true);
-		toolBarActions.getStateFilterAction().setEnabled(true);
-		PluginUtils.enableComboViewer(projectComboViewer, true);
-		PluginUtils.enableComboViewer(branchComboViewer, !currentProjectId.isEmpty());
-		PluginUtils.enableComboViewer(scanIdComboViewer, true);
-		alreadyRunning = false;
+		Job job = new Job("Updating results tree") {
 
-		if(results.isEmpty()) {
-			PluginUtils.showMessage(rootModel, resultsTree, PluginConstants.TREE_NO_RESULTS);
-		}
+			@Override
+			protected IStatus run(IProgressMonitor arg0) {
+				sync.asyncExec(() -> {
+					rootModel.children.clear();
+					rootModel.children.addAll(results);
+//					resultsTree.getTree().getDisplay().asyncExec(() -> {
+						Object[] expanded = resultsTree.getExpandedElements();
+						resultsTree.refresh();
+						if (expand) {
+							Set<String> expandedDMNames = new HashSet<>(); 
+							Set<Result> visibleResults = new HashSet<>();
+							for (Object o : expanded) {
+								DisplayModel dm = (DisplayModel) o;
+								expandedDMNames.add(removeCount(dm.getName()));
+								for (DisplayModel child : dm.getChildren()) {
+									Result r = child.getResult();
+									if (r != null) {
+										visibleResults.add(r);
+									}
+								}
+							}
+							expand(visibleResults, expandedDMNames, rootModel);
+						}
+//					});
+					
+					toolBarActions.getScanResultsAction().setEnabled(true);
+					toolBarActions.getAbortResultsAction().setEnabled(false);
+					toolBarActions.getClearAndRefreshAction().setEnabled(true);
+					toolBarActions.getStateFilterAction().setEnabled(true);
+					PluginUtils.enableComboViewer(projectComboViewer, true);
+					PluginUtils.enableComboViewer(branchComboViewer, !currentProjectId.isEmpty());
+					PluginUtils.enableComboViewer(scanIdComboViewer, true);
+					alreadyRunning = false;
+
+					if(results.isEmpty()) {
+						PluginUtils.showMessage(rootModel, resultsTree, PluginConstants.TREE_NO_RESULTS);
+					}
+					
+					PluginUtils.updateFiltersEnabledAndCheckedState(toolBarActions.getFilterActions());
+				});
+				return Status.OK_STATUS;
+			}
+			
+		};
+		job.schedule();
 		
-		PluginUtils.updateFiltersEnabledAndCheckedState(toolBarActions.getFilterActions());
 	}
 	
 	/**
@@ -1805,16 +2000,27 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		GlobalSettings.storeInPreferences(GlobalSettings.PARAM_BRANCH, PluginConstants.EMPTY_STRING);
 		GlobalSettings.storeInPreferences(GlobalSettings.PARAM_SCAN_ID, PluginConstants.EMPTY_STRING);
 		
-		// Get projects asynchronous to avoid layout issues
-		Display.getDefault().asyncExec(new Runnable() {
-			public void run() {
-				resetProjectComboViewer();
-				
-				PluginUtils.enableComboViewer(projectComboViewer, true);
-				PluginUtils.enableComboViewer(scanIdComboViewer, true);
-				toolBarActions.getScanResultsAction().setEnabled(true);
+		
+		
+		Job projectsJob = new Job("get Projects") {
+
+			@Override
+			protected IStatus run(IProgressMonitor arg0) {
+				List<Project> projectList = getProjects();
+				sync.asyncExec(() -> {
+							//resetProjectComboViewer();
+							projectComboViewer.setInput(projectList);
+							projectComboViewer.refresh();
+							PluginUtils.setTextForComboViewer(projectComboViewer, PROJECT_COMBO_VIEWER_TEXT);
+							PluginUtils.enableComboViewer(projectComboViewer, true);
+							PluginUtils.enableComboViewer(scanIdComboViewer, true);
+							toolBarActions.getScanResultsAction().setEnabled(true);
+				});
+				return Status.OK_STATUS;
 			}
-		});
+			
+		};
+		projectsJob.schedule();
 		
 		// Clear vulnerabilities from Problems View
 		PluginUtils.clearVulnerabilitiesFromProblemsView();
@@ -1886,8 +2092,11 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 * Disable comboboxes
 	 */
 	private void disablePluginFields(boolean disableToolBar) {
-		Display.getDefault().syncExec(new Runnable() {
-			public void run() {
+
+		Job job = new Job("Disable plugin fields") {
+
+			@Override
+			protected IStatus run(IProgressMonitor arg0) {
 				PluginUtils.enableComboViewer(projectComboViewer, false);
 				PluginUtils.enableComboViewer(branchComboViewer, false);
 				PluginUtils.setTextForComboViewer(branchComboViewer, PluginConstants.COMBOBOX_BRANCH_CHANGING);
@@ -1899,8 +2108,11 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				if(disableToolBar) {
 					toolBarActions.getToolBarActions().forEach(action -> action.setEnabled(false));
 				}
+				return Status.OK_STATUS;
 			}
-		});
+			
+		};
+		job.schedule();
 	}
 	
 	/**
