@@ -11,7 +11,10 @@ Require-Bundle: org.eclipse.ui,
  org.eclipse.jgit,
  org.eclipse.e4.core.services,
  org.eclipse.osgi.services,
- com.google.guava
+ com.google.guava,
+ org.eclipse.e4.ui.di;bundle-version="1.4.0",
+ javax.inject,
+ org.eclipse.e4.core.di.extensions.supplier;bundle-version="0.16.200"
 Automatic-Module-Name: com.checkmarx.eclipse
 Bundle-RequiredExecutionEnvironment: JavaSE-11
 Import-Package: org.eclipse.core.resources
