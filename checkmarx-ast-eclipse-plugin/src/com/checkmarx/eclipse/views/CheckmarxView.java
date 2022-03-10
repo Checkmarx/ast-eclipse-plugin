@@ -165,6 +165,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private Composite attackVectorContentComposite;
 	private Composite openSettingsComposite;
 	private CLabel titleLabel;
+	private Link codeBashingLink;
 
 	private CLabel attackVectorLabel;
 	private Label attackVectorSeparator;
@@ -585,6 +586,9 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		titleLabel = new CLabel(resultViewComposite, SWT.NONE);
 		titleLabel.setFont(titleFont);
 		titleLabel.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false, 1, 1));
+		
+		codeBashingLink = new Link(resultViewComposite,SWT.None);
+		codeBashingLink.setText("Learn more at >_codebashing");
 		
 		Label separator = new Label(resultViewComposite, SWT.HORIZONTAL | SWT.SEPARATOR);
 	    separator.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
@@ -1219,6 +1223,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 								sync.asyncExec(() -> {
 									titleLabel.setImage(findSeverityImage(selectedItem));
 									titleLabel.setText(selectedItem.getName());
+									codeBashingLink.setToolTipText("Learn more about " + selectedItem.getQueryName() + " using Checkmarx's eLearning platform");
 								});
 								
 							}
