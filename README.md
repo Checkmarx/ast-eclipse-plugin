@@ -99,6 +99,7 @@ Distributed under the [Apache 2.0](LICENSE). See `LICENSE` for more information.
 Checkmarx - AST Integrations Team
 
 Project Link: [https://github.com/Checkmarx/ast-eclipse-plugin](https://github.com/Checkmarx/ast-eclipse-plugin)
+
 Find more integrations from our team [here](https://github.com/Checkmarx/ci-cd-integrations#checkmarx-ast-integrations)
 
 © 2022 Checkmarx Ltd. All Rights Reserved.
