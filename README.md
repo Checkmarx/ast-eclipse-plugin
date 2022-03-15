@@ -1,31 +1,37 @@
+<img src="https://raw.githubusercontent.com/Checkmarx/ci-cd-integrations/main/.images/banner.png">
+<br />
+<div align="center">
+
 [![Contributors][contributors-shield]][contributors-url]
 [![Forks][forks-shield]][forks-url]
 [![Stargazers][stars-shield]][stars-url]
 [![Issues][issues-shield]][issues-url]
-[![MIT License][license-shield]][license-url]
+[![Install][install-shield]][install-url]
+[![Apache License][license-shield]][license-url]
 
 
-
+</div>
 <!-- PROJECT LOGO -->
 <br />
 <p align="center">
-  <a href="">
-    <img src="logo.svg" alt="Logo" width="80" height="80">
+  <a href="https://github.com/Checkmarx/ast-eclipse-plugin">
+    <img src="https://raw.githubusercontent.com/Checkmarx/ci-cd-integrations/main/.images/logo.png" alt="Logo" width="80" height="80" />
   </a>
 
-  <h3 align="center">AST-ECLIPSE-PLUGIN</h3>
+  <h3 align="center">AST ECLIPSE PLUGIN</h3>
 
   <p align="center">
     The CxAST Eclipse plugin enables you to import results from a CxAST scan directly into your IDE.
     <br />
     <a href="https://checkmarx.atlassian.net/wiki/spaces/AST/pages/6107267142/CxAST+Eclipse+Plugin"><strong>Explore the docs »</strong></a>
     <br />
+    <a href="https://marketplace.eclipse.org/content/checkmarx-ast-plugin"><strong>Marketplace »</strong></a>
   </p>
 </p>
 
 
 <!-- TABLE OF CONTENTS -->
-<details open="open">
+<details>
   <summary>Table of Contents</summary>
   <ol>
     <li>
@@ -93,20 +99,20 @@ Distributed under the [Apache 2.0](LICENSE). See `LICENSE` for more information.
 Checkmarx - AST Integrations Team
 
 Project Link: [https://github.com/Checkmarx/ast-eclipse-plugin](https://github.com/Checkmarx/ast-eclipse-plugin)
-
+Find more integrations from our team [here](https://github.com/Checkmarx/ci-cd-integrations#checkmarx-ast-integrations)
 
 © 2022 Checkmarx Ltd. All Rights Reserved.
 
-<!-- MARKDOWN LINKS & IMAGES -->
-<!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-shield]: https://img.shields.io/github/contributors/Checkmarx/ast-eclipse-plugin.svg?style=flat-square
+[contributors-shield]: https://img.shields.io/github/contributors/Checkmarx/ast-eclipse-plugin.svg
 [contributors-url]: https://github.com/Checkmarx/ast-eclipse-plugin/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/Checkmarx/ast-eclipse-plugin.svg?style=flat-square
+[forks-shield]: https://img.shields.io/github/forks/Checkmarx/ast-eclipse-plugin.svg
 [forks-url]: https://github.com/Checkmarx/ast-eclipse-plugin/network/members
-[stars-shield]: https://img.shields.io/github/stars/Checkmarx/ast-eclipse-plugin.svg?style=flat-square
+[stars-shield]: https://img.shields.io/github/stars/Checkmarx/ast-eclipse-plugin.svg
 [stars-url]: https://github.com/Checkmarx/ast-eclipse-plugin/stargazers
-[issues-shield]: https://img.shields.io/github/issues/Checkmarx/ast-eclipse-plugin.svg?style=flat-square
+[issues-shield]: https://img.shields.io/github/issues/Checkmarx/ast-eclipse-plugin.svg
 [issues-url]: https://github.com/Checkmarx/ast-eclipse-plugin/issues
-[license-shield]: https://img.shields.io/github/license/Checkmarx/ast-eclipse-plugin.svg?style=flat-square
+[license-shield]: https://img.shields.io/github/license/Checkmarx/ast-eclipse-plugin.svg
 [license-url]: https://github.com/Checkmarx/ast-eclipse-plugin/blob/main/LICENSE
-[product-screenshot]: images/screenshot.png
+[install-shield]: https://img.shields.io/eclipse-marketplace/dt/checkmarx-ast-plugin
+[install-url]: https://marketplace.eclipse.org/content/checkmarx-ast-plugin
+
