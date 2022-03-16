@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.checkmarx.ast.codebashing.CodeBashing;
 import com.checkmarx.ast.predicate.Predicate;
 import com.checkmarx.ast.project.Project;
 import com.checkmarx.ast.results.Results;
@@ -104,6 +105,23 @@ public class DataProvider {
 		}
 
 		return projectList;
+	}
+	
+	/**
+	 * Get the codeBashing link
+	 */
+	
+	public List<CodeBashing> getCodeBashingLink(String cwe, String language, String queryName)  {
+		List<CodeBashing> codeBashingList = new ArrayList<CodeBashing>();
+		try {
+		CxWrapper cxWrapper = getWrapper();
+		if(cxWrapper != null) {
+				codeBashingList = cxWrapper.codeBashingList(cwe, language, queryName);
+		}
+			} catch (Exception e) {
+				CxLogger.error(String.format(PluginConstants.ERROR_GETTING_CODEBASHING_DETAILS, e.getMessage()), e);
+			} 
+		return codeBashingList;
 	}
 	
 	/**
