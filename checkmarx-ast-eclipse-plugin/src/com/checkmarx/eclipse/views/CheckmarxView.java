@@ -621,8 +621,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	    
 	    codeBashingLinkText = new Link(codeBashingComposite,SWT.HORIZONTAL);
 	    codeBashingLinkText.setText("<a>codebashing</a>");
-		
-	    
+		  
 	    Label separator = new Label(resultViewComposite, SWT.HORIZONTAL | SWT.SEPARATOR);
 	    separator.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
 		
