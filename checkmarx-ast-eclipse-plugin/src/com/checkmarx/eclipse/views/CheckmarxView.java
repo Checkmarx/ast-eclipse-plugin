@@ -606,12 +606,13 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	    codeBashingComposite.setLayout(codeBashingLayout);
 	    codeBashingComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, false, false, 1, 1));
 		
-		
 		CLabel codeBashingLink = new CLabel(codeBashingComposite,SWT.HORIZONTAL);
+		codeBashingLink.setRightMargin(0);
 	    codeBashingLink.setText("Learn more at");
 	    
 	    CLabel clogo = new CLabel(codeBashingComposite,SWT.HORIZONTAL);
-	    GridData gd_clogo = new GridData(SWT.LEFT, SWT.LEFT, false, false, 1, 1);
+	    GridData gd_clogo = new GridData(SWT.RIGHT, SWT.LEFT, false, false, 1, 1);
+	    gd_clogo.widthHint = 18;
 	    clogo.setLayoutData(gd_clogo);
 	    clogo.setForeground(new Color(new RGB(243,106,34)));
 	    clogo.setText(">_");
@@ -619,7 +620,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	    clogo.setRightMargin(0);
 	    
 	    codeBashingLinkText = new Link(codeBashingComposite,SWT.HORIZONTAL);
-	    codeBashingLinkText.setText("<a>codebashing</a>\n");
+	    codeBashingLinkText.setText("<a>codebashing</a>");
 		
 	    
 	    Label separator = new Label(resultViewComposite, SWT.HORIZONTAL | SWT.SEPARATOR);
@@ -737,7 +738,9 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		// add an empty label to make it consistent with the middle panel
 		
 		emptyLabel = new CLabel(attackVectorContentComposite,SWT.HORIZONTAL);
-		emptyLabel.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false, 1, 1));
+		GridData gd_emptyLabel = new GridData(SWT.FILL, SWT.FILL, true, false, 1, 1);
+		gd_emptyLabel.heightHint = 38;
+		emptyLabel.setLayoutData(gd_emptyLabel);
 		emptyLabel.setBackground(attackVectorContentComposite.getBackground());
 		
 		attackVectorSeparator = new Label(attackVectorContentComposite, SWT.HORIZONTAL | SWT.SEPARATOR);
@@ -1011,67 +1014,52 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 			@Override
 			public void selectionChanged(SelectionChangedEvent event) {
 				
-				
-				IStructuredSelection selection = (IStructuredSelection) event.getSelection();
-
-				if (selection.size() > 0) {
-
-					Scan selectedScan = ((Scan) selection.getFirstElement());
-
-					// Avoid non-sense trigger changed when opening the combo
-					if(selectedScan.getId().equals(currentScanId) || alreadyRunning) {
-						CxLogger.info(String.format(PluginConstants.INFO_CHANGE_SCAN_EVENT_NOT_TRIGGERED, alreadyRunning, selectedScan.getId().equals(currentScanId)));
-
-						return;
-					}
-					
-					onScanChangePluginLoading(selectedScan.getId());
-					
 					Job job = new Job("Getting results") {
 
 						@Override
 						protected IStatus run(IProgressMonitor arg0) {
-							sync.asyncExec(() -> {
-								alreadyRunning=true;
-								updateResultsTree(DataProvider.getInstance().getResultsForScanId(selectedScan.getId()), false);
-							});
+							IStructuredSelection selection = (IStructuredSelection) event.getSelection();
+							
+							Scan  selectedScan = ((Scan) selection.getFirstElement());
+							if(selectedScan != null && (selectedScan.getId().equals(currentScanId) || alreadyRunning)) {
+								CxLogger.info(String.format(PluginConstants.INFO_CHANGE_SCAN_EVENT_NOT_TRIGGERED, alreadyRunning, selectedScan.getId().equals(currentScanId)));
+								return null;
+							}
+							if(selection.size() > 0) {
+								sync.asyncExec(() -> {
+									PluginUtils.showMessage(rootModel, resultsTree, String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, selectedScan.getId()));
+									PluginUtils.enableComboViewer(projectComboViewer, false);
+									PluginUtils.enableComboViewer(branchComboViewer, false);
+								});
+								//onScanChangePluginLoading(selectedScan.getId());
+								currentScanId = selectedScan.getId();	
+								DataProvider.getInstance().setCurrentResults(null);
+								GlobalSettings.storeInPreferences(GlobalSettings.PARAM_SCAN_ID, selectedScan.getId());
+								toolBarActions.getToolBarActions().forEach(action -> action.setEnabled(action.getId().equals(ActionName.ABORT_RESULTS.name())));
+								
+								sync.asyncExec(() -> {
+									currentScanIdFormmated = scanIdComboViewer.getCombo().getText();
+									// Hide center and right panels
+									resultViewComposite.setVisible(false);
+									attackVectorCompositePanel.setVisible(false);
+									// Clear vulnerabilities from Problems View
+									PluginUtils.clearVulnerabilitiesFromProblemsView();
+									alreadyRunning=true;
+									updateResultsTree(DataProvider.getInstance().getResultsForScanId(selectedScan.getId()), false);
+									
+								});
+		
+						}
 							return Status.OK_STATUS;
 						}
-						
 					};
+				
 					job.schedule();
 					
-				}
-			
 			}
 		});
 	}
 	
-	/**
-	 * Update state variables and make plugin fields loading when scan changes
-	 * 
-	 * @param projectId
-	 */
-	private void onScanChangePluginLoading(String scan) {
-		// Update state variables
-		currentScanId = scan;
-		currentScanIdFormmated = scanIdComboViewer.getCombo().getText();
-		DataProvider.getInstance().setCurrentResults(null);
-		
-		// Store project id in preferences
-		GlobalSettings.storeInPreferences(GlobalSettings.PARAM_SCAN_ID, scan);
-
-		// Make plugin loading
-		PluginUtils.showMessage(rootModel, resultsTree, String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, scan));
-		PluginUtils.enableComboViewer(projectComboViewer, false);
-		PluginUtils.enableComboViewer(branchComboViewer, false);
-		toolBarActions.getToolBarActions().forEach(action -> action.setEnabled(action.getId().equals(ActionName.ABORT_RESULTS.name())));
-		// Hide center and right panels
-		resultViewComposite.setVisible(false);
-		attackVectorCompositePanel.setVisible(false);
-		// Clear vulnerabilities from Problems View
-		PluginUtils.clearVulnerabilitiesFromProblemsView();
-	}
 	
 	/**
 	 * Get formated scan name from scan id
