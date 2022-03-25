@@ -31,18 +31,3 @@ jobs:
         run: |
           export DISPLAY=:99.0
           Xvfb -ac :99 -screen 0 1920x1080x16 & mvn clean install
-  cx-scan:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Checkmarx AST CLI Action
-        uses: checkmarxDev/ast-github-action@main
-        with:
-          project_name: ast-eclipse-plugin
-          branch: master
-          base_uri: ${{ secrets.CX_BASE_URI }}
-          cx_tenant: ${{ secrets.CX_TENANT }}
-          cx_client_id: ${{ secrets.CLIENT_ID }}
-          cx_client_secret: ${{ secrets.CLIENT_SECRET }}
-          additional_params: --tags galactica-team
