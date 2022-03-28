@@ -289,9 +289,9 @@ public class TestUI extends BaseUITest {
 	 * Clear all Checkmarx credentials
 	 */
 	private void clearCheckmarxCredentials() {
-		if (!_cxSettingsDefined) {
-			return;
-		}
+//		if (!_cxSettingsDefined) {
+//			return;
+//		}
 		
 		preventWidgetWasNullInCIEnvironment();
 
