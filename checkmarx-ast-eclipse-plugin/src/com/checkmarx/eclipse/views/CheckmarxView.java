@@ -799,9 +799,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		bflText.setLayoutData(gd_bflText);
 		bflText.setBackground(bflComposite.getBackground());
 		bflText.setData(PluginConstants.DATA_ID_KEY,PluginConstants.BEST_FIX_LOCATION);
-		//bflText.setText(PluginConstants.BFL_FOUND);
-		
-		
 	}
 	
 	/**
@@ -1797,8 +1794,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	}
 
 	private void updateAttackVectorForSelectedTreeItem(DisplayModel selectedItem) {
-		
-		// check if BFL composite is disposed and enable it
 		
 		sync.asyncExec(() -> {
 			clearAttackVectorSection(attackVectorContentComposite);

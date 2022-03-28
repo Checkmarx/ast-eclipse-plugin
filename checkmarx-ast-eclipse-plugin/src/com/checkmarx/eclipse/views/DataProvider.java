@@ -137,8 +137,9 @@ public class DataProvider {
 			try {
 				CxWrapper cxWrapper = getWrapper();
 				
-				if(projectId != null && projectId != "")
+				if(projectId != null && projectId != "") {
 					branchList = cxWrapper.projectBranches(UUID.fromString(projectId), PluginConstants.EMPTY_STRING);
+				}
 
 			} catch (Exception e) {
 				CxLogger.error(String.format(PluginConstants.ERROR_GETTING_BRANCHES, projectId, e.getMessage()), e);
