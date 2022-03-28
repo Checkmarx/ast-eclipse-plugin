@@ -137,7 +137,8 @@ public class DataProvider {
 			try {
 				CxWrapper cxWrapper = getWrapper();
 				
-				branchList = cxWrapper.projectBranches(UUID.fromString(projectId), PluginConstants.EMPTY_STRING);
+				if(projectId != null && projectId != "")
+					branchList = cxWrapper.projectBranches(UUID.fromString(projectId), PluginConstants.EMPTY_STRING);
 
 			} catch (Exception e) {
 				CxLogger.error(String.format(PluginConstants.ERROR_GETTING_BRANCHES, projectId, e.getMessage()), e);
@@ -610,6 +611,19 @@ public class DataProvider {
 	 */
 	public boolean containsResults() {
 		return getCurrentResults() != null && getCurrentResults().getResults() != null && !getCurrentResults().getResults().isEmpty();
+	}
+	
+	/*
+	 * 
+	 */
+	
+	public int getBestFixLocation(UUID scanId, String queryId, List<Node> bflNodes) throws Exception {
+		CxWrapper cxWrapper = authenticateWithAST();
+		int bflNode = -1;
+		if(cxWrapper != null) {
+			bflNode = cxWrapper.getResultsBfl(scanId, queryId, bflNodes);
+		}
+		return bflNode;
 	}
 	
 	/**
