@@ -4,10 +4,6 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.concurrent.TimeoutException;
 
-import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Control;
-import org.eclipse.swtbot.eclipse.finder.widgets.SWTBotView;
-import org.eclipse.swtbot.swt.finder.SWTBotWidget;
 import org.eclipse.swtbot.swt.finder.junit.SWTBotJunit4ClassRunner;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotTreeItem;
 import org.junit.Test;
@@ -25,7 +21,8 @@ public class BestFixLocationTest extends BaseUITest{
 		firstNode.select();
 		sleep(3000);
 		String BFLText = _bot.textWithId(PluginConstants.BEST_FIX_LOCATION).getText();
-		assertTrue(BFLText.equals(PluginConstants.BFL_FOUND) || BFLText.equals(PluginConstants.BFL_NOT_FOUND));		
+		assertTrue(BFLText.equals(PluginConstants.BFL_FOUND) || BFLText.equals(PluginConstants.BFL_NOT_FOUND));	
+		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
 	}
 	
 
