@@ -15,6 +15,7 @@ import org.eclipse.swtbot.swt.finder.junit.SWTBotJunit4ClassRunner;
 import org.eclipse.swtbot.swt.finder.keyboard.Keystrokes;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotToolbarButton;
 import org.junit.Test;
+import org.junit.runner.OrderWith;
 import org.junit.runner.RunWith;
 
 import com.checkmarx.eclipse.enums.ActionName;
@@ -289,10 +290,7 @@ public class TestUI extends BaseUITest {
 	 * Clear all Checkmarx credentials
 	 */
 	private void clearCheckmarxCredentials() {
-		if (!_cxSettingsDefined) {
-			return;
-		}
-		
+
 		preventWidgetWasNullInCIEnvironment();
 
 		_bot.menu(TAB_WINDOW).menu(ITEM_PREFERENCES).click();
@@ -306,6 +304,5 @@ public class TestUI extends BaseUITest {
 		_bot.button(BTN_APPLY).click();
 		_bot.button(BTN_APPLY_AND_CLOSE).click();
 
-		_cxSettingsDefined = false;
 	}
 }
