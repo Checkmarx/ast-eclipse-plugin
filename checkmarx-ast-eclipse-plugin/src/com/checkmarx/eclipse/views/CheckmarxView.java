@@ -57,6 +57,7 @@ import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.FontData;
 import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.graphics.ImageData;
 import org.eclipse.swt.graphics.RGB;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
@@ -153,6 +154,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	public static final Image COMMENT = Activator.getImageDescriptor("/icons/comment.png").createImage();
 	
 	public static final Image STATE = Activator.getImageDescriptor("/icons/state.png").createImage();
+	
+	public static final Image BFL = Activator.getImageDescriptor("/icons/CxFlatLogo12x12.png").createImage();
 
 	private TreeViewer resultsTree;
 	private ComboViewer scanIdComboViewer, projectComboViewer, branchComboViewer, triageSeverityComboViewew, triageStateComboViewer;
@@ -173,12 +176,14 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private Composite resultViewComposite;
 	private Composite attackVectorCompositePanel;
 	private ScrolledComposite attackVectorScrolledComposite;
-	private Composite attackVectorContentComposite;
+	private Composite attackVectorContentComposite, bflComposite, titleComposite;
 	private Composite openSettingsComposite;
 	private CLabel titleLabel;
+	private Text titleText;
 	private Link codeBashingLinkText;
 
-	private CLabel attackVectorLabel, emptyLabel;
+	private CLabel attackVectorLabel, bflLabel;
+	private Text bflText;
 	private Label attackVectorSeparator;
 	private ToolBarActions toolBarActions;
 
@@ -201,6 +206,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	
 	private boolean isPluginDraw = false;
 	protected TabFolder tabFolder;
+	protected int bflNode;
 		
 	public CheckmarxView() {
 		super();
@@ -594,10 +600,23 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		gl_resultViewComposite.verticalSpacing = 0;
 		resultViewComposite.setLayout(gl_resultViewComposite);
 
-		titleLabel = new CLabel(resultViewComposite, SWT.NONE);
-		titleLabel.setFont(titleFont);
-		titleLabel.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false, 1, 1));
 		
+		titleComposite = new Composite(resultViewComposite, SWT.None);
+		GridLayout titleCmpositeLayout = new GridLayout(2,false);
+		titleComposite.setLayout(titleCmpositeLayout);
+		titleComposite.setSize(resultViewComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT));
+		titleComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, false, false, 1, 1));
+		
+		
+
+		titleLabel = new CLabel(titleComposite, SWT.NONE);
+		titleLabel.setLayoutData(new GridData(SWT.FILL, SWT.FILL, false, false, 1, 1));
+		
+		titleText = new Text(titleComposite,SWT.READ_ONLY | SWT.WRAP | SWT.MULTI);
+		GridData gd_text = new GridData(SWT.FILL, SWT.FILL, false, true, 1, 1);
+		gd_text.widthHint = 552;
+		titleText.setFont(titleFont);
+		titleText.setLayoutData(gd_text);
 		
 	    
 	    //create a label for codebashing link
@@ -621,6 +640,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	    
 	    codeBashingLinkText = new Link(codeBashingComposite,SWT.HORIZONTAL);
 	    codeBashingLinkText.setText("<a>codebashing</a>");
+	    codeBashingLinkText.setData(PluginConstants.DATA_ID_KEY, PluginConstants.CODEBASHING_LINK_ID);
 		  
 	    Label separator = new Label(resultViewComposite, SWT.HORIZONTAL | SWT.SEPARATOR);
 	    separator.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
@@ -735,17 +755,50 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		attackVectorLabel.setBackground(attackVectorContentComposite.getBackground());
 		
 		// add an empty label to make it consistent with the middle panel
+		// best fix location
+		drawAttackVectorSeparator();
 		
-		emptyLabel = new CLabel(attackVectorContentComposite,SWT.HORIZONTAL);
-		GridData gd_emptyLabel = new GridData(SWT.FILL, SWT.FILL, true, false, 1, 1);
-		gd_emptyLabel.heightHint = 38;
-		emptyLabel.setLayoutData(gd_emptyLabel);
-		emptyLabel.setBackground(attackVectorContentComposite.getBackground());
 		
-		attackVectorSeparator = new Label(attackVectorContentComposite, SWT.HORIZONTAL | SWT.SEPARATOR);
-		attackVectorSeparator.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
 
 		attackVectorCompositePanel.setVisible(false);
+	}
+	
+	
+	/*
+	 * draw attack vector separator label
+	 */
+	private void drawAttackVectorSeparator() {
+		attackVectorSeparator = new Label(attackVectorContentComposite, SWT.HORIZONTAL | SWT.SEPARATOR);
+		attackVectorSeparator.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+	}
+	
+	/*
+	 * draw BFL composite
+	 */
+	
+	private void drawBFLComposite() {
+		bflComposite = new Composite(attackVectorContentComposite, SWT.NONE);
+		GridLayout bflCompositeLayout = new GridLayout(2,false);
+		bflComposite.setLayout(bflCompositeLayout);
+		bflComposite.setSize(attackVectorContentComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT));
+		GridData gd_blfComposite = new GridData(SWT.FILL, SWT.FILL, false, false, 1, 1);
+		bflComposite.setLayoutData(gd_blfComposite);
+		
+		bflComposite.setBackground(attackVectorContentComposite.getBackground());
+		
+		bflLabel = new CLabel(bflComposite,SWT.HORIZONTAL);
+		GridData gd_emptyLabel = new GridData(SWT.FILL, SWT.FILL, false, false, 1, 1);
+		gd_emptyLabel.heightHint = PluginConstants.BFL_LABEL_HEIGHT;
+		bflLabel.setLayoutData(gd_emptyLabel);
+		bflLabel.setBackground(bflComposite.getBackground());
+
+		
+		bflText = new Text(bflComposite,SWT.WRAP | SWT.MULTI);
+		GridData gd_bflText = new GridData(SWT.FILL, SWT.CENTER, false, false, 1, 1);
+		gd_bflText.widthHint = PluginConstants.BFL_TEXT_MAX_WIDTH;
+		bflText.setLayoutData(gd_bflText);
+		bflText.setBackground(bflComposite.getBackground());
+		bflText.setData(PluginConstants.DATA_ID_KEY,PluginConstants.BEST_FIX_LOCATION);
 	}
 	
 	/**
@@ -1242,22 +1295,16 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 						return;
 					}
 					if(selectedItem.getQueryName() != null) {
-						sync.asyncExec(() -> {
-							populateCodeBashingToolTip(selectedItem);
-						});
+						populateCodeBashingToolTip(selectedItem);
 					}
 					
+					if (selectedItem.getSeverity() != null) {
+						populateTitleLabel(selectedItem);
+					}
 					Job job = new Job("Selection changed") {
 
 						@Override
 						protected IStatus run(IProgressMonitor arg0) {
-							if (selectedItem.getSeverity() != null) {
-								sync.asyncExec(() -> {
-									titleLabel.setImage(findSeverityImage(selectedItem));
-									titleLabel.setText(selectedItem.getName());
-								});
-								
-							}
 							
 							if(selectedItem.getResult() != null && selectedItem.getResult().getSimilarityId() != null) {
 								sync.asyncExec(() -> {
@@ -1280,6 +1327,16 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					}
 					
 				}
+
+			private void populateTitleLabel(DisplayModel selectedItem) {
+				ImageData titleImageData =  findSeverityImage(selectedItem).getImageData().scaledTo(PluginConstants.TITLE_LABEL_WIDTH, PluginConstants.TITLE_LABEL_HEIGHT);
+				Image titleImage = new Image(parent.getShell().getDisplay(),titleImageData);
+				titleLabel.setImage(titleImage);
+				titleText.setText(selectedItem.getName());
+				titleLabel.layout();
+				titleText.requestLayout();
+				
+			}
 		});
 	}
 	
@@ -1371,7 +1428,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 							    			selectedItem.setSeverity(selectedSeverity);
 								    		selectedItem.setState(selectedState);
 											titleLabel.setImage(findSeverityImage(selectedItem));
-											titleLabel.setText(selectedItem.getName());
+											titleText.setText(selectedItem.getName());
 											populateTriageChanges(selectedItem);
 											
 											alreadyRunning = true;
@@ -1466,7 +1523,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 			@Override
 			protected IStatus run(IProgressMonitor arg0) {
 				List<CodeBashing> codeBashingLinks = DataProvider.getInstance().getCodeBashingLink(cve, language, queryName);
-				if(codeBashingLinks.size() > 0) {
+				if( codeBashingLinks !=null && codeBashingLinks.size() > 0) {
 					try {
 							IWorkbenchBrowserSupport browserSupport = PlatformUI.getWorkbench().getBrowserSupport();
 							IWebBrowser browser = browserSupport.getExternalBrowser();
@@ -1479,7 +1536,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					return Status.OK_STATUS;
 				}
 				else {
-					// return error message specifying that link is not available
+					// TODO return error message specifying that link is not available
 					return Status.CANCEL_STATUS;
 				}
 			}
@@ -1523,6 +1580,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				Text descriptionTxt = new Text(detailsComposite, SWT.READ_ONLY | SWT.WRAP | SWT.MULTI);
 				descriptionTxt.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
 				descriptionTxt.setText(selectedItem.getResult().getDescription() != null ? selectedItem.getResult().getDescription() : "No data");
+				
 
 				descriptionScrolledComposite.setContent(detailsComposite);
 				descriptionScrolledComposite.setMinSize(descriptionScrolledComposite.getSize().x, detailsComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT, true).y);
@@ -1736,9 +1794,36 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	}
 
 	private void updateAttackVectorForSelectedTreeItem(DisplayModel selectedItem) {
-		clearAttackVectorSection(attackVectorContentComposite);
-		attackVectorCompositePanel.setVisible(true);
+		
+		sync.asyncExec(() -> {
+			clearAttackVectorSection(attackVectorContentComposite);
+			attackVectorCompositePanel.setVisible(true);
+			
+			Composite itemComposite = createAttackVectorComposite();
 
+			if (selectedItem.getType().equalsIgnoreCase(PluginConstants.SCA_DEPENDENCY)) {
+				drawPackageData(itemComposite, selectedItem);
+			}
+
+			if (selectedItem.getType().equalsIgnoreCase(PluginConstants.KICS_INFRASTRUCTURE)) {
+				drawVulnerabilityLocation(itemComposite, selectedItem);
+			}
+
+			if (selectedItem.getType().equalsIgnoreCase(PluginConstants.SAST)) {
+				drawAttackVector(itemComposite, selectedItem);	
+			}	
+			layoutAttackVectorItemComposite(itemComposite);			
+		});
+	}
+	
+	private void layoutAttackVectorItemComposite(Composite itemComposite) {
+		itemComposite.layout();
+		attackVectorScrolledComposite.setMinSize(attackVectorContentComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT));
+		attackVectorScrolledComposite.layout();
+		attackVectorCompositePanel.layout();
+	}
+
+	private Composite createAttackVectorComposite() {
 		Composite itemComposite = new Composite(attackVectorContentComposite, SWT.NONE);
 		itemComposite.setBackground(attackVectorContentComposite.getBackground());
 
@@ -1750,56 +1835,66 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 		itemComposite.setLayoutData(itemCompositeGridData);
 		itemComposite.setLayout(new GridLayout(1, false));
-
-		if (selectedItem.getType().equalsIgnoreCase(PluginConstants.SCA_DEPENDENCY)) {
-			drawPackageData(itemComposite, selectedItem);
-		}
-
-		if (selectedItem.getType().equalsIgnoreCase(PluginConstants.KICS_INFRASTRUCTURE)) {
-			drawVulnerabilityLocation(itemComposite, selectedItem);
-		}
-
-		if (selectedItem.getType().equalsIgnoreCase(PluginConstants.SAST)) {
-			drawAttackVector(itemComposite, selectedItem);
-		}
-		itemComposite.layout();
-		attackVectorScrolledComposite.setMinSize(attackVectorContentComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT));
-		attackVectorScrolledComposite.layout();
-		attackVectorCompositePanel.layout();
+		return itemComposite;
 	}
-	
+
 	private void drawPackageData(Composite parent, DisplayModel selectedItem) {
 		attackVectorLabel.setText("Package Data");
-		emptyLabel.setText("");
-		
+		bflComposite.dispose();
 		List<PackageData> packageDataList = selectedItem.getResult().getData().getPackageData();
-
+		drawIndividualPackageData(parent,packageDataList);
+	}
+	
+	private void drawIndividualPackageData(Composite parent, List<PackageData> packageDataList) {
 		if (packageDataList != null && !packageDataList.isEmpty()) {
 
 			for (PackageData packageDataItem : packageDataList) {
 				
 				Composite listComposite = createRowComposite(parent);
 
-				Label label = createRowLabel(listComposite, String.format("%s | ", packageDataItem.getType()));
+				CLabel label = createRowLabel(listComposite, String.format("%s | ", packageDataItem.getType()),false);
 
 				Link packageDataLink = createRowLink(listComposite, "<a>" + packageDataItem.getUrl() + "</a>", null);
 				
-				HoverListener hoverListener = new HoverListener(Arrays.asList(listComposite, label, packageDataLink));
-				hoverListener.apply();
+				generateHoverListener(listComposite, label, packageDataLink);
 			}
 		} else {
-			createRowLabel(parent, "Not available.");
+			createRowLabel(parent, "Not available.",false);
 		}
+		
 	}
-	
+
 	private void drawAttackVector(Composite parent, DisplayModel selectedItem) {
 		attackVectorLabel.setText("Attack Vector");
-		emptyLabel.setText("");
 		
+		//dispose attack vector separator and vulnerabilities list
+		attackVectorSeparator.dispose();
+		parent.dispose();
+		drawBFLComposite();
+		populateBFLMessage(null, PluginConstants.LOADING_BFL);
+		drawAttackVectorSeparator();
+		
+		// reconstruct the composite
+		Composite itemComposite = createAttackVectorComposite();
 		String queryName = selectedItem.getResult().getData().getQueryName();
 		String groupName = selectedItem.getResult().getData().getGroup();
-
 		List<Node> nodesList = selectedItem.getResult().getData().getNodes();
+		
+		drawIndividualAttackVectorData(itemComposite,queryName,groupName,nodesList,false);
+		
+		populateBFLNode(itemComposite,selectedItem);		
+			
+	}
+	
+	private void populateBFLMessage(Image image, String bflMessage) {
+		bflLabel.setImage(image);
+		bflText.setText(bflMessage);
+		bflLabel.layout();
+		bflText.requestLayout();
+		
+	}
+
+	private void drawIndividualAttackVectorData(Composite parent,String queryName, String groupName, List<Node> nodesList, Boolean populateBFLNode) {
 		if (nodesList != null && !nodesList.isEmpty()) {
 			for (int i = 0; i < nodesList.size(); i++) {
 				
@@ -1807,7 +1902,10 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				
 				Composite listComposite = createRowComposite(parent);
 				
-				Label label = createRowLabel(listComposite, String.format("%s | %s", i + 1, node.getName()));
+				
+				CLabel label = createRowLabel(listComposite, String.format("%s | %s", i + 1, node.getName()),populateBFLNode ? i==bflNode : false);
+				
+				label.layout();
 				
 				Link attackVectorValueLinkText = createRowLink(listComposite,
 						String.format("<a>%s[%d,%d]</a>",node.getFileName(), node.getLine(), node.getColumn()),
@@ -1816,23 +1914,65 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 								openTheSelectedFile(node.getFileName(), node.getLine(), groupName + "_" + queryName + "_" + node.getName());
 							}
 				});
-				
-				HoverListener hoverListener = new HoverListener(Arrays.asList(listComposite, label, attackVectorValueLinkText));
-				hoverListener.apply();
+
+				generateHoverListener(listComposite, label, attackVectorValueLinkText);				
 			}
 		} else {
-			createRowLabel(parent, "Not available.");
+			createRowLabel(parent, "Not available.",false);
 		}
+		
+		layoutAttackVectorItemComposite(parent);
+		
 	}
-	
+
+	private void populateBFLNode(Composite parent, DisplayModel selectedItem) {	
+		
+		Job job = new Job("Loading BFL node") {
+			
+			Composite itemComposite;
+			@Override
+			protected IStatus run(IProgressMonitor arg0) {
+				
+				try {
+					bflNode = DataProvider.getInstance().getBestFixLocation(UUID.fromString(currentScanId), selectedItem.getResult().getData().getQueryId(), selectedItem.getResult().getData().getNodes());
+					String queryName = selectedItem.getResult().getData().getQueryName();
+					String groupName = selectedItem.getResult().getData().getGroup();
+					List<Node> nodesList = selectedItem.getResult().getData().getNodes();
+					
+					sync.asyncExec(() -> {				
+						if(bflNode != -1) {
+							parent.dispose();
+							itemComposite = createAttackVectorComposite();
+							populateBFLMessage(BFL,PluginConstants.BFL_FOUND);
+							drawIndividualAttackVectorData(itemComposite, queryName, groupName, nodesList, true);
+						} else {
+							populateBFLMessage(null,PluginConstants.BFL_NOT_FOUND);
+						}
+						
+					});
+				} catch (Exception e) {
+					CxLogger.error(String.format(PluginConstants.ERROR_GETTING_BEST_FIX_LOCATION, e.getMessage()), e);
+				}							
+				return Status.OK_STATUS;
+			}
+			
+		};
+		job.schedule();
+		
+		
+	}
+
 	private void drawVulnerabilityLocation(Composite parent, DisplayModel selectedItem) {
 		attackVectorLabel.setText("Location");
-		emptyLabel.setText("");
-		emptyLabel.setBottomMargin(10);
-
+		bflComposite.dispose();
+		drawIndividualLocationData(parent,selectedItem);
+	}
+	
+	private void drawIndividualLocationData(Composite parent, DisplayModel selectedItem) {
+		
 		Composite listComposite = createRowComposite(parent);
-
-		Label label = createRowLabel(listComposite, "Location | ");
+		
+		CLabel label = createRowLabel(listComposite, "Location | ",false);
 		
 		Link fileNameValueLinkText = createRowLink(listComposite, "<a>" + selectedItem.getResult().getData().getFileName() + "["
 				+ selectedItem.getResult().getData().getLine() + "]" + "</a>", new Listener() {
@@ -1842,10 +1982,20 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 			}
 		});
 		
+		generateHoverListener(listComposite, label, fileNameValueLinkText);
+		
+		
+	}
+
+	private void generateHoverListener(Composite listComposite, CLabel label, Link fileNameValueLinkText) {
 		HoverListener hoverListener = new HoverListener(Arrays.asList(listComposite, label, fileNameValueLinkText));
 		hoverListener.apply();
+		listComposite.layout();
+		label.layout();
+		fileNameValueLinkText.requestLayout();
+		
 	}
-	
+
 	private static Composite createRowComposite(Composite parent) {
 		Composite rowComposite = new Composite(parent, SWT.NONE);
 		rowComposite.setBackground(parent.getBackground());
@@ -1857,8 +2007,14 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		return rowComposite;
 	}
 	
-	private Label createRowLabel(Composite rowComposite, String text) {
-		Label label = new Label(rowComposite, SWT.NONE);
+	private CLabel createRowLabel(Composite rowComposite, String text, Boolean isBflNode) {
+		CLabel label = new CLabel(rowComposite, SWT.NONE);
+		if(isBflNode) {
+			label.setImage(BFL);
+		}
+		else {
+			label.setImage(null);
+		}
 		label.setBackground(rowComposite.getBackground());
 		label.setFont(boldFont);
 		label.setText(text);
@@ -1877,7 +2033,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 	private void clearAttackVectorSection(Composite attackVectorCompositePanel) {
 		for (Control child : attackVectorCompositePanel.getChildren()) {
-			if (child != attackVectorLabel && child != attackVectorSeparator && child != emptyLabel) {
+			if (child != attackVectorLabel && child != attackVectorSeparator) {
 				child.dispose();
 			}
 		}
@@ -2118,7 +2274,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 			protected IStatus run(IProgressMonitor arg0) {
 				List<Project> projectList = getProjects();
 				sync.asyncExec(() -> {
-							//resetProjectComboViewer();
 							projectComboViewer.setInput(projectList);
 							projectComboViewer.refresh();
 							PluginUtils.setTextForComboViewer(projectComboViewer, PROJECT_COMBO_VIEWER_TEXT);
@@ -2152,16 +2307,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		branchComboViewer.setInput(Collections.EMPTY_LIST);
 		branchComboViewer.refresh();
 		PluginUtils.setTextForComboViewer(branchComboViewer, BRANCH_COMBO_VIEWER_TEXT);
-	}
-
-	/**
-	 * Reloads Projects' combobox
-	 */
-	private void resetProjectComboViewer() {  		
-		List<Project> projectList = getProjects();
-    	projectComboViewer.setInput(projectList);
-    	projectComboViewer.refresh();
-    	PluginUtils.setTextForComboViewer(projectComboViewer, PROJECT_COMBO_VIEWER_TEXT);
 	}
 
 	/**

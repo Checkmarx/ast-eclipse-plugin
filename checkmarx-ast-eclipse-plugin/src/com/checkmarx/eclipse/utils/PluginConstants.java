@@ -16,6 +16,9 @@ public class PluginConstants {
 	public static final String BTN_UPDATE = "Update";
 	public static final String BTN_LOADING = "Loading";
 	public static final String DEFAULT_COMMENT_TXT = "Enter comment";
+	public static final String LOADING_BFL = "Loading BFL";
+	public static final String BFL_FOUND = "Indicates the Best Fix Location. Speed up your remediation by fixing multiple vulnerabilities at once";
+	public static final String BFL_NOT_FOUND = "Best fix Location not available for given results";
 	
 	/******************************** LOG VIEW: ERRORS ********************************/
 	public static final String ERROR_AUTHENTICATING_AST = "An error occurred while trying to authenticate to AST: %s";
@@ -32,6 +35,7 @@ public class PluginConstants {
 	public static final String ERROR_UPDATING_TRIAGE = "An error occurred while updating triage similarity id: %s";
 	public static final String ERROR_GETTING_TRIAGE_DETAILS = "An error occurred while getting triage details: %s";
 	public static final String ERROR_GETTING_CODEBASHING_DETAILS = "An error occurred while getting codebashing details: %s";
+	public static final String ERROR_GETTING_BEST_FIX_LOCATION = "An error occurred while getting the best fix location: %s";
 	
 	/******************************** LOG VIEW: INFO ********************************/
 	public static final String INFO_AUTHENTICATION_STATUS = "Authentication Status: %s";
@@ -68,5 +72,15 @@ public class PluginConstants {
 	public static final String TRIAGE_STATE_COMBO_ID = "cx.triageStateCombo";
 	public static final String TRIAGE_BUTTON_ID = "cx.triageButton";
 	public static final String CHANGES_TAB_ID = "cx.changesTab";
+	public static final String CODEBASHING_LINK_ID = "cx.codebashingLink";
+	public static final String BEST_FIX_LOCATION = "cx.bestFixLocationLabel";
+	
+	/******************************** Plugin metric settings ********************************/
+	public static final int TITLE_LABEL_WIDTH = 23;
+	public static final int TITLE_LABEL_HEIGHT = 20;
+	public static final int TITLE_TEXT_COMPOSITE_MAX_WIDTH = 553;
+	public static final int BFL_TEXT_MAX_WIDTH = 564;
+	public static final int BFL_LABEL_HEIGHT = 38;
+	
 
 }
