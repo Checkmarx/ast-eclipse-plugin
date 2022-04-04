@@ -82,5 +82,14 @@ public class PluginConstants {
 	public static final int BFL_TEXT_MAX_WIDTH = 564;
 	public static final int BFL_LABEL_HEIGHT = 38;
 	
+	/********************************** Exit codes ************************************/ //TODO: Move to wrapper
+	public static final int EXIT_CODE_LICENSE_NOT_FOUND = 3;
+	public static final int EXIT_CODE_LESSON_NOT_FOUND = 4;
+	
+	/********************************** Codebashing ************************************/
+	public static final String CODEBASHING = "Codebashing";
+	public static final String CODEBASHING_NO_LESSON = "Currently, this vulnerability has no lesson.";
+	public static final String CODEBASHING_NO_LICENSE = "You don't have a license for Codebashing. Please Contact your Admin for the full version implementation. Meanwhile, you can use <a href=\"https://free.codebashing.com\">Codebashing</a>.";
+
 
 }
