@@ -109,19 +109,13 @@ public class DataProvider {
 	
 	/**
 	 * Get the codeBashing link
+	 * @throws Exception 
 	 */
 	
-	public List<CodeBashing> getCodeBashingLink(String cwe, String language, String queryName)  {
-		List<CodeBashing> codeBashingList = new ArrayList<CodeBashing>();
-		try {
+	public CodeBashing getCodeBashingLink(String cwe, String language, String queryName) throws CxException, Exception  {
 		CxWrapper cxWrapper = getWrapper();
-		if(cxWrapper != null) {
-				codeBashingList = cxWrapper.codeBashingList(cwe, language, queryName);
-		}
-			} catch (Exception e) {
-				CxLogger.error(String.format(PluginConstants.ERROR_GETTING_CODEBASHING_DETAILS, e.getMessage()), e);
-			} 
-		return codeBashingList;
+		
+		return cxWrapper.codeBashingList(cwe, language, queryName).get(0);
 	}
 	
 	/**
