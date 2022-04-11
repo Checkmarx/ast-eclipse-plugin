@@ -33,7 +33,7 @@ import com.checkmarx.eclipse.views.filters.FilterState;
 
 public class PluginUtils {
 
-	private static final String PARAM_TIMESTAMP_PATTERN = "yyyy-MM-dd | HH:mm:ss";
+	private static final String PARAM_TIMESTAMP_PATTERN = "yyyy/MM/dd HH:mm:ss";
 	private static final String PARAM_SCAN_ID_VALID_FORMAT = "[a-f0-9]{8}-[a-f0-9]{4}-[1-5][a-f0-9]{3}-[89ab][a-f0-9]{3}-[0-9a-f]{12}";
 	private static final String PARAM_LINE = "line %d";
 
