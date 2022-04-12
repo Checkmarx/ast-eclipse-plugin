@@ -1006,8 +1006,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		if(scanList.isEmpty()) {
 			PluginUtils.setTextForComboViewer(scanIdComboViewer, PluginConstants.COMBOBOX_SCAND_ID_NO_SCANS_AVAILABLE);
 			return;
-		} else if(scanList.size() == 1) {
-			currentScanId = scanList.get(0).getId();
 		} else {
 			currentScanId = getLatestScanFromScanList(scanList).getId();
 		}
@@ -1019,15 +1017,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 			PluginUtils.showMessage(rootModel, resultsTree, String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, latestScanId));
 			alreadyRunning=true;
 			updateResultsTree(currentScanId,false);
-
-//			currentScanIdFormmated = getScanNameFromId(scanList, currentScanId);
-//			PluginUtils.setTextForComboViewer(scanIdComboViewer, currentScanIdFormmated);
-//			PluginUtils.showMessage(rootModel, resultsTree, String
-//					.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, latestScanId));
-//			PluginUtils.enableComboViewer(projectComboViewer, false);
-//			PluginUtils.enableComboViewer(branchComboViewer, false);
-//			alreadyRunning = true;
-//			updateResultsTree(currentScanId, false);
 		});
 		
 	}
@@ -1179,13 +1168,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 */
 	
 	private Scan getLatestScanFromScanList(List<Scan> scanList) {
-		Comparator<Scan> scanIDComparator = Comparator
-                .comparing(Scan::getUpdatedAt);
-
-		return scanList.stream()
-                        .max(scanIDComparator)
-                        .get();
-		
+		return scanList.get(0);
 	}
 
 	/**
