@@ -37,7 +37,7 @@ jobs:
           files: ./com.checkmarx.eclipse.site/target/com.checkmarx.eclipse.site-*.zip
 
       - name: Create update site
-        uses: cpina/github-action-push-to-another-repository@main
+        uses: cpina/github-action-push-to-another-repository@v1.4.1
         env:
           API_TOKEN_GITHUB: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         with:
