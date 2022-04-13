@@ -6,6 +6,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -120,7 +121,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private static final String LOADING_SCANS = "Loading scans...";
 	private static final String NO_BRANCHES_AVAILABLE = "No branches available.";
 	private static final String NO_PROJECTS_AVAILABLE = "No projects available.";
-	private static final String FORMATTED_SCAN_LABEL = "%s (%s)";
+	private static final String FORMATTED_SCAN_LABEL = "%s %s";
+	private static final String FORMATTED_SCAN_LABEL_LATEST = "%s %s (%s)";
 	/**
 	 * The ID of the view as specified by the extension.
 	 */
@@ -190,6 +192,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private String currentProjectId = PluginConstants.EMPTY_STRING;
 	private String currentBranch = PluginConstants.EMPTY_STRING;
 	private String currentScanId = PluginConstants.EMPTY_STRING;
+	private String latestScanId = PluginConstants.EMPTY_STRING;
 	private static String currentScanIdFormmated = PluginConstants.EMPTY_STRING;
 	private List<String> currentBranches = new ArrayList<>();
 
@@ -450,6 +453,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 						PluginUtils.setTextForComboViewer(branchComboViewer, currentBranch);
 					});
 					List<Scan> scanList = DataProvider.getInstance().getScansForProject(currentBranch);
+					latestScanId = getLatestScanFromScanList(scanList).getId();
 					sync.asyncExec(() -> {
 						scanIdComboViewer.setInput(scanList);
 						PluginUtils.setTextForComboViewer(scanIdComboViewer,
@@ -458,8 +462,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					});
 
 					if (!currentScanId.isEmpty()) {
-						String currentScanName = getScanNameFromId(scanList, currentScanId);
-
+						String currentScanName = getScanNameFromId(scanList, currentScanId);		
 						currentScanIdFormmated = currentScanName;
 						sync.asyncExec(() -> {
 							PluginUtils.setTextForComboViewer(scanIdComboViewer, currentScanName);
@@ -974,14 +977,15 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 					onBranchChangePluginLoading(selectedBranch);
 
-					Display.getDefault().asyncExec(new Runnable() {
+					List<Scan> scanList = DataProvider.getInstance().getScansForProject(selectedBranch);
+					if(!scanList.isEmpty()) {
+						latestScanId = getLatestScanFromScanList(scanList).getId();
+					}
+					scanIdComboViewer.setInput(scanList);							
+					loadLatestScanByDefault(scanList);
+					
+					sync.asyncExec(new Runnable() {
 						public void run() {
-							List<Scan> scanList = DataProvider.getInstance().getScansForProject(selectedBranch);
-							scanIdComboViewer.setInput(scanList);
-							PluginUtils.setTextForComboViewer(scanIdComboViewer,
-									scanList.isEmpty() ? PluginConstants.COMBOBOX_SCAND_ID_NO_SCANS_AVAILABLE
-											: SCAN_COMBO_VIEWER_TEXT);
-
 							PluginUtils.enableComboViewer(projectComboViewer, true);
 							PluginUtils.enableComboViewer(scanIdComboViewer, true);
 							PluginUtils.updateFiltersEnabledAndCheckedState(toolBarActions.getFilterActions());
@@ -989,13 +993,32 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 							toolBarActions.getClearAndRefreshAction().setEnabled(true);
 							toolBarActions.getStateFilterAction().setEnabled(true);
 
-						}
+						}		
 					});
-
+					
 					PluginUtils.updateFiltersEnabledAndCheckedState(toolBarActions.getFilterActions());
 				}
 			}
 		});
+	}
+	
+	private void loadLatestScanByDefault(List<Scan> scanList) {
+		if(scanList.isEmpty()) {
+			PluginUtils.setTextForComboViewer(scanIdComboViewer, PluginConstants.COMBOBOX_SCAND_ID_NO_SCANS_AVAILABLE);
+			return;
+		} else {
+			currentScanId = getLatestScanFromScanList(scanList).getId();
+		}
+		sync.asyncExec(() -> {
+			loadingScans();
+			currentScanIdFormmated = getScanNameFromId(scanList, currentScanId);
+			scanIdComboViewer.setSelection(new StructuredSelection(currentScanId));
+			PluginUtils.setTextForComboViewer(scanIdComboViewer, currentScanIdFormmated);
+			PluginUtils.showMessage(rootModel, resultsTree, String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, latestScanId));
+			alreadyRunning=true;
+			updateResultsTree(currentScanId,false);
+		});
+		
 	}
 
 	/**
@@ -1033,7 +1056,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		scanIdComboViewer.setInput(new ArrayList<>());
 
 		GridData gridData = new GridData();
-		gridData.widthHint = 450;
+		gridData.widthHint = 520;
 		scanIdComboViewer.getCombo().setLayoutData(gridData);
 
 		scanIdComboViewer.getCombo().addListener(SWT.DefaultSelection, new Listener() {
@@ -1067,7 +1090,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 						if (selectedScan != null && (selectedScan.getId().equals(currentScanId) || alreadyRunning)) {
 							CxLogger.info(String.format(PluginConstants.INFO_CHANGE_SCAN_EVENT_NOT_TRIGGERED,
 									alreadyRunning, selectedScan.getId().equals(currentScanId)));
-							return null;
+							return Status.OK_STATUS;
 						}
 						if (selection.size() > 0) {
 							sync.asyncExec(() -> {
@@ -1127,11 +1150,25 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 * @param scan
 	 * @return
 	 */
-	private static String formatScanLabel(Scan scan) {
+	private String formatScanLabel(Scan scan) {
+		String formattedString = "";
 		String updatedAtDate = PluginUtils.convertStringTimeStamp(scan.getUpdatedAt());
-
-		return String.format(FORMATTED_SCAN_LABEL, scan.getId(), updatedAtDate);
-
+		if(!latestScanId.isEmpty() && scan.getId().equalsIgnoreCase(latestScanId)) {
+			formattedString =  String.format(FORMATTED_SCAN_LABEL_LATEST,  updatedAtDate ,scan.getId() ,"latest");
+		} else {
+			
+			formattedString =  String.format(FORMATTED_SCAN_LABEL, updatedAtDate, scan.getId());
+		}
+		return formattedString;
+		
+	}
+	
+	/**
+	 * Retrieve latest scan from scanList
+	 */
+	
+	private Scan getLatestScanFromScanList(List<Scan> scanList) {
+		return scanList.get(0);
 	}
 
 	/**
@@ -1860,7 +1897,9 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 	private void drawPackageData(Composite parent, DisplayModel selectedItem) {
 		attackVectorLabel.setText("Package Data");
-		bflComposite.dispose();
+		if(bflComposite != null) {
+			bflComposite.dispose();
+		}
 		List<PackageData> packageDataList = selectedItem.getResult().getData().getPackageData();
 		drawIndividualPackageData(parent, packageDataList);
 	}
@@ -1988,7 +2027,9 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 	private void drawVulnerabilityLocation(Composite parent, DisplayModel selectedItem) {
 		attackVectorLabel.setText("Location");
-		bflComposite.dispose();
+		if(bflComposite != null) {
+			bflComposite.dispose();
+		}
 		drawIndividualLocationData(parent, selectedItem);
 	}
 

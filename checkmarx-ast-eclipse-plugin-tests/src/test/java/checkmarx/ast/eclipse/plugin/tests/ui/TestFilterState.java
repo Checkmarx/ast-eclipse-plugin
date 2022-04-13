@@ -112,6 +112,7 @@ public class TestFilterState extends BaseUITest{
 
 	@Test
 	public void testFilterStateActionsInToolBar() throws TimeoutException, ParseException{
+		sleep(1000);
 		setUpCheckmarxPlugin(true);
 		
 		// deselect all group by actions and enable only the state group by
