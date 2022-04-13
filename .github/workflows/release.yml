@@ -37,7 +37,7 @@ jobs:
           files: ./com.checkmarx.eclipse.site/target/com.checkmarx.eclipse.site-*.zip
           
       - run: |
-          git config --global --add safe.directory /tmp/
+          git config --global --add safe.directory /tmp/**/*/
 
       - name: Create update site
         uses: cpina/github-action-push-to-another-repository@v1.4.1
