@@ -259,6 +259,9 @@ public class DataProvider {
 		// Divide all the results by scanner type
 		Map<String, List<DisplayModel>> filteredResultsByScannerType = filterResultsByScannerType(currentResultsTransformed);
 
+		//filter the results by enabled state
+		filterStates(filteredResultsByScannerType);
+		
 		// build results based on selected filters
 		return buildResults(scanId, filteredResultsByScannerType);
 	}
