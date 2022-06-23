@@ -29,7 +29,7 @@ jobs:
           curl "https://repo1.maven.org/maven2/com/checkmarx/ast/ast-cli-java-wrapper/${{ steps.ast-cli-java-wrapper.outputs.release_tag }}/${new_version}" --output $new_version
       - name: Create Pull Request
         if: steps.ast-cli-java-wrapper.outputs.current_tag != steps.ast-cli-java-wrapper.outputs.release_tag
-        uses: peter-evans/create-pull-request@v3
+        uses: peter-evans/create-pull-request@v4
         with:
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
           commit-message: Update ast-cli-java-wrapper to ${{ steps.ast-cli-java-wrapper.outputs.release_tag }}
