@@ -14,7 +14,7 @@ Require-Bundle: org.eclipse.ui,
  com.google.guava,
  org.eclipse.e4.ui.di;bundle-version="1.4.0",
  javax.inject,
- org.eclipse.mylyn.commons.ui;bundle-version="3.25.2"
+ org.eclipse.mylyn.commons.ui;bundle-version="3.6.0"
 Automatic-Module-Name: com.checkmarx.eclipse
 Bundle-RequiredExecutionEnvironment: JavaSE-11
 Import-Package: org.eclipse.core.resources
