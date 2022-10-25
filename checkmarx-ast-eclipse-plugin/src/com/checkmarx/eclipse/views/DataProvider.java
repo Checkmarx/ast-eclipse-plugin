@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -25,10 +24,8 @@ import com.checkmarx.ast.results.result.Node;
 import com.checkmarx.ast.results.result.Result;
 import com.checkmarx.ast.scan.Scan;
 import com.checkmarx.ast.wrapper.CxConfig;
-import com.checkmarx.ast.wrapper.CxConfig.InvalidCLIConfigException;
 import com.checkmarx.ast.wrapper.CxException;
 import com.checkmarx.ast.wrapper.CxWrapper;
-import com.checkmarx.eclipse.enums.State;
 import com.checkmarx.eclipse.properties.Preferences;
 import com.checkmarx.eclipse.runner.Authenticator;
 import com.checkmarx.eclipse.utils.CxLogger;
@@ -594,7 +591,7 @@ public class DataProvider {
 
 		try {
 			cxWrapper = new CxWrapper(config, log);
-		} catch (InvalidCLIConfigException | IOException e) {
+		} catch (IOException e) {
 			CxLogger.error(String.format(PluginConstants.ERROR_BUILDING_CX_WRAPPER, e.getMessage()), e);
 			throw new Exception(e);
 		}
