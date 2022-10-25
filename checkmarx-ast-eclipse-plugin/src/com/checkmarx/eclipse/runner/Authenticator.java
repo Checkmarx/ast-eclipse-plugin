@@ -6,7 +6,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.checkmarx.ast.wrapper.CxConfig;
-import com.checkmarx.ast.wrapper.CxConfig.InvalidCLIConfigException;
 import com.checkmarx.ast.wrapper.CxException;
 import com.checkmarx.ast.wrapper.CxWrapper;
 import com.checkmarx.eclipse.utils.CxLogger;
@@ -33,7 +32,7 @@ public class Authenticator {
 			String cxValidateOutput = wrapper.authValidate();
 			CxLogger.info(AUTH_STATUS + cxValidateOutput);
 			return cxValidateOutput;
-		} catch (IOException | InterruptedException | InvalidCLIConfigException | CxException e) {
+		} catch (IOException | InterruptedException | CxException e) {
 			CxLogger.error(String.format(PluginConstants.ERROR_AUTHENTICATING_AST, e.getMessage()), e);
 			return e.getMessage();
 		}
