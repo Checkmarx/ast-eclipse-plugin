@@ -81,20 +81,6 @@ public class TestUI extends BaseUITest {
 
 		assertEquals("The tree must contain a single row", _bot.tree().rowCount(), 1);
 
-		String firstTreeCell = _bot.tree().cell(0, 0);
-
-		// The first row must have a message saying that AST is getting results or
-		// failing due the missing Server Url
-		boolean retrievingResults = firstTreeCell.equals(String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, Environment.SCAN_ID));
-		boolean urlNotSet = firstTreeCell.equals(ERROR_SERVER_URL_NOT_SET);
-		boolean expectedResult = retrievingResults || urlNotSet;
-		assertTrue("Plugin should be retrieving results or failed due Server Url not set", expectedResult);
-
-		sleep();
-
-		// After a sleep the missing Server Url message must be displayed
-		assertEquals( _bot.tree().cell(0, 0), ERROR_SERVER_URL_NOT_SET, _bot.tree().cell(0, 0));
-		
 		// Close Checkmarx AST Scan view
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
 	}
