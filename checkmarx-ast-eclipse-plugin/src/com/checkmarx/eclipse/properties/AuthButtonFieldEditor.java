@@ -17,21 +17,14 @@ public class AuthButtonFieldEditor extends StringButtonFieldEditor {
 
 	Consumer<String> consumer;
 
-	private StringFieldEditor serverUrl;
-	private StringFieldEditor authUrl;
-	private StringFieldEditor tenant;
 	private StringFieldEditor apiKey;
 	private StringFieldEditor additionalParams;
 	private CLabel connectionLabel;
 
-	AuthButtonFieldEditor(String name, String labelText, Composite parent, StringFieldEditor serverUrl,
-			StringFieldEditor authUrl, StringFieldEditor tenant, StringFieldEditor apiKey,
+	AuthButtonFieldEditor(String name, String labelText, Composite parent, StringFieldEditor tenant, StringFieldEditor apiKey,
 			StringFieldEditor additionalParams, CLabel connectionLabel) {
 		super(name, labelText, parent);
 		setChangeButtonText(labelText);
-		this.serverUrl = serverUrl;
-		this.authUrl = authUrl;
-		this.tenant = tenant;
 		this.apiKey = apiKey;
 		this.additionalParams = additionalParams;
 		this.connectionLabel = connectionLabel;
@@ -41,15 +34,12 @@ public class AuthButtonFieldEditor extends StringButtonFieldEditor {
 	protected String changePressed() {
 		connectionLabel.setText(PluginConstants.PREFERENCES_VALIDATING_STATE);
 
-		String serverUrl_str = serverUrl.getStringValue();
-		String authUrl_str = authUrl.getStringValue();
-		String tenant_str = tenant.getStringValue();
 		String apiKey_str = apiKey.getStringValue();
 		String additionalParams_str = additionalParams.getStringValue();
 
 		CompletableFuture.supplyAsync(() -> {
 			try {
-				return Authenticator.INSTANCE.doAuthentication(serverUrl_str, authUrl_str, tenant_str, apiKey_str,
+				return Authenticator.INSTANCE.doAuthentication(apiKey_str,
 						additionalParams_str);
 			} catch (Throwable t) {
 				CxLogger.error(PluginConstants.ERROR_AUTHENTICATING_AST, new Exception(t));
