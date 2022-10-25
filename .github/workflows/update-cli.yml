@@ -8,7 +8,7 @@ jobs:
   update-checkmarx-cli:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3.1.0
+      - uses: actions/checkout@v2.4.0
       - name: Get Latest Checkmarx Java wrapper version
         id: ast-cli-java-wrapper
         run: |
