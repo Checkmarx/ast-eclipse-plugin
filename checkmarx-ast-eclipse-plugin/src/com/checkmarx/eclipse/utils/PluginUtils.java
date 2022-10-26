@@ -147,7 +147,7 @@ public class PluginUtils {
 	 * @return
 	 */
 	public static boolean areCredentialsDefined() {
-		return StringUtils.isNotBlank(Preferences.getServerUrl()) && StringUtils.isNotBlank(Preferences.getTenant()) && StringUtils.isNotBlank(Preferences.getApiKey());
+		return StringUtils.isNotBlank(Preferences.getApiKey());
 	}
 	
 	/**

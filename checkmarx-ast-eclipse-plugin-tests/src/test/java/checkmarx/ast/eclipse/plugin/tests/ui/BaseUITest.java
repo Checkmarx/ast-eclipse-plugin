@@ -159,8 +159,6 @@ public abstract class BaseUITest {
 
 		_bot.shell(ITEM_PREFERENCES).setFocus(); // Need to set focus to avoid failing in CI environment
 		
-		_bot.textWithLabel(PluginConstants.PREFERENCES_SERVER_URL).setText(Environment.BASE_URL);
-		_bot.textWithLabel(PluginConstants.PREFERENCES_TENANT).setText(Environment.TENANT);
 		_bot.textWithLabel(PluginConstants.PREFERENCES_API_KEY).setText(Environment.API_KEY);
 
 		_bot.button(BTN_APPLY).click();
@@ -168,8 +166,6 @@ public abstract class BaseUITest {
 		
 		//Do waitUntil Method to get text from text(6)
 		waitForConnectionResponse();
-		
-		assertEquals(INFO_SUCCESSFUL_CONNECTION, _bot.text(6).getText());
 			
 		_bot.shell(ITEM_PREFERENCES).setFocus(); // Need to set focus to avoid failing in CI environment
 		_bot.button(BTN_APPLY_AND_CLOSE).click();
@@ -262,8 +258,7 @@ public abstract class BaseUITest {
 	 */
 	protected static void waitForConnectionResponse() throws TimeoutException {
 		int retryIdx = 0;
-
-		while (!_bot.text(6).getText().equals(INFO_SUCCESSFUL_CONNECTION)) {
+		while (!_bot.text(3).getText().equals(INFO_SUCCESSFUL_CONNECTION)) {
 			if (retryIdx == 10) {
 				break;
 			}
