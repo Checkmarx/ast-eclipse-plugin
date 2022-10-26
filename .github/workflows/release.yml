@@ -46,7 +46,7 @@ jobs:
           git config --global --add safe.directory /tmp/**/*/
 
       - name: Create update site
-        uses: cpina/github-action-push-to-another-repository@devel
+        uses: cpina/github-action-push-to-another-repository@main
         env:
           API_TOKEN_GITHUB: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         with:
