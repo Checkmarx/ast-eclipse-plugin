@@ -18,10 +18,10 @@ public class Authenticator {
 
 	public static final Authenticator INSTANCE = new Authenticator();
 
-	public String doAuthentication(String serverUrl, String authUrl, String tenant, String apiKey,
+	public String doAuthentication(String apiKey,
 			String additionalParams) {
 
-		CxConfig config = CxConfig.builder().baseUri(serverUrl).baseAuthUri(authUrl).tenant(tenant).apiKey(apiKey)
+		CxConfig config = CxConfig.builder().apiKey(apiKey)
 				.additionalParameters(additionalParams).build();
 
 		Logger log = LoggerFactory.getLogger(Authenticator.class.getName());

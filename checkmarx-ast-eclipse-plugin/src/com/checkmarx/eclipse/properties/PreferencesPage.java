@@ -60,16 +60,6 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 		parentLayout.marginWidth = 0;
 		topComposite.setLayout(parentLayout);
 
-		StringFieldEditor serverUrl = new StringFieldEditor(Preferences.SERVER_URL, PluginConstants.PREFERENCES_SERVER_URL, topComposite);
-		addField(serverUrl);
-
-		StringFieldEditor authUrl = new StringFieldEditor(Preferences.AUTHENTICATION_URL, PluginConstants.PREFERENCES_AUTH_URL,
-				topComposite);
-		addField(authUrl);
-
-		StringFieldEditor tenant = new StringFieldEditor(Preferences.TENANT, PluginConstants.PREFERENCES_TENANT, topComposite);
-		addField(tenant);
-
 		StringFieldEditor apiKey = new StringFieldEditor(Preferences.API_KEY, PluginConstants.PREFERENCES_API_KEY, topComposite);
 		addField(apiKey);
 		Text textControl = apiKey.getTextControl(topComposite);
@@ -97,9 +87,6 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 
 			public void widgetSelected(SelectionEvent e) {
 
-				String serverUrl_str = serverUrl.getStringValue();
-				String authUrl_str = authUrl.getStringValue();
-				String tenant_str = tenant.getStringValue();
 				String apiKey_str = apiKey.getStringValue();
 
 				String additionalParams_str = additionalParams.getStringValue();
@@ -108,7 +95,7 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 				getFieldEditorParent().layout();
 				CompletableFuture.supplyAsync(() -> {
 					try {
-						return Authenticator.INSTANCE.doAuthentication(serverUrl_str, authUrl_str, tenant_str,
+						return Authenticator.INSTANCE.doAuthentication(
 								apiKey_str, additionalParams_str);
 					} catch (Throwable t) {
 						CxLogger.error(PluginConstants.ERROR_AUTHENTICATING_AST, new Exception(t));
