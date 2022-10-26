@@ -52,9 +52,6 @@ public class PluginConstants {
 	public static final String TREE_NO_RESULTS = "No results.";
 	
 	/******************************** PREFERENCES ********************************/
-	public static final String PREFERENCES_SERVER_URL = "Server Url:";
-	public static final String PREFERENCES_AUTH_URL = "Authentication Url:";
-	public static final String PREFERENCES_TENANT = "Tenant:";
 	public static final String PREFERENCES_API_KEY = "API key:";
 	public static final String PREFERENCES_ADDITIONAL_OPTIONS = "Additional Options:";
 	public static final String PREFERENCES_TEST_CONNECTION = "Test Connection";

@@ -27,7 +27,6 @@ import checkmarx.ast.eclipse.plugin.tests.common.Environment;
 @RunWith(SWTBotJunit4ClassRunner.class)
 public class TestUI extends BaseUITest {
 	
-	private static final String ERROR_SERVER_URL_NOT_SET = "Checkmarx server URL is not set";
 	
 	private static final String ASSERT_GROUP_BY_ACTIONS_IN_TOOLBAR = "All group by actions must be in the tool bar";
 	private static final String ASSERT_TREE_CONSTAIN_HIGH_MEDIUM = "Results must contain results grouped by High and Medium";
@@ -80,6 +79,13 @@ public class TestUI extends BaseUITest {
 		_bot.comboBox(2).pressShortcut(Keystrokes.LF);
 
 		assertEquals("The tree must contain a single row", _bot.tree().rowCount(), 1);
+		String firstTreeCell = _bot.tree().cell(0, 0);
+
+		// The first row must have a message saying that AST is getting results or
+		// failing due the missing Server Url
+		firstTreeCell.equals(String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, Environment.SCAN_ID));
+
+		sleep();
 
 		// Close Checkmarx AST Scan view
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
@@ -285,8 +291,6 @@ public class TestUI extends BaseUITest {
 		_bot.shell(ITEM_PREFERENCES).activate();
 		_bot.tree().select(ITEM_CHECKMARX_AST);
 
-		_bot.textWithLabel(PluginConstants.PREFERENCES_SERVER_URL).setText(PluginConstants.EMPTY_STRING);
-		_bot.textWithLabel(PluginConstants.PREFERENCES_TENANT).setText(PluginConstants.EMPTY_STRING);
 		_bot.textWithLabel(PluginConstants.PREFERENCES_API_KEY).setText(PluginConstants.EMPTY_STRING);
 
 		_bot.button(BTN_APPLY).click();
