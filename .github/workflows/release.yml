@@ -44,15 +44,13 @@ jobs:
           
       - run: |
           git config --global --add safe.directory /tmp/**/*/
-
-      - name: Create update site
-        uses: cpina/github-action-push-to-another-repository@main
-        env:
-          API_TOKEN_GITHUB: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+      
+      - uses: GuillaumeFalourd/git-commit-push@v1.3
         with:
-          source-directory: './com.checkmarx.eclipse.site/target/repository/'
-          destination-github-username: 'cylon-bot'
-          destination-repository-username: 'CheckmarxDev'
-          destination-repository-name: 'ast-eclipse-plugin-update-site'
-          user-email: cylon-bot@checkmarx.com
-          target-branch: main
+          email: cylon-bot@checkmarx.com
+          name: cylon-bot
+          target_branch: main
+          files: ./com.checkmarx.eclipse.site/target/repository/
+          remote_repository: https://github.com/CheckmarxDev/ast-eclipse-plugin-update-site
+          access_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          
