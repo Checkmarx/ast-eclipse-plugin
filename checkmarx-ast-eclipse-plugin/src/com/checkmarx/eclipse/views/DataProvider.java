@@ -40,7 +40,7 @@ public class DataProvider {
 	
 	private static final String SAST_TREE_NAME = "SAST (%d)";
 	private static final String SCA_TREE_NAME = "SCA (%d)";
-	private static final String KICS_TREE_NAME = "KICS (%d)";
+	private static final String KICS_TREE_NAME = "IaC Security (%d)";
 	private static final String RESULTS_TREE_NAME = "%s (%d Issues)";
 	
 	private static DataProvider _dataProvider = null;
