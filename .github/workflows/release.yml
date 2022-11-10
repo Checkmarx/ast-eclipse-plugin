@@ -44,7 +44,7 @@ jobs:
           
       - name: Git configuration 
         run: |
-          git config --global safe.directory /tmp/**/*/
+          git config --global safe.directory "/tmp/**/*/"
           git config --global http.postBuffer 524288000
       
       - name: Create update site
