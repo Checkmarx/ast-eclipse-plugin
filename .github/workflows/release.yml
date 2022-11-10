@@ -42,9 +42,10 @@ jobs:
         with:
           files: ./com.checkmarx.eclipse.site/target/com.checkmarx.eclipse.site-*.zip
           
-      - run: |
-          git config --global --add safe.directory /tmp/**/*/
-          git config --global --add http.postBuffer 524288000
+      - name: Git configuration 
+        run: |
+          git config --global safe.directory /tmp/**/*/
+          git config --global http.postBuffer 524288000
       
       - name: Create update site
         uses: cpina/github-action-push-to-another-repository@main
