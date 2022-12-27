@@ -51,7 +51,7 @@ public class TestUI extends BaseUITest {
 		addCheckmarxPlugin(false);
 
 		// Assert that active view is the Checkmarx AST Scan
-		assertTrue("Active view must be the Checkmarx AST Scan", _bot.activeView().getTitle().equals(VIEW_CHECKMARX_AST_SCAN));
+		assertTrue("Active view must be the Checkmarx One Scan", _bot.activeView().getTitle().equals(VIEW_CHECKMARX_AST_SCAN));
 		
 		preventWidgetWasNullInCIEnvironment();
 		
@@ -241,7 +241,7 @@ public class TestUI extends BaseUITest {
 		addCheckmarxPlugin(false);
 
 		// Assert that active view is the Checkmarx AST Scan
-		assertTrue("Active view must be the Checkmarx AST Scan", _bot.activeView().getTitle().equals(VIEW_CHECKMARX_AST_SCAN));
+		assertTrue("Active view must be the Checkmarx One Scan", _bot.activeView().getTitle().equals(VIEW_CHECKMARX_AST_SCAN));
 		
 		assertTrue(ASSERT_CREDENTIALS_PANEL, _bot.button(PluginConstants.BTN_OPEN_SETTINGS) != null);
 		

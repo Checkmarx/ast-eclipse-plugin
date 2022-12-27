@@ -21,7 +21,7 @@ public class PluginConstants {
 	public static final String BFL_NOT_FOUND = "Best fix Location not available for given results";
 	
 	/******************************** LOG VIEW: ERRORS ********************************/
-	public static final String ERROR_AUTHENTICATING_AST = "An error occurred while trying to authenticate to AST: %s";
+	public static final String ERROR_AUTHENTICATING_AST = "An error occurred while trying to authenticate to Checkmarx One: %s";
 	public static final String ERROR_GETTING_SCAN_INFO = "An error occurred while getting scan information: %s";
 	public static final String ERROR_GETTING_PROJECTS = "An error occurred while getting projects: %s";
 	public static final String ERROR_GETTING_BRANCHES = "An error occurred while getting branches for project id %s: %s";

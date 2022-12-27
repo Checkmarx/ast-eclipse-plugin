@@ -22,7 +22,7 @@ import checkmarx.ast.eclipse.plugin.tests.common.Environment;
 
 public abstract class BaseUITest {
 
-	private static final String INFO_SUCCESSFUL_CONNECTION = "Successfully authenticated to AST server!";
+	private static final String INFO_SUCCESSFUL_CONNECTION = "Successfully authenticated to Checkmarx One server!";
 	
 	protected static final String ASSERT_FILTER_ACTIONS_IN_TOOLBAR = "All filter actions must be in the tool bar";
 	
@@ -32,8 +32,8 @@ public abstract class BaseUITest {
 	protected static final String ITEM_PREFERENCES = "Preferences";
 	protected static final String ITEM_OTHER = "Other...";
 	protected static final String ITEM_CHECKMARX = "Checkmarx";
-	protected static final String ITEM_CHECKMARX_AST = "Checkmarx AST";
-	protected static final String ITEM_CHECKMARX_AST_SCAN = "Checkmarx AST Scan";
+	protected static final String ITEM_CHECKMARX_AST = "Checkmarx One";
+	protected static final String ITEM_CHECKMARX_AST_SCAN = "Checkmarx One Scan";
 	
 	protected static final String LABEL_SCAN_ID = "Scan Id:";
 	
@@ -45,7 +45,7 @@ public abstract class BaseUITest {
 	
 	protected static final String SHELL_AUTHENTICATION = "Authentication";
 	
-	protected static final String VIEW_CHECKMARX_AST_SCAN = "Checkmarx AST Scan";
+	protected static final String VIEW_CHECKMARX_AST_SCAN = "Checkmarx One Scan";
 	
 	protected static SWTWorkbenchBot _bot;
 	

@@ -1,4 +1,4 @@
-name: AST Eclipse Plugin
+name: Checkmarx One Eclipse Plugin
 
 on: [pull_request]
 
