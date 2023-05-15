@@ -1,0 +1,26 @@
+# .github/release.yml
+
+changelog:
+  exclude:
+    labels:
+      - ignore
+  categories:
+    - title: Bug Fixes 🐛
+      labels:
+        - bug
+        - bugs
+        - fix
+        - fixes
+    - title: New Features 🚀
+      labels:
+        - feature
+        - features
+    - title: Checkmarx One SDK Updates 🛠
+      labels:
+        - cxone
+    - title: Other Changes
+      labels:
+        - "*"
+      exclude:
+        labels:
+          - dependencies
