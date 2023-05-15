@@ -524,11 +524,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		treeResultsLayout.marginHeight = 0;
 		treeResultsComposite.setLayout(treeResultsLayout);
 
-		GridData treeResultsLayoutData = new GridData();
-		treeResultsLayoutData.horizontalAlignment = GridData.BEGINNING;
-		treeResultsLayoutData.grabExcessVerticalSpace = true;
-		treeResultsComposite.setLayoutData(treeResultsLayoutData);
-
 		resultsTree = new TreeViewer(treeResultsComposite,
 				SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.FULL_SELECTION);
 		resultsTree.getTree().setHeaderVisible(false);
@@ -629,7 +624,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		GridData gd_clogo = new GridData(SWT.RIGHT, SWT.LEFT, false, false, 1, 1);
 		gd_clogo.widthHint = 18;
 		clogo.setLayoutData(gd_clogo);
-		clogo.setForeground(new Color(new RGB(243, 106, 34)));
+		//clogo.setForeground(new Color(new RGB(243, 106, 34)));
 		clogo.setText(">_");
 		clogo.setLeftMargin(0);
 		clogo.setRightMargin(0);

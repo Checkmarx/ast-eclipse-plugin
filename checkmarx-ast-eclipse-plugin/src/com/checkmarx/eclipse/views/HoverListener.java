@@ -14,7 +14,7 @@ public class HoverListener implements MouseTrackListener {
 
 	private final List<Control> controls;
 	private final Color defaultColor;
-	private Color customColor;
+	//private Color customColor;
 
 	public HoverListener(List<Control> controls) {
 		this.controls = controls;
@@ -25,9 +25,9 @@ public class HoverListener implements MouseTrackListener {
 	public void mouseEnter(MouseEvent arg0) {
 		Color themeColor = Display.getCurrent().getSystemColor(SWT.COLOR_LIST_SELECTION);
 		float[] hsba = themeColor.getRGBA().getHSBA();
-		customColor = new Color(new RGBA(hsba[0], 0.10f, hsba[2], hsba[3]));
+		//customColor = new Color(new RGBA(hsba[0], 0.10f, hsba[2], hsba[3]));
 		controls.forEach(control -> {
-			control.setBackground(customColor);
+			//control.setBackground(customColor);
 		});		
 	}
 
@@ -37,10 +37,10 @@ public class HoverListener implements MouseTrackListener {
 			controls.forEach(control -> {
 				control.setBackground(defaultColor);	
 			});
-			if (customColor != null) {
+			/*if (customColor != null) {
 				customColor.dispose();
 				customColor = null;
-			}
+			}*/
 		}		
 	}
 
