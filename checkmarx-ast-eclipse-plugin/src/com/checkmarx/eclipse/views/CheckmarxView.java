@@ -624,7 +624,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		GridData gd_clogo = new GridData(SWT.RIGHT, SWT.LEFT, false, false, 1, 1);
 		gd_clogo.widthHint = 18;
 		clogo.setLayoutData(gd_clogo);
-		//clogo.setForeground(new Color(new RGB(243, 106, 34)));
+		clogo.setForeground(new Color(display, new RGB(243, 106, 34)));
 		clogo.setText(">_");
 		clogo.setLeftMargin(0);
 		clogo.setRightMargin(0);
