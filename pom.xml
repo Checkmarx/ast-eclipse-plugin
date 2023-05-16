@@ -88,7 +88,7 @@
 				<artifactId>target-platform-configuration</artifactId>
 				<version>${tycho.version}</version>
 				<configuration>
-					<executionEnvironment>JavaSE-8</executionEnvironment>
+					<executionEnvironment>JavaSE-11</executionEnvironment>
 					<pomDependencies>consider</pomDependencies>
 					<environments>
 						<environment>
