@@ -27,4 +27,5 @@ Bundle-ClassPath: lib/slf4j-simple-1.7.5.jar,
  lib/commons-lang3-3.12.0.jar,
  lib/ast-cli-java-wrapper-1.0.51.jar,
  lib/jackson-databind-2.13.2.2.jar,
+ lib/org.eclipse.mylyn.commons.ui_3.25.2.v20200813-0821.jar,
  .
