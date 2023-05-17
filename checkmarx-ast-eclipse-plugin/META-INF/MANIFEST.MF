@@ -6,13 +6,13 @@ Bundle-Version: 1.0.0.qualifier
 Bundle-Vendor: Checkmarx
 Require-Bundle: org.eclipse.ui,
  org.eclipse.core.runtime,
- org.eclipse.jdt.core;bundle-version="3.19.0",
- org.eclipse.ui.ide;bundle-version="3.16.0",
+ org.eclipse.jdt.core,
+ org.eclipse.ui.ide,
  org.eclipse.jgit,
  org.eclipse.e4.core.services,
  org.eclipse.osgi.services,
  com.google.guava,
- org.eclipse.e4.ui.di;bundle-version="1.2.600",
+ org.eclipse.e4.ui.di,
  javax.inject
 Automatic-Module-Name: com.checkmarx.eclipse
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
@@ -28,5 +28,4 @@ Bundle-ClassPath: lib/slf4j-simple-1.7.5.jar,
  lib/ast-cli-java-wrapper-1.0.51.jar,
  lib/jackson-databind-2.13.2.2.jar,
  lib/org.eclipse.mylyn.commons.ui_3.25.2.v20200813-0821.jar,
- lib/org.eclipse.core.runtime-3.7.0.jar,
  .

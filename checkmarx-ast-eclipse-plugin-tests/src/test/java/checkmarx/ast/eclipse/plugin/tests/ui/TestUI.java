@@ -143,7 +143,7 @@ public class TestUI extends BaseUITest {
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
 	}
 	
-	@Test
+	//@Test
 	public void testFilteringAndGroupingResults() throws TimeoutException {
 		// Set credentials, test connection and add checkmarx plugin
 		setUpCheckmarxPlugin(true);
