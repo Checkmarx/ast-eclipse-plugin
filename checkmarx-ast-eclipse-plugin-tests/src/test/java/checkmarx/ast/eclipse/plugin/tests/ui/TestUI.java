@@ -276,7 +276,6 @@ public class TestUI extends BaseUITest {
 		
 		return _bot.tree().getTreeItem(_bot.tree().cell(0, 0)).expand().getNode(0).getNodes().stream().map(node -> node.split("\\(")[0].trim()).collect(Collectors.toList());
 	}
-	
 
 	/**
 	 * Clear all Checkmarx credentials
