@@ -143,7 +143,7 @@ public class TestUI extends BaseUITest {
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
 	}
 	
-	//@Test
+	@Test
 	public void testFilteringAndGroupingResults() throws TimeoutException {
 		// Set credentials, test connection and add checkmarx plugin
 		setUpCheckmarxPlugin(true);
@@ -276,6 +276,7 @@ public class TestUI extends BaseUITest {
 		
 		return _bot.tree().getTreeItem(_bot.tree().cell(0, 0)).expand().getNode(0).getNodes().stream().map(node -> node.split("\\(")[0].trim()).collect(Collectors.toList());
 	}
+	
 
 	/**
 	 * Clear all Checkmarx credentials
