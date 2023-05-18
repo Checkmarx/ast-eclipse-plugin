@@ -25,7 +25,7 @@ public class HoverListener implements MouseTrackListener {
 	public void mouseEnter(MouseEvent arg0) {
 		Color themeColor = Display.getCurrent().getSystemColor(SWT.COLOR_LIST_SELECTION);
 		float[] hsba = themeColor.getRGBA().getHSBA();
-		customColor = new Color(new RGBA(hsba[0], 0.10f, hsba[2], hsba[3]));
+		customColor = new Color(Display.getCurrent(), new RGBA(hsba[0], 0.10f, hsba[2], hsba[3]));
 		controls.forEach(control -> {
 			control.setBackground(customColor);
 		});		

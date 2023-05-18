@@ -23,8 +23,10 @@ import com.checkmarx.eclipse.runner.Authenticator;
 import com.checkmarx.eclipse.utils.CxLogger;
 import com.checkmarx.eclipse.utils.PluginConstants;
 import com.checkmarx.eclipse.utils.PluginUtils;
+import org.eclipse.swt.widgets.Link;
 
 public class PreferencesPage extends FieldEditorPreferencePage implements IWorkbenchPreferencePage {
+	private Link link;
 
 	public PreferencesPage() {
 		super(GRID);
@@ -68,7 +70,7 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 				PluginConstants.PREFERENCES_ADDITIONAL_OPTIONS, topGridData.widthHint, 5, 0, topComposite);
 		addField(additionalParams);
 
-        //set the width for API Key text field        
+        //set the width for API Key text field
 		GridData gridData = new GridData(SWT.BEGINNING, SWT.CENTER, true, false);
 		gridData.widthHint = 500; // Some width
 		gridData.grabExcessHorizontalSpace = false;
@@ -76,6 +78,15 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 		textControl.setLayoutData(gridData);
 
 		addField(space());
+
+
+        Link cliHelp = new Link(getFieldEditorParent(), SWT.NONE);
+        cliHelp.setText("<a href=\"https://checkmarx.com/resource/documents/en/34965-68626-global-flags.html\">CLI command that supports a set of global flags</a>");
+        cliHelp.setLayoutData(new GridData(SWT.BEGINNING, SWT.CENTER, true, false));
+		GridData linkGridData = new GridData(SWT.END, SWT.CENTER, true, false);
+		cliHelp.setLayoutData(linkGridData);
+
+        addField(space());
 
 		Text connectionLabel = new Text(getFieldEditorParent(), SWT.MULTI | SWT.WRAP | SWT.READ_ONLY | SWT.V_SCROLL);
 		//Set layout for scroll area to fit to page
