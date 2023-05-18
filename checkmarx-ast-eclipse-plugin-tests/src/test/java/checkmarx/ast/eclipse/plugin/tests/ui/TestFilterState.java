@@ -139,7 +139,7 @@ public class TestFilterState extends BaseUITest{
 		
 		sleep(1000);
 		List<String> filteredGroup = new ArrayList<String>();
-		if(enabledFilters.size()>1) {
+		if(enabledFilters.size()>0) {
 			filteredGroup = _bot.tree().getTreeItem(_bot.tree().cell(0, 0)).expand().getNode(0).expand().getNodes().stream().map(node -> node.split("\\(")[0].trim()).collect(Collectors.toList());
 			assertTrue(!filteredGroup.contains(firstGroup));
 		}
