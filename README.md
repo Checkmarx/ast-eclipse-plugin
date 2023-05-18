@@ -11,7 +11,6 @@
 
 
 </div>
-<!-- PROJECT LOGO -->
 <br />
 <p align="center">
   <a href="https://github.com/Checkmarx/ast-eclipse-plugin">
