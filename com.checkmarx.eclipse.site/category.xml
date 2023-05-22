@@ -3,7 +3,7 @@
    <feature url="features/com.checkmarx.eclipse.feature_1.0.0.qualifier.jar" id="com.checkmarx.eclipse.feature" version="1.0.0.qualifier">
       <category name="com.checkmarx.eclipse.site.category"/>
    </feature>
-   <category-def name="com.checkmarx.eclipse.site.category" label="Checkmarx AST Eclipse Plugin">
+   <category-def name="com.checkmarx.eclipse.site.category" label="Checkmarx One Eclipse Plugin">
       <description>
          Checkmarx Plugin for Eclipse IDE.
       </description>

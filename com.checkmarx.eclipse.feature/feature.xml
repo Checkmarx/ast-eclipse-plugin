@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <feature
       id="com.checkmarx.eclipse.feature"
-      label="Checkmarx AST Eclipse Feature"
+      label="Checkmarx One Eclipse Feature"
       version="1.0.0.qualifier"
       provider-name="Checkmarx"
       plugin="com.checkmarx.eclipse.plugin">

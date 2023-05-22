@@ -40,7 +40,7 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 	@Override
 	public void init(IWorkbench workbench) {
 		setPreferenceStore(Preferences.STORE);
-		setMessage("Checkmarx AST preferences");
+		setMessage("Checkmarx One preferences");
 	}
 
 	@Override
