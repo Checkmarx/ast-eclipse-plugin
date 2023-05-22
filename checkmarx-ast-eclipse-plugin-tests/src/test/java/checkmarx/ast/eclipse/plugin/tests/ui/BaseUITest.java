@@ -22,7 +22,7 @@ import checkmarx.ast.eclipse.plugin.tests.common.Environment;
 
 public abstract class BaseUITest {
 
-	private static final String INFO_SUCCESSFUL_CONNECTION = "Successfully authenticated to AST server!";
+	private static final String INFO_SUCCESSFUL_CONNECTION = "Successfully authenticated to Checkmarx One server!";
 	
 	protected static final String ASSERT_FILTER_ACTIONS_IN_TOOLBAR = "All filter actions must be in the tool bar";
 	
