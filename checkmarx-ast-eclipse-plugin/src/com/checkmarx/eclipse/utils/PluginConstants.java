@@ -88,5 +88,10 @@ public class PluginConstants {
 	public static final String CODEBASHING_NO_LESSON = "Currently, this vulnerability has no lesson.";
 	public static final String CODEBASHING_NO_LICENSE = "You don't have a license for Codebashing. Please Contact your Admin for the full version implementation. Meanwhile, you can use <a href=\"https://free.codebashing.com\">Codebashing</a>.";
 
-
+	/********************************** Attack Vector ************************************/
+	public static final String ATTACK_VECTOR = "Attack Vector";
+	public static final String LEARN_MORE = "Learn More";
+	public static final String REMEDIATION_EXAMPLES = "Remediation Examples";
+	public static final String LOCATION = "Location";
+	public static final String PACKAGE_DATA = "Package Data";
 }
