@@ -1867,19 +1867,19 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private void drawAttackVector(DisplayModel selectedItem) {
 		final TabFolder tabFolder = new TabFolder(attackVectorCompositePanel, SWT.NONE);
 
-		final TabItem tab1TabItem = new TabItem(tabFolder, SWT.NONE);
-		tab1TabItem.setText(PluginConstants.ATTACK_VECTOR);
+		final TabItem attackVectorTab = new TabItem(tabFolder, SWT.NONE);
+		attackVectorTab.setText(PluginConstants.ATTACK_VECTOR);
 
-		final TabItem tab1TabItem2 = new TabItem(tabFolder, SWT.NONE);
-		tab1TabItem2.setText(PluginConstants.LEARN_MORE);
+		final TabItem learnMoreTab = new TabItem(tabFolder, SWT.NONE);
+		learnMoreTab.setText(PluginConstants.LEARN_MORE);
 
-		final TabItem tab1TabItem3 = new TabItem(tabFolder, SWT.NONE);
-		tab1TabItem3.setText(PluginConstants.REMEDIATION_EXAMPLES);
+		final TabItem remediationExamplesTab = new TabItem(tabFolder, SWT.NONE);
+		remediationExamplesTab.setText(PluginConstants.REMEDIATION_EXAMPLES);
 
 		final ScrolledComposite scrolledComposite = new ScrolledComposite(tabFolder, SWT.V_SCROLL | SWT.H_SCROLL);
 		scrolledComposite.setExpandVertical(true);
 		scrolledComposite.setExpandHorizontal(true);
-		tab1TabItem.setControl(scrolledComposite);
+		attackVectorTab.setControl(scrolledComposite);
 
 		final Composite composite = new Composite(scrolledComposite, SWT.NONE);
 		composite.setLayoutData(new GridData(GridData.FILL, GridData.BEGINNING, true, true));
