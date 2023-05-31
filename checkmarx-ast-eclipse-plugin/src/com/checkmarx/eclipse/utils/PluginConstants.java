@@ -94,4 +94,10 @@ public class PluginConstants {
 	public static final String REMEDIATION_EXAMPLES = "Remediation Examples";
 	public static final String LOCATION = "Location";
 	public static final String PACKAGE_DATA = "Package Data";
+	public static final String LEARN_MORE_RISK = "Risk";
+	public static final String LEARN_MORE_CAUSE = "Cause";
+	public static final String LEARN_MORE_GENERAL_RECOMMENDATIONS = "General Recommendations";
+	public static final String LEARN_MORE_LOADING = "Loading...";
+	public static final String ERROR_GETTING_LEARN_MORE = "An error occurred while getting learn more information: %s";
+	public static final String GETTING_LEARN_MORE_JOB = "Getting Learn More information";
 }
