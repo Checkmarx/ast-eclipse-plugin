@@ -14,6 +14,7 @@ import java.util.UUID;
 
 import javax.inject.Inject;
 
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IResource;
@@ -49,8 +50,6 @@ import org.eclipse.jgit.lib.Repository;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CLabel;
 import org.eclipse.swt.custom.ScrolledComposite;
-import org.eclipse.swt.events.ControlAdapter;
-import org.eclipse.swt.events.ControlEvent;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
@@ -60,7 +59,6 @@ import org.eclipse.swt.graphics.FontData;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.ImageData;
 import org.eclipse.swt.graphics.RGB;
-import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -90,6 +88,7 @@ import org.osgi.service.event.EventHandler;
 
 import com.checkmarx.ast.codebashing.CodeBashing;
 import com.checkmarx.ast.learnMore.LearnMore;
+import com.checkmarx.ast.learnMore.Sample;
 import com.checkmarx.ast.predicate.Predicate;
 import com.checkmarx.ast.project.Project;
 import com.checkmarx.ast.results.result.Node;
@@ -125,6 +124,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private static final String NO_PROJECTS_AVAILABLE = "No projects available.";
 	private static final String FORMATTED_SCAN_LABEL = "%s %s";
 	private static final String FORMATTED_SCAN_LABEL_LATEST = "%s %s (%s)";
+	
+	private static final int SCROLL_WIDTH = 30;
 	/**
 	 * The ID of the view as specified by the extension.
 	 */
@@ -156,8 +157,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	public static final Image BFL = Activator.getImageDescriptor("/icons/CxFlatLogo12x12.png").createImage();
 
 	private TreeViewer resultsTree;
-	private ComboViewer scanIdComboViewer, projectComboViewer, branchComboViewer, triageSeverityComboViewew,
-			triageStateComboViewer;
+	private ComboViewer scanIdComboViewer, projectComboViewer, branchComboViewer, triageSeverityComboViewew, triageStateComboViewer;
 	private ISelectionChangedListener triageSeverityComboViewerListener, triageStateComboViewerListener;
 	private Text commentText;
 	private DisplayModel rootModel;
@@ -167,7 +167,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell();
 
 	private boolean alreadyRunning = false;
-	private boolean learnMoreLoaded = false;
+	private static List<LearnMore> learnMoreData;
 
 	Font boldFont, titleFont;
 
@@ -1877,7 +1877,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		
 		drawSASTAttackVector(selectedItem, tabFolder, attackVectorTab);
 		
-		learnMoreLoaded = false;
+		learnMoreData = null;
 		
 		tabFolder.addSelectionListener(new SelectionListener() {
 			@Override
@@ -1885,21 +1885,26 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 			@Override
 			public void widgetSelected(SelectionEvent event) {
-				TabItem item = (TabItem) event.item;
-
-				if (item == null)
-					return;
-				if (item.getText().equalsIgnoreCase(PluginConstants.LEARN_MORE)) {
-					if (!learnMoreLoaded) {
+				String tab = event.item != null ? ((TabItem) event.item).getText() : StringUtils.EMPTY;
+				
+				switch (tab) {
+					case PluginConstants.LEARN_MORE: 
 						drawSASTLearnMore(selectedItem, tabFolder, learnMoreTab);
-						learnMoreLoaded = true;
-					}
+					case PluginConstants.REMEDIATION_EXAMPLES:
+						drawSASTRemediationExamples(selectedItem, tabFolder, remediationExamplesTab);
+				default: return;
 				}
 			}
-			
 		});
 	}
 	
+	/**
+	 * Draw SAST Attack Vector tab
+	 * 
+	 * @param selectedItem
+	 * @param folder
+	 * @param attackVectorTab
+	 */
 	private void drawSASTAttackVector(DisplayModel selectedItem, TabFolder folder, TabItem attackVectorTab) {
 		final ScrolledComposite attackVectorScrolledComposite = new ScrolledComposite(folder, SWT.V_SCROLL | SWT.H_SCROLL);
 		attackVectorScrolledComposite.setExpandVertical(true);
@@ -1920,60 +1925,165 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		attackVectorScrolledComposite.setMinSize(attackVectorComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT));
 	}
 	
-	
+	/**
+	 * Draw SAST Learn More tab
+	 * 
+	 * @param selectedItem
+	 * @param folder
+	 * @param learnMoreTab
+	 */
 	private void drawSASTLearnMore(DisplayModel selectedItem, TabFolder folder, TabItem learnMoreTab) {	
-		ScrolledComposite learnMoreScrolledComposite = new ScrolledComposite(folder, SWT.V_SCROLL);
+		final ScrolledComposite learnMoreScrolledComposite = new ScrolledComposite(folder, SWT.V_SCROLL);
 		learnMoreScrolledComposite.setExpandHorizontal(true);
 		learnMoreScrolledComposite.setExpandVertical(true);
-		learnMoreScrolledComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
-
-		Composite learnMoreComposite = new Composite(learnMoreScrolledComposite, SWT.NONE);
-		GridLayout gl = new GridLayout(1, false);
-		gl.marginRight = 20;
-		gl.marginLeft = 1;
-		learnMoreComposite.setLayout(gl);
-		learnMoreTab.setControl(learnMoreScrolledComposite);
+	    
+	    final Composite learnMoreComposite = new Composite(learnMoreScrolledComposite, SWT.NONE);
+	    learnMoreComposite.setLayout(new GridLayout());
+	    
+	    learnMoreScrolledComposite.setContent(learnMoreComposite);
+	    learnMoreScrolledComposite.setMinSize(learnMoreComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT));
 		
-		CLabel loadingLabel = new CLabel(learnMoreComposite, SWT.NONE);
+	    CLabel loadingLabel = new CLabel(learnMoreComposite, SWT.NONE);
 		loadingLabel.setText(PluginConstants.LEARN_MORE_LOADING);
-		learnMoreScrolledComposite.setContent(learnMoreComposite);
 		
-		learnMoreScrolledComposite.addControlListener(new ControlAdapter() {
-            @Override
-            public void controlResized(final ControlEvent e) {
-                final Rectangle r = learnMoreScrolledComposite.getClientArea();
-                learnMoreScrolledComposite.setMinSize(folder.computeSize(r.width, SWT.DEFAULT));
-            }
-        });
+		learnMoreTab.setControl(learnMoreScrolledComposite);
 		
 		Job job = new Job(PluginConstants.GETTING_LEARN_MORE_JOB) {
 			@Override
 			protected IStatus run(IProgressMonitor arg0) {
 				sync.asyncExec(() -> {
-					List<LearnMore> learnMoreData;
 					try {
-						learnMoreData = DataProvider.getInstance().learnMore(selectedItem.getResult().getData().getQueryId());
+						
+						List<LearnMore> learnMoreData = getLearnMoreData(selectedItem.getResult().getData().getQueryId());
+						
 						clearLearnMoreComposite(learnMoreComposite);
 						
 						for(LearnMore learnMore : learnMoreData) {
-							int riskSize = addLearnMoreSectionsToComposite(learnMoreComposite, PluginConstants.LEARN_MORE_RISK, learnMore.getRisk().trim());
-							int causeSize = addLearnMoreSectionsToComposite(learnMoreComposite, PluginConstants.LEARN_MORE_CAUSE, learnMore.getCause().trim());
-							int generalSize = addLearnMoreSectionsToComposite(learnMoreComposite, PluginConstants.LEARN_MORE_GENERAL_RECOMMENDATIONS, learnMore.getGeneralRecommendations().trim());
-							int compositeMinSize = riskSize + causeSize + generalSize + learnMoreComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT, true).y;
-							
-							learnMoreScrolledComposite.setContent(learnMoreComposite);
-							learnMoreScrolledComposite.setMinSize(learnMoreScrolledComposite.getSize().x, compositeMinSize);
+							 addLearnMoreSectionsToComposite(learnMoreComposite, PluginConstants.LEARN_MORE_RISK, learnMore.getRisk().trim());
+							 addLearnMoreSectionsToComposite(learnMoreComposite, PluginConstants.LEARN_MORE_CAUSE, learnMore.getCause().trim());
+							 addLearnMoreSectionsToComposite(learnMoreComposite, PluginConstants.LEARN_MORE_GENERAL_RECOMMENDATIONS, learnMore.getGeneralRecommendations().trim());
+							 
+				             learnMoreScrolledComposite.setMinSize(learnMoreComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT));
+				             learnMoreComposite.layout();
 						}
 					} catch (Exception e) {
 						CxLogger.error(String.format(PluginConstants.ERROR_GETTING_LEARN_MORE, e.getMessage()), e);
 						
 						clearLearnMoreComposite(learnMoreComposite);
 						
-						CLabel a = new CLabel(learnMoreComposite, SWT.NONE);
-						a.setText(e.getMessage());
+						Label learnMoreErrorLabel = new Label(learnMoreComposite, SWT.NONE);
+						learnMoreErrorLabel.setText(e.getMessage());
 						learnMoreScrolledComposite.setContent(learnMoreComposite);
+					}
+				});
+				
+				return Status.OK_STATUS;
+			}
+		};
+
+		job.schedule();
+	}
+	
+	/**
+	 * Get and cache learn more data
+	 * 
+	 * @param queryId
+	 * @return
+	 * @throws Exception
+	 */
+	private static List<LearnMore> getLearnMoreData(String queryId) throws Exception{
+		if(learnMoreData != null) {
+			return learnMoreData;
+		}
+		
+		learnMoreData = DataProvider.getInstance().learnMore(queryId);
+		
+		return learnMoreData;
+	}
+	
+	/**
+	 * Draw SAST Remediation Examples tab
+	 * 
+	 * @param selectedItem
+	 * @param folder
+	 * @param remediationExamplesTab
+	 */
+	private void drawSASTRemediationExamples(DisplayModel selectedItem, TabFolder folder, TabItem remediationExamplesTab) {	
+		final ScrolledComposite remediationExamplesScrolledComposite = new ScrolledComposite(folder, SWT.V_SCROLL | SWT.BORDER);
+		remediationExamplesScrolledComposite.setExpandHorizontal(true);
+		remediationExamplesScrolledComposite.setExpandVertical(true);
+	    
+	    final Composite remediationExamplesComposite = new Composite(remediationExamplesScrolledComposite, SWT.NONE);
+	    remediationExamplesComposite.setLayout(new GridLayout());
+	    
+	    remediationExamplesScrolledComposite.setContent(remediationExamplesComposite);
+	    remediationExamplesScrolledComposite.setMinSize(remediationExamplesComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT));
+		
+	    Label loadingLabel = new Label(remediationExamplesComposite, SWT.NONE);
+		loadingLabel.setText(PluginConstants.LEARN_MORE_LOADING);
+		
+		remediationExamplesTab.setControl(remediationExamplesScrolledComposite);
+		
+		Job job = new Job(PluginConstants.GETTING_LEARN_MORE_JOB) {
+			@Override
+			protected IStatus run(IProgressMonitor arg0) {
+				sync.asyncExec(() -> {
+					try {
 						
-						learnMoreLoaded = false;
+						List<LearnMore> learnMoreData = getLearnMoreData(selectedItem.getResult().getData().getQueryId());
+						
+						clearLearnMoreComposite(remediationExamplesComposite);
+						
+						for(LearnMore learnMore : learnMoreData) {
+							List<Sample> samples = learnMore.getSamples();
+							
+							if(samples.size() == 0 ) {
+								Label noRemediationLabel = new Label(remediationExamplesComposite, SWT.NONE);
+								noRemediationLabel.setText(PluginConstants.NO_REMEDIATION_EXAMPLES);
+								remediationExamplesScrolledComposite.setContent(remediationExamplesComposite);
+								
+								continue;
+							}
+							
+							for(Sample sample : samples) {
+								Label sampleTitle = new Label(remediationExamplesComposite, SWT.WRAP);
+								sampleTitle.setText(String.format(PluginConstants.REMEDIATION_EXAMPLE_TITLE_FORMAT, sample.getTitle(), sample.getProgLanguage())); 
+						        GridData gridData = new GridData( GridData.FILL_HORIZONTAL ) ;
+						        gridData.grabExcessHorizontalSpace = true;
+						        gridData.horizontalAlignment = SWT.FILL;
+						        gridData.widthHint = remediationExamplesScrolledComposite.getClientArea().width - SCROLL_WIDTH;
+						        gridData.horizontalSpan = 2;
+						        sampleTitle.setLayoutData(gridData);
+					            									
+								Composite sampleExampleComposite = new Composite(remediationExamplesComposite, SWT.NONE);
+								sampleExampleComposite.setBackground(remediationExamplesComposite.getBackground());
+								GridLayout layout = new GridLayout();
+								layout.marginHeight = 10;
+								layout.marginWidth = 10;
+								sampleExampleComposite.setLayout(layout);
+								sampleExampleComposite.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+								
+								Label sampleExample = new Label(sampleExampleComposite, SWT.WRAP);
+								sampleExample.setText(sample.getCode()); 
+						        GridData gridData1 = new GridData(GridData.FILL_HORIZONTAL) ;
+						        gridData1.grabExcessHorizontalSpace = true;
+						        gridData1.horizontalAlignment = SWT.FILL;
+						        gridData1.widthHint = remediationExamplesScrolledComposite.getClientArea().width - SCROLL_WIDTH;
+						        gridData1.horizontalSpan = 2;
+						        sampleExample.setLayoutData(gridData1) ;
+							
+								remediationExamplesScrolledComposite.setMinSize(remediationExamplesComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT));
+								remediationExamplesComposite.layout();
+							}
+						}
+					} catch (Exception e) {
+						CxLogger.error(String.format(PluginConstants.ERROR_GETTING_LEARN_MORE, e.getMessage()), e);
+						
+						clearLearnMoreComposite(remediationExamplesComposite);
+						
+						Label remediationErrorLabel = new Label(remediationExamplesComposite, SWT.NONE);
+						remediationErrorLabel.setText(e.getMessage());
+						remediationExamplesScrolledComposite.setContent(remediationExamplesComposite);
 					}
 				});
 				
@@ -1996,23 +2106,26 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	}
 	
 	/**
-	 * Add Learn More sections to composite
+	 * Add Learn More sections to composite (Risk, Cause, General Recommendations)
 	 * 
 	 * @param composite
-	 * @param label
+	 * @param title
 	 * @param description
 	 * @return
 	 */
-	private int addLearnMoreSectionsToComposite(Composite composite, String label, String description) {
-		CLabel cl = new CLabel(composite, SWT.NONE);
-		cl.setFont(boldFont);
-		cl.setText(label);
-		
-		Text t = new Text(composite, SWT.READ_ONLY | SWT.WRAP | SWT.MULTI);
-		t.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false, 1, 1));
-		t.setText(description);
-		
-		return cl.computeSize(SWT.DEFAULT, SWT.DEFAULT, true).y + t.computeSize(SWT.DEFAULT, SWT.DEFAULT, true).y;
+	private void addLearnMoreSectionsToComposite(Composite composite, String title, String description) {
+		Label titleLabel = new Label(composite, SWT.WRAP);
+		titleLabel.setText(title); 
+		titleLabel.setFont(boldFont);
+        
+        Label descriptionLabel = new Label(composite, SWT.WRAP);
+        descriptionLabel.setText(description); 
+        GridData descriptionLayout = new GridData(GridData.FILL_HORIZONTAL);
+        descriptionLayout.grabExcessHorizontalSpace = true;
+        descriptionLayout.horizontalAlignment = SWT.FILL;
+        descriptionLayout.widthHint = composite.getClientArea().width - SCROLL_WIDTH;
+        descriptionLayout.horizontalSpan = 2;
+        descriptionLabel.setLayoutData(descriptionLayout);
 	}
 
 	/*private void populateBFLMessage(Image image, String bflMessage) {

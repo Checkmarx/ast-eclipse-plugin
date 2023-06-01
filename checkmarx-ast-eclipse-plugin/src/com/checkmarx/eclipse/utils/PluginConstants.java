@@ -100,4 +100,6 @@ public class PluginConstants {
 	public static final String LEARN_MORE_LOADING = "Loading...";
 	public static final String ERROR_GETTING_LEARN_MORE = "An error occurred while getting learn more information: %s";
 	public static final String GETTING_LEARN_MORE_JOB = "Getting Learn More information";
+	public static final String NO_REMEDIATION_EXAMPLES = "No remediation examples available.";
+	public static final String REMEDIATION_EXAMPLE_TITLE_FORMAT = "%s using %s";
 }
