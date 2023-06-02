@@ -76,7 +76,7 @@ public class TestFilterState extends BaseUITest{
 		String queryNameFilter = getNodeLabel(FOURTH_NODE);
 		assertTrue(queryNameFilter.startsWith(ll.getText()));
 
-		// Close Checkmarx AST Scan view
+		// Close Checkmarx One Scan view
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
 	}
 	

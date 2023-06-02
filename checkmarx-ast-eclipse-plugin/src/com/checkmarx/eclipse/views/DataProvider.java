@@ -82,7 +82,7 @@ public class DataProvider {
 	}
 
 	/**
-	 * Get AST projects
+	 * Get One projects
 	 * 
 	 * @return
 	 * @throws Exception 
@@ -162,7 +162,7 @@ public class DataProvider {
 	}
 	
 	/**
-	 * Authenticate to AST with current credentials
+	 * Authenticate to One with current credentials
 	 * @throws Exception 
 	 */
 	private static CxWrapper authenticateWithAST() throws Exception {
@@ -620,7 +620,7 @@ public class DataProvider {
 	}
 	
 	/**
-	 * Get AST Triage details
+	 * Get One Triage details
 	 * 
 	 * @return
 	 * @throws Exception 

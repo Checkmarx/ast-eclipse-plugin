@@ -50,14 +50,14 @@ public class TestUI extends BaseUITest {
 		// Add Checkmarx plugin to the eclipse view
 		addCheckmarxPlugin(false);
 
-		// Assert that active view is the Checkmarx AST Scan
+		// Assert that active view is the Checkmarx One Scan
 		assertTrue("Active view must be the Checkmarx One Scan", _bot.activeView().getTitle().equals(VIEW_CHECKMARX_AST_SCAN));
 		
 		preventWidgetWasNullInCIEnvironment();
 		
 		assertTrue(ASSERT_CREDENTIALS_PANEL, _bot.button(PluginConstants.BTN_OPEN_SETTINGS) != null);
 		
-		// Close Checkmarx AST Scan view
+		// Close Checkmarx One Scan view
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
 	}
 
@@ -66,7 +66,7 @@ public class TestUI extends BaseUITest {
 		// Test Connection
 		testSuccessfulConnection(false);
 
-		// Add Checkmarx AST Plugin
+		// Add Checkmarx One Plugin
 		addCheckmarxPlugin(true);
 
 		// Clear Checkmarx credentials to expect missing Server Url
@@ -81,13 +81,13 @@ public class TestUI extends BaseUITest {
 		assertEquals("The tree must contain a single row", _bot.tree().rowCount(), 1);
 		String firstTreeCell = _bot.tree().cell(0, 0);
 
-		// The first row must have a message saying that AST is getting results or
+		// The first row must have a message saying that One is getting results or
 		// failing due the missing Server Url
 		firstTreeCell.equals(String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, Environment.SCAN_ID));
 
 		sleep();
 
-		// Close Checkmarx AST Scan view
+		// Close Checkmarx One Scan view
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
 	}
 
@@ -114,7 +114,7 @@ public class TestUI extends BaseUITest {
 		// Expand nodes until the first vulnerability
 		_bot.tree().expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).select();
 				
-		// Close Checkmarx AST Scan view
+		// Close Checkmarx One Scan view
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
 	}
 	
@@ -123,7 +123,7 @@ public class TestUI extends BaseUITest {
 		// Test Connection
 		testSuccessfulConnection(false);
 
-		// Add Checkmarx AST Plugin
+		// Add Checkmarx One Plugin
 		addCheckmarxPlugin(false);
 				
 		List<SWTBotToolbarButton> toolbarButtons = _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).getToolbarButtons();
@@ -139,7 +139,7 @@ public class TestUI extends BaseUITest {
 		// Assert all group by actions are present in the tool bar
 		assertTrue(ASSERT_GROUP_BY_ACTIONS_IN_TOOLBAR, toolBarGroupByActions.containsAll(groupByActions));	
 		
-		// Close Checkmarx AST Scan view
+		// Close Checkmarx One Scan view
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
 	}
 	
@@ -231,7 +231,7 @@ public class TestUI extends BaseUITest {
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(ToolBarActions.GROUP_BY_QUERY_NAME).click();
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(ToolBarActions.GROUP_BY_SEVERITY).click();
 		
-		// Close Checkmarx AST Scan view
+		// Close Checkmarx One Scan view
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
 	}
 	
@@ -240,7 +240,7 @@ public class TestUI extends BaseUITest {
 		// Add Checkmarx plugin to the eclipse view
 		addCheckmarxPlugin(false);
 
-		// Assert that active view is the Checkmarx AST Scan
+		// Assert that active view is the Checkmarx One Scan
 		assertTrue("Active view must be the Checkmarx One Scan", _bot.activeView().getTitle().equals(VIEW_CHECKMARX_AST_SCAN));
 		
 		assertTrue(ASSERT_CREDENTIALS_PANEL, _bot.button(PluginConstants.BTN_OPEN_SETTINGS) != null);

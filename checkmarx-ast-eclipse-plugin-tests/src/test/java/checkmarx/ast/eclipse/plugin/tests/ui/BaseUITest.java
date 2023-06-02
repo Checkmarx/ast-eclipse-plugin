@@ -100,7 +100,7 @@ public abstract class BaseUITest {
 		// Test Connection
 		testSuccessfulConnection(false);
 
-		// Add Checkmarx AST Plugin
+		// Add Checkmarx One Plugin
 		addCheckmarxPlugin(true);
 		
 		preventWidgetWasNullInCIEnvironment();
