@@ -101,7 +101,7 @@ public class TestTriage  extends BaseUITest {
 		// find the unique comment UUID
 		_bot.clabel(commentUUID);
 		
-		// Close Checkmarx AST Scan view
+		// Close Checkmarx One Scan view
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
 	}
 

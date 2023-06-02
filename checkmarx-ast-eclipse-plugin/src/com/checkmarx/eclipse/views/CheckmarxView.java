@@ -2480,7 +2480,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	}
 
 	/**
-	 * Get projects from AST and draw an error message in the tree if an error
+	 * Get projects from One and draw an error message in the tree if an error
 	 * occurred
 	 * 
 	 * @return

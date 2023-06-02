@@ -18,12 +18,12 @@
     <img src="https://raw.githubusercontent.com/Checkmarx/ci-cd-integrations/main/.images/logo.png" alt="Logo" width="80" height="80" />
   </a>
 
-  <h3 align="center">AST ECLIPSE PLUGIN</h3>
+  <h3 align="center">CHECKMARX ONE ECLIPSE PLUGIN</h3>
 
   <p align="center">
-    The CxAST Eclipse plugin enables you to import results from a CxAST scan directly into your IDE.
+    The Checkmarx One Eclipse plugin enables you to import results from a Checkmarx One scan directly into your IDE.
     <br />
-    <a href="https://checkmarx.atlassian.net/wiki/spaces/AST/pages/6107267142/CxAST+Eclipse+Plugin"><strong>Explore the docs »</strong></a>
+    <a href="https://checkmarx.com/resource/documents/en/34965-68728-checkmarx-one-eclipse-plugin.html"><strong>Explore the docs »</strong></a>
     <br />
     <a href="https://marketplace.eclipse.org/content/checkmarx-ast-plugin"><strong>Marketplace »</strong></a>
   </p>
@@ -56,10 +56,10 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-The CxAST Eclipse plugin enables you to import results from a CxAST scan directly into your IDE. You can view the vulnerabilities that were identified in your source code and navigate directly to the vulnerable code in the editor. 
+The Checkmarx One Eclipse plugin enables you to import results from a Checkmarx One scan directly into your IDE. You can view the vulnerabilities that were identified in your source code and navigate directly to the vulnerable code in the editor. 
 
 ### Main Features
-Import CxAST scan results into your IDE
+Import Checkmarx One scan results into your IDE
 
 * Show results from all scan types (CxSAST, CxSCA, and KICS) 
 * Group results by severity or query name
@@ -73,15 +73,15 @@ Import CxAST scan results into your IDE
 
 ### Prerequisites
 
-- You have a CxAST account and you have an [API Key](https://checkmarx.atlassian.net/wiki/spaces/AST/pages/5859574017/Generating+an+API+Key).
+- You have a Checkmarx One account and you have an [API Key](https://checkmarx.com/resource/documents/en/34965-68618-generating-an-api-key.html).
 
 ### Setting Up
 
-All the procedures to set the Eclipse plugin up can be found [here](https://checkmarx.atlassian.net/wiki/x/b4AFbAE).
+All the procedures to set the Eclipse plugin up can be found [here](https://checkmarx.com/resource/documents/en/34965-68728-checkmarx-one-eclipse-plugin.html).
 
 ## Usage
 
-To see how you can use our tool, please refer to the [Documentation](https://checkmarx.atlassian.net/wiki/x/RoAFbAE)
+To see how you can use our tool, please refer to the [Documentation](https://checkmarx.com/resource/documents/en/34965-68728-checkmarx-one-eclipse-plugin.html)
 
 ## Contribution
 
@@ -96,7 +96,7 @@ Distributed under the [Apache 2.0](LICENSE). See `LICENSE` for more information.
 
 ## Contact
 
-Checkmarx - AST Integrations Team
+Checkmarx - Integrations Team
 
 Project Link: [https://github.com/Checkmarx/ast-eclipse-plugin](https://github.com/Checkmarx/ast-eclipse-plugin)
 

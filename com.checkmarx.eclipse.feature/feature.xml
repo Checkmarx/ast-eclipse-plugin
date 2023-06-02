@@ -7,13 +7,13 @@
       plugin="com.checkmarx.eclipse.plugin">
 
    <description url="https://www.checkmarx.com/">
-      The CxAST Eclipse plugin enables you to import results from a
-CxAST scan directly into your IDE. You can view the vulnerabilities
+      The Checkmarx One Eclipse plugin enables you to import results from a
+Checkmarx One scan directly into your IDE. You can view the vulnerabilities
 that were identified in your source code and navigate directly
 to the vulnerable code in the editor.
 
 Main Features
-Import CxAST scan results into your IDE
+Import Checkmarx One scan results into your IDE
 Show results from all scan types (CxSAST, CxSCA, and KICS)
 Group results by severity or query name
 Navigate from results directly to the vulnerable code in the
