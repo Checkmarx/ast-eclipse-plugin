@@ -11,9 +11,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-
 import javax.inject.Inject;
-
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
@@ -50,6 +48,7 @@ import org.eclipse.jgit.lib.Repository;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CLabel;
 import org.eclipse.swt.custom.ScrolledComposite;
+import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
@@ -2046,14 +2045,15 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 							}
 							
 							for(Sample sample : samples) {
-								Label sampleTitle = new Label(remediationExamplesComposite, SWT.WRAP);
+								StyledText sampleTitle = new StyledText(remediationExamplesComposite, SWT.WRAP);
 								sampleTitle.setText(String.format(PluginConstants.REMEDIATION_EXAMPLE_TITLE_FORMAT, sample.getTitle(), sample.getProgLanguage())); 
-						        GridData gridData = new GridData( GridData.FILL_HORIZONTAL ) ;
-						        gridData.grabExcessHorizontalSpace = true;
-						        gridData.horizontalAlignment = SWT.FILL;
-						        gridData.widthHint = remediationExamplesScrolledComposite.getClientArea().width - SCROLL_WIDTH;
-						        gridData.horizontalSpan = 2;
-						        sampleTitle.setLayoutData(gridData);
+						        GridData titleLayoutData = new GridData( GridData.FILL_HORIZONTAL ) ;
+						        titleLayoutData.grabExcessHorizontalSpace = true;
+						        titleLayoutData.horizontalAlignment = SWT.FILL;
+						        titleLayoutData.widthHint = remediationExamplesScrolledComposite.getClientArea().width - SCROLL_WIDTH;
+						        titleLayoutData.horizontalSpan = 2;
+						        sampleTitle.setLayoutData(titleLayoutData);
+						        sampleTitle.setMargins(2, 5, 2, 5);
 					            									
 								Composite sampleExampleComposite = new Composite(remediationExamplesComposite, SWT.NONE);
 								sampleExampleComposite.setBackground(remediationExamplesComposite.getBackground());
@@ -2065,12 +2065,12 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 								
 								Label sampleExample = new Label(sampleExampleComposite, SWT.WRAP);
 								sampleExample.setText(sample.getCode()); 
-						        GridData gridData1 = new GridData(GridData.FILL_HORIZONTAL) ;
-						        gridData1.grabExcessHorizontalSpace = true;
-						        gridData1.horizontalAlignment = SWT.FILL;
-						        gridData1.widthHint = remediationExamplesScrolledComposite.getClientArea().width - SCROLL_WIDTH;
-						        gridData1.horizontalSpan = 2;
-						        sampleExample.setLayoutData(gridData1) ;
+						        GridData exampleLayoutData = new GridData(GridData.FILL_HORIZONTAL) ;
+						        exampleLayoutData.grabExcessHorizontalSpace = true;
+						        exampleLayoutData.horizontalAlignment = SWT.FILL;
+						        exampleLayoutData.widthHint = remediationExamplesScrolledComposite.getClientArea().width - SCROLL_WIDTH;
+						        exampleLayoutData.horizontalSpan = 2;
+						        sampleExample.setLayoutData(exampleLayoutData);
 							
 								remediationExamplesScrolledComposite.setMinSize(remediationExamplesComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT));
 								remediationExamplesComposite.layout();
@@ -2117,8 +2117,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		Label titleLabel = new Label(composite, SWT.WRAP);
 		titleLabel.setText(title); 
 		titleLabel.setFont(boldFont);
-        
-        Label descriptionLabel = new Label(composite, SWT.WRAP);
+
+		StyledText descriptionLabel = new StyledText(composite, SWT.WRAP);
         descriptionLabel.setText(description); 
         GridData descriptionLayout = new GridData(GridData.FILL_HORIZONTAL);
         descriptionLayout.grabExcessHorizontalSpace = true;
@@ -2126,6 +2126,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
         descriptionLayout.widthHint = composite.getClientArea().width - SCROLL_WIDTH;
         descriptionLayout.horizontalSpan = 2;
         descriptionLabel.setLayoutData(descriptionLayout);
+        descriptionLabel.setBottomMargin(20);
 	}
 
 	/*private void populateBFLMessage(Image image, String bflMessage) {
