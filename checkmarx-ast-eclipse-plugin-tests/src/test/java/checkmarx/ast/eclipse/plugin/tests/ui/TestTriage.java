@@ -22,7 +22,7 @@ import org.junit.runner.RunWith;
 import com.checkmarx.eclipse.enums.Severity;
 import com.checkmarx.eclipse.utils.PluginConstants;
 
-//@RunWith(SWTBotJunit4ClassRunner.class)
+@RunWith(SWTBotJunit4ClassRunner.class)
 public class TestTriage  extends BaseUITest {
 
 	private static final ICondition triageButtonEnabled = new ICondition() {
@@ -44,7 +44,7 @@ public class TestTriage  extends BaseUITest {
 		}
 	};
 	
-	//@Test
+	@Test
 	public void testTriage() throws TimeoutException {
 		setUpCheckmarxPlugin(true);
 		

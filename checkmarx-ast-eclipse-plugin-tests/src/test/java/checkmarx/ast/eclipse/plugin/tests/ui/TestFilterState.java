@@ -29,7 +29,7 @@ public class TestFilterState extends BaseUITest{
 	List<String> groupByActions = Arrays.asList(ToolBarActions.GROUP_BY_QUERY_NAME,ToolBarActions.GROUP_BY_SEVERITY,ToolBarActions.GROUP_BY_STATE_NAME);
 	
 	
-	//@Test
+	@Test
 	public void testGroupByActionsInToolBar() throws TimeoutException {
 		
 		int SECOND_NODE = 2;
@@ -110,7 +110,7 @@ public class TestFilterState extends BaseUITest{
 	}
 
 
-	//@Test
+	@Test
 	public void testFilterStateActionsInToolBar() throws TimeoutException, ParseException{
 		sleep(1000);
 		setUpCheckmarxPlugin(true);
@@ -122,8 +122,6 @@ public class TestFilterState extends BaseUITest{
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(ToolBarActions.GROUP_BY_STATE_NAME).click();
 		
 		// get all filter nodes
-		
-		
 		List<String> filterStateButtons = Arrays.asList("Not Exploitable","Confirmed","Proposed Not Exploitable","Urgent","Ignored","Not Ignored","To Verify");
 		List<String> enabledFilters = _bot.tree().getTreeItem(_bot.tree().cell(0, 0)).expand().getNode(0).expand().getNodes().stream().map(node -> node.split("\\(")[0].trim()).collect(Collectors.toList());
 		String firstGroup = enabledFilters.get(0);
