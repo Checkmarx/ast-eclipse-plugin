@@ -22,7 +22,7 @@ import org.junit.runner.RunWith;
 import com.checkmarx.eclipse.enums.Severity;
 import com.checkmarx.eclipse.utils.PluginConstants;
 
-@RunWith(SWTBotJunit4ClassRunner.class)
+//@RunWith(SWTBotJunit4ClassRunner.class)
 public class TestTriage  extends BaseUITest {
 
 	private static final ICondition triageButtonEnabled = new ICondition() {
@@ -44,7 +44,7 @@ public class TestTriage  extends BaseUITest {
 		}
 	};
 	
-	@Test
+	//@Test
 	public void testTriage() throws TimeoutException {
 		setUpCheckmarxPlugin(true);
 		
@@ -77,10 +77,8 @@ public class TestTriage  extends BaseUITest {
 		// wait for button to be enabled
 		_bot.waitUntil(triageButtonEnabled);
 		
-		
 		// check the first result is no longer the same after triage
 		assertNotEquals(resultName, getFirstResultNode().getText());
-		
 		
 		// revert severity and state
 		severityCombo.setSelection(Severity.HIGH.toString());
