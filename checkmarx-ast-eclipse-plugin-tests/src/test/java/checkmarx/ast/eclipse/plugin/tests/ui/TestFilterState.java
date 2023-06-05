@@ -23,7 +23,7 @@ import com.checkmarx.eclipse.enums.State;
 import com.checkmarx.eclipse.views.actions.ToolBarActions;
 
 
-//@RunWith(SWTBotJunit4ClassRunner.class)
+@RunWith(SWTBotJunit4ClassRunner.class)
 public class TestFilterState extends BaseUITest{
 	
 	List<String> groupByActions = Arrays.asList(ToolBarActions.GROUP_BY_QUERY_NAME,ToolBarActions.GROUP_BY_SEVERITY,ToolBarActions.GROUP_BY_STATE_NAME);
