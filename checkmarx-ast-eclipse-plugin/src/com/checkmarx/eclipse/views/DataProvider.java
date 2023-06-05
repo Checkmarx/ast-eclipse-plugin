@@ -17,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.checkmarx.ast.codebashing.CodeBashing;
+import com.checkmarx.ast.learnMore.LearnMore;
 import com.checkmarx.ast.predicate.Predicate;
 import com.checkmarx.ast.project.Project;
 import com.checkmarx.ast.results.Results;
@@ -671,5 +672,9 @@ public class DataProvider {
 			CxLogger.error(String.format(PluginConstants.ERROR_UPDATING_TRIAGE, e.getMessage()), e);
 			return false;
 		}
+	}
+	
+	public List<LearnMore> learnMore(String queryId) throws Exception {	
+		return authenticateWithAST().learnMore(queryId);
 	}
 }

@@ -122,8 +122,6 @@ public class TestFilterState extends BaseUITest{
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(ToolBarActions.GROUP_BY_STATE_NAME).click();
 		
 		// get all filter nodes
-		
-		
 		List<String> filterStateButtons = Arrays.asList("Not Exploitable","Confirmed","Proposed Not Exploitable","Urgent","Ignored","Not Ignored","To Verify");
 		List<String> enabledFilters = _bot.tree().getTreeItem(_bot.tree().cell(0, 0)).expand().getNode(0).expand().getNodes().stream().map(node -> node.split("\\(")[0].trim()).collect(Collectors.toList());
 		String firstGroup = enabledFilters.get(0);
