@@ -88,5 +88,18 @@ public class PluginConstants {
 	public static final String CODEBASHING_NO_LESSON = "Currently, this vulnerability has no lesson.";
 	public static final String CODEBASHING_NO_LICENSE = "You don't have a license for Codebashing. Please Contact your Admin for the full version implementation. Meanwhile, you can use <a href=\"https://free.codebashing.com\">Codebashing</a>.";
 
-
+	/********************************** Attack Vector ************************************/
+	public static final String ATTACK_VECTOR = "Attack Vector";
+	public static final String LEARN_MORE = "Learn More";
+	public static final String REMEDIATION_EXAMPLES = "Remediation Examples";
+	public static final String LOCATION = "Location";
+	public static final String PACKAGE_DATA = "Package Data";
+	public static final String LEARN_MORE_RISK = "Risk";
+	public static final String LEARN_MORE_CAUSE = "Cause";
+	public static final String LEARN_MORE_GENERAL_RECOMMENDATIONS = "General Recommendations";
+	public static final String LEARN_MORE_LOADING = "Loading...";
+	public static final String ERROR_GETTING_LEARN_MORE = "An error occurred while getting learn more information: %s";
+	public static final String GETTING_LEARN_MORE_JOB = "Getting Learn More information";
+	public static final String NO_REMEDIATION_EXAMPLES = "No remediation examples available.";
+	public static final String REMEDIATION_EXAMPLE_TITLE_FORMAT = "%s using %s";
 }

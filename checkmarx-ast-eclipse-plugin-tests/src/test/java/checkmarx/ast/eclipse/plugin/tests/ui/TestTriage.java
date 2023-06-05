@@ -77,10 +77,8 @@ public class TestTriage  extends BaseUITest {
 		// wait for button to be enabled
 		_bot.waitUntil(triageButtonEnabled);
 		
-		
 		// check the first result is no longer the same after triage
 		assertNotEquals(resultName, getFirstResultNode().getText());
-		
 		
 		// revert severity and state
 		severityCombo.setSelection(Severity.HIGH.toString());

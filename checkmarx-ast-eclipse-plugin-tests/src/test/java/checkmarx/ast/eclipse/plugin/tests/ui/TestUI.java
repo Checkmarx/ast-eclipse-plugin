@@ -10,10 +10,14 @@ import java.util.UUID;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
+import org.eclipse.jface.bindings.keys.KeyStroke;
+import org.eclipse.jface.bindings.keys.ParseException;
 import org.eclipse.swtbot.swt.finder.exceptions.WidgetNotFoundException;
 import org.eclipse.swtbot.swt.finder.junit.SWTBotJunit4ClassRunner;
 import org.eclipse.swtbot.swt.finder.keyboard.Keystrokes;
+import org.eclipse.swtbot.swt.finder.widgets.SWTBotMenu;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotToolbarButton;
+import org.eclipse.swtbot.swt.finder.widgets.SWTBotToolbarDropDownButton;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -144,9 +148,24 @@ public class TestUI extends BaseUITest {
 	}
 	
 	@Test
-	public void testFilteringAndGroupingResults() throws TimeoutException {
+	public void testFilteringAndGroupingResults() throws TimeoutException, ParseException {
 		// Set credentials, test connection and add checkmarx plugin
 		setUpCheckmarxPlugin(true);
+		
+		List<String> filterStateButtons = Arrays.asList("Not Exploitable","Confirmed","Ignored","Not Ignored","To Verify");
+		SWTBotToolbarDropDownButton stateFilter = _bot.toolbarDropDownButtonWithTooltip("State");
+
+		for(String filter: filterStateButtons) {
+			try {
+				final SWTBotMenu menuItem = stateFilter.menuItem(filter);
+				
+				if(!menuItem.isChecked()) {
+					menuItem.click();
+				}
+			} catch(WidgetNotFoundException e) {}
+		}
+		
+		stateFilter.pressShortcut(KeyStroke.getInstance("ESC"));
 		
 		ArrayList<String> currentActiveFilters = new ArrayList<>(Arrays.asList(Severity.HIGH.name(), Severity.MEDIUM.name()));	
 				
