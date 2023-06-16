@@ -13,7 +13,6 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
-import org.eclipse.e4.ui.di.UISynchronize;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.viewers.ComboViewer;
 import org.eclipse.jface.viewers.TreeViewer;
@@ -49,9 +48,6 @@ public class ActionStartScan extends CxBaseAction {
 	private ScheduledExecutorService pollScanExecutor;
 	private boolean creatingScanCanceled = false;
 	
-	@Inject
-	UISynchronize sync;
-
 	public ActionStartScan(DisplayModel rootModel, TreeViewer resultsTree, EventBus pluginEventBus, ComboViewer projectsCombo, ComboViewer branchesCombo, ComboViewer scansCombo, Action cancelScanAction) {
 		super(rootModel, resultsTree);
 		
