@@ -102,4 +102,24 @@ public class PluginConstants {
 	public static final String GETTING_LEARN_MORE_JOB = "Getting Learn More information";
 	public static final String NO_REMEDIATION_EXAMPLES = "No remediation examples available.";
 	public static final String REMEDIATION_EXAMPLE_TITLE_FORMAT = "%s using %s";
+	
+	/********************************** Run scan ************************************/
+	public static final String CX_CREATING_SCAN = "Checkmarx: Creating scan...";
+	public static final String CX_CANCELING_SCAN = "Checkmarx: Canceling scan...";
+	public static final String CX_SCAN_TITLE = "Checkmarx scan";
+	public static final String CX_SCAN_CANCELED_TITLE = "Scan canceled";
+	public static final String CX_SCAN_CANCELED_DESCRIPTION = "Checkmarx scan canceled successfully.";
+	public static final String CX_START_SCAN = "Start a scan";
+	public static final String CX_CANCEL_RUNNING_SCAN = "Cancel running scan";
+	public static final String CX_RUNNING_SCAN = "Checkmarx: Scan running with id %s";
+	public static final String NO_FILES_IN_WORKSPACE = "No files in workspace to scan.";
+	public static final String CX_SCAN_COMPLETED_STATUS = "completed";
+	public static final String CX_SCAN_RUNNING_STATUS = "running";
+	public static final String CX_SCAN_FINISHED_TITLE = "Scan finished";
+	public static final String CX_SCAN_FINISHED_DESCRIPTION = "Checkmarx scan completed successfully.";
+	public static final String CX_SCAN_FINISHED_WITH_STATUS = "Checkmarx scan finished with status %s";
+	public static final String CX_LOAD_SCAN_RESULTS = "Load scan results";
+	public static final String CX_ERROR_CREATING_SCAN = "An error occurred while creating a scan: %s";
+	public static final String CX_ERROR_CANCELING_SCAN = "An error occurred while canceling a scan: %s";
+	public static final String CX_ERROR_GETTING_SCAN_INFO = "An error occurred while getting scan information: %s";
 }

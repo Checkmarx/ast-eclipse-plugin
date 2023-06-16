@@ -5,6 +5,7 @@ Bundle-SymbolicName: com.checkmarx.eclipse.plugin;singleton:=true
 Bundle-Version: 1.0.0.qualifier
 Bundle-Vendor: Checkmarx
 Require-Bundle: org.eclipse.ui,
+ org.apache.commons.lang,
  org.eclipse.core.runtime,
  org.eclipse.jdt.core,
  org.eclipse.ui.ide,
