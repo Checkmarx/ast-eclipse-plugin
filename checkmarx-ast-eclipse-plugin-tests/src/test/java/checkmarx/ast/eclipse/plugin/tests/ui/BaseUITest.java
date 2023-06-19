@@ -179,6 +179,10 @@ public abstract class BaseUITest {
 		_bot.shell(ITEM_SHOW_VIEW).activate();
 		_bot.tree().expandNode(ITEM_CHECKMARX).select(ITEM_CHECKMARX_AST_SCAN);
 		_bot.button(BTN_OPEN).click();
+		
+		if(waitUntilPluginEnable) {
+			waitUntilBranchComboIsEnabled();	
+		}
 	}
 	
 	/**
@@ -215,8 +219,9 @@ public abstract class BaseUITest {
 		preventWidgetWasNullInCIEnvironment();
 		
 		boolean emptyScanId = _bot.comboBox(2).getText().isEmpty() || _bot.comboBox(2).getText().equals(PluginConstants.COMBOBOX_SCAND_ID_PLACEHOLDER);
+		boolean projectNotSelected =_bot.comboBox(0).getText().isEmpty() || _bot.comboBox(0).getText().equals("Select a project");
 		
-		if(emptyScanId) {
+		if(emptyScanId || projectNotSelected) {
 			return;
 		}
 		
@@ -234,6 +239,13 @@ public abstract class BaseUITest {
 		}
 
 		if (retryIdx == 10) {
+			emptyScanId = _bot.comboBox(2).getText().isEmpty() || _bot.comboBox(2).getText().equals(PluginConstants.COMBOBOX_SCAND_ID_PLACEHOLDER);
+			projectNotSelected =_bot.comboBox(0).getText().isEmpty() || _bot.comboBox(0).getText().equals("Select a project");
+			
+			if(emptyScanId || projectNotSelected) {
+				return;
+			}
+			
 			throw new TimeoutException("Timeout after 5000ms. Branches' combobox must be enabled");
 		}
 	}
