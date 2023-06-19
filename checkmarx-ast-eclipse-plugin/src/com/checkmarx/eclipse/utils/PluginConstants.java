@@ -19,6 +19,9 @@ public class PluginConstants {
 	public static final String LOADING_BFL = "Loading BFL";
 	public static final String BFL_FOUND = "Indicates the Best Fix Location. Speed up your remediation by fixing multiple vulnerabilities at once";
 	public static final String BFL_NOT_FOUND = "Best fix Location not available for given results";
+	public static final String TOOLBAR_ACTION_PREFERENCES = "Preferences";
+	public static final String TOOLBAR_ACTION_CLEAR_RESULTS = "Clear results section";
+
 	
 	/******************************** LOG VIEW: ERRORS ********************************/
 	public static final String ERROR_AUTHENTICATING_AST = "An error occurred while trying to authenticate to Checkmarx One: %s";

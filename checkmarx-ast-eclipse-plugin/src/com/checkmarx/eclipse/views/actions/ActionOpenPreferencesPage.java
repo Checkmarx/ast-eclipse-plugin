@@ -7,12 +7,12 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.dialogs.PreferencesUtil;
 
 import com.checkmarx.eclipse.enums.ActionName;
+import com.checkmarx.eclipse.utils.PluginConstants;
 import com.checkmarx.eclipse.views.DisplayModel;
 
 public class ActionOpenPreferencesPage extends CxBaseAction {
 	
 	private static final String PREFERENCE_PAGE_ID = "com.checkmarx.eclipse.properties.preferencespage";
-	private static final String LABEL_PREFERENCES = "Preferences";
 
 	private Shell shell;
 	
@@ -38,7 +38,7 @@ public class ActionOpenPreferencesPage extends CxBaseAction {
 		};
 
 		openPreferencesPageAction.setId(ActionName.PREFERENCES.name());
-		openPreferencesPageAction.setText(LABEL_PREFERENCES);
+		openPreferencesPageAction.setText(PluginConstants.TOOLBAR_ACTION_PREFERENCES);
 		
 		return openPreferencesPageAction;
 	}

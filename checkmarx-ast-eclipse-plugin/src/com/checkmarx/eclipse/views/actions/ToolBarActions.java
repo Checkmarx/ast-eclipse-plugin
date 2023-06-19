@@ -16,6 +16,7 @@ import org.eclipse.ui.PlatformUI;
 import com.checkmarx.eclipse.enums.ActionName;
 import com.checkmarx.eclipse.enums.PluginListenerType;
 import com.checkmarx.eclipse.enums.Severity;
+import com.checkmarx.eclipse.utils.PluginConstants;
 import com.checkmarx.eclipse.views.DataProvider;
 import com.checkmarx.eclipse.views.DisplayModel;
 import com.checkmarx.eclipse.views.PluginListenerDefinition;
@@ -143,8 +144,8 @@ public class ToolBarActions {
 		};
 
 		resetPlugin.setId(ActionName.CLEAN_AND_REFRESH.name());
-		resetPlugin.setToolTipText("Clear results section");
-		resetPlugin.setText("Clear results section");
+		resetPlugin.setToolTipText(PluginConstants.TOOLBAR_ACTION_CLEAR_RESULTS);
+		resetPlugin.setText(PluginConstants.TOOLBAR_ACTION_CLEAR_RESULTS);
 		
 		Action openPreferencesPageAction = new ActionOpenPreferencesPage(rootModel, resultsTree, PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell()).createAction();
 

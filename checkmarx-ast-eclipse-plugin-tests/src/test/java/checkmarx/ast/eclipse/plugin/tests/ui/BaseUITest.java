@@ -16,7 +16,6 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
 import com.checkmarx.eclipse.utils.PluginConstants;
-import com.checkmarx.eclipse.views.actions.ActionClearSelection;
 
 import checkmarx.ast.eclipse.plugin.tests.common.Environment;
 
@@ -117,13 +116,7 @@ public abstract class BaseUITest {
 		}
 		
 		// clear the view before getting the scan id
-		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN)
-		.getToolbarButtons()
-		.stream()
-		.filter(btn -> btn.getToolTipText().equals(ActionClearSelection.ACTION_CLEAR_SELECTION_TOOLTIP))
-		.findFirst()
-		.get()
-		.click();
+		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(PluginConstants.TOOLBAR_ACTION_CLEAR_RESULTS).click();
 		
 		sleep(1000);
 		
@@ -186,11 +179,6 @@ public abstract class BaseUITest {
 		_bot.shell(ITEM_SHOW_VIEW).activate();
 		_bot.tree().expandNode(ITEM_CHECKMARX).select(ITEM_CHECKMARX_AST_SCAN);
 		_bot.button(BTN_OPEN).click();
-		
-		if(waitUntilPluginEnable) {
-			waitUntilBranchComboIsEnabled();	
-		}
-		
 	}
 	
 	/**
