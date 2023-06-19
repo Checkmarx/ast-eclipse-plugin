@@ -1470,18 +1470,18 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				} catch (CxException e) {
 					CxLogger.info(String.format(PluginConstants.CODEBASHING, e.getMessage()));
 					
-					SelectionAdapter onClickCodebashingLink = new SelectionAdapter() {
-						@Override
-						public void widgetSelected(SelectionEvent event) {
-							try {
-								PlatformUI.getWorkbench().getBrowserSupport().getExternalBrowser().openURL(new URL(event.text));
-							} catch (PartInitException | MalformedURLException e) {
-								CxLogger.error(String.format(PluginConstants.ERROR_GETTING_CODEBASHING_DETAILS, e.getMessage()), e);
-							}
-						}
-					};
-
 					if (e.getExitCode() == PluginConstants.EXIT_CODE_LICENSE_NOT_FOUND) {
+						SelectionAdapter onClickCodebashingLink = new SelectionAdapter() {
+							@Override
+							public void widgetSelected(SelectionEvent event) {
+								try {
+									PlatformUI.getWorkbench().getBrowserSupport().getExternalBrowser().openURL(new URL(event.text));
+								} catch (PartInitException | MalformedURLException e) {
+									CxLogger.error(String.format(PluginConstants.ERROR_GETTING_CODEBASHING_DETAILS, e.getMessage()), e);
+								}
+							}
+						};
+						
 						sync.asyncExec(() -> {
 							new NotificationPopUpUI(PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell().getDisplay(), PluginConstants.CODEBASHING,
 									PluginConstants.CODEBASHING_NO_LICENSE, onClickCodebashingLink, null, null).open();
@@ -1489,7 +1489,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					} else if (e.getExitCode() == PluginConstants.EXIT_CODE_LESSON_NOT_FOUND) {
 						sync.asyncExec(() -> {
 							new NotificationPopUpUI(PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell().getDisplay(), PluginConstants.CODEBASHING,
-									PluginConstants.CODEBASHING_NO_LESSON, onClickCodebashingLink, null, null).open();
+									PluginConstants.CODEBASHING_NO_LESSON, null, null, null).open();
 						});
 					}
 
