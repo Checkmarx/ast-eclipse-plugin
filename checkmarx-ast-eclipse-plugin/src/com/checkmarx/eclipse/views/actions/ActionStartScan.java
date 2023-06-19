@@ -86,7 +86,7 @@ public class ActionStartScan extends CxBaseAction {
 								pollScan(scan.getId());
 								cancelScanAction.setEnabled(true);
 							} else {
-								Display.getDefault().execute(new Runnable() {
+								Display.getDefault().syncExec(new Runnable() {
 									@Override
 									public void run() {
 										new NotificationPopUpUI(Display.getDefault(), PluginConstants.CX_SCAN_TITLE, PluginConstants.NO_FILES_IN_WORKSPACE, null, null, null).open();
@@ -161,7 +161,7 @@ public class ActionStartScan extends CxBaseAction {
 		try {
 			DataProvider.getInstance().cancelScan(scanId);
 			GlobalSettings.storeInPreferences(GlobalSettings.PARAM_RUNNING_SCAN_ID, PluginConstants.EMPTY_STRING);
-			Display.getDefault().execute(new Runnable() {
+			Display.getDefault().syncExec(new Runnable() {
 				@Override
 				public void run() {
 					AbstractNotificationPopup notification = new NotificationPopUpUI(Display.getCurrent(), PluginConstants.CX_SCAN_CANCELED_TITLE, PluginConstants.CX_SCAN_CANCELED_DESCRIPTION, null, null, null);
@@ -192,7 +192,7 @@ public class ActionStartScan extends CxBaseAction {
 					startScanAction.setEnabled(true);
 					
 					if(scan.getStatus().toLowerCase(Locale.ROOT).equals(PluginConstants.CX_SCAN_COMPLETED_STATUS)) {
-						Display.getDefault().execute(new Runnable() {
+						Display.getDefault().syncExec(new Runnable() {
 							@Override
 							public void run() {
 								AbstractNotificationPopup notification = new NotificationPopUpUI(

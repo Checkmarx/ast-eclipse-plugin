@@ -43,7 +43,7 @@ public class ActionCancelScan extends CxBaseAction {
 							do {
 			                } while (!StringUtils.isEmptyOrNull(GlobalSettings.getFromPreferences(GlobalSettings.PARAM_RUNNING_SCAN_ID, PluginConstants.EMPTY_STRING)));
 							
-							Display.getDefault().execute(new Runnable() {
+							Display.getDefault().syncExec(new Runnable() {
 								@Override
 								public void run() {
 									AbstractNotificationPopup notification = new NotificationPopUpUI(Display.getCurrent(), PluginConstants.CX_SCAN_CANCELED_TITLE, PluginConstants.CX_SCAN_CANCELED_DESCRIPTION, null, null, null);
