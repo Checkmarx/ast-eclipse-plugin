@@ -217,7 +217,7 @@ public class PluginUtils {
 	 * @param fileName
 	 * @return
 	 */
-	private static List<IFile> findFileInWorkspace(final String fileName) {
+	public static List<IFile> findFileInWorkspace(final String fileName) {
 		final List<IFile> foundFiles = new ArrayList<IFile>();
 		try {
 			// visiting only resources proxy because we obtain the resource only when matching name, thus the workspace traversal is much faster

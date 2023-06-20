@@ -1,25 +1,36 @@
 package com.checkmarx.eclipse.views.actions;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.Collections;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.ArrayList;
+import java.util.List;
 
+import org.apache.commons.lang3.StringUtils;
+import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jface.action.Action;
+import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.viewers.ComboViewer;
 import org.eclipse.jface.viewers.TreeViewer;
-import org.eclipse.jgit.util.StringUtils;
+import org.eclipse.jgit.api.Git;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.mylyn.commons.ui.dialogs.AbstractNotificationPopup;
 
+import com.checkmarx.ast.results.Results;
+import com.checkmarx.ast.results.result.Result;
 import com.checkmarx.ast.scan.Scan;
 import com.checkmarx.eclipse.Activator;
 import com.checkmarx.eclipse.enums.ActionName;
@@ -32,6 +43,7 @@ import com.google.common.eventbus.EventBus;
 import com.checkmarx.eclipse.utils.CxLogger;
 import com.checkmarx.eclipse.utils.NotificationPopUpUI;
 import com.checkmarx.eclipse.utils.PluginConstants;
+import com.checkmarx.eclipse.utils.PluginUtils;
 
 public class ActionStartScan extends CxBaseAction {
 	
@@ -63,52 +75,29 @@ public class ActionStartScan extends CxBaseAction {
 		startScanAction = new Action() {
 			@Override
 			public void run(){
-				this.setEnabled(false);
-			    		
-				String project = projectsCombo.getCombo().getText();
-				String branch = branchesCombo.getCombo().getText();
+				setEnabled(false);
 				
-				Job job = new Job(PluginConstants.CX_CREATING_SCAN) {
-					@Override
-					protected IStatus run(IProgressMonitor monitor) {
-						try {
-							if(ResourcesPlugin.getWorkspace().getRoot().getProjects().length > 0) {
-								String projectInWorkspacePath = ResourcesPlugin.getWorkspace().getRoot().getProjects()[0].getLocation().toString();
-								Scan scan = DataProvider.getInstance().createScan(projectInWorkspacePath, project, branch);
-								
-								if(creatingScanCanceled) {
-									creatingScanCanceled = false;
-									cancelScan(scan.getId());
-									
-									return Status.CANCEL_STATUS;
-								}
-								
-								pollScan(scan.getId());
-								cancelScanAction.setEnabled(true);
-							} else {
-								Display.getDefault().syncExec(new Runnable() {
-									@Override
-									public void run() {
-										new NotificationPopUpUI(Display.getDefault(), PluginConstants.CX_SCAN_TITLE, PluginConstants.NO_FILES_IN_WORKSPACE, null, null, null).open();
-										setEnabled(true);
-									}
-								});
-							}
-						} catch (Exception e) {
-							CxLogger.error(String.format(PluginConstants.CX_ERROR_CREATING_SCAN, e.getMessage()), e);
-						}
-						
-						return Status.OK_STATUS;
-					}
-					
-					@Override
-					protected void canceling() {
-						super.canceling();
-						creatingScanCanceled = true;
-						this.setName(PluginConstants.CX_CANCELING_SCAN);
-					}
-				};
-				job.schedule();
+				String branch = branchesCombo.getCombo().getText();
+				String currentGitBranch = getCurrentGitBranch();
+				boolean matchProject = cxProjectMatchesWorkspaceProject();
+				boolean matchBranch = StringUtils.isEmpty(currentGitBranch) || currentGitBranch.equals(branch);
+				
+				if(!matchProject && !matchBranch) {
+					displayMismatchNotification(PluginConstants.CX_PROJECT_AND_BRANCH_MISMATCH, PluginConstants.CX_PROJECT_AND_BRANCH_MISMATCH_QUESTION);
+					return;
+				}
+				
+				if(!matchBranch) {
+					displayMismatchNotification(PluginConstants.CX_BRANCH_MISMATCH, PluginConstants.CX_BRANCH_MISMATCH_QUESTION);
+					return;
+				}
+				
+				if(!matchProject) {
+					displayMismatchNotification(PluginConstants.CX_PROJECT_MISMATCH, PluginConstants.CX_PROJECT_MISMATCH_QUESTION);
+					return;
+				}
+				
+				createScan();
 			}
 		};
 		
@@ -118,13 +107,137 @@ public class ActionStartScan extends CxBaseAction {
 		startScanAction.setEnabled(false);
 		
 		String runningScanId = GlobalSettings.getFromPreferences(GlobalSettings.PARAM_RUNNING_SCAN_ID, PluginConstants.EMPTY_STRING);
-		boolean  isScanRunning = !StringUtils.isEmptyOrNull(runningScanId);
+		boolean  isScanRunning = StringUtils.isNotEmpty(runningScanId);
 		
 		if(isScanRunning) {
 			pollScan(runningScanId);
 		}
 		
 		return startScanAction;
+	}
+	
+	/**
+	 * Display notification about project/branch mismatch
+	 * 
+	 * @param title
+	 * @param question
+	 */
+	private void displayMismatchNotification(String title, String question) {
+		boolean loadResults = MessageDialog.openQuestion(Display.getDefault().getActiveShell(), title, question);
+		
+		if(loadResults) {
+			createScan();
+		}
+		
+		startScanAction.setEnabled(!loadResults);
+	}
+	
+	/**
+	 * Create a new scan
+	 */
+	private void createScan() {
+		String project = projectsCombo.getCombo().getText();
+		String branch = branchesCombo.getCombo().getText();
+
+		Job job = new Job(PluginConstants.CX_CREATING_SCAN) {
+			@Override
+			protected IStatus run(IProgressMonitor monitor) {
+				try {
+					if (ResourcesPlugin.getWorkspace().getRoot().getProjects().length > 0) {
+						String projectInWorkspacePath = ResourcesPlugin.getWorkspace().getRoot().getProjects()[0].getLocation().toString();
+						Scan scan = DataProvider.getInstance().createScan(projectInWorkspacePath, project, branch);
+
+						if (creatingScanCanceled) {
+							creatingScanCanceled = false;
+							cancelScan(scan.getId());
+
+							return Status.CANCEL_STATUS;
+						}
+
+						pollScan(scan.getId());
+						cancelScanAction.setEnabled(true);
+					} else {
+						Display.getDefault().syncExec(new Runnable() {
+							@Override
+							public void run() {
+								new NotificationPopUpUI(Display.getDefault(), PluginConstants.CX_SCAN_TITLE, PluginConstants.NO_FILES_IN_WORKSPACE, null, null, null).open();
+								startScanAction.setEnabled(true);
+							}
+						});
+					}
+				} catch (Exception e) {
+					CxLogger.error(String.format(PluginConstants.CX_ERROR_CREATING_SCAN, e.getMessage()), e);
+				}
+
+				return Status.OK_STATUS;
+			}
+
+			@Override
+			protected void canceling() {
+				super.canceling();
+				creatingScanCanceled = true;
+				this.setName(PluginConstants.CX_CANCELING_SCAN);
+			}
+		};
+		job.schedule();
+	}
+	
+	/**
+	 * Get current git branch in scm
+	 * 
+	 * @return
+	 */
+	private String getCurrentGitBranch() {
+		if(ResourcesPlugin.getWorkspace().getRoot().getProjects().length > 0) {
+			try {
+				String projectInWorkspacePath = ResourcesPlugin.getWorkspace().getRoot().getProjects()[0].getLocation().toString();
+				Git git = Git.open(new File(projectInWorkspacePath));
+				
+				return git.getRepository().getBranch();
+			} catch (IOException e) {
+				return PluginConstants.EMPTY_STRING;
+			}
+		}
+		
+		return PluginConstants.EMPTY_STRING;
+	}
+	
+	/**
+	 * Check if checkmarx project matches workspace project
+	 * 
+	 * @return
+	 */
+	private boolean cxProjectMatchesWorkspaceProject() {
+		Results results = DataProvider.getInstance().getCurrentResults();
+		boolean noResultsInScan = results.getResults().isEmpty();
+		boolean noFilesInWorkspace = ResourcesPlugin.getWorkspace().getRoot().getProjects().length == 0;
+		
+		if(noResultsInScan || noFilesInWorkspace) {
+			return true;
+		}
+		
+		List<String> resultsFileNames = new ArrayList<String>();
+		
+		for(Result result : results.getResults()) {
+			if(!Optional.ofNullable(result.getData().getNodes()).orElse(Collections.emptyList()).isEmpty()){
+                // Add SAST file name
+                resultsFileNames.add(result.getData().getNodes().get(0).getFileName());
+            } else if(StringUtils.isNotEmpty(result.getData().getFileName())) {
+                // Add KICS file name
+                resultsFileNames.add(result.getData().getFileName());
+            }
+		}
+		
+		for(String fileName : resultsFileNames) {
+			Path filePath = new Path(fileName);
+			List<IFile> filesFound = PluginUtils.findFileInWorkspace(filePath.lastSegment());
+			
+			if(filesFound.size() > 0) {
+				return true;
+			}
+		}
+		
+		return false;
 	}
 	
 	private void pollScan(String scanId) {
@@ -193,9 +306,11 @@ public class ActionStartScan extends CxBaseAction {
 					
 					if(scan.getStatus().toLowerCase(Locale.ROOT).equals(PluginConstants.CX_SCAN_COMPLETED_STATUS)) {
 						Display.getDefault().syncExec(new Runnable() {
+							AbstractNotificationPopup notification;
+							
 							@Override
 							public void run() {
-								AbstractNotificationPopup notification = new NotificationPopUpUI(
+								notification = new NotificationPopUpUI(
 										Display.getCurrent(), 
 										PluginConstants.CX_SCAN_FINISHED_TITLE, 
 										PluginConstants.CX_SCAN_FINISHED_DESCRIPTION,
@@ -206,8 +321,10 @@ public class ActionStartScan extends CxBaseAction {
 											public void widgetSelected(SelectionEvent e) {
 												scansCombo.getCombo().setText(scanId);
 												pluginEventBus.post(new PluginListenerDefinition(PluginListenerType.LOAD_RESULTS_FOR_SCAN, Collections.emptyList()));
+												notification.close();
 											}
 										});
+								
 								notification.setDelayClose(100000000);
 								notification.open();
 							}

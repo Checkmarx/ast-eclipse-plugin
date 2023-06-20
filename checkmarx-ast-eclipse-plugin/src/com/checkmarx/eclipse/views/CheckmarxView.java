@@ -15,9 +15,6 @@ import javax.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
-import org.eclipse.core.resources.IResource;
-import org.eclipse.core.resources.IResourceProxy;
-import org.eclipse.core.resources.IResourceProxyVisitor;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -388,7 +385,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		loadingProjects();
 		loadingBranches();
 		loadingScans();
-		Job job = new Job("Loading Projects, Branches and Scans") {
+		Job job = new Job("Checkmarx: Loading projects, branches and scans...") {
 
 			@Override
 			protected IStatus run(IProgressMonitor arg0) {
@@ -423,7 +420,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				});
 				
 				if (!currentBranch.isEmpty()) {
-					toolBarActions.getStartScanAction().setEnabled(true);
+					updateStartScanButton(true);
 					sync.asyncExec(() -> {
 						PluginUtils.setTextForComboViewer(branchComboViewer, currentBranch);
 					});
@@ -456,7 +453,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 						PluginUtils.enableComboViewer(projectComboViewer, true);
 						PluginUtils.enableComboViewer(scanIdComboViewer, true);
 						PluginUtils.enableComboViewer(branchComboViewer, !currentProjectId.isEmpty());
-						toolBarActions.getStartScanAction().setEnabled(false);
+						updateStartScanButton(false);
 					});
 				}
 
@@ -532,7 +529,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 */
 	private void drawResultsTreeInitialMessage() {
 
-		Job job = new Job("Retrieving results") {
+		Job job = new Job("Checkmarx: Retrieving results...") {
 			boolean gettingResults = globalSettings.getProjectId() != null && !globalSettings.getProjectId().isEmpty()
 					&& globalSettings.getScanId() != null && !globalSettings.getScanId().isEmpty();
 			boolean noProjectsAvailable = projectComboViewer.getCombo().getText().equals(NO_PROJECTS_AVAILABLE);
@@ -789,7 +786,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 					onProjectChangePluginLoading(selectedProject.getId());
 
-					Job job = new Job("on Project change") {
+					Job job = new Job("Checkmarx: Loading branches...") {
 
 						@Override
 						protected IStatus run(IProgressMonitor arg0) {
@@ -909,7 +906,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 							PluginUtils.enableComboViewer(scanIdComboViewer, true);
 							PluginUtils.updateFiltersEnabledAndCheckedState(toolBarActions.getFilterActions());
 							toolBarActions.getStateFilterAction().setEnabled(true);
-							toolBarActions.getStartScanAction().setEnabled(true);
+							updateStartScanButton(true);
 						}	
 					});
 					
@@ -934,6 +931,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 			PluginUtils.showMessage(rootModel, resultsTree, String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, latestScanId));
 			alreadyRunning=true;
 			updateResultsTree(currentScanId,false);
+			GlobalSettings.storeInPreferences(GlobalSettings.PARAM_SCAN_ID, currentScanId);
 		});
 		
 	}
@@ -997,7 +995,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 			@Override
 			public void selectionChanged(SelectionChangedEvent event) {
 
-				Job job = new Job("Getting results") {
+				Job job = new Job("Checkmarx: Getting results...") {
 
 					@Override
 					protected IStatus run(IProgressMonitor arg0) {
@@ -1104,7 +1102,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 			return;
 		}
 
-		Job job = new Job("set Selection for project") {
+		Job job = new Job("Checkmarx: Loading results...") {
 			@Override
 			protected IStatus run(IProgressMonitor arg0) {
 				sync.asyncExec(() -> {
@@ -1243,7 +1241,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					if (selectedItem.getSeverity() != null) {
 						populateTitleLabel(selectedItem);
 					}
-					Job job = new Job("Selection changed") {
+					Job job = new Job("Checkmarx: Loading result...") {
 
 						@Override
 						protected IStatus run(IProgressMonitor arg0) {
@@ -1353,7 +1351,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					commentText.setEnabled(false);
 					commentText.setEditable(false);
 
-					Job job = new Job("Update triage information") {
+					Job job = new Job("Checkmarx: Updating triage information...") {
 						String comment = commentText.getText() != null
 								&& !commentText.getText().equalsIgnoreCase("Enter comment") ? commentText.getText()
 										: "";
@@ -1451,7 +1449,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 */
 
 	private void openBrowserLink(DisplayModel selectedItem) {
-		Job job = new Job("populate codeBashing link") {
+		Job job = new Job("Checkmarx: populating codeBashing link...") {
 			String cve = selectedItem.getResult().getVulnerabilityDetails().getCweId() != null
 					? selectedItem.getResult().getVulnerabilityDetails().getCweId()
 					: "";
@@ -1580,7 +1578,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 							return;
 						if (item.getText().equalsIgnoreCase("Changes")) {
 
-							Job job = new Job("Loading changes") {
+							Job job = new Job("Checkmarx: Loading triage changes...") {
 
 								protected void populateLoadingScreen() {
 									sync.asyncExec(() -> {
@@ -2265,7 +2263,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 	private void openTheSelectedFile(String fileName, Integer lineNumber, String markerDescription) {
 		Path filePath = new Path(fileName);
-		List<IFile> filesFound = findFileInWorkspace(filePath.lastSegment());
+		List<IFile> filesFound = PluginUtils.findFileInWorkspace(filePath.lastSegment());
 
 		for (IFile file : filesFound) {
 			Path fullPath = (Path) file.getFullPath();
@@ -2282,30 +2280,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				}
 			}
 		}
-	}
-
-	private List<IFile> findFileInWorkspace(final String fileName) {
-		final List<IFile> foundFiles = new ArrayList<IFile>();
-		try {
-			// visiting only resources proxy because we obtain the resource only when
-			// matching name, thus the workspace traversal is much faster
-			ResourcesPlugin.getWorkspace().getRoot().accept(new IResourceProxyVisitor() {
-				@Override
-				public boolean visit(IResourceProxy resourceProxy) throws CoreException {
-					if (resourceProxy.getType() == IResource.FILE) {
-						String resourceName = resourceProxy.getName();
-						if (resourceName.equals(fileName)) {
-							IFile foundFile = (IFile) resourceProxy.requestResource();
-							foundFiles.add(foundFile);
-						}
-					}
-					return true;
-				}
-			}, IResource.NONE);
-		} catch (Exception e) {
-			CxLogger.error(String.format(PluginConstants.ERROR_FINDING_FILE, e.getMessage()), e);
-		}
-		return foundFiles;
 	}
 
 	/**
@@ -2408,7 +2382,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 * @param expand  try expanding tree to previous state
 	 */
 	private void updateResultsTree(String scanId, boolean expand) {
-		Job job = new Job("Updating results tree") {
+		Job job = new Job("Checkmarx: Getting results...") {
 
 			@Override
 			protected IStatus run(IProgressMonitor arg0) {
@@ -2469,7 +2443,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		PluginUtils.setTextForComboViewer(branchComboViewer, BRANCH_COMBO_VIEWER_TEXT);
 		PluginUtils.enableComboViewer(scanIdComboViewer, false);
 		PluginUtils.setTextForComboViewer(scanIdComboViewer, PluginConstants.COMBOBOX_SCAND_ID_PLACEHOLDER);
-		toolBarActions.getStartScanAction().setEnabled(false);
+		updateStartScanButton(false);
 
 		// Hide center and right panels
 		resultViewComposite.setVisible(false);
@@ -2492,7 +2466,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		GlobalSettings.storeInPreferences(GlobalSettings.PARAM_BRANCH, PluginConstants.EMPTY_STRING);
 		GlobalSettings.storeInPreferences(GlobalSettings.PARAM_SCAN_ID, PluginConstants.EMPTY_STRING);
 
-		Job projectsJob = new Job("get Projects") {
+		Job projectsJob = new Job("Checkmarx: Loading projects...") {
 
 			@Override
 			protected IStatus run(IProgressMonitor arg0) {
@@ -2570,7 +2544,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 * Disable comboboxes
 	 */
 	private void disablePluginFields(boolean disableToolBar) {
-		Job job = new Job("Disable plugin fields") {
+		Job job = new Job("") {
 
 			@Override
 			protected IStatus run(IProgressMonitor arg0) {
@@ -2645,5 +2619,25 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		}
 
 		return projectList;
+	}
+	
+	/**
+	 * Update scan button with proper tooltip
+	 * 
+	 * @param enabled
+	 */
+	private void updateStartScanButton(boolean enabled) {
+		boolean projectsLoadedInWorkspace = ResourcesPlugin.getWorkspace().getRoot().getProjects().length > 0;
+		
+		if(enabled) {
+			String runningScanId = GlobalSettings.getFromPreferences(GlobalSettings.PARAM_RUNNING_SCAN_ID, PluginConstants.EMPTY_STRING);
+			boolean  isScanRunning = StringUtils.isNoneEmpty(runningScanId);
+			
+			toolBarActions.getStartScanAction().setEnabled(projectsLoadedInWorkspace && !isScanRunning);
+		} else {
+			toolBarActions.getStartScanAction().setEnabled(false);
+		}
+		
+		toolBarActions.getStartScanAction().setToolTipText(projectsLoadedInWorkspace ? PluginConstants.CX_START_SCAN : PluginConstants.CX_NO_FILES_TO_SCAN);
 	}
 }
