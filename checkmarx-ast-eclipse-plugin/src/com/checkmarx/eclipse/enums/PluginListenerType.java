@@ -5,6 +5,6 @@ public enum PluginListenerType {
 	GET_RESULTS,
 	FILTER_CHANGED,
 	CLEAN_AND_REFRESH,
-	REVERSE_CALL
+	LOAD_RESULTS_FOR_SCAN
 	
 }

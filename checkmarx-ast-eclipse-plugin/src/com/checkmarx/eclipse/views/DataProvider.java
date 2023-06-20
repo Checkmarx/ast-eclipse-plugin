@@ -13,6 +13,7 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
+import org.eclipse.jgit.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -129,7 +130,7 @@ public class DataProvider {
 			try {
 				CxWrapper cxWrapper = getWrapper();
 				
-				if(projectId != null && projectId != "") {
+				if(!StringUtils.isEmptyOrNull(projectId)) {
 					branchList = cxWrapper.projectBranches(UUID.fromString(projectId), PluginConstants.EMPTY_STRING);
 				}
 
@@ -676,5 +677,21 @@ public class DataProvider {
 	
 	public List<LearnMore> learnMore(String queryId) throws Exception {	
 		return authenticateWithAST().learnMore(queryId);
+	}
+	
+	public Scan createScan(String sourcePath, String projectName, String branchName) throws IOException, InterruptedException, CxException, Exception {
+		Map<String, String> scanArguments = new HashMap<>();
+        scanArguments.put("-s", sourcePath);
+        scanArguments.put("--project-name", projectName);
+        scanArguments.put("--branch", branchName);
+        scanArguments.put("--agent", "Eclipse");
+
+        String additionalParameters = "--async --sast-incremental --resubmit";
+        
+        return authenticateWithAST().scanCreate(scanArguments, additionalParameters);
+	}
+	
+	public void cancelScan(String scanId) throws IOException, InterruptedException, CxException, Exception {
+		authenticateWithAST().scanCancel(scanId);
 	}
 }

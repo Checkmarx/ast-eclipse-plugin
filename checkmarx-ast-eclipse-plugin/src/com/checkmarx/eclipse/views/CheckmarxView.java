@@ -27,9 +27,7 @@ import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.e4.ui.di.UISynchronize;
 import org.eclipse.jface.action.Action;
-import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
-import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.preference.PreferenceDialog;
 import org.eclipse.jface.viewers.ArrayContentProvider;
@@ -70,7 +68,6 @@ import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Link;
 import org.eclipse.swt.widgets.Listener;
-import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.TabFolder;
 import org.eclipse.swt.widgets.TabItem;
@@ -102,7 +99,6 @@ import com.checkmarx.eclipse.utils.CxLogger;
 import com.checkmarx.eclipse.utils.NotificationPopUpUI;
 import com.checkmarx.eclipse.utils.PluginConstants;
 import com.checkmarx.eclipse.utils.PluginUtils;
-import com.checkmarx.eclipse.views.actions.ActionOpenPreferencesPage;
 import com.checkmarx.eclipse.views.actions.ToolBarActions;
 import com.checkmarx.eclipse.views.filters.FilterState;
 import com.checkmarx.eclipse.views.provider.ColumnProvider;
@@ -297,21 +293,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		}
 	}
 
-	private void createContextMenu() {
-		MenuManager menuManager = new MenuManager("#PopupMenu");
-		menuManager.setRemoveAllWhenShown(true);
-		menuManager.addMenuListener(CheckmarxView.this::fillContextMenu);
-		Menu menu = menuManager.createContextMenu(resultsTree.getControl());
-		resultsTree.getControl().setMenu(menu);
-
-		getSite().registerContextMenu(menuManager, resultsTree);
-	}
-
-	private void fillContextMenu(IMenuManager manager) {
-		Action openPreferencesPageAction = new ActionOpenPreferencesPage(rootModel, resultsTree, shell).createAction();
-		manager.add(openPreferencesPageAction);
-	}
-
 	/**
 	 * Creates the Checkmarx plugin tool bar with all actions
 	 */
@@ -323,7 +304,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		pluginEventBus.register(this);
 
 		toolBarActions = new ToolBarActions.ToolBarActionsBuilder().actionBars(actionBars).rootModel(rootModel)
-				.resultsTree(resultsTree).pluginEventBus(pluginEventBus).build();
+				.resultsTree(resultsTree).pluginEventBus(pluginEventBus).projectsCombo(projectComboViewer).branchesCombo(branchComboViewer).scansCombo(scanIdComboViewer).build();
 
 		for (Action action : toolBarActions.getToolBarActions()) {
 			toolBarManager.add(action);
@@ -332,13 +313,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 			if (action.getId() != null && action.getId().equals(ActionName.INFO.name())) {
 				toolBarManager.add(new Separator("\t"));
 			}
-		}
-
-		if (currentScanId.isEmpty()) {
-			toolBarActions.getAbortResultsAction().setEnabled(false);
-			toolBarActions.getScanResultsAction().setEnabled(true);
-			toolBarActions.getClearAndRefreshAction().setEnabled(true);
-			toolBarActions.getStateFilterAction().setEnabled(true);
 		}
 
 		actionBars.updateActionBars();
@@ -377,9 +351,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 		// Create plugin toolBar
 		createToolbar();
-
-		// Create context menu
-		createContextMenu();
 
 		// Init git branch listener
 		initGitBranchListener();
@@ -450,7 +421,9 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					PluginUtils.setTextForComboViewer(scanIdComboViewer, PluginConstants.COMBOBOX_SCAND_ID_PLACEHOLDER);
 
 				});
+				
 				if (!currentBranch.isEmpty()) {
+					toolBarActions.getStartScanAction().setEnabled(true);
 					sync.asyncExec(() -> {
 						PluginUtils.setTextForComboViewer(branchComboViewer, currentBranch);
 					});
@@ -482,7 +455,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					sync.asyncExec(() -> {
 						PluginUtils.enableComboViewer(projectComboViewer, true);
 						PluginUtils.enableComboViewer(scanIdComboViewer, true);
-						PluginUtils.enableComboViewer(branchComboViewer, true);
+						PluginUtils.enableComboViewer(branchComboViewer, !currentProjectId.isEmpty());
+						toolBarActions.getStartScanAction().setEnabled(false);
 					});
 				}
 
@@ -828,12 +802,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 								PluginUtils.enableComboViewer(branchComboViewer, true);
 								PluginUtils.enableComboViewer(scanIdComboViewer, true);
 								PluginUtils.updateFiltersEnabledAndCheckedState(toolBarActions.getFilterActions());
-								toolBarActions.getScanResultsAction().setEnabled(true);
-								toolBarActions.getClearAndRefreshAction().setEnabled(true);
 								toolBarActions.getStateFilterAction().setEnabled(true);
 
-								PluginUtils.enableComboViewer(branchComboViewer, true);
-								PluginUtils.enableComboViewer(scanIdComboViewer, true);
 								PluginUtils.updateFiltersEnabledAndCheckedState(toolBarActions.getFilterActions());
 							});
 							return Status.OK_STATUS;
@@ -938,11 +908,9 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 							PluginUtils.enableComboViewer(projectComboViewer, true);
 							PluginUtils.enableComboViewer(scanIdComboViewer, true);
 							PluginUtils.updateFiltersEnabledAndCheckedState(toolBarActions.getFilterActions());
-							toolBarActions.getScanResultsAction().setEnabled(true);
-							toolBarActions.getClearAndRefreshAction().setEnabled(true);
 							toolBarActions.getStateFilterAction().setEnabled(true);
-
-						}		
+							toolBarActions.getStartScanAction().setEnabled(true);
+						}	
 					});
 					
 					PluginUtils.updateFiltersEnabledAndCheckedState(toolBarActions.getFilterActions());
@@ -1010,7 +978,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 		scanIdComboViewer.getCombo().addListener(SWT.DefaultSelection, new Listener() {
 			public void handleEvent(Event event) {
-				toolBarActions.getScanResultsAction().run();
+				setSelectionForProjectComboViewer();
 			}
 		});
 
@@ -1052,8 +1020,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 							currentScanId = selectedScan.getId();
 							DataProvider.getInstance().setCurrentResults(null);
 							GlobalSettings.storeInPreferences(GlobalSettings.PARAM_SCAN_ID, selectedScan.getId());
-							toolBarActions.getToolBarActions().forEach(action -> action
-									.setEnabled(action.getId().equals(ActionName.ABORT_RESULTS.name())));
 							sync.asyncExec(() -> {
 								currentScanIdFormmated = scanIdComboViewer.getCombo().getText();
 								// Hide center and right panels
@@ -1138,12 +1104,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 			return;
 		}
 
-		// Disable all tool bar actions except the clear and refresh action
-		toolBarActions.getToolBarActions()
-				.forEach(action -> action.setEnabled(action.getId().equals(ActionName.ABORT_RESULTS.name())));
-
 		Job job = new Job("set Selection for project") {
-
 			@Override
 			protected IStatus run(IProgressMonitor arg0) {
 				sync.asyncExec(() -> {
@@ -1508,16 +1469,27 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					openLink(codeBashing.getPath());
 				} catch (CxException e) {
 					CxLogger.info(String.format(PluginConstants.CODEBASHING, e.getMessage()));
-
+					
 					if (e.getExitCode() == PluginConstants.EXIT_CODE_LICENSE_NOT_FOUND) {
+						SelectionAdapter onClickCodebashingLink = new SelectionAdapter() {
+							@Override
+							public void widgetSelected(SelectionEvent event) {
+								try {
+									PlatformUI.getWorkbench().getBrowserSupport().getExternalBrowser().openURL(new URL(event.text));
+								} catch (PartInitException | MalformedURLException e) {
+									CxLogger.error(String.format(PluginConstants.ERROR_GETTING_CODEBASHING_DETAILS, e.getMessage()), e);
+								}
+							}
+						};
+						
 						sync.asyncExec(() -> {
 							new NotificationPopUpUI(PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell().getDisplay(), PluginConstants.CODEBASHING,
-									PluginConstants.CODEBASHING_NO_LICENSE).open();
+									PluginConstants.CODEBASHING_NO_LICENSE, onClickCodebashingLink, null, null).open();
 						});
 					} else if (e.getExitCode() == PluginConstants.EXIT_CODE_LESSON_NOT_FOUND) {
 						sync.asyncExec(() -> {
 							new NotificationPopUpUI(PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell().getDisplay(), PluginConstants.CODEBASHING,
-									PluginConstants.CODEBASHING_NO_LESSON).open();
+									PluginConstants.CODEBASHING_NO_LESSON, null, null, null).open();
 						});
 					}
 
@@ -1942,9 +1914,11 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	    learnMoreScrolledComposite.setContent(learnMoreComposite);
 	    learnMoreScrolledComposite.setMinSize(learnMoreComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT));
 		
-	    CLabel loadingLabel = new CLabel(learnMoreComposite, SWT.NONE);
-		loadingLabel.setText(PluginConstants.LEARN_MORE_LOADING);
-		
+	    if(learnMoreData == null) {
+	    	CLabel loadingLabel = new CLabel(learnMoreComposite, SWT.NONE);
+			loadingLabel.setText(PluginConstants.LEARN_MORE_LOADING);
+	    }
+	    
 		learnMoreTab.setControl(learnMoreScrolledComposite);
 		
 		Job job = new Job(PluginConstants.GETTING_LEARN_MORE_JOB) {
@@ -2018,8 +1992,10 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	    remediationExamplesScrolledComposite.setContent(remediationExamplesComposite);
 	    remediationExamplesScrolledComposite.setMinSize(remediationExamplesComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT));
 		
-	    Label loadingLabel = new Label(remediationExamplesComposite, SWT.NONE);
-		loadingLabel.setText(PluginConstants.LEARN_MORE_LOADING);
+	    if(learnMoreData == null) {
+	    	Label loadingLabel = new Label(remediationExamplesComposite, SWT.NONE);
+			loadingLabel.setText(PluginConstants.LEARN_MORE_LOADING);
+	    }
 		
 		remediationExamplesTab.setControl(remediationExamplesScrolledComposite);
 		
@@ -2374,18 +2350,18 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	@Subscribe
 	private void listener(PluginListenerDefinition definition) {
 		switch (definition.getListenerType()) {
-		case FILTER_CHANGED:
-		case GET_RESULTS:
-			updateResultsTree(definition.getResutls(), false);
-			break;
-		case CLEAN_AND_REFRESH:
-			clearAndRefreshPlugin();
-			break;
-		case REVERSE_CALL:
-			setSelectionForProjectComboViewer();
-			break;
-		default:
-			break;
+			case FILTER_CHANGED:
+			case GET_RESULTS:
+				updateResultsTree(definition.getResutls(), false);
+				break;
+			case CLEAN_AND_REFRESH:
+				clearAndRefreshPlugin();
+				break;
+			case LOAD_RESULTS_FOR_SCAN:
+				setSelectionForProjectComboViewer();
+				break;
+			default:
+				break;
 		}
 	}
 
@@ -2411,9 +2387,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				expand(visibleResults, expandedDMNames, rootModel);
 			}
 
-			toolBarActions.getScanResultsAction().setEnabled(true);
-			toolBarActions.getAbortResultsAction().setEnabled(false);
-			toolBarActions.getClearAndRefreshAction().setEnabled(true);
 			toolBarActions.getStateFilterAction().setEnabled(true);
 			PluginUtils.enableComboViewer(projectComboViewer, true);
 			PluginUtils.enableComboViewer(branchComboViewer, !currentProjectId.isEmpty());
@@ -2496,6 +2469,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		PluginUtils.setTextForComboViewer(branchComboViewer, BRANCH_COMBO_VIEWER_TEXT);
 		PluginUtils.enableComboViewer(scanIdComboViewer, false);
 		PluginUtils.setTextForComboViewer(scanIdComboViewer, PluginConstants.COMBOBOX_SCAND_ID_PLACEHOLDER);
+		toolBarActions.getStartScanAction().setEnabled(false);
 
 		// Hide center and right panels
 		resultViewComposite.setVisible(false);
@@ -2507,10 +2481,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 		// Reset filters state
 		resetFiltersState();
-
-		// Disable all tool bar actions except the clear and refresh action
-		toolBarActions.getToolBarActions()
-				.forEach(action -> action.setEnabled(action.getId().equals(ActionName.CLEAN_AND_REFRESH.name())));
 
 		// Reset state variables
 		currentProjectId = PluginConstants.EMPTY_STRING;
@@ -2533,7 +2503,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					PluginUtils.setTextForComboViewer(projectComboViewer, PROJECT_COMBO_VIEWER_TEXT);
 					PluginUtils.enableComboViewer(projectComboViewer, true);
 					PluginUtils.enableComboViewer(scanIdComboViewer, true);
-					toolBarActions.getScanResultsAction().setEnabled(true);
 				});
 				return Status.OK_STATUS;
 			}
@@ -2601,7 +2570,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 * Disable comboboxes
 	 */
 	private void disablePluginFields(boolean disableToolBar) {
-
 		Job job = new Job("Disable plugin fields") {
 
 			@Override
@@ -2636,15 +2604,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		for (Action action : toolBarActions.getToolBarActions()) {
 			String actionName = action.getId();
 
-			if (actionName.equals(ActionName.ABORT_RESULTS.name())
-					|| actionName.equals(ActionName.GROUP_BY_SEVERITY.name())
-							&& !actionName.equals(ActionName.GROUP_BY_QUERY_NAME.name())) {
-				continue;
-			}
-
-			if (actionName.equals(ActionName.CLEAN_AND_REFRESH.name())
-					|| actionName.equals(ActionName.GET_RESULTS.name())) {
-				action.setEnabled(true);
+			if (actionName.equals(ActionName.GROUP_BY_SEVERITY.name()) && !actionName.equals(ActionName.GROUP_BY_QUERY_NAME.name())) {
 				continue;
 			}
 
@@ -2660,8 +2620,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		if (!isPluginDraw) {
 			drawPluginPanel();
 		} else {
-			// If authenticated successfully and the projects are empty try to get them
-			// again
+			// If authenticated successfully and the projects are empty try to get them again
 			if (projectComboViewer.getCombo().getItemCount() == 0) {
 				clearAndRefreshPlugin();
 			}

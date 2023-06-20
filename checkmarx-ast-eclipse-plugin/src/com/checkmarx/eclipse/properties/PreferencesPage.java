@@ -26,8 +26,6 @@ import com.checkmarx.eclipse.utils.PluginUtils;
 import org.eclipse.swt.widgets.Link;
 
 public class PreferencesPage extends FieldEditorPreferencePage implements IWorkbenchPreferencePage {
-	private Link link;
-
 	public PreferencesPage() {
 		super(GRID);
 		Activator.getDefault().getPreferenceStore().addPropertyChangeListener(this::handlePropertyChange);

@@ -16,7 +16,6 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
 import com.checkmarx.eclipse.utils.PluginConstants;
-import com.checkmarx.eclipse.views.actions.ActionClearSelection;
 
 import checkmarx.ast.eclipse.plugin.tests.common.Environment;
 
@@ -117,13 +116,7 @@ public abstract class BaseUITest {
 		}
 		
 		// clear the view before getting the scan id
-		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN)
-		.getToolbarButtons()
-		.stream()
-		.filter(btn -> btn.getToolTipText().equals(ActionClearSelection.ACTION_CLEAR_SELECTION_TOOLTIP))
-		.findFirst()
-		.get()
-		.click();
+		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(PluginConstants.TOOLBAR_ACTION_CLEAR_RESULTS).click();
 		
 		sleep(1000);
 		
@@ -190,7 +183,6 @@ public abstract class BaseUITest {
 		if(waitUntilPluginEnable) {
 			waitUntilBranchComboIsEnabled();	
 		}
-		
 	}
 	
 	/**
@@ -227,8 +219,9 @@ public abstract class BaseUITest {
 		preventWidgetWasNullInCIEnvironment();
 		
 		boolean emptyScanId = _bot.comboBox(2).getText().isEmpty() || _bot.comboBox(2).getText().equals(PluginConstants.COMBOBOX_SCAND_ID_PLACEHOLDER);
+		boolean projectNotSelected =_bot.comboBox(0).getText().isEmpty() || _bot.comboBox(0).getText().equals("Select a project");
 		
-		if(emptyScanId) {
+		if(emptyScanId || projectNotSelected) {
 			return;
 		}
 		
@@ -246,6 +239,13 @@ public abstract class BaseUITest {
 		}
 
 		if (retryIdx == 10) {
+			emptyScanId = _bot.comboBox(2).getText().isEmpty() || _bot.comboBox(2).getText().equals(PluginConstants.COMBOBOX_SCAND_ID_PLACEHOLDER);
+			projectNotSelected =_bot.comboBox(0).getText().isEmpty() || _bot.comboBox(0).getText().equals("Select a project");
+			
+			if(emptyScanId || projectNotSelected) {
+				return;
+			}
+			
 			throw new TimeoutException("Timeout after 5000ms. Branches' combobox must be enabled");
 		}
 	}
