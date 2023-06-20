@@ -15,6 +15,7 @@ public class GlobalSettings {
 	public static final String PARAM_PROJECT_ID = "project-id";
 	public static final String PARAM_BRANCH = "branch";
 	public static final String PARAM_SCAN_ID = "scan-id";
+	public static final String PARAM_RUNNING_SCAN_ID = "running-scan-id";
 	
 	private String projectId;
 	private String branch;

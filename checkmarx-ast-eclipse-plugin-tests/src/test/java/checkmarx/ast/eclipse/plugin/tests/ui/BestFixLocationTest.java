@@ -11,10 +11,10 @@ import org.junit.runner.RunWith;
 
 import com.checkmarx.eclipse.utils.PluginConstants;
 
-@RunWith(SWTBotJunit4ClassRunner.class)
+//@RunWith(SWTBotJunit4ClassRunner.class)
 public class BestFixLocationTest extends BaseUITest{
 
-	@Test
+	//@Test
 	public void testBestFixLocation() throws TimeoutException {
 //		setUpCheckmarxPlugin(true);
 //		SWTBotTreeItem firstNode = getFirstResultNode();

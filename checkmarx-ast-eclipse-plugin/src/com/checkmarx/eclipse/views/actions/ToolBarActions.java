@@ -1,18 +1,22 @@
 package com.checkmarx.eclipse.views.actions;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.viewers.ComboViewer;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.ui.IActionBars;
+import org.eclipse.ui.PlatformUI;
 
 import com.checkmarx.eclipse.enums.ActionName;
 import com.checkmarx.eclipse.enums.PluginListenerType;
 import com.checkmarx.eclipse.enums.Severity;
+import com.checkmarx.eclipse.utils.PluginConstants;
 import com.checkmarx.eclipse.views.DataProvider;
 import com.checkmarx.eclipse.views.DisplayModel;
 import com.checkmarx.eclipse.views.PluginListenerDefinition;
@@ -38,13 +42,16 @@ public class ToolBarActions {
 	
 	private EventBus pluginEventBus;
 	
-	private Action clearAndRefreshAction;
-	private Action scanResultsAction;
-	private Action abortResultsAction;
+	private Action startScanAction;
+	private Action cancelScanAction;
 	private Action groupBySeverityAction;
 	private Action groupByQueryNameAction;
 	private Action groupByStateNameAction;
 	private Action stateFilter;
+	
+	private ComboViewer projectsCombo;
+	private ComboViewer branchesCombo;
+	private ComboViewer scansCombo;
 	
 	private List<Action> filterActions;
 		
@@ -53,6 +60,9 @@ public class ToolBarActions {
 		this.rootModel = toolBarActionsBuilder.rootModel;
 		this.resultsTree = toolBarActionsBuilder.resultsTree;
 		this.pluginEventBus = toolBarActionsBuilder.pluginEventBus;
+		this.projectsCombo = toolBarActionsBuilder.projectsCombo;
+		this.branchesCombo = toolBarActionsBuilder.branchesCombo;
+		this.scansCombo = toolBarActionsBuilder.scansCombo;
 		
 		createActions();
 	}
@@ -63,15 +73,13 @@ public class ToolBarActions {
 	private void createActions() {
 		filterActions = new ActionFilters(pluginEventBus).createFilterActions();
 		
-		clearAndRefreshAction = new ActionClearSelection(rootModel, resultsTree, pluginEventBus).createAction();
-		abortResultsAction = new ActionAbortScanResults(rootModel, resultsTree).createAction();
-		scanResultsAction = new ActionGetScanResults(rootModel, resultsTree, pluginEventBus).createAction();
+		cancelScanAction = new ActionCancelScan(rootModel, resultsTree).createAction();
+		startScanAction = new ActionStartScan(rootModel, resultsTree, pluginEventBus, projectsCombo, branchesCombo, scansCombo, cancelScanAction).createAction();
 		stateFilter = new ActionFilterStatePreference(pluginEventBus);
 		
 		toolBarActions.addAll(filterActions);
-		toolBarActions.add(clearAndRefreshAction);
-		toolBarActions.add(scanResultsAction);
-		toolBarActions.add(abortResultsAction);
+		toolBarActions.add(startScanAction);
+		toolBarActions.add(cancelScanAction);
 		toolBarActions.add(stateFilter);
 		
 		createGroupByActions();
@@ -128,6 +136,22 @@ public class ToolBarActions {
 
 		dropDownMenu.add(subMenu);
 		
+		Action resetPlugin = new Action() {
+			@Override
+			public void run() {
+				pluginEventBus.post(new PluginListenerDefinition(PluginListenerType.CLEAN_AND_REFRESH, Collections.emptyList()));
+			}
+		};
+
+		resetPlugin.setId(ActionName.CLEAN_AND_REFRESH.name());
+		resetPlugin.setToolTipText(PluginConstants.TOOLBAR_ACTION_CLEAR_RESULTS);
+		resetPlugin.setText(PluginConstants.TOOLBAR_ACTION_CLEAR_RESULTS);
+		
+		Action openPreferencesPageAction = new ActionOpenPreferencesPage(rootModel, resultsTree, PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell()).createAction();
+
+		dropDownMenu.add(resetPlugin);
+		dropDownMenu.add(openPreferencesPageAction);
+		
 		actionBars.updateActionBars();
 	}
 	
@@ -141,21 +165,12 @@ public class ToolBarActions {
 	}
 	
 	/**
-	 * Get clear and refresh action
-	 * 
-	 * @return
-	 */
-	public Action getClearAndRefreshAction() {
-		return clearAndRefreshAction;
-	}
-	
-	/**
 	 * Get scan results action
 	 * 
 	 * @return
 	 */
-	public Action getScanResultsAction() {
-		return scanResultsAction;
+	public Action getStartScanAction() {
+		return startScanAction;
 	}
 	
 	/**
@@ -163,8 +178,8 @@ public class ToolBarActions {
 	 * 
 	 * @return
 	 */
-	public Action getAbortResultsAction() {
-		return abortResultsAction;
+	public Action getCancelScanAction() {
+		return cancelScanAction;
 	}
 	
 	/**
@@ -200,6 +215,10 @@ public class ToolBarActions {
 	
 		private EventBus pluginEventBus;
 		
+		private ComboViewer projectsCombo;
+		private ComboViewer branchesCombo;
+		private ComboViewer scansCombo;
+		
 		public ToolBarActionsBuilder() {}
 		
 		public ToolBarActionsBuilder actionBars(IActionBars actionBars) {
@@ -219,6 +238,21 @@ public class ToolBarActions {
 		
 		public ToolBarActionsBuilder pluginEventBus(EventBus pluginEventBus) {
 			this.pluginEventBus = pluginEventBus;
+			return this;
+		}
+		
+		public ToolBarActionsBuilder projectsCombo(ComboViewer projectsCombo) {
+			this.projectsCombo = projectsCombo;
+			return this;
+		}
+		
+		public ToolBarActionsBuilder branchesCombo(ComboViewer branchesCombo) {
+			this.branchesCombo = branchesCombo;
+			return this;
+		}
+		
+		public ToolBarActionsBuilder scansCombo(ComboViewer scansCombo) {
+			this.scansCombo = scansCombo;
 			return this;
 		}
 		
