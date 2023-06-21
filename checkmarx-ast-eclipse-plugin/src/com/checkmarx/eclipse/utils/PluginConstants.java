@@ -102,7 +102,7 @@ public class PluginConstants {
 	public static final String LEARN_MORE_GENERAL_RECOMMENDATIONS = "General Recommendations";
 	public static final String LEARN_MORE_LOADING = "Loading...";
 	public static final String ERROR_GETTING_LEARN_MORE = "An error occurred while getting learn more information: %s";
-	public static final String GETTING_LEARN_MORE_JOB = "Getting Learn More information";
+	public static final String GETTING_LEARN_MORE_JOB = "Checkmarx: Getting Learn More information...";
 	public static final String NO_REMEDIATION_EXAMPLES = "No remediation examples available.";
 	public static final String REMEDIATION_EXAMPLE_TITLE_FORMAT = "%s using %s";
 	
@@ -113,6 +113,7 @@ public class PluginConstants {
 	public static final String CX_SCAN_CANCELED_TITLE = "Scan canceled";
 	public static final String CX_SCAN_CANCELED_DESCRIPTION = "Checkmarx scan canceled successfully.";
 	public static final String CX_START_SCAN = "Start a scan";
+	public static final String CX_NO_FILES_TO_SCAN = "No files in workspace to scan";
 	public static final String CX_CANCEL_RUNNING_SCAN = "Cancel running scan";
 	public static final String CX_RUNNING_SCAN = "Checkmarx: Scan running with id %s";
 	public static final String NO_FILES_IN_WORKSPACE = "No files in workspace to scan.";
@@ -125,4 +126,12 @@ public class PluginConstants {
 	public static final String CX_ERROR_CREATING_SCAN = "An error occurred while creating a scan: %s";
 	public static final String CX_ERROR_CANCELING_SCAN = "An error occurred while canceling a scan: %s";
 	public static final String CX_ERROR_GETTING_SCAN_INFO = "An error occurred while getting scan information: %s";
+	public static final String CX_ERROR_CHECKING_IDE_SCAN_ENABLED = "An error occurred while checking if scanning from IDE is allowed for current tenant: %s";
+	public static final String CX_PROJECT_AND_BRANCH_MISMATCH = "Project and branch mismatch";	
+	public static final String CX_PROJECT_AND_BRANCH_MISMATCH_QUESTION = "The Git branch and files open in your workspace don't match the branch and project that were previously scanned in this Checkmarx project. Do you want to scan anyway?";	
+	public static final String CX_BRANCH_MISMATCH = "Branch mismatch";	
+	public static final String CX_BRANCH_MISMATCH_QUESTION = "The Git branch open in your workspace isn't the same as the branch that was previously scanned in this Checkmarx project. Do you want to scan anyway?";	
+	public static final String CX_PROJECT_MISMATCH = "Project mismatch";	
+	public static final String CX_PROJECT_MISMATCH_QUESTION = "The files open in your workspace don't match the files previously scanned in this Checkmarx project. Do you want to scan anyway?";	
+	public static final String CX_REFRESHING_TOOLBAR = "Checkmarx: Refreshing toolbar...";	
 }

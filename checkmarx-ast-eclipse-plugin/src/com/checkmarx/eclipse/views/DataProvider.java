@@ -694,4 +694,8 @@ public class DataProvider {
 	public void cancelScan(String scanId) throws IOException, InterruptedException, CxException, Exception {
 		authenticateWithAST().scanCancel(scanId);
 	}
+	
+	public boolean isScanAllowed() throws CxException, IOException, InterruptedException, Exception {
+		return authenticateWithAST().ideScansEnabled();
+	}
 }
