@@ -4,18 +4,26 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.action.IMenuManager;
+import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.ComboViewer;
 import org.eclipse.jface.viewers.TreeViewer;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IActionBars;
 import org.eclipse.ui.PlatformUI;
 
 import com.checkmarx.eclipse.enums.ActionName;
 import com.checkmarx.eclipse.enums.PluginListenerType;
 import com.checkmarx.eclipse.enums.Severity;
+import com.checkmarx.eclipse.utils.CxLogger;
 import com.checkmarx.eclipse.utils.PluginConstants;
 import com.checkmarx.eclipse.views.DataProvider;
 import com.checkmarx.eclipse.views.DisplayModel;
@@ -33,7 +41,7 @@ public class ToolBarActions {
 	
 	public static final String MENU_FILTER_BY = "Filter By";
 	
-	private List<Action> toolBarActions = new ArrayList<>();
+	private List<Action> toolBarActions;
 	
 	private IActionBars actionBars;
 
@@ -71,18 +79,63 @@ public class ToolBarActions {
 	 * Create all tool bar actions
 	 */
 	private void createActions() {
-		filterActions = new ActionFilters(pluginEventBus).createFilterActions();
+		toolBarActions = new ArrayList<>();
 		
+		filterActions = new ActionFilters(pluginEventBus).createFilterActions();
 		cancelScanAction = new ActionCancelScan(rootModel, resultsTree).createAction();
 		startScanAction = new ActionStartScan(rootModel, resultsTree, pluginEventBus, projectsCombo, branchesCombo, scansCombo, cancelScanAction).createAction();
 		stateFilter = new ActionFilterStatePreference(pluginEventBus);
 		
 		toolBarActions.addAll(filterActions);
-		toolBarActions.add(startScanAction);
-		toolBarActions.add(cancelScanAction);
-		toolBarActions.add(stateFilter);
 		
-		createGroupByActions();
+		Job job = new Job(PluginConstants.CX_REFRESHING_TOOLBAR) {
+			@Override
+			protected IStatus run(IProgressMonitor arg0) {
+				boolean ideScanAllowed = false;
+				
+				try {
+					ideScanAllowed = DataProvider.getInstance().isScanAllowed();
+				} catch (Exception e) {
+					CxLogger.error(String.format(PluginConstants.CX_ERROR_CHECKING_IDE_SCAN_ENABLED, e.getMessage()), e);
+				}
+				
+				if(ideScanAllowed) {
+					toolBarActions.add(startScanAction);
+					toolBarActions.add(cancelScanAction);
+				}
+				
+				toolBarActions.add(stateFilter);
+				
+				createGroupByActions();
+						
+				for (Action action : getToolBarActions()) {
+					actionBars.getToolBarManager().add(action);
+
+					// Add divider
+					if (action.getId() != null && action.getId().equals(ActionName.INFO.name())) {
+						actionBars.getToolBarManager().add(new Separator("\t"));
+					}
+				}
+				
+				Display.getDefault().syncExec(new Runnable() {
+					@Override
+					public void run() {
+						actionBars.updateActionBars();
+					}
+				});
+				
+				return Status.OK_STATUS;
+			}
+		};
+		job.schedule();
+	}
+	
+	public void refreshToolbar() {
+		IToolBarManager toolBarManager = actionBars.getToolBarManager();
+		toolBarManager.removeAll();
+		actionBars.getMenuManager().removeAll();
+				
+		createActions();
 	}
 	
 
@@ -147,12 +200,15 @@ public class ToolBarActions {
 		resetPlugin.setToolTipText(PluginConstants.TOOLBAR_ACTION_CLEAR_RESULTS);
 		resetPlugin.setText(PluginConstants.TOOLBAR_ACTION_CLEAR_RESULTS);
 		
-		Action openPreferencesPageAction = new ActionOpenPreferencesPage(rootModel, resultsTree, PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell()).createAction();
+		Display.getDefault().syncExec(new Runnable() {
+			@Override
+			public void run() {
+				Action openPreferencesPageAction = new ActionOpenPreferencesPage(rootModel, resultsTree, PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell()).createAction();
 
-		dropDownMenu.add(resetPlugin);
-		dropDownMenu.add(openPreferencesPageAction);
-		
-		actionBars.updateActionBars();
+				dropDownMenu.add(resetPlugin);
+				dropDownMenu.add(openPreferencesPageAction);
+			}
+		});
 	}
 	
 	/**

@@ -128,7 +128,7 @@ public class TestUI extends BaseUITest {
 		testSuccessfulConnection(false);
 
 		// Add Checkmarx One Plugin
-		addCheckmarxPlugin(false);
+		addCheckmarxPlugin(true);
 				
 		List<SWTBotToolbarButton> toolbarButtons = _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).getToolbarButtons();
 		List<String> toolBarButtonsNames = toolbarButtons.stream().map(btn -> btn.getToolTipText().toUpperCase()).collect(Collectors.toList());
