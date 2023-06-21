@@ -295,24 +295,12 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 */
 	private void createToolbar() {
 		IActionBars actionBars = getViewSite().getActionBars();
-		IToolBarManager toolBarManager = actionBars.getToolBarManager();
 
 		pluginEventBus = new EventBus();
 		pluginEventBus.register(this);
 
 		toolBarActions = new ToolBarActions.ToolBarActionsBuilder().actionBars(actionBars).rootModel(rootModel)
 				.resultsTree(resultsTree).pluginEventBus(pluginEventBus).projectsCombo(projectComboViewer).branchesCombo(branchComboViewer).scansCombo(scanIdComboViewer).build();
-
-		for (Action action : toolBarActions.getToolBarActions()) {
-			toolBarManager.add(action);
-
-			// Add divider
-			if (action.getId() != null && action.getId().equals(ActionName.INFO.name())) {
-				toolBarManager.add(new Separator("\t"));
-			}
-		}
-
-		actionBars.updateActionBars();
 	}
 
 	@Override
@@ -2598,6 +2586,9 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 			if (projectComboViewer.getCombo().getItemCount() == 0) {
 				clearAndRefreshPlugin();
 			}
+			
+			toolBarActions.refreshToolbar();
+			updateStartScanButton(true);
 		}
 	}
 
