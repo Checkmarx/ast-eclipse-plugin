@@ -2532,21 +2532,26 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 * Disable comboboxes
 	 */
 	private void disablePluginFields(boolean disableToolBar) {
-		Job job = new Job("") {
-
+		Job job = new Job("Checkmarx: Refreshing branch and scans") {
 			@Override
 			protected IStatus run(IProgressMonitor arg0) {
-				PluginUtils.enableComboViewer(projectComboViewer, false);
-				PluginUtils.enableComboViewer(branchComboViewer, false);
-				PluginUtils.setTextForComboViewer(branchComboViewer, PluginConstants.COMBOBOX_BRANCH_CHANGING);
-				loadingScans();
-				PluginUtils.showMessage(rootModel, resultsTree, PluginConstants.EMPTY_STRING);
-				resultViewComposite.setVisible(false);
-				attackVectorCompositePanel.setVisible(false);
+				Display.getDefault().syncExec(new Runnable() {
+					@Override
+					public void run() {
+						PluginUtils.enableComboViewer(projectComboViewer, false);
+						PluginUtils.enableComboViewer(branchComboViewer, false);
+						PluginUtils.setTextForComboViewer(branchComboViewer, PluginConstants.COMBOBOX_BRANCH_CHANGING);
+						loadingScans();
+						PluginUtils.showMessage(rootModel, resultsTree, PluginConstants.EMPTY_STRING);
+						resultViewComposite.setVisible(false);
+						attackVectorCompositePanel.setVisible(false);
 
-				if (disableToolBar) {
-					toolBarActions.getToolBarActions().forEach(action -> action.setEnabled(false));
-				}
+						if (disableToolBar) {
+							toolBarActions.getToolBarActions().forEach(action -> action.setEnabled(false));
+						}
+					}
+				});
+				
 				return Status.OK_STATUS;
 			}
 
