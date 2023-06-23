@@ -24,8 +24,6 @@ import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.e4.ui.di.UISynchronize;
 import org.eclipse.jface.action.Action;
-import org.eclipse.jface.action.IToolBarManager;
-import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.preference.PreferenceDialog;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.ColumnViewerToolTipSupport;
@@ -261,6 +259,11 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					}
 
 					String gitBranch = arg.getRepository().getBranch();
+					
+					if(gitBranch.equals(currentBranch)) {
+						return;
+					}
+					
 					updatePluginBranchAndScans(gitBranch);
 				} catch (IOException e) {
 					CxLogger.error(PluginConstants.ERROR_GETTING_GIT_BRANCH, e);
@@ -336,6 +339,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 		// Create plugin toolBar
 		createToolbar();
+		
+		loadComboboxes();
 
 		// Init git branch listener
 		initGitBranchListener();
@@ -365,8 +370,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		createProjectListComboBox(comboboxesComposite);
 		createBranchComboBox(comboboxesComposite);
 		createScanIdComboBox(comboboxesComposite);
-
-		loadComboboxes();
 	}
 
 	private void loadComboboxes() {
@@ -383,9 +386,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					if (currentProjectId.isEmpty() || projectList.isEmpty()) {
 						PluginUtils.setTextForComboViewer(projectComboViewer, PROJECT_COMBO_VIEWER_TEXT);
 						PluginUtils.setTextForComboViewer(branchComboViewer, BRANCH_COMBO_VIEWER_TEXT);
-						PluginUtils.setTextForComboViewer(scanIdComboViewer,
-								PluginConstants.COMBOBOX_SCAND_ID_PLACEHOLDER);
-
+						PluginUtils.setTextForComboViewer(scanIdComboViewer, PluginConstants.COMBOBOX_SCAND_ID_PLACEHOLDER);
 						PluginUtils.enableComboViewer(projectComboViewer, true);
 						PluginUtils.enableComboViewer(scanIdComboViewer, true);
 						PluginUtils.enableComboViewer(branchComboViewer, false);
@@ -781,8 +782,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 							currentBranches = DataProvider.getInstance().getBranchesForProject(selectedProject.getId());
 							sync.asyncExec(() -> {
 								branchComboViewer.setInput(currentBranches);
-								PluginUtils.setTextForComboViewer(branchComboViewer,
-										currentBranches.isEmpty() ? NO_BRANCHES_AVAILABLE : BRANCH_COMBO_VIEWER_TEXT);
+								PluginUtils.setTextForComboViewer(branchComboViewer, currentBranches.isEmpty() ? NO_BRANCHES_AVAILABLE : BRANCH_COMBO_VIEWER_TEXT);
 
 								PluginUtils.enableComboViewer(branchComboViewer, true);
 								PluginUtils.enableComboViewer(scanIdComboViewer, true);
@@ -997,8 +997,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 						}
 						if (selection.size() > 0) {
 							sync.asyncExec(() -> {
-								PluginUtils.showMessage(rootModel, resultsTree, String
-										.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, selectedScan.getId()));
+								PluginUtils.showMessage(rootModel, resultsTree, String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, selectedScan.getId()));
 								PluginUtils.enableComboViewer(projectComboViewer, false);
 								PluginUtils.enableComboViewer(branchComboViewer, false);
 							});
@@ -2382,7 +2381,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 		};
 		job.schedule();
-
 	}
 
 	/**
@@ -2474,6 +2472,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 		// Clear vulnerabilities from Problems View
 		PluginUtils.clearVulnerabilitiesFromProblemsView();
+		
+		toolBarActions.refreshToolbar();
 	}
 
 	/**
@@ -2628,8 +2628,9 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		if(enabled) {
 			String runningScanId = GlobalSettings.getFromPreferences(GlobalSettings.PARAM_RUNNING_SCAN_ID, PluginConstants.EMPTY_STRING);
 			boolean  isScanRunning = StringUtils.isNoneEmpty(runningScanId);
-			
-			toolBarActions.getStartScanAction().setEnabled(projectsLoadedInWorkspace && !isScanRunning);
+			boolean branchSelected = StringUtils.isNotBlank(GlobalSettings.getFromPreferences(GlobalSettings.PARAM_BRANCH, PluginConstants.EMPTY_STRING));
+						
+			toolBarActions.getStartScanAction().setEnabled(projectsLoadedInWorkspace && !isScanRunning && branchSelected);
 		} else {
 			toolBarActions.getStartScanAction().setEnabled(false);
 		}

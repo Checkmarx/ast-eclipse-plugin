@@ -105,7 +105,10 @@ public class ActionStartScan extends CxBaseAction {
 		startScanAction.setId(ActionName.START_SCAN.name());
 		startScanAction.setToolTipText(PluginConstants.CX_START_SCAN);
 		startScanAction.setImageDescriptor(Activator.getImageDescriptor(ACTION_START_SCAN_ICON_PATH));
-		startScanAction.setEnabled(false);
+		
+		String branch = GlobalSettings.getFromPreferences(GlobalSettings.PARAM_BRANCH, PluginConstants.EMPTY_STRING);
+		
+		startScanAction.setEnabled(StringUtils.isNotBlank(branch));
 		
 		String runningScanId = GlobalSettings.getFromPreferences(GlobalSettings.PARAM_RUNNING_SCAN_ID, PluginConstants.EMPTY_STRING);
 		boolean  isScanRunning = StringUtils.isNotEmpty(runningScanId);
@@ -156,7 +159,6 @@ public class ActionStartScan extends CxBaseAction {
 						}
 
 						pollScan(scan.getId());
-						cancelScanAction.setEnabled(true);
 					} else {
 						Display.getDefault().syncExec(new Runnable() {
 							@Override
@@ -242,6 +244,7 @@ public class ActionStartScan extends CxBaseAction {
 	}
 	
 	private void pollScan(String scanId) {
+		cancelScanAction.setEnabled(true);
 		GlobalSettings.storeInPreferences(GlobalSettings.PARAM_RUNNING_SCAN_ID, scanId);
 		
 		pollJob = new Job(String.format(PluginConstants.CX_RUNNING_SCAN, scanId)) {
