@@ -57,6 +57,7 @@ public class ActionStartScan extends CxBaseAction {
 	private Action cancelScanAction;
 	private ScheduledExecutorService pollScanExecutor;
 	private boolean creatingScanCanceled = false;
+	private static Job pollJob;
 	
 	public ActionStartScan(DisplayModel rootModel, TreeViewer resultsTree, EventBus pluginEventBus, ComboViewer projectsCombo, ComboViewer branchesCombo, ComboViewer scansCombo, Action cancelScanAction) {
 		super(rootModel, resultsTree);
@@ -104,7 +105,10 @@ public class ActionStartScan extends CxBaseAction {
 		startScanAction.setId(ActionName.START_SCAN.name());
 		startScanAction.setToolTipText(PluginConstants.CX_START_SCAN);
 		startScanAction.setImageDescriptor(Activator.getImageDescriptor(ACTION_START_SCAN_ICON_PATH));
-		startScanAction.setEnabled(false);
+		
+		String branch = GlobalSettings.getFromPreferences(GlobalSettings.PARAM_BRANCH, PluginConstants.EMPTY_STRING);
+		
+		startScanAction.setEnabled(StringUtils.isNotBlank(branch));
 		
 		String runningScanId = GlobalSettings.getFromPreferences(GlobalSettings.PARAM_RUNNING_SCAN_ID, PluginConstants.EMPTY_STRING);
 		boolean  isScanRunning = StringUtils.isNotEmpty(runningScanId);
@@ -155,7 +159,6 @@ public class ActionStartScan extends CxBaseAction {
 						}
 
 						pollScan(scan.getId());
-						cancelScanAction.setEnabled(true);
 					} else {
 						Display.getDefault().syncExec(new Runnable() {
 							@Override
@@ -209,7 +212,7 @@ public class ActionStartScan extends CxBaseAction {
 	 */
 	private boolean cxProjectMatchesWorkspaceProject() {
 		Results results = DataProvider.getInstance().getCurrentResults();
-		boolean noResultsInScan = results.getResults().isEmpty();
+		boolean noResultsInScan = results == null || results.getResults().isEmpty();
 		boolean noFilesInWorkspace = ResourcesPlugin.getWorkspace().getRoot().getProjects().length == 0;
 		
 		if(noResultsInScan || noFilesInWorkspace) {
@@ -241,9 +244,10 @@ public class ActionStartScan extends CxBaseAction {
 	}
 	
 	private void pollScan(String scanId) {
+		cancelScanAction.setEnabled(true);
 		GlobalSettings.storeInPreferences(GlobalSettings.PARAM_RUNNING_SCAN_ID, scanId);
 		
-		Job job = new Job(String.format(PluginConstants.CX_RUNNING_SCAN, scanId)) {
+		pollJob = new Job(String.format(PluginConstants.CX_RUNNING_SCAN, scanId)) {
 			@Override
 			protected IStatus run(IProgressMonitor arg0) {
 				try {			
@@ -256,37 +260,49 @@ public class ActionStartScan extends CxBaseAction {
 				} catch (Exception e) {
 					CxLogger.error(String.format(PluginConstants.CX_ERROR_GETTING_SCAN_INFO, e.getMessage()), e);
 				}
-				
 				return Status.OK_STATUS;
 			}
 			
 			@Override
 			protected void canceling() {
+				this.setName(PluginConstants.CX_CANCELING_SCAN);
 				super.canceling();
 				pollScanExecutor.shutdown();
 				cancelScan(scanId);
 			}
 		};
-		job.schedule();
+		pollJob.schedule();
+	}
+	
+	public static void onCancel() {
+		pollJob.cancel();
 	}
 	
 	private void cancelScan(String scanId) {
-		try {
-			DataProvider.getInstance().cancelScan(scanId);
-			GlobalSettings.storeInPreferences(GlobalSettings.PARAM_RUNNING_SCAN_ID, PluginConstants.EMPTY_STRING);
-			Display.getDefault().syncExec(new Runnable() {
-				@Override
-				public void run() {
-					AbstractNotificationPopup notification = new NotificationPopUpUI(Display.getCurrent(), PluginConstants.CX_SCAN_CANCELED_TITLE, PluginConstants.CX_SCAN_CANCELED_DESCRIPTION, null, null, null);
-					notification.setDelayClose(5000);
-					notification.open();
+		Job job = new Job(PluginConstants.CX_CANCELING_SCAN) {
+			@Override
+			protected IStatus run(IProgressMonitor arg0) {
+				try {
+					DataProvider.getInstance().cancelScan(scanId);
+					GlobalSettings.storeInPreferences(GlobalSettings.PARAM_RUNNING_SCAN_ID, PluginConstants.EMPTY_STRING);
+					Display.getDefault().syncExec(new Runnable() {
+						@Override
+						public void run() {
+							AbstractNotificationPopup notification = new NotificationPopUpUI(Display.getCurrent(), PluginConstants.CX_SCAN_CANCELED_TITLE, PluginConstants.CX_SCAN_CANCELED_DESCRIPTION, null, null, null);
+							notification.setDelayClose(5000);
+							notification.open();
+						}
+					});
+					startScanAction.setEnabled(true);
+					cancelScanAction.setEnabled(false);
+				} catch (Exception e) {
+					CxLogger.error(String.format(PluginConstants.CX_ERROR_CANCELING_SCAN, e.getMessage()), e);
 				}
-			});
-			startScanAction.setEnabled(true);
-			cancelScanAction.setEnabled(false);
-		} catch (Exception e) {
-			CxLogger.error(String.format(PluginConstants.CX_ERROR_CANCELING_SCAN, e.getMessage()), e);
-		}
+				
+				return Status.OK_STATUS;
+			}
+		};
+		job.schedule();
 	}
 	
 	private Runnable pollingScan(String scanId) {
