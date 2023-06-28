@@ -113,7 +113,6 @@ public class PluginConstants {
 	public static final String CX_SCAN_CANCELED_TITLE = "Scan canceled";
 	public static final String CX_SCAN_CANCELED_DESCRIPTION = "Checkmarx scan canceled successfully.";
 	public static final String CX_START_SCAN = "Start a scan";
-	public static final String CX_NO_FILES_TO_SCAN = "No files in workspace to scan";
 	public static final String CX_CANCEL_RUNNING_SCAN = "Cancel running scan";
 	public static final String CX_RUNNING_SCAN = "Checkmarx: Scan running with id %s";
 	public static final String NO_FILES_IN_WORKSPACE = "No files in workspace to scan.";
