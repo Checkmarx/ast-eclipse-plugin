@@ -56,6 +56,8 @@ public class TestScan extends BaseUITest {
 		
 		waitUntilBranchComboIsEnabled();
 		
+		_bot.waitUntil(startScanButtonEnabled);
+		
 		SWTBotToolbarButton startBtn = _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).getToolbarButtons().stream().filter(btn -> btn.getToolTipText().equals(PluginConstants.CX_START_SCAN)).findFirst().get();
 		startBtn.click();
 		
