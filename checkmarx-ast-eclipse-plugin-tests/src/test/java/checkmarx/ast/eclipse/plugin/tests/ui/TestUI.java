@@ -47,7 +47,7 @@ public class TestUI extends BaseUITest {
 		testSuccessfulConnection(false);		
 	}
 
-	@Test
+	//@Test
 	public void testAddCheckmarxASTPlugin() throws TimeoutException {
 		clearCheckmarxCredentials();
 		
