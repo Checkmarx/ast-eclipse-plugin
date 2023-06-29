@@ -4,7 +4,6 @@ import static org.junit.Assert.assertFalse;
 
 import java.util.concurrent.TimeoutException;
 
-import org.eclipse.swtbot.eclipse.finder.SWTWorkbenchBot;
 import org.eclipse.swtbot.swt.finder.SWTBot;
 import org.eclipse.swtbot.swt.finder.junit.SWTBotJunit4ClassRunner;
 import org.eclipse.swtbot.swt.finder.keyboard.Keystrokes;
@@ -12,7 +11,6 @@ import org.eclipse.swtbot.swt.finder.utils.SWTBotPreferences;
 import org.eclipse.swtbot.swt.finder.waits.ICondition;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotShell;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotToolbarButton;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -27,21 +25,6 @@ public class TestScan extends BaseUITest {
 	public static final String ASSERT_CANCEL_SCAN_DISABLED = "Cancel scan must be disabled since there is no project or branch selected and no running scan.";
 	public static final String BTN_YES = "Yes";
 	public static final String BTN_NO = "No";
-	
-	@BeforeClass
-	public static void beforeClass() throws Exception {
-		// Needed to set CI environment keyboard layout
-		SWTBotPreferences.KEYBOARD_LAYOUT = "EN_US"; 
-		
-		// Used to wait for scan to finish
-		SWTBotPreferences.TIMEOUT = 300000; // 5minutes
-
-		// Used to decrease tests velocity
-		SWTBotPreferences.PLAYBACK_DELAY = 100;
-
-		_bot = new SWTWorkbenchBot();
-		createEclipseProject();
-	}
 
 	@Test
 	public void testScanButtonsDisabledWhenMissingProjectOrBranch() throws TimeoutException {
@@ -84,6 +67,9 @@ public class TestScan extends BaseUITest {
 	
 	@Test
 	public void testCancelScan() throws TimeoutException {
+		// Used to wait for scan to finish
+		SWTBotPreferences.TIMEOUT = 300000; // 5minutes
+		
 		testSuccessfulConnection(false);
 
 		addCheckmarxPlugin(true);
@@ -103,10 +89,15 @@ public class TestScan extends BaseUITest {
 		cancelBtn.click();
 		
 		_bot.waitUntil(startScanButtonEnabled);
+		
+		SWTBotPreferences.TIMEOUT = 5000;
 	}
 	
 	@Test
 	public void testRunScan() throws TimeoutException {
+		// Used to wait for scan to finish
+		SWTBotPreferences.TIMEOUT = 300000; // 5minutes
+				
 		testSuccessfulConnection(false);
 
 		addCheckmarxPlugin(true);
@@ -124,25 +115,9 @@ public class TestScan extends BaseUITest {
 		startBtn.click();
 				
 		_bot.waitUntil(startScanButtonEnabled);
-	}
-	
-	private static void createEclipseProject() {
-		_bot.menu("File").menu("New").menu("Project...").click();
-		SWTBotShell shell = _bot.shell("New Project");
-		shell.activate();
-		_bot.tree().select("Project");
-		_bot.button("Next >").click();
 		
- 
-		_bot.textWithLabel("Project name:").setText("MyFirstProject");
-		_bot.button("Finish").click();
-		
-		_bot.menu("File").menu("New").menu("File").click();
-		_bot.textWithLabel("File name:").setText("Dockerfile"); 
-		_bot.button("Finish").click();
-	}
-	
-	
+		SWTBotPreferences.TIMEOUT = 5000;
+	}	
 	
 	private static final ICondition startScanButtonEnabled = new ICondition() {		
 		@Override

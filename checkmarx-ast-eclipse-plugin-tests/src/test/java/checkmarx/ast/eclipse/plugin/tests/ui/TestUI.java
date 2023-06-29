@@ -82,8 +82,8 @@ public class TestUI extends BaseUITest {
 		_bot.comboBox(2).setText(UUID.randomUUID().toString());
 		_bot.comboBox(2).pressShortcut(Keystrokes.LF);
 
-		assertEquals("The tree must contain a single row", _bot.tree().rowCount(), 1);
-		String firstTreeCell = _bot.tree().cell(0, 0);
+		assertEquals("The tree must contain a single row", _bot.tree(1).rowCount(), 1);
+		String firstTreeCell = _bot.tree(1).cell(0, 0);
 
 		// The first row must have a message saying that One is getting results or
 		// failing due the missing Server Url
@@ -111,12 +111,12 @@ public class TestUI extends BaseUITest {
 		// Set credentials, test connection and add checkmarx plugin
 		setUpCheckmarxPlugin(false);
 				
-		String firstNodeName = _bot.tree().cell(0, 0);
-		String secondNodeName = _bot.tree().getTreeItem(firstNodeName).expand().getNode(0).getText();
-		String thirdNodeName = _bot.tree().getTreeItem(firstNodeName).expand().getNode(0).expand().getNode(0).getText();
+		String firstNodeName = _bot.tree(1).cell(0, 0);
+		String secondNodeName = _bot.tree(1).getTreeItem(firstNodeName).expand().getNode(0).getText();
+		String thirdNodeName = _bot.tree(1).getTreeItem(firstNodeName).expand().getNode(0).expand().getNode(0).getText();
 		
 		// Expand nodes until the first vulnerability
-		_bot.tree().expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).select();
+		_bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).select();
 				
 		// Close Checkmarx One Scan view
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
@@ -199,7 +199,7 @@ public class TestUI extends BaseUITest {
 		filterInfoBtn.click();
 		
 		// Asserts that no issues are visible in the tree once we are grouping by Severity and no severity is selected
-		assertEquals(ASSERT_TREE_WITH_NO_ISSUES, _bot.tree().cell(0, 0), Environment.SCAN_ID + " (0 Issues)");
+		assertEquals(ASSERT_TREE_WITH_NO_ISSUES, _bot.tree(1).cell(0, 0), Environment.SCAN_ID + " (0 Issues)");
 		
 		// Click to include High severity
 		clickSeverityFilter(ActionName.HIGH.name());
@@ -207,16 +207,16 @@ public class TestUI extends BaseUITest {
 						
 		sleep(1000);		
 		
-		String firstNodeName = _bot.tree().cell(0, 0);
-		String secondNodeName = _bot.tree().getTreeItem(firstNodeName).expand().getNode(0).getText();
-		String thirdNodeName = _bot.tree().getTreeItem(firstNodeName).expand().getNode(0).expand().getNode(0).getText();
+		String firstNodeName = _bot.tree(1).cell(0, 0);
+		String secondNodeName = _bot.tree(1).getTreeItem(firstNodeName).expand().getNode(0).getText();
+		String thirdNodeName = _bot.tree(1).getTreeItem(firstNodeName).expand().getNode(0).expand().getNode(0).getText();
 		
 		// Expand nodes until the first vulnerability
-		String groupByQueryNameParent = _bot.tree().expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).expand().getNode(0).getText();
-		String groupByQueryNameChild = _bot.tree().expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).expand().getNode(0).expand().getNode(0).getText();
+		String groupByQueryNameParent = _bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).expand().getNode(0).getText();
+		String groupByQueryNameChild = _bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).expand().getNode(0).expand().getNode(0).getText();
 		
 		// Select the first vulnerability
-		_bot.tree().expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).expand().getNode(0).expand().getNode(0).select();
+		_bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).expand().getNode(0).expand().getNode(0).select();
 		
 		// Asserts that the vulnerability has the same name as the parent node which means it is grouped by query name
 		assertTrue(ASSERT_GROUP_BY_QUERY_NAME, groupByQueryNameChild.contains(groupByQueryNameParent.split("\\(")[0].trim()));
@@ -229,12 +229,12 @@ public class TestUI extends BaseUITest {
 		
 		sleep(1000);
 		
-		firstNodeName = _bot.tree().cell(0, 0);
-		secondNodeName = _bot.tree().getTreeItem(firstNodeName).expand().getNode(0).getText();
-		_bot.tree().expandNode(firstNodeName).expandNode(secondNodeName);
+		firstNodeName = _bot.tree(1).cell(0, 0);
+		secondNodeName = _bot.tree(1).getTreeItem(firstNodeName).expand().getNode(0).getText();
+		_bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName);
 				
 		// Get's the first engine child
-		String firstEngineChild = _bot.tree().expandNode(firstNodeName).expandNode(secondNodeName).getNode(0).getText();
+		String firstEngineChild = _bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName).getNode(0).getText();
 		
 		// Checks if it starts by HIGH, MEDIUM, LOW or INFO
 		boolean engineChildDontStartWithHIGH = !firstEngineChild.startsWith(ActionName.HIGH.name());
@@ -243,7 +243,7 @@ public class TestUI extends BaseUITest {
 		boolean engineChildDontStartWithINFO = !firstEngineChild.startsWith(ActionName.INFO.name());
 		
 		// Asserts group by options are not enabled
-		assertTrue(ASSERT_NO_CHINDREN, _bot.tree().expandNode(firstNodeName).expandNode(secondNodeName).getNode(0).getNodes().isEmpty());
+		assertTrue(ASSERT_NO_CHINDREN, _bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName).getNode(0).getNodes().isEmpty());
 		assertTrue(ASSERT_GROUP_BY_SEVERITY_NOT_SELECTED, engineChildDontStartWithHIGH && engineChildDontStartWithMEDIUM && engineChildDontStartWithLOW && engineChildDontStartWithINFO);
 		
 		// re-enable group by and severity
@@ -288,12 +288,12 @@ public class TestUI extends BaseUITest {
 	 * @return
 	 */
 	private List<String> expandTreeUntilFirstEngineAndGetCurrentSeverities() {
-		String firstNodeName = _bot.tree().cell(0, 0);
-		String secondNodeName = _bot.tree().getTreeItem(firstNodeName).expand().getNode(0).getText();
+		String firstNodeName = _bot.tree(1).cell(0, 0);
+		String secondNodeName = _bot.tree(1).getTreeItem(firstNodeName).expand().getNode(0).getText();
 		
-		_bot.tree().expandNode(firstNodeName).expandNode(secondNodeName);
+		_bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName);
 		
-		return _bot.tree().getTreeItem(_bot.tree().cell(0, 0)).expand().getNode(0).getNodes().stream().map(node -> node.split("\\(")[0].trim()).collect(Collectors.toList());
+		return _bot.tree(1).getTreeItem(_bot.tree(1).cell(0, 0)).expand().getNode(0).getNodes().stream().map(node -> node.split("\\(")[0].trim()).collect(Collectors.toList());
 	}
 
 	/**

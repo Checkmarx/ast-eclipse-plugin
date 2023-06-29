@@ -28,23 +28,17 @@ public class TestFilterState extends BaseUITest{
 	
 	List<String> groupByActions = Arrays.asList(ToolBarActions.GROUP_BY_QUERY_NAME,ToolBarActions.GROUP_BY_SEVERITY,ToolBarActions.GROUP_BY_STATE_NAME);
 	
-	
 	@Test
 	public void testGroupByActionsInToolBar() throws TimeoutException {
-		
 		int SECOND_NODE = 2;
 		int THIRD_NODE = 3;
 		int FOURTH_NODE = 4;
 
-		
 		setUpCheckmarxPlugin(true);
 
 		// remove all groups and get the first individual node
-		
-		//List<String> groupByActions = Arrays.asList(ToolBarActions.GROUP_BY_QUERY_NAME,ToolBarActions.GROUP_BY_SEVERITY,ToolBarActions.GROUP_BY_STATE_NAME);
 		disableAllGroupByActions(groupByActions);
 
-		
 		sleep(1000);
 		
 		SWTBotTreeItem ll = getFirstResultNode();
@@ -53,26 +47,20 @@ public class TestFilterState extends BaseUITest{
 		assertTrue(!severityFilters.contains(ll.getText()));
 		
 		//enable group by severity (1st level group)
-		
 		enableGroup(ToolBarActions.GROUP_BY_SEVERITY);
 		sleep(1000);
 		String severityFilter = getNodeLabel(SECOND_NODE);
-		//String severityFilter = _bot.tree().getTreeItem(_bot.tree().cell(0, 0)).expand().getNode(0).expand().getNode(0).getText().split(" ")[0];
 		assertTrue(severityFilters.contains(severityFilter));
-		
 		
 		// enable group by state (2nd level group)
 		enableGroup(ToolBarActions.GROUP_BY_STATE_NAME);
 		sleep(1000);
-		//String stateFilter = _bot.tree().getTreeItem(_bot.tree().cell(0, 0)).expand().getNode(0).expand().getNode(0).expand().getNode(0).getText().split("\\(")[0].trim();
 		String stateFilter = getNodeLabel(THIRD_NODE);
 		assertTrue(stateFilters.contains(stateFilter));
-		
 		
 		// enable group by query name (3rd level group)
 		enableGroup(ToolBarActions.GROUP_BY_QUERY_NAME);
 		sleep(1000);
-		//String queryNameFilter= _bot.tree().getTreeItem(_bot.tree().cell(0, 0)).expand().getNode(0).expand().getNode(0).expand().getNode(0).expand().getNode(0).getText().split(" ")[0];
 		String queryNameFilter = getNodeLabel(FOURTH_NODE);
 		assertTrue(queryNameFilter.startsWith(ll.getText()));
 
@@ -80,10 +68,8 @@ public class TestFilterState extends BaseUITest{
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
 	}
 	
-
-
 	private String getNodeLabel(int i) {
-		SWTBotTreeItem treeNode = _bot.tree().getTreeItem(_bot.tree().cell(0, 0));
+		SWTBotTreeItem treeNode = _bot.tree(1).getTreeItem(_bot.tree(1).cell(0, 0));
 		String value = "";
 		while(i>0) {
 			treeNode = treeNode.expand().getNode(0);
@@ -93,12 +79,9 @@ public class TestFilterState extends BaseUITest{
 		return value;
 	}
 
-
-
 	private void enableGroup(String groupBy) {
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(groupBy).click();
 	}
-
 
 	private void disableAllGroupByActions(List<String> groupByActions) {
 		for(String action : groupByActions) {
@@ -108,7 +91,6 @@ public class TestFilterState extends BaseUITest{
 		}
 		
 	}
-
 
 	@Test
 	public void testFilterStateActionsInToolBar() throws TimeoutException, ParseException{
@@ -123,12 +105,10 @@ public class TestFilterState extends BaseUITest{
 		
 		// get all filter nodes
 		List<String> filterStateButtons = Arrays.asList("Not Exploitable","Confirmed","Proposed Not Exploitable","Urgent","Ignored","Not Ignored","To Verify");
-		List<String> enabledFilters = _bot.tree().getTreeItem(_bot.tree().cell(0, 0)).expand().getNode(0).expand().getNodes().stream().map(node -> node.split("\\(")[0].trim()).collect(Collectors.toList());
+		List<String> enabledFilters = _bot.tree(1).getTreeItem(_bot.tree(1).cell(0, 0)).expand().getNode(0).expand().getNodes().stream().map(node -> node.split("\\(")[0].trim()).collect(Collectors.toList());
 		String firstGroup = enabledFilters.get(0);
 		List<String> filterButton = filterStateButtons.stream().filter(node -> node.equalsIgnoreCase(firstGroup.replace("_", " "))).collect(Collectors.toList());
 		assertTrue(filterButton.size()==1);
-		//List<SWTBotToolbarButton> toolbarButtons = _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).getToolbarButtons();
-		//SWTBotToolbarButton filterStateButton = toolbarButtons.stream().filter(btn -> btn.getToolTipText().toUpperCase().equals("STATE")).findFirst().get();
 		SWTBotToolbarDropDownButton stateFilter = _bot.toolbarDropDownButtonWithTooltip("State");
 		final SWTBotMenu menuItem = stateFilter.menuItem(filterButton.get(0));
 		menuItem.setFocus();
@@ -138,22 +118,20 @@ public class TestFilterState extends BaseUITest{
 		sleep(1000);
 		List<String> filteredGroup = new ArrayList<String>();
 		if(enabledFilters.size()>0) {
-			filteredGroup = _bot.tree().getTreeItem(_bot.tree().cell(0, 0)).expand().getNode(0).expand().getNodes().stream().map(node -> node.split("\\(")[0].trim()).collect(Collectors.toList());
+			filteredGroup = _bot.tree(1).getTreeItem(_bot.tree(1).cell(0, 0)).expand().getNode(0).expand().getNodes().stream().map(node -> node.split("\\(")[0].trim()).collect(Collectors.toList());
 			assertTrue(!filteredGroup.contains(firstGroup));
 		}
 		else {
-			assertTrue(TestUI.ASSERT_NO_CHINDREN, _bot.tree().getTreeItem(_bot.tree().cell(0, 0)).expand().getNodes().isEmpty());
+			assertTrue(TestUI.ASSERT_NO_CHINDREN, _bot.tree(1).getTreeItem(_bot.tree(1).cell(0, 0)).expand().getNodes().isEmpty());
 		}
 		
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
 		
 	}
 
-	
-	
 	private SWTBotTreeItem getFirstResultNode() {
-		String firstNodeName = _bot.tree().cell(0, 0);
-		SWTBotTreeItem node = _bot.tree().getTreeItem(firstNodeName);
+		String firstNodeName = _bot.tree(1).cell(0, 0);
+		SWTBotTreeItem node = _bot.tree(1).getTreeItem(firstNodeName);
 		while(!node.getNodes().isEmpty()) {
 			node = node.expand().getNode(0);
 		}
