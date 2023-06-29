@@ -249,11 +249,14 @@ public abstract class BaseUITest {
 
 		if (retryIdx == 10) {
 			emptyScanId = _bot.comboBox(2).getText().isEmpty() || _bot.comboBox(2).getText().equals(PluginConstants.COMBOBOX_SCAND_ID_PLACEHOLDER);
-			projectNotSelected =_bot.comboBox(0).getText().isEmpty() || _bot.comboBox(0).getText().equals("Select a project");
+			projectNotSelected = _bot.comboBox(0).getText().isEmpty() || _bot.comboBox(0).getText().equals("Select a project");
 			
 			if(emptyScanId || projectNotSelected) {
 				return;
 			}
+			
+			System.out.println("=====> [HUGO] Scan: " + _bot.comboBox(2).getText());
+			System.out.println("=====> [HUGO] Project: " + _bot.comboBox(0).getText());
 			
 			throw new TimeoutException("Timeout after 5000ms. Branches' combobox must be enabled");
 		}
