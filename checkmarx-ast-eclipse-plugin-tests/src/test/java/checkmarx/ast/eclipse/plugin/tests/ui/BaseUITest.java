@@ -255,9 +255,6 @@ public abstract class BaseUITest {
 				return;
 			}
 			
-			System.out.println("=====> [HUGO] Scan: " + _bot.comboBox(2).getText());
-			System.out.println("=====> [HUGO] Project: " + _bot.comboBox(0).getText());
-			
 			throw new TimeoutException("Timeout after 5000ms. Branches' combobox must be enabled");
 		}
 	}
