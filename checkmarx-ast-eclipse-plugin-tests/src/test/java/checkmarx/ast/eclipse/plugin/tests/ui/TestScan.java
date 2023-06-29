@@ -45,6 +45,9 @@ public class TestScan extends BaseUITest {
 	
 	@Test
 	public void testScanProjectDoesNotMatch() throws TimeoutException {
+		// Used to wait for scan to finish
+		SWTBotPreferences.TIMEOUT = 300000; // 5minutes
+		
 		testSuccessfulConnection(false);
 
 		addCheckmarxPlugin(true);
@@ -65,6 +68,8 @@ public class TestScan extends BaseUITest {
 		shell.activate();
 		
 		_bot.button(BTN_NO).click();
+		
+		SWTBotPreferences.TIMEOUT = 5000;
 	}
 	
 	@Test
