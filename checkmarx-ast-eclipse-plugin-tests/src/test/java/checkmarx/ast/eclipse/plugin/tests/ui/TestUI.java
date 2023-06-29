@@ -28,7 +28,7 @@ import com.checkmarx.eclipse.views.actions.ToolBarActions;
 
 import checkmarx.ast.eclipse.plugin.tests.common.Environment;
 
-//@RunWith(SWTBotJunit4ClassRunner.class)
+@RunWith(SWTBotJunit4ClassRunner.class)
 public class TestUI extends BaseUITest {
 	
 	
@@ -42,12 +42,12 @@ public class TestUI extends BaseUITest {
 	private static final String ASSERT_GROUP_BY_SEVERITY_NOT_SELECTED = "Engine child should not be HIGH, MEDIUM, LOW or INFO once the group by severity is not enabled";
 	private static final String ASSERT_CREDENTIALS_PANEL = "The  credentials panel must appear once Checkmarx credentials are not defined";
 
-	//@Test
+	@Test
 	public void testSuccessfulConnetion() throws TimeoutException {
 		testSuccessfulConnection(false);		
 	}
 
-	//@Test
+	@Test
 	public void testAddCheckmarxASTPlugin() throws TimeoutException {
 		clearCheckmarxCredentials();
 		
@@ -67,7 +67,7 @@ public class TestUI extends BaseUITest {
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
 	}
 
-	//@Test
+	@Test
 	public void testMissingSetCheckmarxServerUrl() throws TimeoutException {
 		// Test Connection
 		testSuccessfulConnection(false);
@@ -108,7 +108,7 @@ public class TestUI extends BaseUITest {
 	 * 
 	 * @throws TimeoutException
 	 */
-	//@Test
+	@Test
 	public void testEnd2End() throws TimeoutException {
 		// Set credentials, test connection and add checkmarx plugin
 		setUpCheckmarxPlugin(false);
@@ -124,7 +124,7 @@ public class TestUI extends BaseUITest {
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
 	}
 	
-	//@Test
+	@Test
 	public void testFilterButtonsAndGroupByActionsInToolBar() throws TimeoutException {
 		// Test Connection
 		testSuccessfulConnection(false);
@@ -149,7 +149,7 @@ public class TestUI extends BaseUITest {
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
 	}
 	
-	//@Test
+	@Test
 	public void testFilteringAndGroupingResults() throws TimeoutException, ParseException {
 		// Set credentials, test connection and add checkmarx plugin
 		setUpCheckmarxPlugin(true);
@@ -256,7 +256,7 @@ public class TestUI extends BaseUITest {
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
 	}
 	
-	//@Test(expected = WidgetNotFoundException.class)
+	@Test(expected = WidgetNotFoundException.class)
 	public void testInitialPanelWhenMissingCredentials() throws TimeoutException {
 		// Add Checkmarx plugin to the eclipse view
 		addCheckmarxPlugin(false);
