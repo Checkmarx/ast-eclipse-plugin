@@ -53,6 +53,8 @@ public class TestUI extends BaseUITest {
 		
 		// Add Checkmarx plugin to the eclipse view
 		addCheckmarxPlugin(false);
+		
+		preventWidgetWasNullInCIEnvironment();
 
 		// Assert that active view is the Checkmarx One Scan
 		assertTrue("Active view must be the Checkmarx One Scan", _bot.activeView().getTitle().equals(VIEW_CHECKMARX_AST_SCAN));
