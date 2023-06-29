@@ -64,7 +64,10 @@ public abstract class BaseUITest {
 
 		_bot = new SWTWorkbenchBot();
 		
+		System.out.println("=======================> [Hugo] Before class...");
+		
 		if(!eclipseProjectExist) {
+			System.out.println("=======================> [Hugo] Create eclipse project...");
 			createEclipseProject();
 			eclipseProjectExist = true;
 		}

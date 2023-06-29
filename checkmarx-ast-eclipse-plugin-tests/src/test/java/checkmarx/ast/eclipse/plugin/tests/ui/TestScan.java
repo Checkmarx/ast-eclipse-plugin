@@ -45,25 +45,32 @@ public class TestScan extends BaseUITest {
 	
 	@Test
 	public void testScanProjectDoesNotMatch() throws TimeoutException {
+		System.out.println("=======================> [Hugo] Init test...");
 		// Used to wait for scan to finish
 		SWTBotPreferences.TIMEOUT = 300000; // 5minutes
 		
+		System.out.println("=======================> [Hugo] Test successful connection...");
 		testSuccessfulConnection(false);
 
+		System.out.println("=======================> [Hugo] Add checkmarx plugin...");
 		addCheckmarxPlugin(true);
 		
 		preventWidgetWasNullInCIEnvironment();
 		
+		
+		System.out.println("=======================> [Hugo] Set scan id to: " + Environment.SCAN_ID_PROJECT_DOES_NOT_MATCH);
 		_bot.comboBox(2).setText(Environment.SCAN_ID_PROJECT_DOES_NOT_MATCH);
 		_bot.comboBox(2).pressShortcut(Keystrokes.LF);
 		
 		waitUntilBranchComboIsEnabled();
 		
+		System.out.println("=======================> [Hugo] Wait until start scan button is enabled...");
 		_bot.waitUntil(startScanButtonEnabled);
 		
 		SWTBotToolbarButton startBtn = _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).getToolbarButtons().stream().filter(btn -> btn.getToolTipText().equals(PluginConstants.CX_START_SCAN)).findFirst().get();
 		startBtn.click();
 		
+		System.out.println("=======================> [Hugo] Project mismatch...");
 		SWTBotShell shell = _bot.shell(PluginConstants.CX_PROJECT_MISMATCH);
 		shell.activate();
 		
