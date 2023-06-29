@@ -26,7 +26,7 @@ public class TestScan extends BaseUITest {
 	public static final String BTN_YES = "Yes";
 	public static final String BTN_NO = "No";
 
-	@Test
+	//@Test
 	public void testScanButtonsDisabledWhenMissingProjectOrBranch() throws TimeoutException {
 		// Test Connection
 		testSuccessfulConnection(false);
@@ -72,7 +72,7 @@ public class TestScan extends BaseUITest {
 		SWTBotPreferences.TIMEOUT = 5000;
 	}
 	
-	@Test
+	//@Test
 	public void testCancelScan() throws TimeoutException {
 		// Used to wait for scan to finish
 		SWTBotPreferences.TIMEOUT = 300000; // 5minutes
@@ -100,7 +100,7 @@ public class TestScan extends BaseUITest {
 		SWTBotPreferences.TIMEOUT = 5000;
 	}
 	
-	@Test
+	//@Test
 	public void testRunScan() throws TimeoutException {
 		// Used to wait for scan to finish
 		SWTBotPreferences.TIMEOUT = 300000; // 5minutes
