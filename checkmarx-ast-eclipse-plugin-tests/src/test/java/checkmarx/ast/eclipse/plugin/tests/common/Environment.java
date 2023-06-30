@@ -6,4 +6,5 @@ public class Environment {
     public static final String TENANT = System.getenv("CX_TENANT");
     public static final String API_KEY = System.getenv("CX_APIKEY");
     public static final String SCAN_ID = System.getenv("CX_TEST_SCAN");
+    public static final String SCAN_ID_PROJECT_DOES_NOT_MATCH = System.getenv("CX_NOT_MATCH_TEST_PROJECT");
 }

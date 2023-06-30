@@ -10,6 +10,7 @@ import org.eclipse.swtbot.swt.finder.finders.UIThreadRunnable;
 import org.eclipse.swtbot.swt.finder.keyboard.Keystrokes;
 import org.eclipse.swtbot.swt.finder.results.VoidResult;
 import org.eclipse.swtbot.swt.finder.utils.SWTBotPreferences;
+import org.eclipse.swtbot.swt.finder.widgets.SWTBotShell;
 import org.eclipse.ui.PlatformUI;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -47,6 +48,7 @@ public abstract class BaseUITest {
 	protected static final String VIEW_CHECKMARX_AST_SCAN = "Checkmarx One Scan";
 	
 	protected static SWTWorkbenchBot _bot;
+	private static boolean eclipseProjectExist = false;
 	
 	protected static boolean _cxSettingsDefined = false;
 	
@@ -57,8 +59,15 @@ public abstract class BaseUITest {
 
 		// Used to decrease tests velocity
 		SWTBotPreferences.PLAYBACK_DELAY = 100;
+		
+		SWTBotPreferences.TIMEOUT = 5000;
 
 		_bot = new SWTWorkbenchBot();
+				
+		if(!eclipseProjectExist) {
+			createEclipseProject();
+			eclipseProjectExist = true;
+		}
 	}
 
 	@After
@@ -111,8 +120,8 @@ public abstract class BaseUITest {
 
 			sleep(1000);
 
-			assertEquals("The tree must contain one row with an error message", _bot.tree().rowCount(), 1);
-			assertEquals("An incorrect scanId format message must be displayed", PluginConstants.TREE_INVALID_SCAN_ID_FORMAT, _bot.tree().cell(0, 0));
+			assertEquals("The tree must contain one row with an error message", _bot.tree(1).rowCount(), 1);
+			assertEquals("An incorrect scanId format message must be displayed", PluginConstants.TREE_INVALID_SCAN_ID_FORMAT, _bot.tree(1).cell(0, 0));
 		}
 		
 		// clear the view before getting the scan id
@@ -124,12 +133,12 @@ public abstract class BaseUITest {
 		typeValidScanID();
 
 		assertEquals("The tree must contain one row", _bot.tree().rowCount(), 1);		
-		boolean retrievingOrRetrievedResults = _bot.tree().cell(0, 0).contains(Environment.SCAN_ID);
+		boolean retrievingOrRetrievedResults = _bot.tree(1).cell(0, 0).contains(Environment.SCAN_ID);
 		assertTrue("The plugin should have or should be retrieving results", retrievingOrRetrievedResults);
 
 		waitWhileTreeNodeEqualsTo(String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, Environment.SCAN_ID));
 		
-		assertTrue("The plugin should retrieve results", _bot.tree().cell(0, 0).startsWith(Environment.SCAN_ID));
+		assertTrue("The plugin should retrieve results", _bot.tree(1).cell(0, 0).startsWith(Environment.SCAN_ID));
 	}
 
 	/**
@@ -240,7 +249,7 @@ public abstract class BaseUITest {
 
 		if (retryIdx == 10) {
 			emptyScanId = _bot.comboBox(2).getText().isEmpty() || _bot.comboBox(2).getText().equals(PluginConstants.COMBOBOX_SCAND_ID_PLACEHOLDER);
-			projectNotSelected =_bot.comboBox(0).getText().isEmpty() || _bot.comboBox(0).getText().equals("Select a project");
+			projectNotSelected = _bot.comboBox(0).getText().isEmpty() || _bot.comboBox(0).getText().equals("Select a project");
 			
 			if(emptyScanId || projectNotSelected) {
 				return;
@@ -285,5 +294,25 @@ public abstract class BaseUITest {
 		_bot.comboBox(2).pressShortcut(Keystrokes.LF);
 		
 		waitUntilBranchComboIsEnabled();
+	}
+	
+	/**
+	 * Create a eclipse project
+	 */
+	private static void createEclipseProject() {
+		_bot.menu("File").menu("New").menu("Project...").click();
+		SWTBotShell shell = _bot.shell("New Project");
+		shell.activate();
+		_bot.tree().select("Project");
+		_bot.button("Next >").click();
+		
+ 
+		_bot.textWithLabel("Project name:").setText("MyFirstProject");
+		_bot.button("Finish").click();
+		
+		_bot.menu("File").menu("New").menu("File").click();
+		_bot.textWithLabel("File name:").setText("Dockerfile");
+		_bot.tree().select(0);
+		_bot.button("Finish").click();
 	}
 }
