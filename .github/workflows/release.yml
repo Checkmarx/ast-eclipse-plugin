@@ -58,4 +58,4 @@ jobs:
           destination-repository-username: 'CheckmarxDev'
           destination-repository-name: 'ast-eclipse-plugin-update-site'
           user-email: cylon-bot@checkmarx.com
-          target-branch: main
+          target-branch: nightly
