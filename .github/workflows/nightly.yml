@@ -12,7 +12,7 @@ jobs:
       tag_name: ${{ steps.tagname.outputs.tag_name }}
     steps:
       - name: Create tagname
-        run: echo "tag_name=2.0.$(date +%s)" >> "$GITHUB_OUTPUT"
+        run: echo "tag_name=2.0" >> "$GITHUB_OUTPUT"
         id: tagname
       - name: Print tagname
         run: echo "created tag ${{ steps.tagname.outputs.tag_name }}"
@@ -21,5 +21,5 @@ jobs:
     uses: Checkmarx/ast-eclipse-plugin/.github/workflows/release.yml@main
     with:
       tag: ${{ needs.set_tag.outputs.tag_name }}
-      rchannels: "nightly"
+      rbranch: "nightly"
     secrets: inherit
