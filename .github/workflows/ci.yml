@@ -29,6 +29,7 @@ jobs:
           CX_TENANT: ${{ secrets.CX_TENANT }}
           CX_APIKEY: ${{ secrets.CX_APIKEY }}
           CX_TEST_SCAN: ${{ secrets.CX_TEST_SCAN }}
+          CX_NOT_MATCH_TEST_PROJECT: ${{ secrets.CX_NOT_MATCH_TEST_PROJECT }}
         run: |
           export DISPLAY=:99.0
           Xvfb -ac :99 -screen 0 1920x1080x16 & mvn clean install
