@@ -15,7 +15,6 @@ import javax.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
-import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
@@ -1123,6 +1122,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					PluginUtils.setTextForComboViewer(projectComboViewer, projectName);
 					setSelectionForBranchComboViewer(scan.getBranch(), projectId);
 					setSelectionForScanIdComboViewer(scan.getId(), scan.getBranch());
+					updateStartScanButton(true);
 				});
 				return Status.OK_STATUS;
 			}
@@ -2622,19 +2622,15 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 * 
 	 * @param enabled
 	 */
-	private void updateStartScanButton(boolean enabled) {
-		boolean projectsLoadedInWorkspace = ResourcesPlugin.getWorkspace().getRoot().getProjects().length > 0;
-		
+	private void updateStartScanButton(boolean enabled) {		
 		if(enabled) {
 			String runningScanId = GlobalSettings.getFromPreferences(GlobalSettings.PARAM_RUNNING_SCAN_ID, PluginConstants.EMPTY_STRING);
 			boolean  isScanRunning = StringUtils.isNoneEmpty(runningScanId);
 			boolean branchSelected = StringUtils.isNotBlank(GlobalSettings.getFromPreferences(GlobalSettings.PARAM_BRANCH, PluginConstants.EMPTY_STRING));
 						
-			toolBarActions.getStartScanAction().setEnabled(projectsLoadedInWorkspace && !isScanRunning && branchSelected);
+			toolBarActions.getStartScanAction().setEnabled(!isScanRunning && branchSelected);
 		} else {
 			toolBarActions.getStartScanAction().setEnabled(false);
 		}
-		
-		toolBarActions.getStartScanAction().setToolTipText(projectsLoadedInWorkspace ? PluginConstants.CX_START_SCAN : PluginConstants.CX_NO_FILES_TO_SCAN);
 	}
 }

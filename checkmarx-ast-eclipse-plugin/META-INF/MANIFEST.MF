@@ -5,7 +5,6 @@ Bundle-SymbolicName: com.checkmarx.eclipse.plugin;singleton:=true
 Bundle-Version: 1.0.0.qualifier
 Bundle-Vendor: Checkmarx
 Require-Bundle: org.eclipse.ui,
- org.apache.commons.lang,
  org.eclipse.core.runtime,
  org.eclipse.jdt.core,
  org.eclipse.ui.ide,
@@ -29,4 +28,6 @@ Bundle-ClassPath: lib/slf4j-simple-1.7.5.jar,
  lib/ast-cli-java-wrapper-1.0.59.jar,
  lib/jackson-databind-2.13.2.2.jar,
  lib/org.eclipse.mylyn.commons.ui_3.25.2.v20200813-0821.jar,
+ lib/org.apache.commons.lang_2.6.0.v20220406-2305.jar,
+ lib/org-eclipse-mylyn-commons-core.jar,
  .

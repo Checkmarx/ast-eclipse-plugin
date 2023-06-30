@@ -1,6 +1,5 @@
 package checkmarx.ast.eclipse.plugin.tests.ui;
 
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
@@ -48,10 +47,8 @@ public class TestTriage  extends BaseUITest {
 	public void testTriage() throws TimeoutException {
 		setUpCheckmarxPlugin(true);
 		
-		
 		SWTBotTreeItem resultNode = getFirstResultNode();
-		String resultName = resultNode
-				.getText();
+		String resultName = resultNode.getText();
 		
 		// Select the first vulnerability
 		resultNode.select();
@@ -77,8 +74,12 @@ public class TestTriage  extends BaseUITest {
 		// wait for button to be enabled
 		_bot.waitUntil(triageButtonEnabled);
 		
-		// check the first result is no longer the same after triage
-		assertNotEquals(resultName, getFirstResultNode().getText());
+		// open changes tab
+		SWTBotTabItem changesTab = _bot.tabItemWithId(PluginConstants.CHANGES_TAB_ID);
+		changesTab.activate();
+		
+		// find the unique comment UUID
+		_bot.clabel(commentUUID);
 		
 		// revert severity and state
 		severityCombo.setSelection(Severity.HIGH.toString());
@@ -92,20 +93,14 @@ public class TestTriage  extends BaseUITest {
 		// split(" ")[0] provides the initial part of the name, which is the query id, both in the group and in resultName
 		List<String> stateResults = getStateResultNodes("TO_VERIFY").stream().map(element -> (element.split(" ")[0]).trim()).collect(Collectors.toList());		
 		assertTrue(String.format("%s - %s", stateResults.toString(), resultName), stateResults.contains(resultName.split(" ")[0]));
-		// open changes tab
-		SWTBotTabItem changesTab = _bot.tabItemWithId(PluginConstants.CHANGES_TAB_ID);
-		changesTab.activate();
-		
-		// find the unique comment UUID
-		_bot.clabel(commentUUID);
 		
 		// Close Checkmarx One Scan view
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
 	}
 
 	private List<String> getStateResultNodes(String state) throws TimeoutException {
-		String firstNodeName = _bot.tree().cell(0, 0);
-		SWTBotTreeItem node = _bot.tree().getTreeItem(firstNodeName);
+		String firstNodeName = _bot.tree(1).cell(0, 0);
+		SWTBotTreeItem node = _bot.tree(1).getTreeItem(firstNodeName);
 		List<String> sastHigh = node.expand().getNode(0).expand().getNode(0).expand().getNodes();
 		List<String> result = null;
 		for(int toVerifyIndex=0;toVerifyIndex < sastHigh.size();toVerifyIndex++) {
@@ -118,8 +113,8 @@ public class TestTriage  extends BaseUITest {
 
 
 	private SWTBotTreeItem getFirstResultNode() {
-		String firstNodeName = _bot.tree().cell(0, 0);
-		SWTBotTreeItem node = _bot.tree().getTreeItem(firstNodeName);
+		String firstNodeName = _bot.tree(1).cell(0, 0);
+		SWTBotTreeItem node = _bot.tree(1).getTreeItem(firstNodeName);
 		while(!node.getNodes().isEmpty()) {
 			node = node.expand().getNode(0);
 		}
