@@ -1296,8 +1296,9 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 		String currentState = selectedItem.getState();
 		selectedState = selectedItem.getResult().getState();
+		
 		String[] state = { "TO_VERIFY", "NOT_EXPLOITABLE", "PROPOSED_NOT_EXPLOITABLE", "CONFIRMED", "URGENT" };
-
+		
 		sync.asyncExec(() -> {
 			triageStateComboViewer.setContentProvider(ArrayContentProvider.getInstance());
 			triageStateComboViewer.setInput(state);
@@ -1400,7 +1401,14 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		sync.asyncExec(() -> {
 			triageButton.addSelectionListener(triageButtonAdapter);
 		});
-
+		
+		boolean isSCAVulnerability = selectedItem.getType().equalsIgnoreCase(PluginConstants.SCA_DEPENDENCY);
+		triageButton.setVisible(!isSCAVulnerability);
+		triageButton.setEnabled(!isSCAVulnerability);
+		triageStateComboViewer.getCombo().setEnabled(!isSCAVulnerability);
+		triageSeverityComboViewew.getCombo().setEnabled(!isSCAVulnerability);
+		commentText.setVisible(!isSCAVulnerability);
+		commentText.setEnabled(!isSCAVulnerability);
 	}
 
 	/*
