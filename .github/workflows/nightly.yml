@@ -12,7 +12,7 @@ jobs:
       tag_name: ${{ steps.tagname.outputs.tag_name }}
     steps:
       - name: Create tagname
-        run: echo "tag_name=2.0" >> "$GITHUB_OUTPUT"
+        run: echo "tag_name=2.0.0" >> "$GITHUB_OUTPUT"
         id: tagname
       - name: Print tagname
         run: echo "created tag ${{ steps.tagname.outputs.tag_name }}"
