@@ -83,7 +83,8 @@ jobs:
       - name: Git configuration 
         run: |
           git config --global safe.directory "/tmp/**/*/"
-          git config --global http.postBuffer 524288000
+          git config --global http.postBuffer 2097152000
+          git config --global https.postBuffer 2097152000
       
       - name: Create update site
         uses: cpina/github-action-push-to-another-repository@main
