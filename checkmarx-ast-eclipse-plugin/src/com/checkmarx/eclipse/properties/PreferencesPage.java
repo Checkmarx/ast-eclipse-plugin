@@ -65,9 +65,9 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 		Text textControl = apiKey.getTextControl(topComposite);
 
 		StringFieldEditor additionalParams = new StringFieldEditor(Preferences.ADDITIONAL_OPTIONS,
-				PluginConstants.PREFERENCES_ADDITIONAL_OPTIONS, topGridData.widthHint, 5, 0, topComposite);
+		        PluginConstants.PREFERENCES_ADDITIONAL_OPTIONS, StringFieldEditor.UNLIMITED, StringFieldEditor.VALIDATE_ON_KEY_STROKE, topComposite);
 		addField(additionalParams);
-
+		 
         //set the width for API Key text field
 		GridData gridData = new GridData(SWT.BEGINNING, SWT.CENTER, true, false);
 		gridData.widthHint = 500; // Some width
