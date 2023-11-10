@@ -20,7 +20,6 @@ Import-Package: org.eclipse.core.resources
 Bundle-ActivationPolicy: lazy
 Bundle-Activator: com.checkmarx.eclipse.Activator
 Bundle-ClassPath: lib/slf4j-simple-1.7.5.jar,
- lib/slf4j-log4j12-1.7.5.jar,
  lib/slf4j-api-1.7.5.jar,
  lib/jackson-annotations-2.12.4.jar,
  lib/jackson-core-2.12.4.jar,
