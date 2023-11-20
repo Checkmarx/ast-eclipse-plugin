@@ -242,7 +242,7 @@ public abstract class BaseUITest {
 				break;
 			}
 
-			_bot.sleep(1000);
+			_bot.sleep(5000);
 
 			retryIdx++;
 		}
