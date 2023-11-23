@@ -1,7 +1,8 @@
 package com.checkmarx.eclipse.enums;
 
 public enum ActionName {
-	
+
+    CRITICAL,
 	HIGH,
 	MEDIUM,
 	LOW,
@@ -13,6 +14,6 @@ public enum ActionName {
 	GROUP_BY_SEVERITY,
 	GROUP_BY_QUERY_NAME,
 	GROUP_BY_STATE_NAME,
-	
+
 	FILTER_CHANGED
 }

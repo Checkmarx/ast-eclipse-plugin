@@ -5,7 +5,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -408,34 +410,41 @@ public class DataProvider {
 		}
 		return filteredMap;
 	}
-	
+
+    private static final List<String> SEVERITY_ORDER = Arrays.asList("CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO");
+
 	/**
 	 * Group vulnerabilities by severity
 	 * 
 	 * @param filteredResultsByScannerType
 	 */
-	private void groupResultsBySeverity(Map<String, List<DisplayModel>> filteredResultsByScannerType) {		
-		filteredResultsByScannerType.entrySet().stream().forEach(entry -> {
-			
-			Map<String, List<DisplayModel>> mapBySeverity = new HashMap<>();
-			String scanner = entry.getKey();
-			List<DisplayModel> vulnerabilities = entry.getValue();
-			
-			for (DisplayModel result : vulnerabilities) {
-				String severityType = result.getSeverity();
-				
-				if (mapBySeverity.containsKey(severityType)) {
-					 mapBySeverity.get(severityType).add(result);
-				} else {
-					mapBySeverity.put(severityType, new ArrayList<>(Arrays.asList(result)));
-				}
-			}
-			
-			List<DisplayModel> children = createParentNodeByScanner(mapBySeverity);
-			
-			filteredResultsByScannerType.put(scanner, children);
-		});
-	}
+    private void groupResultsBySeverity(Map<String, List<DisplayModel>> filteredResultsByScannerType) {		
+        filteredResultsByScannerType.entrySet().stream().forEach(entry -> {
+            Map<String, List<DisplayModel>> mapBySeverity = new LinkedHashMap<>();
+            String scanner = entry.getKey();
+            List<DisplayModel> vulnerabilities = entry.getValue();
+            
+            for (DisplayModel result : vulnerabilities) {
+                String severityType = result.getSeverity();
+                
+                if (mapBySeverity.containsKey(severityType)) {
+                     mapBySeverity.get(severityType).add(result);
+                } else {
+                    mapBySeverity.put(severityType, new ArrayList<>(Arrays.asList(result)));
+                }
+            }
+            
+            Map<String, List<DisplayModel>> sortedMapBySeverity = new LinkedHashMap<>();
+            SEVERITY_ORDER.forEach(severity -> {
+                if (mapBySeverity.containsKey(severity)) {
+                    sortedMapBySeverity.put(severity, mapBySeverity.get(severity));
+                }
+            });
+            
+            List<DisplayModel> children = createParentNodeByScanner(sortedMapBySeverity);
+            filteredResultsByScannerType.put(scanner, children);
+        });
+    }
 	
 	/**
 	 * Group vulnerabilities by query name based on groupBySeverity state
