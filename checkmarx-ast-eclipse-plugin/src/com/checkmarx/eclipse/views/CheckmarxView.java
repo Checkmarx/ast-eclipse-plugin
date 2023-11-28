@@ -1273,11 +1273,10 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		selectedSeverity = selectedItem.getSeverity();
 		String[] severity = { "HIGH", "MEDIUM", "LOW", "INFO" };
 
-		sync.asyncExec(() -> {
 			triageSeverityComboViewew.setContentProvider(ArrayContentProvider.getInstance());
 			triageSeverityComboViewew.setInput(severity);
 			PluginUtils.setTextForComboViewer(triageSeverityComboViewew, currentSeverity);
-		});
+	
 
 		if (triageSeverityComboViewerListener != null) {
 			triageSeverityComboViewew.removeSelectionChangedListener(triageSeverityComboViewerListener);
@@ -1299,11 +1298,10 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		
 		String[] state = { "TO_VERIFY", "NOT_EXPLOITABLE", "PROPOSED_NOT_EXPLOITABLE", "CONFIRMED", "URGENT" };
 		
-		sync.asyncExec(() -> {
 			triageStateComboViewer.setContentProvider(ArrayContentProvider.getInstance());
 			triageStateComboViewer.setInput(state);
 			PluginUtils.setTextForComboViewer(triageStateComboViewer, currentState);
-		});
+	
 
 		if (triageStateComboViewerListener != null) {
 			triageStateComboViewer.removeSelectionChangedListener(triageStateComboViewerListener);
@@ -1318,12 +1316,9 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 			}
 		};
 		triageStateComboViewer.addSelectionChangedListener(triageStateComboViewerListener);
-
 		if (triageButtonAdapter != null) {
-			sync.asyncExec(() -> {
-				triageButton.removeSelectionListener(triageButtonAdapter);
-			});
-
+			triageButton.removeSelectionListener(triageButtonAdapter);
+			
 		}
 		triageButtonAdapter = new SelectionAdapter() {
 			@Override
@@ -1398,9 +1393,9 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				}
 			}
 		};
-		sync.asyncExec(() -> {
-			triageButton.addSelectionListener(triageButtonAdapter);
-		});
+		
+		triageButton.addSelectionListener(triageButtonAdapter);
+		
 		
 		boolean isSCAVulnerability = selectedItem.getType().equalsIgnoreCase(PluginConstants.SCA_DEPENDENCY);
 		triageButton.setVisible(!isSCAVulnerability);
