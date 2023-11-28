@@ -7,6 +7,7 @@ import com.checkmarx.eclipse.views.GlobalSettings;
 
 public class FilterState {
 
+    public static boolean critical = true;
 	public static boolean high = true;
 	public static boolean medium = true;
 	public static boolean low = false;
@@ -14,10 +15,10 @@ public class FilterState {
 	public static boolean groupBySeverity = true;
 	public static boolean groupByQueryName = false;
 	public static boolean groupByStateName = false;
-	
+
 	/*FILTER STATE FLAGS
 	 * */
-	
+
 	public static boolean notExploitable = true;
 	public static boolean confirmed = true;
 	public static boolean to_verify = true;
@@ -25,19 +26,20 @@ public class FilterState {
 	public static boolean not_ignored = true;
 	public static boolean urgent = true;
 	public static boolean proposedNotExploitable = true;
-	
 
-	
-	
+
+
+
 	public static void loadFiltersFromSettings() {
-		high = Boolean.parseBoolean(GlobalSettings.getFromPreferences(Severity.HIGH.name(), "true"));
+        critical = Boolean.parseBoolean(GlobalSettings.getFromPreferences(Severity.CRITICAL.name(), "true"));
+        high = Boolean.parseBoolean(GlobalSettings.getFromPreferences(Severity.HIGH.name(), "true"));
 		medium = Boolean.parseBoolean(GlobalSettings.getFromPreferences(Severity.MEDIUM.name(), "true"));
 		low = Boolean.parseBoolean(GlobalSettings.getFromPreferences(Severity.LOW.name(), "false"));
 		info = Boolean.parseBoolean(GlobalSettings.getFromPreferences(Severity.INFO.name(), "false"));
 		groupBySeverity = Boolean.parseBoolean(GlobalSettings.getFromPreferences(Severity.GROUP_BY_SEVERITY.name(), "true"));
 		groupByQueryName = Boolean.parseBoolean(GlobalSettings.getFromPreferences(Severity.GROUP_BY_QUERY_NAME.name(), "false"));
 		groupByStateName = Boolean.parseBoolean(GlobalSettings.getFromPreferences(Severity.GROUP_BY_STATE_NAME.name(), "false"));
-		
+
 		notExploitable = Boolean.parseBoolean(GlobalSettings.getFromPreferences(State.NOT_EXPLOITABLE.name(), "false"));
 		confirmed = Boolean.parseBoolean(GlobalSettings.getFromPreferences(State.CONFIRMED.name(), "true"));
 		to_verify = Boolean.parseBoolean(GlobalSettings.getFromPreferences(State.TO_VERIFY.name(), "true"));
@@ -46,14 +48,18 @@ public class FilterState {
 		not_ignored = Boolean.parseBoolean(GlobalSettings.getFromPreferences(State.NOT_IGNORED.name(), "true"));
 		proposedNotExploitable = Boolean.parseBoolean(GlobalSettings.getFromPreferences(State.PROPOSED_NOT_EXPLOITABLE.name(), "false"));
 	}
-	
+
 	/**
 	 * Change severity state
-	 * 
+	 *
 	 * @param severity
 	 */
 	public static void setState(Severity severity) {
 		switch(severity) {
+            case CRITICAL:
+                critical = !critical;
+                GlobalSettings.storeInPreferences(Severity.CRITICAL.name(), String.valueOf(critical));
+                break;
 			case HIGH:
 				high = !high;
 				GlobalSettings.storeInPreferences(Severity.HIGH.name(), String.valueOf(high));
@@ -76,18 +82,18 @@ public class FilterState {
 				break;
 			case GROUP_BY_QUERY_NAME:
 				groupByQueryName = !groupByQueryName;
-				GlobalSettings.storeInPreferences(Severity.GROUP_BY_QUERY_NAME.name(), String.valueOf(groupByQueryName));	
+				GlobalSettings.storeInPreferences(Severity.GROUP_BY_QUERY_NAME.name(), String.valueOf(groupByQueryName));
 				break;
 			case GROUP_BY_STATE_NAME:
 				groupByStateName = !groupByStateName;
-				GlobalSettings.storeInPreferences(Severity.GROUP_BY_STATE_NAME.name(), String.valueOf(groupByStateName));	
-				break;	
+				GlobalSettings.storeInPreferences(Severity.GROUP_BY_STATE_NAME.name(), String.valueOf(groupByStateName));
+				break;
 		default:
 			break;
 		}
 	}
-	
-	
+
+
 	public static void setFilterState(State state) {
 		switch(state) {
 			case NOT_EXPLOITABLE:
@@ -117,12 +123,12 @@ public class FilterState {
 			case TO_VERIFY:
 				to_verify = !to_verify;
 				GlobalSettings.storeInPreferences(State.TO_VERIFY.name(), String.valueOf(to_verify));
-				break;	
+				break;
 		default:
 			break;
 		}
 	}
-	
+
 	public static boolean isFilterStateEnabled(String state) {
 		switch(State.getState(state)) {
 			case NOT_EXPLOITABLE: return notExploitable;
@@ -135,18 +141,19 @@ public class FilterState {
 		default:
 			break;
 		}
-		
+
 		return false;
 	}
-	
+
 	/**
 	 * Checks whether a severity is enabled
-	 * 
+	 *
 	 * @param severity
 	 * @return
 	 */
 	public static boolean isSeverityEnabled(String severity) {
 		switch(Severity.getSeverity(severity)) {
+			case CRITICAL: return critical;
 			case HIGH: return high;
 			case MEDIUM: return medium;
 			case LOW: return low;
@@ -157,14 +164,14 @@ public class FilterState {
 		default:
 			break;
 		}
-		
 		return false;
 	}
-	
+
 	/**
 	 * Reset filters state
 	 */
 	public static void resetFilters() {
+        critical = true;
 		high = true;
 		medium = true;
 		low = false;
@@ -173,5 +180,5 @@ public class FilterState {
 		groupByQueryName = true;
 		groupByStateName = true;
 	}
-	
+
 }
