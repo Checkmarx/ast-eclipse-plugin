@@ -123,17 +123,16 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	public static final Image CHECKMARX_OPEN_SETTINGS_LOGO = Activator.getImageDescriptor("/icons/checkmarx-80.png")
 			.createImage();
 
-	public static final Image CRITICAL_SEVERITY = Activator.getImageDescriptor("/icons/critical.png")
+	public static final Image CRITICAL_SEVERITY = Activator.getImageDescriptor("/icons/C-M.png").createImage();
+
+	public static final Image HIGH_SEVERITY = Activator.getImageDescriptor("/icons/H-M.png").createImage();
+
+	public static final Image MEDIUM_SEVERITY = Activator.getImageDescriptor("/icons/M-M.png")
 			.createImage();
 
-	public static final Image HIGH_SEVERITY = Activator.getImageDescriptor("/icons/high.png").createImage();
+	public static final Image LOW_SEVERITY = Activator.getImageDescriptor("/icons/L-M.png").createImage();
 
-	public static final Image MEDIUM_SEVERITY = Activator.getImageDescriptor("/icons/medium.png")
-			.createImage();
-
-	public static final Image LOW_SEVERITY = Activator.getImageDescriptor("/icons/low.png").createImage();
-
-	public static final Image INFO_SEVERITY = Activator.getImageDescriptor("/icons/info.png").createImage();
+	public static final Image INFO_SEVERITY = Activator.getImageDescriptor("/icons/I-M.png").createImage();
 
 	public static final Image USER = Activator.getImageDescriptor("/icons/user.png").createImage();
 
