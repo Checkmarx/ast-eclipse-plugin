@@ -36,14 +36,6 @@
 		</pluginManagement>
 
 		<plugins>
-			
-			<plugin>
-				<groupId>jakarta.inject-api</groupId>
-				<artifactId>jakarta.inject-api</artifactId>
-				<version>1.0.5</version>
-				<extensions>true</extensions>
-			</plugin>
-			
 			<plugin>
 				<groupId>org.eclipse.tycho</groupId>
 				<artifactId>tycho-maven-plugin</artifactId>
@@ -135,4 +127,11 @@
 		</repository>
 	</repositories>
 
+	<dependencies>
+		<dependency>
+			<groupId>jakarta.inject</groupId>
+			<artifactId>jakarta.inject-api</artifactId>
+			<version>1.0.5</version>
+		</dependency>
+	</dependencies>
 </project>
