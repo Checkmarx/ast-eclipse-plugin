@@ -15,7 +15,8 @@ Require-Bundle: org.eclipse.ui,
  org.eclipse.e4.ui.di
 Automatic-Module-Name: com.checkmarx.eclipse
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
-Import-Package: org.eclipse.core.resources
+Import-Package: javax.inject;version="1.0.5",
+ org.eclipse.core.resources
 Bundle-ActivationPolicy: lazy
 Bundle-Activator: com.checkmarx.eclipse.Activator
 Bundle-ClassPath: lib/slf4j-simple-1.7.5.jar,
@@ -29,5 +30,4 @@ Bundle-ClassPath: lib/slf4j-simple-1.7.5.jar,
  lib/org.eclipse.mylyn.commons.ui_3.25.2.v20200813-0821.jar,
  lib/org.apache.commons.lang_2.6.0.v20220406-2305.jar,
  lib/org-eclipse-mylyn-commons-core.jar,
- .,
- lib/javax.inject-1.jar
+ .
