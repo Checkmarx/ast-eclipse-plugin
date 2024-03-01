@@ -152,7 +152,7 @@ public abstract class BaseUITest {
 		if(_cxSettingsDefined) return;
 		
 		if(!openFromInitialPanel) {
-			_bot.menu("Eclipse").menu(ITEM_PREFERENCES).click();
+			_bot.menu(TAB_WINDOW).menu(ITEM_PREFERENCES).click();
 			_bot.shell(ITEM_PREFERENCES).activate();
 			_bot.tree().select(ITEM_CHECKMARX_AST);
 		}
