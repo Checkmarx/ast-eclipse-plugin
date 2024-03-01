@@ -152,7 +152,7 @@ public abstract class BaseUITest {
 		if(_cxSettingsDefined) return;
 		
 		if(!openFromInitialPanel) {
-			_bot.menu(TAB_WINDOW).menu(ITEM_PREFERENCES).click();
+			_bot.menu("Eclipse").menu(ITEM_PREFERENCES).click();
 			_bot.shell(ITEM_PREFERENCES).activate();
 			_bot.tree().select(ITEM_CHECKMARX_AST);
 		}
@@ -303,7 +303,7 @@ public abstract class BaseUITest {
 		_bot.menu("File").menu("New").menu("Project...").click();
 		SWTBotShell shell = _bot.shell("New Project");
 		shell.activate();
-		_bot.tree().select("Project");
+		_bot.tree().select("Java Project");
 		_bot.button("Next >").click();
 		
  
@@ -314,5 +314,6 @@ public abstract class BaseUITest {
 		_bot.textWithLabel("File name:").setText("Dockerfile");
 		_bot.tree().select(0);
 		_bot.button("Finish").click();
+		_bot.button("Cancel").click();
 	}
 }
