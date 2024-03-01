@@ -7,4 +7,5 @@ Require-Bundle: org.eclipse.swtbot.go
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Bundle-ClassPath: ., lib/jmockit-1.19.jar, lib/mockito-core-1.10.19.jar, lib/objenesis-2.2.jar, lib/junit-4.13.2.jar
 Fragment-Host: com.checkmarx.eclipse.plugin;bundle-version=0.0.0
+Import-Package: javax.inject;version="1.0.5"
 
