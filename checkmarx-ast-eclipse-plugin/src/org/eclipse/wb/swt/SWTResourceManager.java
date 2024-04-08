@@ -106,68 +106,7 @@ public class SWTResourceManager {
 	 * Maps image paths to images.
 	 */
 	private static Map<String, Image> m_imageMap = new HashMap<String, Image>();
-	/**
-	 * Returns an {@link Image} encoded by the specified {@link InputStream}.
-	 * 
-	 * @param stream
-	 *            the {@link InputStream} encoding the image data
-	 * @return the {@link Image} encoded by the specified input stream
-	 */
-	protected static Image getImage(InputStream stream) throws IOException {
-		try {
-			Display display = Display.getCurrent();
-			ImageData data = new ImageData(stream);
-			if (data.transparentPixel > 0) {
-				return new Image(display, data, data.getTransparencyMask());
-			}
-			return new Image(display, data);
-		} finally {
-			stream.close();
-		}
-	}
-	/**
-	 * Returns an {@link Image} stored in the file at the specified path.
-	 * 
-	 * @param path
-	 *            the path to the image file
-	 * @return the {@link Image} stored in the file at the specified path
-	 */
-	public static Image getImage(String path) {
-		Image image = m_imageMap.get(path);
-		if (image == null) {
-			try {
-				image = getImage(new FileInputStream(path));
-				m_imageMap.put(path, image);
-			} catch (Exception e) {
-				image = getMissingImage();
-				m_imageMap.put(path, image);
-			}
-		}
-		return image;
-	}
-	/**
-	 * Returns an {@link Image} stored in the file at the specified path relative to the specified class.
-	 * 
-	 * @param clazz
-	 *            the {@link Class} relative to which to find the image
-	 * @param path
-	 *            the path to the image file, if starts with <code>'/'</code>
-	 * @return the {@link Image} stored in the file at the specified path
-	 */
-	public static Image getImage(Class<?> clazz, String path) {
-		String key = clazz.getName() + '|' + path;
-		Image image = m_imageMap.get(key);
-		if (image == null) {
-			try {
-				image = getImage(clazz.getResourceAsStream(path));
-				m_imageMap.put(key, image);
-			} catch (Exception e) {
-				image = getMissingImage();
-				m_imageMap.put(key, image);
-			}
-		}
-		return image;
-	}
+
 	private static final int MISSING_IMAGE_SIZE = 10;
 	/**
 	 * @return the small {@link Image} that can be used as placeholder for missing image.
