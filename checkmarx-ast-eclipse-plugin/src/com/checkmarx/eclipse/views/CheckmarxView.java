@@ -11,7 +11,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import javax.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
@@ -160,7 +159,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 	Font boldFont, titleFont;
 
-	@Inject
+	@jakarta.inject.Inject
 	UISynchronize sync;
 
 	private Composite resultViewComposite;
