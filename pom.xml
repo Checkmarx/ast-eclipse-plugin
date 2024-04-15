@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd"
-	xmlns="http://maven.apache.org/POM/4.0.0"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+		xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd"
+		xmlns="http://maven.apache.org/POM/4.0.0"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.checkmarx.ast.eclipse</groupId>
 	<artifactId>checkmarx-eclipse-plugin</artifactId>
@@ -42,7 +42,7 @@
 				<version>${tycho.version}</version>
 				<extensions>true</extensions>
 			</plugin>
-			
+
 			<plugin>
 				<groupId>org.eclipse.tycho</groupId>
 				<artifactId>tycho-versions-plugin</artifactId>
@@ -93,27 +93,31 @@
 				<groupId>org.eclipse.tycho</groupId>
 				<artifactId>target-platform-configuration</artifactId>
 				<version>${tycho.version}</version>
-				<configuration>
-					<executionEnvironment>JavaSE-1.8</executionEnvironment>
-					<pomDependencies>consider</pomDependencies>
-					<environments>
-						<environment>
-							<os>linux</os>
-							<ws>gtk</ws>
-							<arch>x86_64</arch>
-						</environment>
-						<environment>
-							<os>win32</os>
-							<ws>win32</ws>
-							<arch>x86_64</arch>
-						</environment>
-						<environment>
-							<os>macosx</os>
-							<ws>cocoa</ws>
-							<arch>x86_64</arch>
-						</environment>
-					</environments>
-				</configuration>
+				<executions>
+					<execution>
+						<configuration>
+							<executionEnvironment>JavaSE-1.8</executionEnvironment>
+							<pomDependencies>consider</pomDependencies>
+							<environments>
+								<environment>
+									<os>linux</os>
+									<ws>gtk</ws>
+									<arch>x86_64</arch>
+								</environment>
+								<environment>
+									<os>win32</os>
+									<ws>win32</ws>
+									<arch>x86_64</arch>
+								</environment>
+								<environment>
+									<os>macosx</os>
+									<ws>cocoa</ws>
+									<arch>x86_64</arch>
+								</environment>
+							</environments>
+						</configuration>
+					</execution>
+				</executions>
 			</plugin>
 
 		</plugins>
@@ -129,9 +133,10 @@
 
 	<dependencies>
 		<dependency>
-			<groupId>jakarta.inject</groupId>
-			<artifactId>jakarta.inject-api</artifactId>
-			<version>1.0.5</version>
+			<groupId>org.eclipse.platform</groupId>
+			<artifactId>org.eclipse.jface</artifactId>
+			<version>3.18.0</version>
 		</dependency>
 	</dependencies>
+
 </project>
