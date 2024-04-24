@@ -11,7 +11,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import javax.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
@@ -100,6 +99,9 @@ import com.checkmarx.eclipse.views.provider.TreeContentProvider;
 import com.google.common.base.Strings;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
+
+import jakarta.inject.Inject;
+
 
 public class CheckmarxView extends ViewPart implements EventHandler {
 
