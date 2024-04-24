@@ -9,13 +9,6 @@
   </parent>
   <artifactId>com.checkmarx.eclipse.plugin</artifactId>
   <packaging>eclipse-plugin</packaging>
-    <dependencies>
-        <dependency>
-            <groupId>jakarta.inject</groupId>
-            <artifactId>jakarta.inject-api</artifactId>
-            <version>1.0.5</version>
-        </dependency>
-    </dependencies>
     <repositories>
   	<repository>
    		<id>eclipse-indigo</id>
