@@ -125,7 +125,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	Font boldFont, titleFont;
 
 	@Inject
-	 UISynchronize sync;
+	UISynchronize sync;
 
 	private Composite resultViewComposite;
 	private Composite attackVectorCompositePanel;
@@ -344,69 +344,54 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 			@Override
 			protected IStatus run(IProgressMonitor arg0) {
 				List<Project> projectList = getProjects();
-				sync.asyncExec(() -> {
-					projectComboViewer.setInput(projectList);
-					if (currentProjectId.isEmpty() || projectList.isEmpty()) {
-						PluginUtils.setTextForComboViewer(projectComboViewer, PROJECT_COMBO_VIEWER_TEXT);
-						PluginUtils.setTextForComboViewer(branchComboViewer, BRANCH_COMBO_VIEWER_TEXT);
-						PluginUtils.setTextForComboViewer(scanIdComboViewer, PluginConstants.COMBOBOX_SCAND_ID_PLACEHOLDER);
-						PluginUtils.enableComboViewer(projectComboViewer, true);
-						PluginUtils.enableComboViewer(scanIdComboViewer, true);
-						PluginUtils.enableComboViewer(branchComboViewer, false);
-					}
-				});
+				projectComboViewer.setInput(projectList);
+				if (currentProjectId.isEmpty() || projectList.isEmpty()) {
+					PluginUtils.setTextForComboViewer(projectComboViewer, PROJECT_COMBO_VIEWER_TEXT);
+					PluginUtils.setTextForComboViewer(branchComboViewer, BRANCH_COMBO_VIEWER_TEXT);
+					PluginUtils.setTextForComboViewer(scanIdComboViewer, PluginConstants.COMBOBOX_SCAND_ID_PLACEHOLDER);
+					PluginUtils.enableComboViewer(projectComboViewer, true);
+					PluginUtils.enableComboViewer(scanIdComboViewer, true);
+					PluginUtils.enableComboViewer(branchComboViewer, false);
+				}
 
 				// set project ID
 				String currentProjectName = getProjectFromId(projectList, currentProjectId);
-				sync.asyncExec(() -> {
-					PluginUtils.setTextForComboViewer(projectComboViewer, currentProjectName);
-				});
+				PluginUtils.setTextForComboViewer(projectComboViewer, currentProjectName);
+
 
 				// Get branches for project id
 				currentBranches = DataProvider.getInstance().getBranchesForProject(currentProjectId);
-				sync.asyncExec(() -> {
-					branchComboViewer.setInput(currentBranches);
-					PluginUtils.setTextForComboViewer(branchComboViewer, BRANCH_COMBO_VIEWER_TEXT);
-					PluginUtils.setTextForComboViewer(scanIdComboViewer, PluginConstants.COMBOBOX_SCAND_ID_PLACEHOLDER);
-
-				});
+				branchComboViewer.setInput(currentBranches);
+				PluginUtils.setTextForComboViewer(branchComboViewer, BRANCH_COMBO_VIEWER_TEXT);
+				PluginUtils.setTextForComboViewer(scanIdComboViewer, PluginConstants.COMBOBOX_SCAND_ID_PLACEHOLDER);
 				
 				if (!currentBranch.isEmpty()) {
 					updateStartScanButton(true);
-					sync.asyncExec(() -> {
-						PluginUtils.setTextForComboViewer(branchComboViewer, currentBranch);
-					});
+					PluginUtils.setTextForComboViewer(branchComboViewer, currentBranch);
+
 					List<Scan> scanList = DataProvider.getInstance().getScansForProject(currentBranch);
 					latestScanId = getLatestScanFromScanList(scanList).getId();
-					sync.asyncExec(() -> {
-						scanIdComboViewer.setInput(scanList);
-						PluginUtils.setTextForComboViewer(scanIdComboViewer,
-								scanList.isEmpty() ? PluginConstants.COMBOBOX_SCAND_ID_NO_SCANS_AVAILABLE
-										: SCAN_COMBO_VIEWER_TEXT);
-					});
+					scanIdComboViewer.setInput(scanList);
+					PluginUtils.setTextForComboViewer(scanIdComboViewer,
+							scanList.isEmpty() ? PluginConstants.COMBOBOX_SCAND_ID_NO_SCANS_AVAILABLE
+									: SCAN_COMBO_VIEWER_TEXT);
 
 					if (!currentScanId.isEmpty()) {
 						String currentScanName = getScanNameFromId(scanList, currentScanId);		
 						currentScanIdFormmated = currentScanName;
-						sync.asyncExec(() -> {
-							PluginUtils.setTextForComboViewer(scanIdComboViewer, currentScanName);
-							alreadyRunning = true;
-						});
+						PluginUtils.setTextForComboViewer(scanIdComboViewer, currentScanName);
+						alreadyRunning = true;
 						updateResultsTree(currentScanId, false);
 					} else {
-						sync.asyncExec(() -> {
-							PluginUtils.enableComboViewer(projectComboViewer, true);
-							PluginUtils.enableComboViewer(scanIdComboViewer, true);
-							PluginUtils.enableComboViewer(branchComboViewer, true);
-						});
-					}
-				} else {
-					sync.asyncExec(() -> {
 						PluginUtils.enableComboViewer(projectComboViewer, true);
 						PluginUtils.enableComboViewer(scanIdComboViewer, true);
-						PluginUtils.enableComboViewer(branchComboViewer, !currentProjectId.isEmpty());
-						updateStartScanButton(false);
-					});
+						PluginUtils.enableComboViewer(branchComboViewer, true);
+					}
+				} else {
+					PluginUtils.enableComboViewer(projectComboViewer, true);
+					PluginUtils.enableComboViewer(scanIdComboViewer, true);
+					PluginUtils.enableComboViewer(branchComboViewer, !currentProjectId.isEmpty());
+					updateStartScanButton(false);
 				}
 
 				return Status.OK_STATUS;
@@ -492,9 +477,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 			@Override
 			protected IStatus run(IProgressMonitor arg0) {
 
-				sync.asyncExec(() -> {
-					PluginUtils.showMessage(rootModel, resultsTree, message);
-				});
+				PluginUtils.showMessage(rootModel, resultsTree, message);
+
 				return Status.OK_STATUS;
 			}
 
@@ -743,17 +727,15 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 						@Override
 						protected IStatus run(IProgressMonitor arg0) {
 							currentBranches = DataProvider.getInstance().getBranchesForProject(selectedProject.getId());
-							sync.asyncExec(() -> {
-								branchComboViewer.setInput(currentBranches);
-								PluginUtils.setTextForComboViewer(branchComboViewer, currentBranches.isEmpty() ? NO_BRANCHES_AVAILABLE : BRANCH_COMBO_VIEWER_TEXT);
+							branchComboViewer.setInput(currentBranches);
+							PluginUtils.setTextForComboViewer(branchComboViewer, currentBranches.isEmpty() ? NO_BRANCHES_AVAILABLE : BRANCH_COMBO_VIEWER_TEXT);
 
-								PluginUtils.enableComboViewer(branchComboViewer, true);
-								PluginUtils.enableComboViewer(scanIdComboViewer, true);
-								PluginUtils.updateFiltersEnabledAndCheckedState(toolBarActions.getFilterActions());
-								toolBarActions.getStateFilterAction().setEnabled(true);
+							PluginUtils.enableComboViewer(branchComboViewer, true);
+							PluginUtils.enableComboViewer(scanIdComboViewer, true);
+							PluginUtils.updateFiltersEnabledAndCheckedState(toolBarActions.getFilterActions());
+							toolBarActions.getStateFilterAction().setEnabled(true);
 
-								PluginUtils.updateFiltersEnabledAndCheckedState(toolBarActions.getFilterActions());
-							});
+							PluginUtils.updateFiltersEnabledAndCheckedState(toolBarActions.getFilterActions());
 							return Status.OK_STATUS;
 						}
 
@@ -874,16 +856,14 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		} else {
 			currentScanId = getLatestScanFromScanList(scanList).getId();
 		}
-		sync.asyncExec(() -> {
-			loadingScans();
-			currentScanIdFormmated = getScanNameFromId(scanList, currentScanId);
-			scanIdComboViewer.setSelection(new StructuredSelection(currentScanId));
-			PluginUtils.setTextForComboViewer(scanIdComboViewer, currentScanIdFormmated);
-			PluginUtils.showMessage(rootModel, resultsTree, String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, latestScanId));
-			alreadyRunning=true;
-			updateResultsTree(currentScanId,false);
-			GlobalSettings.storeInPreferences(GlobalSettings.PARAM_SCAN_ID, currentScanId);
-		});
+		loadingScans();
+		currentScanIdFormmated = getScanNameFromId(scanList, currentScanId);
+		scanIdComboViewer.setSelection(new StructuredSelection(currentScanId));
+		PluginUtils.setTextForComboViewer(scanIdComboViewer, currentScanIdFormmated);
+		PluginUtils.showMessage(rootModel, resultsTree, String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, latestScanId));
+		alreadyRunning=true;
+		updateResultsTree(currentScanId,false);
+		GlobalSettings.storeInPreferences(GlobalSettings.PARAM_SCAN_ID, currentScanId);
 		
 	}
 
@@ -959,24 +939,20 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 							return Status.OK_STATUS;
 						}
 						if (selection.size() > 0) {
-							sync.asyncExec(() -> {
-								PluginUtils.showMessage(rootModel, resultsTree, String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, selectedScan.getId()));
-								PluginUtils.enableComboViewer(projectComboViewer, false);
-								PluginUtils.enableComboViewer(branchComboViewer, false);
-							});
+							PluginUtils.showMessage(rootModel, resultsTree, String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, selectedScan.getId()));
+							PluginUtils.enableComboViewer(projectComboViewer, false);
+							PluginUtils.enableComboViewer(branchComboViewer, false);
 							// onScanChangePluginLoading(selectedScan.getId());
 							currentScanId = selectedScan.getId();
 							DataProvider.getInstance().setCurrentResults(null);
 							GlobalSettings.storeInPreferences(GlobalSettings.PARAM_SCAN_ID, selectedScan.getId());
-							sync.asyncExec(() -> {
-								currentScanIdFormmated = scanIdComboViewer.getCombo().getText();
-								// Hide center and right panels
-								resultViewComposite.setVisible(false);
-								attackVectorCompositePanel.setVisible(false);
-								// Clear vulnerabilities from Problems View
-								PluginUtils.clearVulnerabilitiesFromProblemsView();
-								alreadyRunning = true;
-							});
+							currentScanIdFormmated = scanIdComboViewer.getCombo().getText();
+							// Hide center and right panels
+							resultViewComposite.setVisible(false);
+							attackVectorCompositePanel.setVisible(false);
+							// Clear vulnerabilities from Problems View
+							PluginUtils.clearVulnerabilitiesFromProblemsView();
+							alreadyRunning = true;
 							updateResultsTree(selectedScan.getId(), false);
 
 						}
@@ -1055,14 +1031,12 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		Job job = new Job("Checkmarx: Loading results...") {
 			@Override
 			protected IStatus run(IProgressMonitor arg0) {
-				sync.asyncExec(() -> {
-					PluginUtils.showMessage(rootModel, resultsTree,
-							String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, scanId));
-					loadingProjects();
-					loadingBranches();
-					resultViewComposite.setVisible(false);
-					attackVectorCompositePanel.setVisible(false);
-				});
+				PluginUtils.showMessage(rootModel, resultsTree,
+						String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, scanId));
+				loadingProjects();
+				loadingBranches();
+				resultViewComposite.setVisible(false);
+				attackVectorCompositePanel.setVisible(false);
 				Scan scan;
 				String projectId;
 				try {
@@ -1081,29 +1055,25 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				currentProjectId = projectId;
 				GlobalSettings.storeInPreferences(GlobalSettings.PARAM_PROJECT_ID, currentProjectId);
 
-				sync.asyncExec(() -> {
-					projectComboViewer.setInput(projectList);
-					PluginUtils.setTextForComboViewer(projectComboViewer, projectName);
-					setSelectionForBranchComboViewer(scan.getBranch(), projectId);
-					setSelectionForScanIdComboViewer(scan.getId(), scan.getBranch());
-					updateStartScanButton(true);
-				});
+				projectComboViewer.setInput(projectList);
+				PluginUtils.setTextForComboViewer(projectComboViewer, projectName);
+				setSelectionForBranchComboViewer(scan.getBranch(), projectId);
+				setSelectionForScanIdComboViewer(scan.getId(), scan.getBranch());
+				updateStartScanButton(true);
 				return Status.OK_STATUS;
 			}
 
 			private void showExceptionMessage(Exception e) {
-				sync.asyncExec(() -> {
-					String errorMessage = e.getCause() != null && e.getCause().getMessage() != null
-							? e.getCause().getMessage()
-							: e.getMessage();
-					PluginUtils.showMessage(rootModel, resultsTree, errorMessage);
+				String errorMessage = e.getCause() != null && e.getCause().getMessage() != null
+						? e.getCause().getMessage()
+						: e.getMessage();
+				PluginUtils.showMessage(rootModel, resultsTree, errorMessage);
 
-					PluginUtils.setTextForComboViewer(projectComboViewer, PROJECT_COMBO_VIEWER_TEXT);
-					PluginUtils.enableComboViewer(projectComboViewer, true);
+				PluginUtils.setTextForComboViewer(projectComboViewer, PROJECT_COMBO_VIEWER_TEXT);
+				PluginUtils.enableComboViewer(projectComboViewer, true);
 
-					PluginUtils.setTextForComboViewer(branchComboViewer, BRANCH_COMBO_VIEWER_TEXT);
-					PluginUtils.enableComboViewer(branchComboViewer, false);
-				});
+				PluginUtils.setTextForComboViewer(branchComboViewer, BRANCH_COMBO_VIEWER_TEXT);
+				PluginUtils.enableComboViewer(branchComboViewer, false);
 
 			}
 
@@ -1198,13 +1168,11 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 						protected IStatus run(IProgressMonitor arg0) {
 
 							if (selectedItem.getResult() != null && selectedItem.getResult().getSimilarityId() != null) {
-								sync.asyncExec(() -> {
-									createTriageSeverityAndStateCombos(selectedItem);
-									populateTriageChanges(selectedItem);
-									resultViewComposite.setVisible(true);
-									resultViewComposite.layout();
-									updateAttackVectorForSelectedTreeItem(selectedItem);
-								});
+								createTriageSeverityAndStateCombos(selectedItem);
+								populateTriageChanges(selectedItem);
+								resultViewComposite.setVisible(true);
+								resultViewComposite.layout();
+								updateAttackVectorForSelectedTreeItem(selectedItem);
 							}
 							return Status.OK_STATUS;
 						}
@@ -1308,21 +1276,19 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 							boolean successfullyUpdate = DataProvider.getInstance().triageUpdate(projectId,
 									similarityId, engineType, selectedState, comment, selectedSeverity);
 							if (successfullyUpdate) {
-								sync.asyncExec(() -> {
-									selectedItem.setSeverity(selectedSeverity);
-									selectedItem.setState(selectedState);
-									titleLabel.setImage(findSeverityImage(selectedItem));
-									titleText.setText(selectedItem.getName());
-									populateTriageChanges(selectedItem);
+								selectedItem.setSeverity(selectedSeverity);
+								selectedItem.setState(selectedState);
+								titleLabel.setImage(findSeverityImage(selectedItem));
+								titleText.setText(selectedItem.getName());
+								populateTriageChanges(selectedItem);
 
-									alreadyRunning = true;
-									updateResultsTree(DataProvider.getInstance().sortResults(), true);
-									triageButton.setEnabled(true);
-									triageButton.setText(PluginConstants.BTN_UPDATE);
-									commentText.setEnabled(true);
-									commentText.setText(PluginConstants.DEFAULT_COMMENT_TXT);
-									commentText.setEditable(true);
-								});
+								alreadyRunning = true;
+								updateResultsTree(DataProvider.getInstance().sortResults(), true);
+								triageButton.setEnabled(true);
+								triageButton.setText(PluginConstants.BTN_UPDATE);
+								commentText.setEnabled(true);
+								commentText.setText(PluginConstants.DEFAULT_COMMENT_TXT);
+								commentText.setEditable(true);
 							} else {
 								// TODO: inform the user that update failed?
 //							    		sync.asyncExec(() -> {
@@ -1336,17 +1302,15 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 							}
 
 							// reset the triageButton when triage update fails
-							sync.asyncExec(() -> {
-								if (!triageButton.isEnabled()) {
-									triageButton.setEnabled(true);
-									triageButton.setText(PluginConstants.BTN_UPDATE);
-								}
-								if (!commentText.isEnabled()) {
-									commentText.setEnabled(true);
-									commentText.setText(PluginConstants.DEFAULT_COMMENT_TXT);
-									commentText.setEditable(true);
-								}
-							});
+							if (!triageButton.isEnabled()) {
+								triageButton.setEnabled(true);
+								triageButton.setText(PluginConstants.BTN_UPDATE);
+							}
+							if (!commentText.isEnabled()) {
+								commentText.setEnabled(true);
+								commentText.setText(PluginConstants.DEFAULT_COMMENT_TXT);
+								commentText.setEditable(true);
+							}
 							return Status.OK_STATUS;
 						}
 
@@ -1434,15 +1398,11 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 							}
 						};
 						
-						sync.asyncExec(() -> {
-							new NotificationPopUpUI(PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell().getDisplay(), PluginConstants.CODEBASHING,
-									PluginConstants.CODEBASHING_NO_LICENSE, onClickCodebashingLink, null, null).open();
-						});
+						new NotificationPopUpUI(PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell().getDisplay(), PluginConstants.CODEBASHING,
+								PluginConstants.CODEBASHING_NO_LICENSE, onClickCodebashingLink, null, null).open();
 					} else if (e.getExitCode() == PluginConstants.EXIT_CODE_LESSON_NOT_FOUND) {
-						sync.asyncExec(() -> {
-							new NotificationPopUpUI(PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell().getDisplay(), PluginConstants.CODEBASHING,
-									PluginConstants.CODEBASHING_NO_LESSON, null, null, null).open();
-						});
+						new NotificationPopUpUI(PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell().getDisplay(), PluginConstants.CODEBASHING,
+								PluginConstants.CODEBASHING_NO_LESSON, null, null, null).open();
 					}
 
 				} catch (Exception e) {
