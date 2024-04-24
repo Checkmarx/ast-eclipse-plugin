@@ -100,7 +100,7 @@ import com.google.common.base.Strings;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 
-import jakarta.inject.Inject;
+import javax.inject.Inject;
 
 
 public class CheckmarxView extends ViewPart implements EventHandler {
