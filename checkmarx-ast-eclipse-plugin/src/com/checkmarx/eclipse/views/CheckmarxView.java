@@ -30,8 +30,8 @@ import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.*;
 import org.eclipse.core.runtime.jobs.Job;
-import org.eclipse.e4.core.contexts.IEclipseContext;
 import org.eclipse.e4.ui.di.UISynchronize;
+import org.eclipse.e4.ui.internal.workbench.E4Workbench;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.preference.PreferenceDialog;
 import org.eclipse.jface.viewers.*;
@@ -59,7 +59,6 @@ import org.eclipse.ui.ide.IDE;
 import org.eclipse.ui.part.ViewPart;
 import org.osgi.service.event.EventHandler;
 
-import javax.inject.Inject;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -125,9 +124,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 	Font boldFont, titleFont;
 
-	@Inject
-	private IEclipseContext context;
-	UISynchronize sync = context.get(UISynchronize.class);
+	UISynchronize sync = E4Workbench.getServiceContext().get(UISynchronize.class);
 
 	private Composite resultViewComposite;
 	private Composite attackVectorCompositePanel;
