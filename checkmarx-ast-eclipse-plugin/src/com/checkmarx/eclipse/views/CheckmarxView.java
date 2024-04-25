@@ -124,20 +124,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	Font boldFont, titleFont;
 
 	UISynchronize sync = createUISynchronize(PlatformUI.getWorkbench().getDisplay());
-
-	private UISynchronize createUISynchronize(Display display) {
-		return new UISynchronize() {
-			@Override
-			public void syncExec(Runnable runnable) {
-				display.syncExec(runnable);
-			}
-
-			@Override
-			public void asyncExec(Runnable runnable) {
-				display.asyncExec(runnable);
-			}
-		};
-	}
 	private Composite resultViewComposite;
 	private Composite attackVectorCompositePanel;
 	private Composite titleComposite;
@@ -215,6 +201,20 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		} else {
 			drawMissingCredentialsPanel();
 		}
+	}
+
+	private UISynchronize createUISynchronize(Display display) {
+		return new UISynchronize() {
+			@Override
+			public void syncExec(Runnable runnable) {
+				display.syncExec(runnable);
+			}
+
+			@Override
+			public void asyncExec(Runnable runnable) {
+				display.asyncExec(runnable);
+			}
+		};
 	}
 
 	/**
