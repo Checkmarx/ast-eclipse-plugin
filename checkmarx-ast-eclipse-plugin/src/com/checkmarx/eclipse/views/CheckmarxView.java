@@ -31,7 +31,6 @@ import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.*;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.e4.ui.di.UISynchronize;
-import org.eclipse.e4.ui.internal.workbench.E4Workbench;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.preference.PreferenceDialog;
 import org.eclipse.jface.viewers.*;
@@ -124,8 +123,21 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 	Font boldFont, titleFont;
 
-	UISynchronize sync = E4Workbench.getServiceContext().get(UISynchronize.class);
+	UISynchronize sync = createUISynchronize(PlatformUI.getWorkbench().getDisplay());
 
+	private UISynchronize createUISynchronize(Display display) {
+		return new UISynchronize() {
+			@Override
+			public void syncExec(Runnable runnable) {
+				display.syncExec(runnable);
+			}
+
+			@Override
+			public void asyncExec(Runnable runnable) {
+				display.asyncExec(runnable);
+			}
+		};
+	}
 	private Composite resultViewComposite;
 	private Composite attackVectorCompositePanel;
 	private Composite titleComposite;
