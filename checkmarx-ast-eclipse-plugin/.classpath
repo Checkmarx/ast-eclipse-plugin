@@ -6,6 +6,7 @@
 		</attributes>
 		<accessrules>
 			<accessrule kind="accessible" pattern="**/org.eclipse.e4.core.contexts/**"/>
+			<accessrule kind="accessible" pattern="**/org.eclipse.e4.ui.workbench/**"/>
 		</accessrules>
 	</classpathentry>
 	<classpathentry kind="con" path="org.eclipse.pde.core.requiredPlugins"/>
