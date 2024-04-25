@@ -30,7 +30,6 @@ import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.*;
 import org.eclipse.core.runtime.jobs.Job;
-import org.eclipse.e4.ui.di.UISynchronize;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.preference.PreferenceDialog;
 import org.eclipse.jface.viewers.*;
@@ -123,7 +122,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 	Font boldFont, titleFont;
 
-	UISynchronize sync = createUISynchronize(PlatformUI.getWorkbench().getDisplay());
+	UISynchronizeImpl sync;
 	private Composite resultViewComposite;
 	private Composite attackVectorCompositePanel;
 	private Composite titleComposite;
@@ -161,7 +160,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 	public CheckmarxView() {
 		super();
-
+		sync = new UISynchronizeImpl(PlatformUI.getWorkbench().getDisplay());
 		rootModel = new DisplayModel.DisplayModelBuilder(PluginConstants.EMPTY_STRING).build();
 		globalSettings.loadSettings();
 		currentProjectId = globalSettings.getProjectId();
@@ -201,20 +200,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		} else {
 			drawMissingCredentialsPanel();
 		}
-	}
-
-	private UISynchronize createUISynchronize(Display display) {
-		return new UISynchronize() {
-			@Override
-			public void syncExec(Runnable runnable) {
-				display.syncExec(runnable);
-			}
-
-			@Override
-			public void asyncExec(Runnable runnable) {
-				display.asyncExec(runnable);
-			}
-		};
 	}
 
 	/**
