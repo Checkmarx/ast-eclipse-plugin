@@ -289,7 +289,7 @@ public class ActionStartScan extends CxBaseAction {
 						@Override
 						public void run() {
 							AbstractNotificationPopup notification = new NotificationPopUpUI(Display.getCurrent(), PluginConstants.CX_SCAN_CANCELED_TITLE, PluginConstants.CX_SCAN_CANCELED_DESCRIPTION, null, null, null);
-							notification.setDelayClose(5000);
+							notification.setDelayClose(8000);
 							notification.open();
 						}
 					});
