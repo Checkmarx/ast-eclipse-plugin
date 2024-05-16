@@ -2,3 +2,6 @@
 /bin/
 .DS_Store
 /.metadata/
+.idea/
+.vs/
+.vscode/
