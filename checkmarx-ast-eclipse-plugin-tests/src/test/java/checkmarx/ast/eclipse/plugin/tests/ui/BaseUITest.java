@@ -60,7 +60,7 @@ public abstract class BaseUITest {
 		// Used to decrease tests velocity
 		SWTBotPreferences.PLAYBACK_DELAY = 100;
 		
-		SWTBotPreferences.TIMEOUT = 5000;
+		SWTBotPreferences.TIMEOUT = 8000;
 
 		_bot = new SWTWorkbenchBot();
 				
@@ -242,7 +242,7 @@ public abstract class BaseUITest {
 				break;
 			}
 
-			_bot.sleep(5000);
+			_bot.sleep(8000);
 
 			retryIdx++;
 		}

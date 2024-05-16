@@ -566,6 +566,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 		triageSeverityComboViewew = new ComboViewer(triageView, SWT.READ_ONLY);
 		Combo combo_1 = triageSeverityComboViewew.getCombo();
+		combo_1.setEnabled(true);
 		combo_1.setData(PluginConstants.DATA_ID_KEY, PluginConstants.TRIAGE_SEVERITY_COMBO_ID);
 		GridData gd_combo_1 = new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1);
 		gd_combo_1.widthHint = SWT.DEFAULT;
@@ -573,6 +574,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 		triageStateComboViewer = new ComboViewer(triageView, SWT.READ_ONLY);
 		Combo combo_2 = triageStateComboViewer.getCombo();
+		combo_2.setEnabled(true);
 		combo_2.setData(PluginConstants.DATA_ID_KEY, PluginConstants.TRIAGE_STATE_COMBO_ID);
 		GridData gd_combo_2 = new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1);
 		// gd_combo_2.widthHint = 180;
