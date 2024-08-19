@@ -117,3 +117,4 @@ Find more integrations from our team [here](https://github.com/Checkmarx/ci-cd-i
 [install-shield]: https://img.shields.io/eclipse-marketplace/dt/checkmarx-ast-plugin
 [install-url]: https://marketplace.eclipse.org/content/checkmarx-ast-plugin
 
+
