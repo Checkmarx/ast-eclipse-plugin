@@ -1,81 +1,5 @@
 package com.checkmarx.eclipse.views;
 
-import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
-import javax.inject.Inject;
-import org.apache.commons.lang3.StringUtils;
-import org.eclipse.core.resources.IFile;
-import org.eclipse.core.resources.IMarker;
-import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.core.runtime.IStatus;
-import org.eclipse.core.runtime.Path;
-import org.eclipse.core.runtime.Status;
-import org.eclipse.core.runtime.jobs.Job;
-import org.eclipse.e4.ui.di.UISynchronize;
-import org.eclipse.jface.action.Action;
-import org.eclipse.jface.preference.PreferenceDialog;
-import org.eclipse.jface.viewers.ArrayContentProvider;
-import org.eclipse.jface.viewers.ColumnViewerToolTipSupport;
-import org.eclipse.jface.viewers.ComboViewer;
-import org.eclipse.jface.viewers.ISelectionChangedListener;
-import org.eclipse.jface.viewers.IStructuredSelection;
-import org.eclipse.jface.viewers.LabelProvider;
-import org.eclipse.jface.viewers.SelectionChangedEvent;
-import org.eclipse.jface.viewers.StructuredSelection;
-import org.eclipse.jface.viewers.TreeViewer;
-import org.eclipse.jface.viewers.TreeViewerColumn;
-import org.eclipse.jgit.events.RefsChangedEvent;
-import org.eclipse.jgit.events.RefsChangedListener;
-import org.eclipse.jgit.lib.Repository;
-import org.eclipse.swt.SWT;
-import org.eclipse.swt.custom.CLabel;
-import org.eclipse.swt.custom.ScrolledComposite;
-import org.eclipse.swt.custom.StyledText;
-import org.eclipse.swt.events.SelectionAdapter;
-import org.eclipse.swt.events.SelectionEvent;
-import org.eclipse.swt.events.SelectionListener;
-import org.eclipse.swt.graphics.Color;
-import org.eclipse.swt.graphics.Font;
-import org.eclipse.swt.graphics.FontData;
-import org.eclipse.swt.graphics.Image;
-import org.eclipse.swt.graphics.ImageData;
-import org.eclipse.swt.graphics.RGB;
-import org.eclipse.swt.layout.FillLayout;
-import org.eclipse.swt.layout.GridData;
-import org.eclipse.swt.layout.GridLayout;
-import org.eclipse.swt.widgets.Button;
-import org.eclipse.swt.widgets.Combo;
-import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Control;
-import org.eclipse.swt.widgets.Display;
-import org.eclipse.swt.widgets.Event;
-import org.eclipse.swt.widgets.Label;
-import org.eclipse.swt.widgets.Link;
-import org.eclipse.swt.widgets.Listener;
-import org.eclipse.swt.widgets.Shell;
-import org.eclipse.swt.widgets.TabFolder;
-import org.eclipse.swt.widgets.TabItem;
-import org.eclipse.swt.widgets.Text;
-import org.eclipse.swt.widgets.TreeColumn;
-import org.eclipse.ui.IActionBars;
-import org.eclipse.ui.IWorkbenchPage;
-import org.eclipse.ui.PartInitException;
-import org.eclipse.ui.PlatformUI;
-import org.eclipse.ui.dialogs.PreferencesUtil;
-import org.eclipse.ui.ide.IDE;
-import org.eclipse.ui.part.ViewPart;
-import org.osgi.service.event.EventHandler;
-
 import com.checkmarx.ast.codebashing.CodeBashing;
 import com.checkmarx.ast.learnMore.LearnMore;
 import com.checkmarx.ast.learnMore.Sample;
@@ -100,6 +24,44 @@ import com.checkmarx.eclipse.views.provider.TreeContentProvider;
 import com.google.common.base.Strings;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
+import org.apache.commons.lang3.StringUtils;
+import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IMarker;
+import org.eclipse.core.runtime.Path;
+import org.eclipse.core.runtime.*;
+import org.eclipse.core.runtime.jobs.Job;
+import org.eclipse.jface.action.Action;
+import org.eclipse.jface.preference.PreferenceDialog;
+import org.eclipse.jface.viewers.*;
+import org.eclipse.jgit.events.RefsChangedEvent;
+import org.eclipse.jgit.events.RefsChangedListener;
+import org.eclipse.jgit.lib.Repository;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.CLabel;
+import org.eclipse.swt.custom.ScrolledComposite;
+import org.eclipse.swt.custom.StyledText;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.events.SelectionListener;
+import org.eclipse.swt.graphics.*;
+import org.eclipse.swt.layout.FillLayout;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.*;
+import org.eclipse.ui.IActionBars;
+import org.eclipse.ui.IWorkbenchPage;
+import org.eclipse.ui.PartInitException;
+import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.dialogs.PreferencesUtil;
+import org.eclipse.ui.ide.IDE;
+import org.eclipse.ui.part.ViewPart;
+import org.osgi.service.event.EventHandler;
+
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.List;
+import java.util.*;
 
 public class CheckmarxView extends ViewPart implements EventHandler {
 
@@ -160,9 +122,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 	Font boldFont, titleFont;
 
-	@Inject
-	UISynchronize sync;
-
+	UISynchronizeImpl sync;
 	private Composite resultViewComposite;
 	private Composite attackVectorCompositePanel;
 	private Composite titleComposite;
@@ -200,7 +160,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 	public CheckmarxView() {
 		super();
-
+		sync = new UISynchronizeImpl(PlatformUI.getWorkbench().getDisplay());
 		rootModel = new DisplayModel.DisplayModelBuilder(PluginConstants.EMPTY_STRING).build();
 		globalSettings.loadSettings();
 		currentProjectId = globalSettings.getProjectId();
@@ -608,6 +568,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 		triageSeverityComboViewew = new ComboViewer(triageView, SWT.READ_ONLY);
 		Combo combo_1 = triageSeverityComboViewew.getCombo();
+		combo_1.setEnabled(true);
 		combo_1.setData(PluginConstants.DATA_ID_KEY, PluginConstants.TRIAGE_SEVERITY_COMBO_ID);
 		GridData gd_combo_1 = new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1);
 		gd_combo_1.widthHint = SWT.DEFAULT;
@@ -615,6 +576,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 		triageStateComboViewer = new ComboViewer(triageView, SWT.READ_ONLY);
 		Combo combo_2 = triageStateComboViewer.getCombo();
+		combo_2.setEnabled(true);
 		combo_2.setData(PluginConstants.DATA_ID_KEY, PluginConstants.TRIAGE_STATE_COMBO_ID);
 		GridData gd_combo_2 = new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1);
 		// gd_combo_2.widthHint = 180;
@@ -1280,11 +1242,10 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		selectedSeverity = selectedItem.getSeverity();
 		String[] severity = { "CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO" };
 
-		sync.asyncExec(() -> {
 			triageSeverityComboViewew.setContentProvider(ArrayContentProvider.getInstance());
 			triageSeverityComboViewew.setInput(severity);
 			PluginUtils.setTextForComboViewer(triageSeverityComboViewew, currentSeverity);
-		});
+	
 
 		if (triageSeverityComboViewerListener != null) {
 			triageSeverityComboViewew.removeSelectionChangedListener(triageSeverityComboViewerListener);
@@ -1305,12 +1266,10 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		selectedState = selectedItem.getResult().getState();
 
 		String[] state = { "TO_VERIFY", "NOT_EXPLOITABLE", "PROPOSED_NOT_EXPLOITABLE", "CONFIRMED", "URGENT" };
-
-		sync.asyncExec(() -> {
-			triageStateComboViewer.setContentProvider(ArrayContentProvider.getInstance());
-			triageStateComboViewer.setInput(state);
-			PluginUtils.setTextForComboViewer(triageStateComboViewer, currentState);
-		});
+		triageStateComboViewer.setContentProvider(ArrayContentProvider.getInstance());
+		triageStateComboViewer.setInput(state);
+		PluginUtils.setTextForComboViewer(triageStateComboViewer, currentState);
+	
 
 		if (triageStateComboViewerListener != null) {
 			triageStateComboViewer.removeSelectionChangedListener(triageStateComboViewerListener);
@@ -1325,12 +1284,9 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 			}
 		};
 		triageStateComboViewer.addSelectionChangedListener(triageStateComboViewerListener);
-
 		if (triageButtonAdapter != null) {
-			sync.asyncExec(() -> {
-				triageButton.removeSelectionListener(triageButtonAdapter);
-			});
-
+			triageButton.removeSelectionListener(triageButtonAdapter);
+			
 		}
 		triageButtonAdapter = new SelectionAdapter() {
 			@Override
@@ -1405,10 +1361,9 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				}
 			}
 		};
-		sync.asyncExec(() -> {
-			triageButton.addSelectionListener(triageButtonAdapter);
-		});
-
+		
+		triageButton.addSelectionListener(triageButtonAdapter);
+		
 		boolean isSCAVulnerability = selectedItem.getType().equalsIgnoreCase(PluginConstants.SCA_DEPENDENCY);
 		triageButton.setVisible(!isSCAVulnerability);
 		triageButton.setEnabled(!isSCAVulnerability);

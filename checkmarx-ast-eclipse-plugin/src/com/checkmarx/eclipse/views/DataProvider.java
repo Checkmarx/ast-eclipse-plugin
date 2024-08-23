@@ -23,6 +23,7 @@ import com.checkmarx.ast.codebashing.CodeBashing;
 import com.checkmarx.ast.learnMore.LearnMore;
 import com.checkmarx.ast.predicate.Predicate;
 import com.checkmarx.ast.project.Project;
+import com.checkmarx.ast.results.ReportFormat;
 import com.checkmarx.ast.results.Results;
 import com.checkmarx.ast.results.result.Node;
 import com.checkmarx.ast.results.result.Result;
@@ -46,7 +47,7 @@ public class DataProvider {
 	private static final String SCA_TREE_NAME = "SCA (%d)";
 	private static final String KICS_TREE_NAME = "KICS (%d)";
 	private static final String RESULTS_TREE_NAME = "%s (%d Issues)";
-	
+	private static final String ECLIPSE_AGENT = "Eclipse";
 	private static DataProvider _dataProvider = null;
 
 	public static final AtomicBoolean abort = new AtomicBoolean(false);
@@ -202,7 +203,7 @@ public class DataProvider {
 		try {						
 			CxLogger.info(String.format(PluginConstants.INFO_FETCHING_RESULTS, scanId));
 			CxWrapper cxWrapper = getWrapper();
-			scanResults = cxWrapper.results(UUID.fromString(scanId));
+			scanResults = cxWrapper.results(UUID.fromString(scanId), ECLIPSE_AGENT);
 			setCurrentResults(scanResults);
 			CxLogger.info(String.format(PluginConstants.INFO_SCAN_RESULTS_COUNT, scanResults.getTotalCount()));
 
@@ -693,7 +694,7 @@ public class DataProvider {
         scanArguments.put("-s", sourcePath);
         scanArguments.put("--project-name", projectName);
         scanArguments.put("--branch", branchName);
-        scanArguments.put("--agent", "Eclipse");
+		scanArguments.put("--agent", ECLIPSE_AGENT);
 
         String additionalParameters = "--async --sast-incremental --resubmit";
         
