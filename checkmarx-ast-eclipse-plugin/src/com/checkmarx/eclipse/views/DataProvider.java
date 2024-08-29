@@ -669,8 +669,9 @@ public class DataProvider {
 	 * @param state
 	 * @param comment
 	 * @param severity
+	 * @throws Exception 
 	 */
-	public boolean triageUpdate(UUID projectId, String similarityId, String engineType, String state, String comment, String severity) {
+	public void triageUpdate(UUID projectId, String similarityId, String engineType, String state, String comment, String severity) throws Exception {
 
 		try {
 			CxWrapper cxWrapper = authenticateWithAST();
@@ -678,11 +679,10 @@ public class DataProvider {
 			if (cxWrapper != null) {
 				cxWrapper.triageUpdate(projectId, similarityId, engineType, state, comment, severity);
 			}
-			
-			return true;
 		} catch (Exception e) {
 			CxLogger.error(String.format(PluginConstants.ERROR_UPDATING_TRIAGE, e.getMessage()), e);
-			return false;
+			throw new Exception(e.getMessage());
+			
 		}
 	}
 	

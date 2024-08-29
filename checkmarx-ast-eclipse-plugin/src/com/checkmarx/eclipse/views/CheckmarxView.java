@@ -1303,9 +1303,9 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 						@Override
 						protected IStatus run(IProgressMonitor arg0) {
-							boolean successfullyUpdate = DataProvider.getInstance().triageUpdate(projectId,
-									similarityId, engineType, selectedState, comment, selectedSeverity);
-							if (successfullyUpdate) {
+							try {
+								DataProvider.getInstance().triageUpdate(projectId,similarityId, engineType, selectedState, comment, selectedSeverity);
+								
 								sync.asyncExec(() -> {
 									selectedItem.setSeverity(selectedSeverity);
 									selectedItem.setState(selectedState);
@@ -1321,16 +1321,10 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 									commentText.setText(PluginConstants.DEFAULT_COMMENT_TXT);
 									commentText.setEditable(true);
 								});
-							} else {
-								// TODO: inform the user that update failed?
-//							    		sync.asyncExec(() -> {
-//							    			MessageBox box = new MessageBox(parent.getDisplay().getActiveShell(), SWT.CANCEL | SWT.OK);
-//								    		box.setText("Triage failed");
-//								    		// correct the message
-//								    		box.setMessage("Triage update failed. Check logs");
-//								    		box.open();
-//							    		});
-
+							} catch (Exception e) {
+								sync.asyncExec(() -> {
+									new NotificationPopUpUI(PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell().getDisplay(), "Triage failed", e.getMessage(), null, null, null).open();
+								});
 							}
 
 							// reset the triageButton when triage update fails
