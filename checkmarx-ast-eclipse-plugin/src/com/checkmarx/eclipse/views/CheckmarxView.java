@@ -1213,14 +1213,10 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 			}
 
 			private void populateTitleLabel(DisplayModel selectedItem) {
-				ImageData titleImageData = findSeverityImage(selectedItem).getImageData()
-						.scaledTo(PluginConstants.TITLE_LABEL_WIDTH, PluginConstants.TITLE_LABEL_HEIGHT);
-				Image titleImage = new Image(parent.getShell().getDisplay(), titleImageData);
-				titleLabel.setImage(titleImage);
+				titleLabel.setImage(findSeverityImage(selectedItem));
 				titleText.setText(selectedItem.getName());
 				titleLabel.layout();
 				titleText.requestLayout();
-
 			}
 		});
 	}
