@@ -12,7 +12,7 @@ jobs:
       - name: Get Latest Checkmarx Java wrapper version
         id: ast-cli-java-wrapper
         run: |
-          echo ::set-output name=release_tag::$(curl -s https://search.maven.org/solrsearch/select?q=g:"com.checkmarx.ast"+AND+a:"ast-cli-java-wrapper" | grep -Po 'latestVersion.:.\K[^"]*')
+          echo ::set-output name=release_tag::$(curl -s "https://repo1.maven.org/maven2/com/checkmarx/ast/ast-cli-java-wrapper/maven-metadata.xml" | grep -oPm1 "(?<=<latest>)[^<]+")
           echo ::set-output name=current_tag::$(<ast-cli-java-wrapper.version)
       - name: Update Checkmarx Java wrapper version
         if: steps.ast-cli-java-wrapper.outputs.current_tag != steps.ast-cli-java-wrapper.outputs.release_tag
