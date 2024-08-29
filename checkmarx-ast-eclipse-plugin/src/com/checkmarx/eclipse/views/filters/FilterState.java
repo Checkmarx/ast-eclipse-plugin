@@ -7,6 +7,7 @@ import com.checkmarx.eclipse.views.GlobalSettings;
 
 public class FilterState {
 
+	public static boolean critical = true;
 	public static boolean high = true;
 	public static boolean medium = true;
 	public static boolean low = false;
@@ -30,6 +31,7 @@ public class FilterState {
 	
 	
 	public static void loadFiltersFromSettings() {
+		critical = Boolean.parseBoolean(GlobalSettings.getFromPreferences(Severity.CRITICAL.name(), "true"));
 		high = Boolean.parseBoolean(GlobalSettings.getFromPreferences(Severity.HIGH.name(), "true"));
 		medium = Boolean.parseBoolean(GlobalSettings.getFromPreferences(Severity.MEDIUM.name(), "true"));
 		low = Boolean.parseBoolean(GlobalSettings.getFromPreferences(Severity.LOW.name(), "false"));
@@ -54,6 +56,10 @@ public class FilterState {
 	 */
 	public static void setState(Severity severity) {
 		switch(severity) {
+			case CRITICAL:
+				critical = !critical;
+				GlobalSettings.storeInPreferences(Severity.CRITICAL.name(), String.valueOf(critical));
+				break;
 			case HIGH:
 				high = !high;
 				GlobalSettings.storeInPreferences(Severity.HIGH.name(), String.valueOf(high));
@@ -147,6 +153,7 @@ public class FilterState {
 	 */
 	public static boolean isSeverityEnabled(String severity) {
 		switch(Severity.getSeverity(severity)) {
+			case CRITICAL: return critical;
 			case HIGH: return high;
 			case MEDIUM: return medium;
 			case LOW: return low;
@@ -165,6 +172,7 @@ public class FilterState {
 	 * Reset filters state
 	 */
 	public static void resetFilters() {
+		critical = true;
 		high = true;
 		medium = true;
 		low = false;

@@ -2,6 +2,7 @@ package com.checkmarx.eclipse.enums;
 
 public enum ActionName {
 	
+	CRITICAL,
 	HIGH,
 	MEDIUM,
 	LOW,

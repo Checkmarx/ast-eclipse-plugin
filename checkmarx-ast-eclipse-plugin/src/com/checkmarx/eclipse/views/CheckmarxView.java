@@ -85,7 +85,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	public static final Image CHECKMARX_OPEN_SETTINGS_LOGO = Activator.getImageDescriptor("/icons/checkmarx-80.png")
 			.createImage();
 
-	public static final Image CRITICAL_SEVERITY = Activator.getImageDescriptor("/icons/severity-critical.png")
+	public static final Image CRITICAL_SEVERITY = Activator.getImageDescriptor("/icons/critical.png")
 			.createImage();
 
 	public static final Image HIGH_SEVERITY = Activator.getImageDescriptor("/icons/high_untoggle.png").createImage();
@@ -1233,7 +1233,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private void createTriageSeverityAndStateCombos(DisplayModel selectedItem) {
 		String currentSeverity = selectedItem.getSeverity();
 		selectedSeverity = selectedItem.getSeverity();
-		String[] severity = { "HIGH", "MEDIUM", "LOW", "INFO" };
+		String[] severity = { "CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO" };
 
 			triageSeverityComboViewew.setContentProvider(ArrayContentProvider.getInstance());
 			triageSeverityComboViewew.setInput(severity);
