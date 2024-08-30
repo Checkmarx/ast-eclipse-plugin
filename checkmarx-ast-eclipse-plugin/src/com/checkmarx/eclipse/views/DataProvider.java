@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -37,6 +38,8 @@ import com.checkmarx.eclipse.utils.PluginUtils;
 import com.checkmarx.eclipse.views.filters.FilterState;
 
 public class DataProvider {
+	
+	private static final List<String> SEVERITY_ORDER = Arrays.asList("CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO");
 	
 	private static final String LIMIT_FILTER="limit=10000";		
 	private static final String FILTER_SCANS_FOR_PROJECT = "project-id=%s,branch=%s,limit=10000,statuses=Completed";
@@ -418,7 +421,7 @@ public class DataProvider {
 	private void groupResultsBySeverity(Map<String, List<DisplayModel>> filteredResultsByScannerType) {		
 		filteredResultsByScannerType.entrySet().stream().forEach(entry -> {
 			
-			Map<String, List<DisplayModel>> mapBySeverity = new HashMap<>();
+			Map<String, List<DisplayModel>> mapBySeverity = new LinkedHashMap<>();
 			String scanner = entry.getKey();
 			List<DisplayModel> vulnerabilities = entry.getValue();
 			
@@ -431,6 +434,13 @@ public class DataProvider {
 					mapBySeverity.put(severityType, new ArrayList<>(Arrays.asList(result)));
 				}
 			}
+			
+			 Map<String, List<DisplayModel>> sortedMapBySeverity = new LinkedHashMap<>();
+	            SEVERITY_ORDER.forEach(severity -> {
+	                if (mapBySeverity.containsKey(severity)) {
+	                    sortedMapBySeverity.put(severity, mapBySeverity.get(severity));
+	                }
+	            });
 			
 			List<DisplayModel> children = createParentNodeByScanner(mapBySeverity);
 			
@@ -659,8 +669,9 @@ public class DataProvider {
 	 * @param state
 	 * @param comment
 	 * @param severity
+	 * @throws Exception 
 	 */
-	public boolean triageUpdate(UUID projectId, String similarityId, String engineType, String state, String comment, String severity) {
+	public void triageUpdate(UUID projectId, String similarityId, String engineType, String state, String comment, String severity) throws Exception {
 
 		try {
 			CxWrapper cxWrapper = authenticateWithAST();
@@ -668,11 +679,10 @@ public class DataProvider {
 			if (cxWrapper != null) {
 				cxWrapper.triageUpdate(projectId, similarityId, engineType, state, comment, severity);
 			}
-			
-			return true;
 		} catch (Exception e) {
 			CxLogger.error(String.format(PluginConstants.ERROR_UPDATING_TRIAGE, e.getMessage()), e);
-			return false;
+			throw new Exception(e.getMessage());
+			
 		}
 	}
 	

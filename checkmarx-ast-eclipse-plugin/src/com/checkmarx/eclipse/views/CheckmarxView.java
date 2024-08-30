@@ -85,7 +85,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	public static final Image CHECKMARX_OPEN_SETTINGS_LOGO = Activator.getImageDescriptor("/icons/checkmarx-80.png")
 			.createImage();
 
-	public static final Image CRITICAL_SEVERITY = Activator.getImageDescriptor("/icons/severity-critical.png")
+	public static final Image CRITICAL_SEVERITY = Activator.getImageDescriptor("/icons/critical.png")
 			.createImage();
 
 	public static final Image HIGH_SEVERITY = Activator.getImageDescriptor("/icons/high_untoggle.png").createImage();
@@ -1213,14 +1213,10 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 			}
 
 			private void populateTitleLabel(DisplayModel selectedItem) {
-				ImageData titleImageData = findSeverityImage(selectedItem).getImageData()
-						.scaledTo(PluginConstants.TITLE_LABEL_WIDTH, PluginConstants.TITLE_LABEL_HEIGHT);
-				Image titleImage = new Image(parent.getShell().getDisplay(), titleImageData);
-				titleLabel.setImage(titleImage);
+				titleLabel.setImage(findSeverityImage(selectedItem));
 				titleText.setText(selectedItem.getName());
 				titleLabel.layout();
 				titleText.requestLayout();
-
 			}
 		});
 	}
@@ -1233,7 +1229,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private void createTriageSeverityAndStateCombos(DisplayModel selectedItem) {
 		String currentSeverity = selectedItem.getSeverity();
 		selectedSeverity = selectedItem.getSeverity();
-		String[] severity = { "HIGH", "MEDIUM", "LOW", "INFO" };
+		String[] severity = { "CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO" };
 
 			triageSeverityComboViewew.setContentProvider(ArrayContentProvider.getInstance());
 			triageSeverityComboViewew.setInput(severity);
@@ -1303,9 +1299,9 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 						@Override
 						protected IStatus run(IProgressMonitor arg0) {
-							boolean successfullyUpdate = DataProvider.getInstance().triageUpdate(projectId,
-									similarityId, engineType, selectedState, comment, selectedSeverity);
-							if (successfullyUpdate) {
+							try {
+								DataProvider.getInstance().triageUpdate(projectId,similarityId, engineType, selectedState, comment, selectedSeverity);
+								
 								sync.asyncExec(() -> {
 									selectedItem.setSeverity(selectedSeverity);
 									selectedItem.setState(selectedState);
@@ -1321,16 +1317,10 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 									commentText.setText(PluginConstants.DEFAULT_COMMENT_TXT);
 									commentText.setEditable(true);
 								});
-							} else {
-								// TODO: inform the user that update failed?
-//							    		sync.asyncExec(() -> {
-//							    			MessageBox box = new MessageBox(parent.getDisplay().getActiveShell(), SWT.CANCEL | SWT.OK);
-//								    		box.setText("Triage failed");
-//								    		// correct the message
-//								    		box.setMessage("Triage update failed. Check logs");
-//								    		box.open();
-//							    		});
-
+							} catch (Exception e) {
+								sync.asyncExec(() -> {
+									new NotificationPopUpUI(PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell().getDisplay(), "Triage failed", e.getMessage(), null, null, null).open();
+								});
 							}
 
 							// reset the triageButton when triage update fails
