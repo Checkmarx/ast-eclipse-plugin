@@ -14,6 +14,9 @@ import com.google.common.eventbus.EventBus;
 
 public class ActionFilters {
 	
+	private static final String ACTION_FILTER_CRITICAL_TOOLTIP = "Critical";
+	private static final String ACTION_FILTER_CRITICAL_ICON_PATH = "/icons/critical.png";
+	
 	private static final String ACTION_FILTER_HIGH_TOOLTIP = "High";
 	private static final String ACTION_FILTER_HIGH_ICON_PATH = "/icons/high_untoggle.png";
 	
@@ -42,12 +45,13 @@ public class ActionFilters {
 	public List<Action> createFilterActions(){
 		List<Action> filters = new ArrayList<>();
 		
+		Action filterCriticalAction = createFilterAction(ACTION_FILTER_CRITICAL_TOOLTIP, ACTION_FILTER_CRITICAL_ICON_PATH, Severity.CRITICAL, ActionName.CRITICAL);
 		Action filterHighAction = createFilterAction(ACTION_FILTER_HIGH_TOOLTIP, ACTION_FILTER_HIGH_ICON_PATH, Severity.HIGH, ActionName.HIGH);
 		Action filterMediumAction = createFilterAction(ACTION_FILTER_MEDIUM_TOOLTIP, ACTION_FILTER_MEDIUM_ICON_PATH, Severity.MEDIUM, ActionName.MEDIUM);
 		Action filterLowAction = createFilterAction(ACTION_FILTER_LOW_TOOLTIP, ACTION_FILTER_LOW_ICON_PATH, Severity.LOW, ActionName.LOW);
 		Action filterInfoAction = createFilterAction(ACTION_FILTER_INFO_TOOLTIP, ACTION_FILTER_INFO_ICON_PATH, Severity.INFO, ActionName.INFO);
 		
-		
+		filters.add(filterCriticalAction);
 		filters.add(filterHighAction);
 		filters.add(filterMediumAction);
 		filters.add(filterLowAction);
