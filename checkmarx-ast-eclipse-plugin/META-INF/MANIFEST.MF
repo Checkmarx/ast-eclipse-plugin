@@ -10,10 +10,10 @@ Require-Bundle: org.eclipse.ui,
  org.eclipse.ui.ide,
  org.eclipse.jgit,
  org.eclipse.e4.core.services,
- org.eclipse.osgi.services;resolution:=optional,
  com.google.guava,
  org.eclipse.e4.ui.di,
- jakarta.inject.jakarta.inject-api;bundle-version="1.0.5"
+ jakarta.inject.jakarta.inject-api;bundle-version="1.0.5",
+ org.osgi.service.event
 Automatic-Module-Name: com.checkmarx.eclipse
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Import-Package: org.eclipse.core.resources
