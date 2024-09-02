@@ -11,7 +11,6 @@ Require-Bundle: org.eclipse.ui,
  org.eclipse.jgit,
  org.eclipse.e4.core.services,
  org.eclipse.osgi.services;resolution:=optional,
- org.eclipse.osgi.service;resolution:=optional,
  com.google.guava,
  org.eclipse.e4.ui.di,
  jakarta.inject.jakarta.inject-api;bundle-version="1.0.5"
