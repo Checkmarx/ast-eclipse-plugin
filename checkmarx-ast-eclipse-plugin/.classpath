@@ -17,5 +17,7 @@
 	<classpathentry exported="true" kind="lib" path="lib/org.apache.commons.lang_2.6.0.v20220406-2305.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/org-eclipse-mylyn-commons-core.jar"/>
 	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="lib" path="lib/org.osgi.service.event-1.4.1.jar"/>
+	<classpathentry kind="lib" path="lib/slf4j-reload4j-1.7.36.jar"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>
