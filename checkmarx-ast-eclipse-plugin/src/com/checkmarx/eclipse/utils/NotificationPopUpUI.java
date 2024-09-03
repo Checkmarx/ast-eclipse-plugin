@@ -35,6 +35,7 @@ public class NotificationPopUpUI extends AbstractNotificationPopup {
 		container.setLayout(new GridLayout(1, false));
 
 		Link description = new Link(container, SWT.WRAP | SWT.MULTI);
+		description.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 		description.setText(text);
 
 		if (textAction != null) {
