@@ -137,5 +137,10 @@
 			<artifactId>jakarta.inject-api</artifactId>
 			<version>1.0.5</version>
 		</dependency>
+		<dependency>
+		    <groupId>org.osgi</groupId>
+		    <artifactId>org.osgi.service.event</artifactId>
+		    <version>1.4.1</version>
+		</dependency>
 	</dependencies>
 </project>
