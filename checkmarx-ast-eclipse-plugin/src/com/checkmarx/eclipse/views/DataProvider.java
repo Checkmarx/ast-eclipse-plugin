@@ -434,6 +434,8 @@ public class DataProvider {
 					mapBySeverity.put(severityType, new ArrayList<>(Arrays.asList(result)));
 				}
 			}
+
+
 			
 			 Map<String, List<DisplayModel>> sortedMapBySeverity = new LinkedHashMap<>();
 	            SEVERITY_ORDER.forEach(severity -> {
