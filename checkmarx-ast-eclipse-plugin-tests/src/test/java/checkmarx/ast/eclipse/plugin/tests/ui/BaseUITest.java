@@ -35,7 +35,7 @@ public abstract class BaseUITest {
 	protected static final String ITEM_CHECKMARX_AST = "Checkmarx One";
 	protected static final String ITEM_CHECKMARX_AST_SCAN = "Checkmarx One Scan";
 
-	protected static final String LABEL_SCAN_ID = "Scan Id:";
+	protected static final String LABEL_CX_TEST_SCAN = "Scan Id:";
 
 	protected static final String BTN_OPEN = "Open";
 	protected static final String BTN_APPLY = "Apply";
@@ -121,7 +121,7 @@ public abstract class BaseUITest {
 			sleep(1000);
 
 			assertEquals("The tree must contain one row with an error message", _bot.tree(1).rowCount(), 1);
-			assertEquals("An incorrect scanId format message must be displayed", PluginConstants.TREE_INVALID_SCAN_ID_FORMAT, _bot.tree(1).cell(0, 0));
+			assertEquals("An incorrect scanId format message must be displayed", PluginConstants.TREE_INVALID_CX_TEST_SCAN_FORMAT, _bot.tree(1).cell(0, 0));
 		}
 
 		// clear the view before getting the scan id
@@ -133,12 +133,12 @@ public abstract class BaseUITest {
 		typeValidScanID();
 
 		assertEquals("The tree must contain one row", _bot.tree().rowCount(), 1);
-		boolean retrievingOrRetrievedResults = _bot.tree(1).cell(0, 0).contains(Environment.SCAN_ID);
+		boolean retrievingOrRetrievedResults = _bot.tree(1).cell(0, 0).contains(Environment.CX_TEST_SCAN);
 		assertTrue("The plugin should have or should be retrieving results", retrievingOrRetrievedResults);
 
-		waitWhileTreeNodeEqualsTo(String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, Environment.SCAN_ID));
+		waitWhileTreeNodeEqualsTo(String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, Environment.CX_TEST_SCAN));
 
-		assertTrue("The plugin should retrieve results", _bot.tree(1).cell(0, 0).startsWith(Environment.SCAN_ID));
+		assertTrue("The plugin should retrieve results", _bot.tree(1).cell(0, 0).startsWith(Environment.CX_TEST_SCAN));
 	}
 
 	/**
@@ -290,7 +290,7 @@ public abstract class BaseUITest {
 	private void typeValidScanID() throws TimeoutException {
 		preventWidgetWasNullInCIEnvironment();
 
-		_bot.comboBox(2).setText(Environment.SCAN_ID);
+		_bot.comboBox(2).setText(Environment.CX_TEST_SCAN);
 		_bot.comboBox(2).pressShortcut(Keystrokes.LF);
 
 		waitUntilBranchComboIsEnabled();
