@@ -121,7 +121,7 @@ public abstract class BaseUITest {
 			sleep(1000);
 
 			assertEquals("The tree must contain one row with an error message", _bot.tree(1).rowCount(), 1);
-			assertEquals("An incorrect scanId format message must be displayed", PluginConstants.TREE_INVALID_CX_TEST_SCAN_FORMAT, _bot.tree(1).cell(0, 0));
+			assertEquals("An incorrect scanId format message must be displayed", PluginConstants.TREE_INVALID_SCAN_ID_FORMAT, _bot.tree(1).cell(0, 0));
 		}
 
 		// clear the view before getting the scan id
