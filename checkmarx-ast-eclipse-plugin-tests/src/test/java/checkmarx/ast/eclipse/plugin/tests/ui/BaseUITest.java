@@ -290,6 +290,16 @@ public abstract class BaseUITest {
 	private void typeValidScanID() throws TimeoutException {
 		preventWidgetWasNullInCIEnvironment();
 
+		String scanId = System.getenv("SCAN_ID");
+		String scanId2 = System.getenv("CX_TEST_SCAN");
+		String scanId3 = Environment.SCAN_ID;
+
+		if (scanId == null || scanId2 == null || scanId3 == null) {
+			throw new IllegalArgumentException("Environment variable Environment.SCAN_ID is not set. Value: " + scanId
+			+ "Environment variable SCAN_ID2 is not set. Value: "  + scanId2 + "Environment variable SCAN_ID3 is not set. Value: " + scanId3);
+		}
+
+
 		_bot.comboBox(2).setText(Environment.CX_TEST_SCAN);
 		_bot.comboBox(2).pressShortcut(Keystrokes.LF);
 
