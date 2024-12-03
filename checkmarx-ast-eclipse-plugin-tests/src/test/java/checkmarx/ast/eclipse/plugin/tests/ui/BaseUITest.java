@@ -133,12 +133,12 @@ public abstract class BaseUITest {
 		typeValidScanID();
 
 		assertEquals("The tree must contain one row", _bot.tree().rowCount(), 1);
-		boolean retrievingOrRetrievedResults = _bot.tree(1).cell(0, 0).contains(Environment.CX_TEST_SCAN);
+		boolean retrievingOrRetrievedResults = _bot.tree(1).cell(0, 0).contains(Environment.SCAN_ID);
 		assertTrue("The plugin should have or should be retrieving results", retrievingOrRetrievedResults);
 
-		waitWhileTreeNodeEqualsTo(String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, Environment.CX_TEST_SCAN));
+		waitWhileTreeNodeEqualsTo(String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, Environment.SCAN_ID));
 
-		assertTrue("The plugin should retrieve results", _bot.tree(1).cell(0, 0).startsWith(Environment.CX_TEST_SCAN));
+		assertTrue("The plugin should retrieve results", _bot.tree(1).cell(0, 0).startsWith(Environment.SCAN_ID));
 	}
 
 	/**
@@ -299,8 +299,7 @@ public abstract class BaseUITest {
 			+ "Environment variable SCAN_ID2 is not set. Value: "  + scanId2 + "Environment variable SCAN_ID3 is not set. Value: " + scanId3);
 		}
 
-
-		_bot.comboBox(2).setText(Environment.CX_TEST_SCAN);
+		_bot.comboBox(2).setText(Environment.SCAN_ID);
 		_bot.comboBox(2).pressShortcut(Keystrokes.LF);
 
 		waitUntilBranchComboIsEnabled();
