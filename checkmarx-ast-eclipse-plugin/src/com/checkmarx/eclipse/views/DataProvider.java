@@ -366,33 +366,95 @@ public class DataProvider {
 		return returnList;
 	}
 
+
+	/**
+	 * Creates a clean Result object with decoded HTML entities
+	 *
+	 * @param resultItem Original result object
+	 * @return New Result object with cleaned values
+	 */
+	private Result createCleanResult(Result resultItem) {
+	    String cleanDescription = resultItem.getDescription() != null ?
+	        cleanHtmlEntities(resultItem.getDescription()) : null;
+
+	    String cleanDescriptionHTML = resultItem.getDescriptionHTML() != null ?
+	        cleanHtmlEntities(resultItem.getDescriptionHTML()) : null;
+
+	    return new Result(
+	        resultItem.getType(),
+	        resultItem.getLabel(),
+	        resultItem.getId(),
+	        resultItem.getSimilarityId(),
+	        resultItem.getStatus(),
+	        resultItem.getState(),
+	        resultItem.getSeverity(),
+	        resultItem.getCreated(),
+	        resultItem.getFirstFoundAt(),
+	        resultItem.getFoundAt(),
+	        resultItem.getFirstScan(),
+	        resultItem.getFirstScanId(),
+	        resultItem.getPublishedAt(),
+	        resultItem.getRecommendations(),
+	        cleanDescription,
+	        cleanDescriptionHTML,
+	        resultItem.getData(),
+	        resultItem.getComments(),
+	        resultItem.getVulnerabilityDetails(),
+	        resultItem.getScaType()
+	    );
+	}
+
+	/**
+	 * Helper method to clean HTML entities from text
+	 *
+	 * @param input String containing HTML entities
+	 * @return Cleaned string with decoded HTML entities
+	 */
+	private String cleanHtmlEntities(String input) {
+	    if (input == null) return null;
+	    return input
+	        .replace("&#34;", "\"")
+	        .replace("&quot;", "\"")
+	        .replace("&#39;", "'")
+	        .replace("&#35;", "#")
+	        .replace("&#38;", "&")
+	        .replace("&lt;", "<")
+	        .replace("&gt;", ">");
+	}
+
 	/**
 	 * Creates a Display Model which represents each result
-	 * 
-	 * @param resultItem
-	 * @return
+	 *
+	 * @param resultItem Result object to transform
+	 * @return DisplayModel representing the result
 	 */
 	private DisplayModel transform(Result resultItem) {
-        List<Node> nodes = Optional.ofNullable(resultItem.getData().getNodes()).orElse(Collections.emptyList());
-        String queryName = resultItem.getData().getQueryName() != null ? resultItem.getData().getQueryName() : resultItem.getSimilarityId();
-		String displayName = queryName;
-		if (nodes.size() > 0) {
-            Node node = nodes.get(0);
-            displayName += String.format(" (%s:%d)", new File(node.getFileName()).getName(), node.getLine());
-        }
-		
-		return new DisplayModel.DisplayModelBuilder(displayName)
-				.setSeverity(resultItem.getSeverity())
-				.setType(resultItem.getType())
-				.setResult(resultItem)
-				.setSate(resultItem.getState())
-				.setQueryName(queryName)
-				.build();
+	    List<Node> nodes = Optional.ofNullable(resultItem.getData().getNodes()).orElse(Collections.emptyList());
+
+	    Result cleanResult = createCleanResult(resultItem);
+
+		String queryName = cleanResult.getData().getQueryName() != null ?
+				cleanResult.getData().getQueryName() :
+				cleanResult.getSimilarityId();
+
+	    String displayName = queryName;
+	    if (nodes.size() > 0) {
+	        Node node = nodes.get(0);
+	        displayName += String.format(" (%s:%d)", new File(node.getFileName()).getName(), node.getLine());
+	    }
+
+	    return new DisplayModel.DisplayModelBuilder(displayName)
+	            .setSeverity(cleanResult.getSeverity())
+	            .setType(cleanResult.getType())
+	            .setResult(cleanResult)
+	            .setSate(cleanResult.getState())
+	            .setQueryName(queryName)
+	            .build();
 	}
 
 	/**
 	 * Group results by scanner type
-	 * 
+	 *
 	 * @param allResultsTransformed
 	 * @return
 	 */
