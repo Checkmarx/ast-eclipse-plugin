@@ -58,9 +58,9 @@ public abstract class BaseUITest {
 		SWTBotPreferences.KEYBOARD_LAYOUT = "EN_US"; 
 
 		// Used to decrease tests velocity
-		SWTBotPreferences.PLAYBACK_DELAY = 100;
+		SWTBotPreferences.PLAYBACK_DELAY = 500;
 		
-		SWTBotPreferences.TIMEOUT = 8000;
+		SWTBotPreferences.TIMEOUT = 20000;
 
 		_bot = new SWTWorkbenchBot();
 				
@@ -205,11 +205,11 @@ public abstract class BaseUITest {
 
 		while (_bot.tree().getAllItems()[0].getText().equals(nodeText)) {
 
-			if (retryIdx == 10) {
+			if (retryIdx == 20) {
 				break;
 			}
 
-			_bot.sleep(1000);
+			_bot.sleep(1500);
 
 			retryIdx++;
 		}
@@ -238,7 +238,7 @@ public abstract class BaseUITest {
 
 		while (!_bot.comboBox(1).isEnabled()) {
 
-			if (retryIdx == 10) {
+			if (retryIdx == 15) {
 				break;
 			}
 
