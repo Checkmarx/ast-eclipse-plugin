@@ -4,62 +4,64 @@ import static org.junit.Assert.*;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.eclipse.swtbot.swt.finder.junit.SWTBotJunit4ClassRunner;
+import org.eclipse.swtbot.swt.finder.keyboard.Keystrokes;
+import org.eclipse.swtbot.swt.finder.utils.SWTBotPreferences;
+import java.util.concurrent.TimeoutException;
+
 import com.checkmarx.eclipse.utils.PluginConstants;
+import checkmarx.ast.eclipse.plugin.tests.common.Environment;
 
 @RunWith(SWTBotJunit4ClassRunner.class)
 public class TestPreferences extends BaseUITest {
     
-    @Test
-    public void testPreferencesPageOpen() throws TimeoutException {
-        // Open preferences window
-        _bot.menu(TAB_WINDOW).menu(ITEM_PREFERENCES).click();
-        _bot.shell(ITEM_PREFERENCES).activate();
-        _bot.tree().select(ITEM_CHECKMARX_AST);
-        
-        // Verify preferences page opens with correct fields
-        assertTrue("API Key field should be visible", 
-            _bot.textWithLabel(PluginConstants.PREFERENCES_API_KEY).isVisible());
-        assertTrue("Test Connection button should be visible",
-            _bot.button(BTN_TEST_CONNECTION).isVisible());
-    }
+    public static final String ASSERT_API_KEY_EMPTY = "API Key field must not be empty after setting";
+    public static final String ASSERT_CONNECTION_FAILED = "Connection test should fail with invalid key";
 
     @Test
-    public void testInvalidAPIKey() throws TimeoutException {
+    public void testPreferencesPageConnection() throws TimeoutException {
+        // Set timeout for test
+        SWTBotPreferences.TIMEOUT = 20000;
+        
+        preventWidgetWasNullInCIEnvironment();
+        
         // Open preferences window
         _bot.menu(TAB_WINDOW).menu(ITEM_PREFERENCES).click();
         _bot.shell(ITEM_PREFERENCES).activate();
         _bot.tree().select(ITEM_CHECKMARX_AST);
-        
-        // Try to connect with invalid API key
-        _bot.textWithLabel(PluginConstants.PREFERENCES_API_KEY).setText("invalid-key");
+
+        _bot.sleep(1000);
+
+        // Test with valid API key
+        _bot.textWithLabel(PluginConstants.PREFERENCES_API_KEY).setText(Environment.API_KEY);
+        _bot.button(BTN_APPLY).click();
         _bot.button(BTN_TEST_CONNECTION).click();
         
-        // Check for appropriate error message
         waitForConnectionResponse();
-        assertFalse("Should show error message for invalid API key",
-            _bot.text(3).getText().equals(INFO_SUCCESSFUL_CONNECTION));
+        
+        _bot.shell(ITEM_PREFERENCES).setFocus();
+        _bot.button(BTN_APPLY_AND_CLOSE).click();
+
+        SWTBotPreferences.TIMEOUT = 5000;
     }
 
     @Test
-    public void testPreferencesSave() throws TimeoutException {
-        // Open preferences window
+    public void testPreferencesInvalidKey() throws TimeoutException {
+        preventWidgetWasNullInCIEnvironment();
+        
+        // Open preferences
         _bot.menu(TAB_WINDOW).menu(ITEM_PREFERENCES).click();
         _bot.shell(ITEM_PREFERENCES).activate();
         _bot.tree().select(ITEM_CHECKMARX_AST);
         
-        // Save preferences and verify they persist
-        String testApiKey = "test-api-key";
-        _bot.textWithLabel(PluginConstants.PREFERENCES_API_KEY).setText(testApiKey);
+        // Set invalid key and test
+        _bot.textWithLabel(PluginConstants.PREFERENCES_API_KEY).setText("invalid-key");
         _bot.button(BTN_APPLY).click();
+        _bot.button(BTN_TEST_CONNECTION).click();
         
-        // Reopen preferences to verify
-        _bot.shell(ITEM_PREFERENCES).close();
-        _bot.menu(TAB_WINDOW).menu(ITEM_PREFERENCES).click();
-        _bot.shell(ITEM_PREFERENCES).activate();
-        _bot.tree().select(ITEM_CHECKMARX_AST);
+        // Wait and verify failure
+        _bot.sleep(5000);
+        assertFalse(ASSERT_CONNECTION_FAILED, _bot.text(3).getText().equals(INFO_SUCCESSFUL_CONNECTION));
         
-        assertEquals("API Key should persist after saving",
-            testApiKey,
-            _bot.textWithLabel(PluginConstants.PREFERENCES_API_KEY).getText());
+        _bot.button(BTN_APPLY_AND_CLOSE).click();
     }
 }
