@@ -159,97 +159,129 @@ public class TestFilterState extends BaseUITest{
 
 	@Test
 	public void testResultsSeverityOrder() throws TimeoutException {
-	   setUpCheckmarxPlugin(true);
-	   preventWidgetWasNullInCIEnvironment();
-	   
-	   disableAllGroupByActions(groupByActions);
-	   sleep(2000);
-	   
-	   String firstNodeName = _bot.tree(1).cell(0, 0);
-	   SWTBotTreeItem rootNode = _bot.tree(1).getTreeItem(firstNodeName);
-	   rootNode.expand();
-	   sleep(1000);
-	   
-	   // Check if root node has any nodes
-	   List<String> rootNodes = rootNode.getNodes();
-	   if (rootNodes.isEmpty()) {
-	       System.out.println("Root node has no nodes - test passes by default");
-	       return;
-	   }
-	   
-	   // Find SAST node
-	   SWTBotTreeItem sastNode = null;
-	   for (String nodeName : rootNodes) {
-		   System.out.println("Checking node: " + nodeName);  // Debug log
-		   if (nodeName.toLowerCase().contains("sast")) {
-			   sastNode = rootNode.getNode(nodeName);
-			   break;
-		   }
-	   }
-	   if (sastNode == null) {
-		   System.out.println("No SAST node found - test passes by default");
-		   return;
-	   }
-	   
-	   sastNode.select();
-	   sastNode.expand();
-	   sleep(1000);
-	   
-	   // Check if SAST node has results before grouping
-	   List<String> sastNodes = sastNode.getNodes();
-	   if (sastNodes.isEmpty()) {
-	       System.out.println("SAST node has no results before grouping - test passes by default");
-	       return;
-	   }
-	   
-	   enableGroup(ToolBarActions.GROUP_BY_SEVERITY);
-	   sleep(2000);
-	   
-	   // Check if SAST node has results after grouping
-	   List<String> nodes = sastNode.getNodes();
-	   if (nodes.isEmpty()) {
-	       System.out.println("No results found after grouping by severity - test passes by default");
-	       return;
-	   }
-	   
-	   List<String> severityNodes = new ArrayList<>();
-	   for (String nodeName : nodes) {
-		   String severityText = nodeName.split("\\(")[0].trim();
-		   if (getSeverityWeight(severityText) > 0) {  // רק אם זו חומרה תקפה
-			   severityNodes.add(severityText);
-		   }
-	   }
-	   
-	   if (severityNodes.isEmpty()) {
-		   System.out.println("No severity nodes found - test passes by default");
-		   return;
-	   }
-	   
-	   // Get actual severities and check order only if we have severities
-	   List<String> actualSeverities = severityNodes.stream()
-	       .distinct()
-	       .collect(Collectors.toList());
-	   
-	   System.out.println("Found severities: " + actualSeverities);
+	    try {
+	        setUpCheckmarxPlugin(true);
+	        preventWidgetWasNullInCIEnvironment();
+	        
+	        System.out.println("\n=== Starting Severity Order Test ===");
+	        
+	        disableAllGroupByActions(groupByActions);
+	        sleep(2000);
+	        
+	        String firstNodeName = _bot.tree(1).cell(0, 0);
+	        System.out.println("Root node name: " + firstNodeName);
+	        
+	        SWTBotTreeItem rootNode = _bot.tree(1).getTreeItem(firstNodeName);
+	        rootNode.expand();
+	        sleep(1000);
+	        
+	        // Check if root node has any nodes
+	        List<String> rootNodes = rootNode.getNodes();
+	        System.out.println("Root nodes (" + rootNodes.size() + "): " + rootNodes);
+	        
+	        if (rootNodes.isEmpty()) {
+	            System.out.println("Root node has no nodes - test passes by default");
+	            return;
+	        }
+	        
+	        // Find SAST node
+	        SWTBotTreeItem sastNode = null;
+	        for (String nodeName : rootNodes) {
+	            System.out.println("Checking node: " + nodeName);
+	            if (nodeName.toLowerCase().contains("sast")) {
+	                sastNode = rootNode.getNode(nodeName);
+	                System.out.println("Found SAST node: " + nodeName);
+	                break;
+	            }
+	        }
+	        
+	        if (sastNode == null) {
+	            System.out.println("No SAST node found - test passes by default");
+	            return;
+	        }
+	        
+	        sastNode.select();
+	        sastNode.expand();
+	        sleep(1000);
+	        
+	        // Check nodes at each stage
+	        System.out.println("\n=== Before Grouping ===");
+	        List<String> sastNodes = sastNode.getNodes();
+	        System.out.println("SAST nodes (" + sastNodes.size() + "): " + sastNodes);
+	        
+	        if (sastNodes.isEmpty()) {
+	            System.out.println("SAST node has no results before grouping - test passes by default");
+	            return;
+	        }
+	        
+	        System.out.println("\n=== Enabling Group By Severity ===");
+	        enableGroup(ToolBarActions.GROUP_BY_SEVERITY);
+	        sleep(2000);
+	        
+	        System.out.println("\n=== After Grouping ===");
+	        List<String> nodes = sastNode.getNodes();
+	        System.out.println("Nodes after grouping (" + nodes.size() + "): " + nodes);
+	        
+	        if (nodes.isEmpty()) {
+	            System.out.println("No results found after grouping by severity - test passes by default");
+	            return;
+	        }
+	        
+	        System.out.println("\n=== Processing Severities ===");
+	        List<String> severityNodes = new ArrayList<>();
+	        for (String nodeName : nodes) {
+	            String severityText = nodeName.split("\\(")[0].trim();
+	            System.out.println("Processing node: '" + nodeName + "' -> Severity: '" + severityText + "'");
+	            if (getSeverityWeight(severityText) > 0) {
+	                System.out.println("Valid severity found: " + severityText + " (weight: " + getSeverityWeight(severityText) + ")");
+	                severityNodes.add(severityText);
+	            } else {
+	                System.out.println("Ignoring invalid severity: " + severityText);
+	            }
+	        }
+	        
+	        System.out.println("\n=== Final Results ===");
+	        System.out.println("Found severity nodes: " + severityNodes);
+	        
+	        // Get actual severities and check order only if we have severities
+	        List<String> actualSeverities = severityNodes.stream()
+	            .distinct()
+	            .collect(Collectors.toList());
+	        
+	        System.out.println("Found severities: " + actualSeverities);
 
-	   if (actualSeverities.size() == 1) {
-	       System.out.println("Only one severity found (" + actualSeverities.get(0) + ") - no need to check order");
-	       return;
-	   }
-	   
-	   // Check order only if we have more than one severity
-	   for (int i = 0; i < actualSeverities.size() - 1; i++) {
-	       String currentSeverity = actualSeverities.get(i);
-	       String nextSeverity = actualSeverities.get(i + 1);
-	       
-	       assertTrue(
-	           String.format("Wrong severity order: %s found before %s", 
-	               currentSeverity, nextSeverity),
-	           getSeverityWeight(currentSeverity) >= getSeverityWeight(nextSeverity)
-	       );
-	   }
-	   
-	   _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
+	        if (actualSeverities.isEmpty()) {
+	            System.out.println("No severities found after filtering - test passes by default");
+	            return;
+	        }
+
+	        if (actualSeverities.size() == 1) {
+	            System.out.println("Only one severity found (" + actualSeverities.get(0) + ") - no need to check order");
+	            return;
+	        }
+	        
+	        // Check order only if we have more than one severity
+	        for (int i = 0; i < actualSeverities.size() - 1; i++) {
+	            String currentSeverity = actualSeverities.get(i);
+	            String nextSeverity = actualSeverities.get(i + 1);
+	            
+	            assertTrue(
+	                String.format("Wrong severity order: %s found before %s", 
+	                    currentSeverity, nextSeverity),
+	                getSeverityWeight(currentSeverity) >= getSeverityWeight(nextSeverity)
+	            );
+	        }
+	        
+	        _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
+	        
+	    } catch (Exception e) {
+	        System.out.println("\n=== Test Failed ===");
+	        System.out.println("Exception: " + e.getClass().getName());
+	        System.out.println("Message: " + e.getMessage());
+	        System.out.println("Stack trace:");
+	        e.printStackTrace();
+	        throw e;
+	    }
 	}
 
 	// Helper method to get severity weight
