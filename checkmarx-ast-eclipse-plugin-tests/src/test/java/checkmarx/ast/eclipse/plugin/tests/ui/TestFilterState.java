@@ -170,10 +170,17 @@ public class TestFilterState extends BaseUITest{
 	   rootNode.expand();
 	   sleep(1000);
 	   
-	   SWTBotTreeItem sastNode = rootNode.getNodes().stream()
-		   .filter(node -> node.getText().toLowerCase().contains("sast"))
-		   .findFirst()
-		   .orElseThrow(() -> new AssertionError("SAST node not found"));
+	   SWTBotTreeItem sastNode = null;
+	   for (String nodeName : rootNode.getNodes()) {
+		   if (nodeName.toLowerCase().contains("sast")) {
+			   sastNode = rootNode.getNode(nodeName);
+			   break;
+		   }
+	   }
+	   if (sastNode == null) {
+		   throw new AssertionError("SAST node not found");
+	   }
+	   
 	   sastNode.select();
 	   sastNode.expand();
 	   sleep(1000);
@@ -182,12 +189,15 @@ public class TestFilterState extends BaseUITest{
 	   sleep(2000);
 	   
 	   assertTrue("No results found after grouping by severity", 
-		   sastNode.getNodes().size() > 0);
+		   !sastNode.getNodes().isEmpty());
 	   
-	   List<String> severityNodes = sastNode.getNodes().stream()
-		   .map(node -> node.getText().split("\\(")[0].trim())
-		   .filter(text -> text.matches("HIGH|MEDIUM|LOW|INFO"))
-		   .collect(Collectors.toList());
+	   List<String> severityNodes = new ArrayList<>();
+	   for (String nodeName : sastNode.getNodes()) {
+		   String severityText = nodeName.split("\\(")[0].trim();
+		   if (severityText.matches("HIGH|MEDIUM|LOW|INFO")) {
+			   severityNodes.add(severityText);
+		   }
+	   }
 	   
 	   assertTrue("No severity nodes found", severityNodes.size() > 0);
 	   
