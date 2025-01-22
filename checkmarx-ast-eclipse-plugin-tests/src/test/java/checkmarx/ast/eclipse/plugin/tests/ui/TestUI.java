@@ -274,6 +274,135 @@ public class TestUI extends BaseUITest {
 		_bot.button(PluginConstants.BTN_OPEN_SETTINGS);
 	}
 	
+
+	@Test
+	public void testResultsSeverityOrder() throws TimeoutException {
+		// Set credentials, test connection and add checkmarx plugin
+		setUpCheckmarxPlugin(true);
+		
+		preventWidgetWasNullInCIEnvironment();
+		
+		List<String> expectedOrder = Arrays.asList("CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO");
+		List<String> actualOrder = expandTreeUntilFirstEngineAndGetCurrentSeverities();
+		
+		for (int i = 0; i < actualOrder.size(); i++) {
+			assertTrue("Severity order should match expected", 
+				expectedOrder.indexOf(actualOrder.get(i)) <= 
+				expectedOrder.indexOf(actualOrder.get(i > 0 ? i-1 : 0)));
+		}
+		
+		// Close Checkmarx One Scan view
+		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
+	}
+
+	@Test
+	public void testScannerTypesDisplay() throws TimeoutException {
+		// Set credentials, test connection and add checkmarx plugin
+		setUpCheckmarxPlugin(true);
+		
+		preventWidgetWasNullInCIEnvironment();
+		
+		_bot.comboBox(2).setText(Environment.SCAN_ID);
+		_bot.comboBox(2).pressShortcut(Keystrokes.LF);
+		
+		// Get root node and expand
+		String firstNodeName = _bot.tree(1).cell(0, 0);
+		List<String> scannerTypes = _bot.tree(1)
+			.getTreeItem(firstNodeName)
+			.expand()
+			.getNodes();
+		
+		assertTrue("Should contain SAST results", 
+			scannerTypes.stream().anyMatch(node -> node.contains("SAST")));
+		assertTrue("Scanner types format should be correct", 
+			scannerTypes.stream().allMatch(node -> node.matches(".*\\(\\d+\\)")));
+			
+		// Close Checkmarx One Scan view
+		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
+	}
+
+	@Test
+	public void testStateFilterBehavior() throws TimeoutException {
+		// Set credentials, test connection and add checkmarx plugin
+		setUpCheckmarxPlugin(true);
+		
+		preventWidgetWasNullInCIEnvironment();
+		
+		// Test state filter dropdown
+		SWTBotToolbarDropDownButton stateFilter = _bot.toolbarDropDownButtonWithTooltip("State");
+		
+		// Enable specific state filters
+		List<String> filterStateButtons = Arrays.asList("Not Exploitable", "Confirmed", "To Verify");
+		for(String filter: filterStateButtons) {
+			try {
+				final SWTBotMenu menuItem = stateFilter.menuItem(filter);
+				if(!menuItem.isChecked()) {
+					menuItem.click();
+				}
+			} catch(WidgetNotFoundException e) {}
+		}
+		
+		sleep(1000);
+		
+		String firstNodeName = _bot.tree(1).cell(0, 0);
+		_bot.tree(1).getTreeItem(firstNodeName).expand();
+		
+		assertTrue("Results should reflect state filter selection",
+			_bot.tree(1).getTreeItem(firstNodeName).getNodes().size() > 0);
+		
+		// Close Checkmarx One Scan view
+		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
+	}
+
+	@Test
+	public void testQueryNameGrouping() throws TimeoutException {
+		// Set credentials, test connection and add checkmarx plugin
+		setUpCheckmarxPlugin(true);
+		
+		preventWidgetWasNullInCIEnvironment();
+		
+		// Enable group by query name
+		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN)
+			.viewMenu()
+			.menu(ToolBarActions.MENU_GROUP_BY)
+			.menu(ToolBarActions.GROUP_BY_QUERY_NAME)
+			.click();
+		
+		sleep(1000);
+		
+		String firstNodeName = _bot.tree(1).cell(0, 0);
+		String secondNodeName = _bot.tree(1).getTreeItem(firstNodeName).expand().getNode(0).getText();
+		String thirdNodeName = _bot.tree(1).getTreeItem(firstNodeName).expand().getNode(0).expand().getNode(0).getText();
+		
+		// Expand nodes until query name groups
+		String queryGroupParent = _bot.tree(1)
+			.expandNode(firstNodeName)
+			.expandNode(secondNodeName)
+			.expandNode(thirdNodeName)
+			.getNode(0)
+			.expand()
+			.getNode(0)
+			.getText();
+			
+		String queryGroupChild = _bot.tree(1)
+			.expandNode(firstNodeName)
+			.expandNode(secondNodeName)
+			.expandNode(thirdNodeName)
+			.getNode(0)
+			.expand()
+			.getNode(0)
+			.expand()
+			.getNode(0)
+			.getText();
+		
+		// Verify query name grouping
+		assertTrue(ASSERT_GROUP_BY_QUERY_NAME, 
+			queryGroupChild.contains(queryGroupParent.split("\\(")[0].trim()));
+		
+		// Close Checkmarx One Scan view
+		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
+	}
+
 	/**
 	 * Click on a severity filter
 	 * 
