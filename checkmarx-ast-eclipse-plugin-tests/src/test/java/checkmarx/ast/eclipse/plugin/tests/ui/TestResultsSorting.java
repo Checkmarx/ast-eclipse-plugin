@@ -11,7 +11,7 @@ import org.eclipse.swtbot.swt.finder.widgets.SWTBotTreeItem;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import com.checkmarx.eclipse.utils.PluginConstants;
+import com.checkmarx.eclipse.views.actions.ToolBarActions;
 
 @RunWith(SWTBotJunit4ClassRunner.class)
 public class TestResultsSorting extends BaseUITest {
@@ -24,19 +24,15 @@ public class TestResultsSorting extends BaseUITest {
         setUpCheckmarxPlugin(true);
 
         // Enable severity grouping
-        _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(PluginConstants.MENU_GROUP_BY)
-            .menu(PluginConstants.GROUP_BY_SEVERITY).click();
-
-        sleep(2000);
+        enableGrouping(ToolBarActions.GROUP_BY_SEVERITY);
 
         // Get all severity groups
-        List<String> severityGroups = getSeverityGroups();
+        List<String> severityGroups = getGroups();
 
         // Verify order: High -> Medium -> Low -> Info
-        assertTrue(ASSERT_SORTED_BY_SEVERITY, 
-            isSortedBySeverity(severityGroups));
+        assertTrue(ASSERT_SORTED_BY_SEVERITY, isSortedBySeverity(severityGroups));
 
-        _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
+        closeCheckmarxView();
     }
 
     @Test
@@ -44,31 +40,24 @@ public class TestResultsSorting extends BaseUITest {
         setUpCheckmarxPlugin(true);
 
         // Enable state grouping
-        _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(PluginConstants.MENU_GROUP_BY)
-            .menu(PluginConstants.GROUP_BY_STATE_NAME).click();
-
-        sleep(2000);
+        enableGrouping(ToolBarActions.GROUP_BY_STATE_NAME);
 
         // Get all state groups
-        List<String> stateGroups = getStateGroups();
+        List<String> stateGroups = getGroups();
 
         // Verify order is alphabetical
-        assertTrue(ASSERT_SORTED_BY_STATE,
-            isAlphabeticallySorted(stateGroups));
+        assertTrue(ASSERT_SORTED_BY_STATE, isAlphabeticallySorted(stateGroups));
 
-        _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
+        closeCheckmarxView();
     }
 
-    private List<String> getSeverityGroups() {
-        List<String> groups = new ArrayList<>();
-        SWTBotTreeItem root = _bot.tree(1).getAllItems()[0];
-        for (SWTBotTreeItem item : root.getItems()) {
-            groups.add(item.getText().split("\\(")[0].trim());
-        }
-        return groups;
+    private void enableGrouping(String groupingOption) {
+        _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu()
+            .menu(ToolBarActions.MENU_GROUP_BY).menu(groupingOption).click();
+        sleep(2000); // Allow time for the grouping to take effect
     }
 
-    private List<String> getStateGroups() {
+    private List<String> getGroups() {
         List<String> groups = new ArrayList<>();
         SWTBotTreeItem root = _bot.tree(1).getAllItems()[0];
         for (SWTBotTreeItem item : root.getItems()) {
@@ -78,22 +67,32 @@ public class TestResultsSorting extends BaseUITest {
     }
 
     private boolean isSortedBySeverity(List<String> groups) {
-        int highIndex = groups.indexOf("HIGH");
-        int mediumIndex = groups.indexOf("MEDIUM");
-        int lowIndex = groups.indexOf("LOW");
-        int infoIndex = groups.indexOf("INFO");
-
-        return highIndex < mediumIndex && 
-               mediumIndex < lowIndex && 
-               lowIndex < infoIndex;
+        List<String> expectedOrder = List.of("HIGH", "MEDIUM", "LOW", "INFO");
+        return isInExpectedOrder(groups, expectedOrder);
     }
 
     private boolean isAlphabeticallySorted(List<String> groups) {
         for (int i = 0; i < groups.size() - 1; i++) {
-            if (groups.get(i).compareTo(groups.get(i + 1)) > 0) {
+            if (groups.get(i).compareToIgnoreCase(groups.get(i + 1)) > 0) {
                 return false;
             }
         }
         return true;
     }
-} 
+
+    private boolean isInExpectedOrder(List<String> actual, List<String> expected) {
+        int previousIndex = -1;
+        for (String group : actual) {
+            int currentIndex = expected.indexOf(group);
+            if (currentIndex == -1 || currentIndex < previousIndex) {
+                return false;
+            }
+            previousIndex = currentIndex;
+        }
+        return true;
+    }
+
+    private void closeCheckmarxView() {
+        _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
+    }
+}
