@@ -21,12 +21,19 @@ import org.junit.runner.RunWith;
 import com.checkmarx.eclipse.enums.Severity;
 import com.checkmarx.eclipse.enums.State;
 import com.checkmarx.eclipse.views.actions.ToolBarActions;
+import org.eclipse.swtbot.swt.finder.waits.DefaultCondition;
+import org.eclipse.swtbot.swt.finder.waits.Condition;
 
 
 @RunWith(SWTBotJunit4ClassRunner.class)
 public class TestFilterState extends BaseUITest{
 	
 	List<String> groupByActions = Arrays.asList(ToolBarActions.GROUP_BY_QUERY_NAME,ToolBarActions.GROUP_BY_SEVERITY,ToolBarActions.GROUP_BY_STATE_NAME);
+	
+	private static final String HIGH = "HIGH";
+	private static final String MEDIUM = "MEDIUM";
+	private static final String LOW = "LOW";
+	private static final String INFO = "INFO";
 	
 	@Test
 	public void testGroupByActionsInToolBar() throws TimeoutException {
@@ -214,30 +221,52 @@ public class TestFilterState extends BaseUITest{
 	            return;
 	        }
 	        
+	        // הוספת condition למציאת נוד ה-SAST
+	        Condition<Boolean> sastNodeFound = new DefaultCondition<Boolean>() {
+	            @Override
+	            public boolean test() {
+	                for (String nodeName : rootNode.getNodes()) {
+	                    if (nodeName.toLowerCase().contains("sast")) {
+	                        return true;
+	                    }
+	                }
+	                return false;
+	            }
+
+	            @Override
+	            public String getFailureMessage() {
+	                return "Could not find SAST node after grouping";
+	            }
+	        };
+
 	        System.out.println("\n=== Enabling Group By Severity ===");
 	        enableGroup(ToolBarActions.GROUP_BY_SEVERITY);
-	        sleep(2000);
-	        
-	        // Re-get the SAST node after grouping
-	        System.out.println("Re-getting SAST node after grouping");
-	        // Find SAST node again by name pattern
+	        sleep(SLEEP_TIME);
+
+	        // Get fresh nodes
+	        rootNode = _bot.tree(1).getTreeItem(firstNodeName);
+	        rootNode.expand();
+	        sleep(SLEEP_TIME);
+
+	        // Find SAST node name
+	        String sastNodeName = null;
 	        for (String nodeName : rootNode.getNodes()) {
 	            if (nodeName.toLowerCase().contains("sast")) {
-	                sastNode = rootNode.getNode(nodeName);
+	                sastNodeName = nodeName;
 	                System.out.println("Found SAST node after grouping: " + nodeName);
 	                break;
 	            }
 	        }
 
-	        if (sastNode == null) {
+	        if (sastNodeName == null) {
 	            System.out.println("Could not find SAST node after grouping - test passes by default");
 	            return;
 	        }
 
-	        System.out.println("Expanding SAST node");
-	        sastNode.select();
+	        // Get fresh SAST node and expand
+	        sastNode = rootNode.getNode(sastNodeName);
 	        sastNode.expand();
-	        sleep(2000);
+	        sleep(SLEEP_TIME);
 	        
 	        System.out.println("\n=== After Grouping ===");
 	        List<String> nodes = sastNode.getNodes();
@@ -308,10 +337,10 @@ public class TestFilterState extends BaseUITest{
 	// Helper method to get severity weight
 	private int getSeverityWeight(String severity) {
 	    switch(severity.toUpperCase()) {
-	        case "HIGH": return 4;
-	        case "MEDIUM": return 3;
-	        case "LOW": return 2;
-	        case "INFO": return 1;
+	        case HIGH: return 4;
+	        case MEDIUM: return 3;
+	        case LOW: return 2;
+	        case INFO: return 1;
 	        default: return 0;
 	    }
 	}
