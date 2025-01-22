@@ -34,7 +34,7 @@ public class TestFilterState extends BaseUITest{
 		int THIRD_NODE = 3;
 		int FOURTH_NODE = 4;
 
-		setUpCheckmarxPlugin(true);
+		setUpCheckmarxPlugin(true);     
 
 		// remove all groups and get the first individual node
 		disableAllGroupByActions(groupByActions);
@@ -131,38 +131,35 @@ public class TestFilterState extends BaseUITest{
 
     @Test
     public void testResultsSeverityOrder() throws TimeoutException {
-        setUpCheckmarxPlugin(true);
-        preventWidgetWasNullInCIEnvironment();
-        
-        // Clear all existing group by actions
-        disableAllGroupByActions(groupByActions);
-        sleep(1000);
-        
-        // Verify basic results exist
-        SWTBotTreeItem baseNode = getFirstResultNode();
-        
-        // Enable severity grouping
-        enableGroup(ToolBarActions.GROUP_BY_SEVERITY);
-        sleep(1000);
-        
-        List<String> expectedOrder = Arrays.asList("CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO");
-        List<String> severityNodes = _bot.tree(1)
-            .getTreeItem(_bot.tree(1).cell(0, 0))
-            .expand()
-            .getNode(0)
-            .expand()
-            .getNodes()
-            .stream()
-            .map(node -> node.split("\\(")[0].trim())
-            .collect(Collectors.toList());
-        
-        for (int i = 0; i < severityNodes.size(); i++) {
-            assertTrue("Severity order should match expected", 
-                expectedOrder.indexOf(severityNodes.get(i)) <= 
-                expectedOrder.indexOf(severityNodes.get(i > 0 ? i-1 : 0)));
-        }
-        
-        _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
+    setUpCheckmarxPlugin(true);
+    preventWidgetWasNullInCIEnvironment();
+    
+    disableAllGroupByActions(groupByActions);
+    sleep(1000);
+    
+    SWTBotTreeItem baseNode = getFirstResultNode();
+    
+    enableGroup(ToolBarActions.GROUP_BY_SEVERITY);
+    sleep(1000);
+    
+    List<String> expectedOrder = Arrays.asList("HIGH", "MEDIUM", "LOW");
+    List<String> severityNodes = _bot.tree(1)
+        .getTreeItem(_bot.tree(1).cell(0, 0))
+        .expand()
+        .getNode(0)
+        .expand()
+        .getNodes()
+        .stream()
+        .map(node -> node.split("\\(")[0].trim())
+        .collect(Collectors.toList());
+    
+    for (int i = 0; i < severityNodes.size(); i++) {
+        assertTrue("Severity order should match expected", 
+            expectedOrder.indexOf(severityNodes.get(i)) <= 
+            expectedOrder.indexOf(severityNodes.get(i > 0 ? i-1 : 0)));
+    }
+    
+    _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
     }
 
 

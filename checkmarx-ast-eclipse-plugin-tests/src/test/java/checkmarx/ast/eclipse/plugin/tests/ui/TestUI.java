@@ -42,10 +42,10 @@ public class TestUI extends BaseUITest {
 	private static final String ASSERT_GROUP_BY_SEVERITY_NOT_SELECTED = "Engine child should not be HIGH, MEDIUM, LOW or INFO once the group by severity is not enabled";
 	private static final String ASSERT_CREDENTIALS_PANEL = "The  credentials panel must appear once Checkmarx credentials are not defined";
 
-	// @Test
-	// public void testSuccessfulConnetion() throws TimeoutException {
-	// 	testSuccessfulConnection(false);		
-	// }
+	@Test
+	public void testSuccessfulConnetion() throws TimeoutException {
+		testSuccessfulConnection(false);		
+	}
 
 	// //@Test
 	// public void testAddCheckmarxASTPlugin() throws TimeoutException {
