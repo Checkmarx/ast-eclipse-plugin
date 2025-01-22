@@ -163,33 +163,48 @@ public class TestFilterState extends BaseUITest{
 	   preventWidgetWasNullInCIEnvironment();
 	   
 	   disableAllGroupByActions(groupByActions);
-	   sleep(1000);
+	   sleep(2000);
 	   
 	   String firstNodeName = _bot.tree(1).cell(0, 0);
 	   SWTBotTreeItem rootNode = _bot.tree(1).getTreeItem(firstNodeName);
-	   System.out.println("Initial tree nodes: " + rootNode.getNodes().stream().map(n -> n.getText()).collect(Collectors.toList()));
-	   
-	   SWTBotTreeItem sastNode = rootNode.getNodes().stream()
-		   .filter(node -> node.getText().contains("sast"))
-		   .findFirst()
-		   .get();
-	   sastNode.select();
-	   
-	   System.out.println("SAST nodes: " + sastNode.getNodes().stream().map(n -> n.getText()).collect(Collectors.toList()));
-	   
-	   enableGroup(ToolBarActions.GROUP_BY_SEVERITY);
+	   rootNode.expand();
 	   sleep(1000);
 	   
-	   List<String> expectedOrder = Arrays.asList("HIGH", "MEDIUM", "LOW");
+	   SWTBotTreeItem sastNode = rootNode.getNodes().stream()
+		   .filter(node -> node.getText().toLowerCase().contains("sast"))
+		   .findFirst()
+		   .orElseThrow(() -> new AssertionError("SAST node not found"));
+	   sastNode.select();
+	   sastNode.expand();
+	   sleep(1000);
+	   
+	   enableGroup(ToolBarActions.GROUP_BY_SEVERITY);
+	   sleep(2000);
+	   
+	   assertTrue("No results found after grouping by severity", 
+		   sastNode.getNodes().size() > 0);
+	   
 	   List<String> severityNodes = sastNode.getNodes().stream()
 		   .map(node -> node.getText().split("\\(")[0].trim())
+		   .filter(text -> text.matches("HIGH|MEDIUM|LOW|INFO"))
 		   .collect(Collectors.toList());
 	   
-	   System.out.println("Severity nodes: " + severityNodes);
-	   for (int i = 0; i < severityNodes.size(); i++) {
-		   assertTrue("Severity order should match expected", 
-			   expectedOrder.indexOf(severityNodes.get(i)) <= 
-			   expectedOrder.indexOf(severityNodes.get(i > 0 ? i-1 : 0)));
+	   assertTrue("No severity nodes found", severityNodes.size() > 0);
+	   
+	   String previousSeverity = null;
+	   List<String> expectedOrder = Arrays.asList("HIGH", "MEDIUM", "LOW", "INFO");
+	   
+	   for (String severity : severityNodes) {
+		   if (previousSeverity != null) {
+			   int prevIndex = expectedOrder.indexOf(previousSeverity);
+			   int currentIndex = expectedOrder.indexOf(severity);
+			   assertTrue(
+				   String.format("Wrong severity order: %s found after %s", 
+					   severity, previousSeverity),
+				   currentIndex >= prevIndex
+			   );
+		   }
+		   previousSeverity = severity;
 	   }
 	   
 	   _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
