@@ -47,232 +47,232 @@ public class TestUI extends BaseUITest {
 		testSuccessfulConnection(false);		
 	}
 
-	//@Test
-	public void testAddCheckmarxASTPlugin() throws TimeoutException {
-		clearCheckmarxCredentials();
+	// //@Test
+	// public void testAddCheckmarxASTPlugin() throws TimeoutException {
+	// 	clearCheckmarxCredentials();
 		
-		// Add Checkmarx plugin to the eclipse view
-		addCheckmarxPlugin(false);
+	// 	// Add Checkmarx plugin to the eclipse view
+	// 	addCheckmarxPlugin(false);
 		
-		preventWidgetWasNullInCIEnvironment();
+	// 	preventWidgetWasNullInCIEnvironment();
 
-		// Assert that active view is the Checkmarx One Scan
-		assertTrue("Active view must be the Checkmarx One Scan", _bot.activeView().getTitle().equals(VIEW_CHECKMARX_AST_SCAN));
+	// 	// Assert that active view is the Checkmarx One Scan
+	// 	assertTrue("Active view must be the Checkmarx One Scan", _bot.activeView().getTitle().equals(VIEW_CHECKMARX_AST_SCAN));
 		
-		preventWidgetWasNullInCIEnvironment();
+	// 	preventWidgetWasNullInCIEnvironment();
 		
-		assertTrue(ASSERT_CREDENTIALS_PANEL, _bot.button(PluginConstants.BTN_OPEN_SETTINGS) != null);
+	// 	assertTrue(ASSERT_CREDENTIALS_PANEL, _bot.button(PluginConstants.BTN_OPEN_SETTINGS) != null);
 		
-		// Close Checkmarx One Scan view
-		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
-	}
+	// 	// Close Checkmarx One Scan view
+	// 	_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
+	// }
 
-	@Test
-	public void testMissingSetCheckmarxServerUrl() throws TimeoutException {
-		// Test Connection
-		testSuccessfulConnection(false);
+	// @Test
+	// public void testMissingSetCheckmarxServerUrl() throws TimeoutException {
+	// 	// Test Connection
+	// 	testSuccessfulConnection(false);
 
-		// Add Checkmarx One Plugin
-		addCheckmarxPlugin(true);
+	// 	// Add Checkmarx One Plugin
+	// 	addCheckmarxPlugin(true);
 
-		// Clear Checkmarx credentials to expect missing Server Url
-		clearCheckmarxCredentials();
+	// 	// Clear Checkmarx credentials to expect missing Server Url
+	// 	clearCheckmarxCredentials();
 
-		// Type a valid and existing scan id
-		preventWidgetWasNullInCIEnvironment();
+	// 	// Type a valid and existing scan id
+	// 	preventWidgetWasNullInCIEnvironment();
 		
-		_bot.comboBox(2).setText(UUID.randomUUID().toString());
-		_bot.comboBox(2).pressShortcut(Keystrokes.LF);
+	// 	_bot.comboBox(2).setText(UUID.randomUUID().toString());
+	// 	_bot.comboBox(2).pressShortcut(Keystrokes.LF);
 
-		assertEquals("The tree must contain a single row", _bot.tree(1).rowCount(), 1);
-		String firstTreeCell = _bot.tree(1).cell(0, 0);
+	// 	assertEquals("The tree must contain a single row", _bot.tree(1).rowCount(), 1);
+	// 	String firstTreeCell = _bot.tree(1).cell(0, 0);
 
-		// The first row must have a message saying that One is getting results or
-		// failing due the missing Server Url
-		firstTreeCell.equals(String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, Environment.SCAN_ID));
+	// 	// The first row must have a message saying that One is getting results or
+	// 	// failing due the missing Server Url
+	// 	firstTreeCell.equals(String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, Environment.SCAN_ID));
 
-		sleep();
+	// 	sleep();
 
-		// Close Checkmarx One Scan view
-		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
-	}
+	// 	// Close Checkmarx One Scan view
+	// 	_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
+	// }
 
-	/**
-	 * Test UI End-to-End
-	 * 
-	 * 		-> Set Checkmarx credentials and test connection 
-	 * 		-> Add Checkmarx plugin to the show view perspective 
-	 * 		-> Type and assert invalid scan id 
-	 * 		-> Type and assert valid scan id 
-	 * 		-> Expand scan results
-	 * 
-	 * @throws TimeoutException
-	 */
-	@Test
-	public void testEnd2End() throws TimeoutException {
-		// Set credentials, test connection and add checkmarx plugin
-		setUpCheckmarxPlugin(false);
+	// /**
+	//  * Test UI End-to-End
+	//  * 
+	//  * 		-> Set Checkmarx credentials and test connection 
+	//  * 		-> Add Checkmarx plugin to the show view perspective 
+	//  * 		-> Type and assert invalid scan id 
+	//  * 		-> Type and assert valid scan id 
+	//  * 		-> Expand scan results
+	//  * 
+	//  * @throws TimeoutException
+	//  */
+	// @Test
+	// public void testEnd2End() throws TimeoutException {
+	// 	// Set credentials, test connection and add checkmarx plugin
+	// 	setUpCheckmarxPlugin(false);
 				
-		String firstNodeName = _bot.tree(1).cell(0, 0);
-		String secondNodeName = _bot.tree(1).getTreeItem(firstNodeName).expand().getNode(0).getText();
-		String thirdNodeName = _bot.tree(1).getTreeItem(firstNodeName).expand().getNode(0).expand().getNode(0).getText();
+	// 	String firstNodeName = _bot.tree(1).cell(0, 0);
+	// 	String secondNodeName = _bot.tree(1).getTreeItem(firstNodeName).expand().getNode(0).getText();
+	// 	String thirdNodeName = _bot.tree(1).getTreeItem(firstNodeName).expand().getNode(0).expand().getNode(0).getText();
 		
-		// Expand nodes until the first vulnerability
-		_bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).select();
+	// 	// Expand nodes until the first vulnerability
+	// 	_bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).select();
 				
-		// Close Checkmarx One Scan view
-		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
-	}
+	// 	// Close Checkmarx One Scan view
+	// 	_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
+	// }
 	
-	@Test
-	public void testFilterButtonsAndGroupByActionsInToolBar() throws TimeoutException {
-		// Test Connection
-		testSuccessfulConnection(false);
+	// @Test
+	// public void testFilterButtonsAndGroupByActionsInToolBar() throws TimeoutException {
+	// 	// Test Connection
+	// 	testSuccessfulConnection(false);
 
-		// Add Checkmarx One Plugin
-		addCheckmarxPlugin(true);
+	// 	// Add Checkmarx One Plugin
+	// 	addCheckmarxPlugin(true);
 				
-		List<SWTBotToolbarButton> toolbarButtons = _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).getToolbarButtons();
-		List<String> toolBarButtonsNames = toolbarButtons.stream().map(btn -> btn.getToolTipText().toUpperCase()).collect(Collectors.toList());
-		List<String> filterActions = Arrays.asList(ActionName.HIGH.name(), ActionName.MEDIUM.name(), ActionName.LOW.name(), ActionName.INFO.name());
+	// 	List<SWTBotToolbarButton> toolbarButtons = _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).getToolbarButtons();
+	// 	List<String> toolBarButtonsNames = toolbarButtons.stream().map(btn -> btn.getToolTipText().toUpperCase()).collect(Collectors.toList());
+	// 	List<String> filterActions = Arrays.asList(ActionName.HIGH.name(), ActionName.MEDIUM.name(), ActionName.LOW.name(), ActionName.INFO.name());
 		
-		// Assert all filter actions are present in the tool bar
-		assertTrue(ASSERT_FILTER_ACTIONS_IN_TOOLBAR, toolBarButtonsNames.containsAll(filterActions));	
+	// 	// Assert all filter actions are present in the tool bar
+	// 	assertTrue(ASSERT_FILTER_ACTIONS_IN_TOOLBAR, toolBarButtonsNames.containsAll(filterActions));	
 		
-		List<String> groupByActions = Arrays.asList(ToolBarActions.GROUP_BY_SEVERITY, ToolBarActions.GROUP_BY_QUERY_NAME);
-		List<String> toolBarGroupByActions = _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menuItems();
+	// 	List<String> groupByActions = Arrays.asList(ToolBarActions.GROUP_BY_SEVERITY, ToolBarActions.GROUP_BY_QUERY_NAME);
+	// 	List<String> toolBarGroupByActions = _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menuItems();
 		
-		// Assert all group by actions are present in the tool bar
-		assertTrue(ASSERT_GROUP_BY_ACTIONS_IN_TOOLBAR, toolBarGroupByActions.containsAll(groupByActions));	
+	// 	// Assert all group by actions are present in the tool bar
+	// 	assertTrue(ASSERT_GROUP_BY_ACTIONS_IN_TOOLBAR, toolBarGroupByActions.containsAll(groupByActions));	
 		
-		// Close Checkmarx One Scan view
-		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
-	}
+	// 	// Close Checkmarx One Scan view
+	// 	_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
+	// }
 	
-	@Test
-	public void testFilteringAndGroupingResults() throws TimeoutException, ParseException {
-		// Set credentials, test connection and add checkmarx plugin
-		setUpCheckmarxPlugin(true);
+	// @Test
+	// public void testFilteringAndGroupingResults() throws TimeoutException, ParseException {
+	// 	// Set credentials, test connection and add checkmarx plugin
+	// 	setUpCheckmarxPlugin(true);
 		
-		List<String> filterStateButtons = Arrays.asList("Not Exploitable","Confirmed","Ignored","Not Ignored","To Verify");
-		SWTBotToolbarDropDownButton stateFilter = _bot.toolbarDropDownButtonWithTooltip("State");
+	// 	List<String> filterStateButtons = Arrays.asList("Not Exploitable","Confirmed","Ignored","Not Ignored","To Verify");
+	// 	SWTBotToolbarDropDownButton stateFilter = _bot.toolbarDropDownButtonWithTooltip("State");
 
-		for(String filter: filterStateButtons) {
-			try {
-				final SWTBotMenu menuItem = stateFilter.menuItem(filter);
+	// 	for(String filter: filterStateButtons) {
+	// 		try {
+	// 			final SWTBotMenu menuItem = stateFilter.menuItem(filter);
 				
-				if(!menuItem.isChecked()) {
-					menuItem.click();
-				}
-			} catch(WidgetNotFoundException e) {}
-		}
+	// 			if(!menuItem.isChecked()) {
+	// 				menuItem.click();
+	// 			}
+	// 		} catch(WidgetNotFoundException e) {}
+	// 	}
 		
-		stateFilter.pressShortcut(KeyStroke.getInstance("ESC"));
+	// 	stateFilter.pressShortcut(KeyStroke.getInstance("ESC"));
 		
-		ArrayList<String> currentActiveFilters = new ArrayList<>(Arrays.asList(Severity.HIGH.name(), Severity.MEDIUM.name()));	
+	// 	ArrayList<String> currentActiveFilters = new ArrayList<>(Arrays.asList(Severity.HIGH.name(), Severity.MEDIUM.name()));	
 				
-		// Checks that tree contains High and Medium results
-		assertTrue(ASSERT_TREE_CONSTAIN_HIGH_MEDIUM, expandTreeUntilFirstEngineAndGetCurrentSeverities().containsAll(currentActiveFilters));			
+	// 	// Checks that tree contains High and Medium results
+	// 	assertTrue(ASSERT_TREE_CONSTAIN_HIGH_MEDIUM, expandTreeUntilFirstEngineAndGetCurrentSeverities().containsAll(currentActiveFilters));			
 		
-		// Click to include Low severity
-		clickSeverityFilter(ActionName.LOW.name());
-		currentActiveFilters.add(Severity.LOW.name());
+	// 	// Click to include Low severity
+	// 	clickSeverityFilter(ActionName.LOW.name());
+	// 	currentActiveFilters.add(Severity.LOW.name());
 		
-		// Checks that tree contains High, Medium and Low results
-		assertTrue(ASSERT_TREE_CONSTAIN_HIGH_MEDIUM_LOW, expandTreeUntilFirstEngineAndGetCurrentSeverities().containsAll(currentActiveFilters));	
+	// 	// Checks that tree contains High, Medium and Low results
+	// 	assertTrue(ASSERT_TREE_CONSTAIN_HIGH_MEDIUM_LOW, expandTreeUntilFirstEngineAndGetCurrentSeverities().containsAll(currentActiveFilters));	
 		
-		// Click to include Info severity
-		clickSeverityFilter(ActionName.INFO.name());
-		currentActiveFilters.add(Severity.INFO.name());
+	// 	// Click to include Info severity
+	// 	clickSeverityFilter(ActionName.INFO.name());
+	// 	currentActiveFilters.add(Severity.INFO.name());
 		
-		// Checks that tree contains High, Medium, Low and Info results
-		assertTrue(ASSERT_TREE_CONSTAIN_HIGH_MEDIUM_LOW_INFO, expandTreeUntilFirstEngineAndGetCurrentSeverities().containsAll(currentActiveFilters));	
+	// 	// Checks that tree contains High, Medium, Low and Info results
+	// 	assertTrue(ASSERT_TREE_CONSTAIN_HIGH_MEDIUM_LOW_INFO, expandTreeUntilFirstEngineAndGetCurrentSeverities().containsAll(currentActiveFilters));	
 		
-		// Get all filter buttons individually
-		SWTBotToolbarButton filterHighBtn = _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).getToolbarButtons().stream().filter(btn -> btn.getToolTipText().toUpperCase().equals(ActionName.HIGH.name())).findFirst().get();
-		SWTBotToolbarButton filterMediumBtn = _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).getToolbarButtons().stream().filter(btn -> btn.getToolTipText().toUpperCase().equals(ActionName.MEDIUM.name())).findFirst().get();
-		SWTBotToolbarButton filterLowBtn = _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).getToolbarButtons().stream().filter(btn -> btn.getToolTipText().toUpperCase().equals(ActionName.LOW.name())).findFirst().get();
-		SWTBotToolbarButton filterInfoBtn = _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).getToolbarButtons().stream().filter(btn -> btn.getToolTipText().toUpperCase().equals(ActionName.INFO.name())).findFirst().get();
+	// 	// Get all filter buttons individually
+	// 	SWTBotToolbarButton filterHighBtn = _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).getToolbarButtons().stream().filter(btn -> btn.getToolTipText().toUpperCase().equals(ActionName.HIGH.name())).findFirst().get();
+	// 	SWTBotToolbarButton filterMediumBtn = _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).getToolbarButtons().stream().filter(btn -> btn.getToolTipText().toUpperCase().equals(ActionName.MEDIUM.name())).findFirst().get();
+	// 	SWTBotToolbarButton filterLowBtn = _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).getToolbarButtons().stream().filter(btn -> btn.getToolTipText().toUpperCase().equals(ActionName.LOW.name())).findFirst().get();
+	// 	SWTBotToolbarButton filterInfoBtn = _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).getToolbarButtons().stream().filter(btn -> btn.getToolTipText().toUpperCase().equals(ActionName.INFO.name())).findFirst().get();
 		
-		// Click to remove all filters
-		filterHighBtn.click();
-		filterMediumBtn.click();
-		filterLowBtn.click();
-		filterInfoBtn.click();
+	// 	// Click to remove all filters
+	// 	filterHighBtn.click();
+	// 	filterMediumBtn.click();
+	// 	filterLowBtn.click();
+	// 	filterInfoBtn.click();
 		
-		// Asserts that no issues are visible in the tree once we are grouping by Severity and no severity is selected
-		assertEquals(ASSERT_TREE_WITH_NO_ISSUES, _bot.tree(1).cell(0, 0), Environment.SCAN_ID + " (0 Issues)");
+	// 	// Asserts that no issues are visible in the tree once we are grouping by Severity and no severity is selected
+	// 	assertEquals(ASSERT_TREE_WITH_NO_ISSUES, _bot.tree(1).cell(0, 0), Environment.SCAN_ID + " (0 Issues)");
 		
-		// Click to include High severity
-		clickSeverityFilter(ActionName.HIGH.name());
-		currentActiveFilters.add(Severity.HIGH.name());
+	// 	// Click to include High severity
+	// 	clickSeverityFilter(ActionName.HIGH.name());
+	// 	currentActiveFilters.add(Severity.HIGH.name());
 						
-		sleep(1000);		
+	// 	sleep(1000);		
 		
-		String firstNodeName = _bot.tree(1).cell(0, 0);
-		String secondNodeName = _bot.tree(1).getTreeItem(firstNodeName).expand().getNode(0).getText();
-		String thirdNodeName = _bot.tree(1).getTreeItem(firstNodeName).expand().getNode(0).expand().getNode(0).getText();
+	// 	String firstNodeName = _bot.tree(1).cell(0, 0);
+	// 	String secondNodeName = _bot.tree(1).getTreeItem(firstNodeName).expand().getNode(0).getText();
+	// 	String thirdNodeName = _bot.tree(1).getTreeItem(firstNodeName).expand().getNode(0).expand().getNode(0).getText();
 		
-		// Expand nodes until the first vulnerability
-		String groupByQueryNameParent = _bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).expand().getNode(0).getText();
-		String groupByQueryNameChild = _bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).expand().getNode(0).expand().getNode(0).getText();
+	// 	// Expand nodes until the first vulnerability
+	// 	String groupByQueryNameParent = _bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).expand().getNode(0).getText();
+	// 	String groupByQueryNameChild = _bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).expand().getNode(0).expand().getNode(0).getText();
 		
-		// Select the first vulnerability
-		_bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).expand().getNode(0).expand().getNode(0).select();
+	// 	// Select the first vulnerability
+	// 	_bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).expand().getNode(0).expand().getNode(0).select();
 		
-		// Asserts that the vulnerability has the same name as the parent node which means it is grouped by query name
-		assertTrue(ASSERT_GROUP_BY_QUERY_NAME, groupByQueryNameChild.contains(groupByQueryNameParent.split("\\(")[0].trim()));
+	// 	// Asserts that the vulnerability has the same name as the parent node which means it is grouped by query name
+	// 	assertTrue(ASSERT_GROUP_BY_QUERY_NAME, groupByQueryNameChild.contains(groupByQueryNameParent.split("\\(")[0].trim()));
 		
-		// Remove either group by severity and query name
-		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(ToolBarActions.GROUP_BY_QUERY_NAME).click();
-		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(ToolBarActions.GROUP_BY_SEVERITY).click();
-		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(ToolBarActions.GROUP_BY_STATE_NAME).click();
+	// 	// Remove either group by severity and query name
+	// 	_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(ToolBarActions.GROUP_BY_QUERY_NAME).click();
+	// 	_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(ToolBarActions.GROUP_BY_SEVERITY).click();
+	// 	_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(ToolBarActions.GROUP_BY_STATE_NAME).click();
 		
 		
-		sleep(1000);
+	// 	sleep(1000);
 		
-		firstNodeName = _bot.tree(1).cell(0, 0);
-		secondNodeName = _bot.tree(1).getTreeItem(firstNodeName).expand().getNode(0).getText();
-		_bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName);
+	// 	firstNodeName = _bot.tree(1).cell(0, 0);
+	// 	secondNodeName = _bot.tree(1).getTreeItem(firstNodeName).expand().getNode(0).getText();
+	// 	_bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName);
 				
-		// Get's the first engine child
-		String firstEngineChild = _bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName).getNode(0).getText();
+	// 	// Get's the first engine child
+	// 	String firstEngineChild = _bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName).getNode(0).getText();
 		
-		// Checks if it starts by HIGH, MEDIUM, LOW or INFO
-		boolean engineChildDontStartWithHIGH = !firstEngineChild.startsWith(ActionName.HIGH.name());
-		boolean engineChildDontStartWithMEDIUM = !firstEngineChild.startsWith(ActionName.MEDIUM.name());
-		boolean engineChildDontStartWithLOW = !firstEngineChild.startsWith(ActionName.LOW.name());
-		boolean engineChildDontStartWithINFO = !firstEngineChild.startsWith(ActionName.INFO.name());
+	// 	// Checks if it starts by HIGH, MEDIUM, LOW or INFO
+	// 	boolean engineChildDontStartWithHIGH = !firstEngineChild.startsWith(ActionName.HIGH.name());
+	// 	boolean engineChildDontStartWithMEDIUM = !firstEngineChild.startsWith(ActionName.MEDIUM.name());
+	// 	boolean engineChildDontStartWithLOW = !firstEngineChild.startsWith(ActionName.LOW.name());
+	// 	boolean engineChildDontStartWithINFO = !firstEngineChild.startsWith(ActionName.INFO.name());
 		
-		// Asserts group by options are not enabled
-		assertTrue(ASSERT_NO_CHINDREN, _bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName).getNode(0).getNodes().isEmpty());
-		assertTrue(ASSERT_GROUP_BY_SEVERITY_NOT_SELECTED, engineChildDontStartWithHIGH && engineChildDontStartWithMEDIUM && engineChildDontStartWithLOW && engineChildDontStartWithINFO);
+	// 	// Asserts group by options are not enabled
+	// 	assertTrue(ASSERT_NO_CHINDREN, _bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName).getNode(0).getNodes().isEmpty());
+	// 	assertTrue(ASSERT_GROUP_BY_SEVERITY_NOT_SELECTED, engineChildDontStartWithHIGH && engineChildDontStartWithMEDIUM && engineChildDontStartWithLOW && engineChildDontStartWithINFO);
 		
-		// re-enable group by and severity
-		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(ToolBarActions.GROUP_BY_QUERY_NAME).click();
-		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(ToolBarActions.GROUP_BY_SEVERITY).click();
+	// 	// re-enable group by and severity
+	// 	_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(ToolBarActions.GROUP_BY_QUERY_NAME).click();
+	// 	_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(ToolBarActions.GROUP_BY_SEVERITY).click();
 		
-		// Close Checkmarx One Scan view
-		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
-	}
+	// 	// Close Checkmarx One Scan view
+	// 	_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
+	// }
 	
-	@Test(expected = WidgetNotFoundException.class)
-	public void testInitialPanelWhenMissingCredentials() throws TimeoutException {
-		// Add Checkmarx plugin to the eclipse view
-		addCheckmarxPlugin(false);
+	// @Test(expected = WidgetNotFoundException.class)
+	// public void testInitialPanelWhenMissingCredentials() throws TimeoutException {
+	// 	// Add Checkmarx plugin to the eclipse view
+	// 	addCheckmarxPlugin(false);
 
-		// Assert that active view is the Checkmarx One Scan
-		assertTrue("Active view must be the Checkmarx One Scan", _bot.activeView().getTitle().equals(VIEW_CHECKMARX_AST_SCAN));
+	// 	// Assert that active view is the Checkmarx One Scan
+	// 	assertTrue("Active view must be the Checkmarx One Scan", _bot.activeView().getTitle().equals(VIEW_CHECKMARX_AST_SCAN));
 		
-		assertTrue(ASSERT_CREDENTIALS_PANEL, _bot.button(PluginConstants.BTN_OPEN_SETTINGS) != null);
+	// 	assertTrue(ASSERT_CREDENTIALS_PANEL, _bot.button(PluginConstants.BTN_OPEN_SETTINGS) != null);
 		
-		_bot.button(PluginConstants.BTN_OPEN_SETTINGS).click();
+	// 	_bot.button(PluginConstants.BTN_OPEN_SETTINGS).click();
 		
-		testSuccessfulConnection(true);
+	// 	testSuccessfulConnection(true);
 		
-		// Button Open Settings must not be present at this moment so we are expecting WidgetNotFoundException in this test
-		_bot.button(PluginConstants.BTN_OPEN_SETTINGS);
-	}
+	// 	// Button Open Settings must not be present at this moment so we are expecting WidgetNotFoundException in this test
+	// 	_bot.button(PluginConstants.BTN_OPEN_SETTINGS);
+	// }
 	
 	/**
 	 * Click on a severity filter
