@@ -21,9 +21,6 @@ import org.junit.runner.RunWith;
 import com.checkmarx.eclipse.enums.Severity;
 import com.checkmarx.eclipse.enums.State;
 import com.checkmarx.eclipse.views.actions.ToolBarActions;
-import org.eclipse.swtbot.swt.finder.waits.DefaultCondition;
-import org.eclipse.swtbot.swt.finder.waits.Condition;
-
 
 @RunWith(SWTBotJunit4ClassRunner.class)
 public class TestFilterState extends BaseUITest{
@@ -221,32 +218,14 @@ public class TestFilterState extends BaseUITest{
 	            return;
 	        }
 	        
-	        // הוספת condition למציאת נוד ה-SAST
-	        Condition<Boolean> sastNodeFound = new DefaultCondition<Boolean>() {
-	            @Override
-	            public boolean test() {
-	                for (String nodeName : rootNode.getNodes()) {
-	                    if (nodeName.toLowerCase().contains("sast")) {
-	                        return true;
-	                    }
-	                }
-	                return false;
-	            }
-
-	            @Override
-	            public String getFailureMessage() {
-	                return "Could not find SAST node after grouping";
-	            }
-	        };
-
 	        System.out.println("\n=== Enabling Group By Severity ===");
 	        enableGroup(ToolBarActions.GROUP_BY_SEVERITY);
-	        sleep(SLEEP_TIME);
+	        sleep(2000);
 
 	        // Get fresh nodes
 	        rootNode = _bot.tree(1).getTreeItem(firstNodeName);
 	        rootNode.expand();
-	        sleep(SLEEP_TIME);
+	        sleep(2000);
 
 	        // Find SAST node name
 	        String sastNodeName = null;
@@ -266,7 +245,7 @@ public class TestFilterState extends BaseUITest{
 	        // Get fresh SAST node and expand
 	        sastNode = rootNode.getNode(sastNodeName);
 	        sastNode.expand();
-	        sleep(SLEEP_TIME);
+	        sleep(2000);
 	        
 	        System.out.println("\n=== After Grouping ===");
 	        List<String> nodes = sastNode.getNodes();
