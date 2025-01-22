@@ -216,12 +216,12 @@ public class TestFilterState extends BaseUITest{
 	        
 	        System.out.println("\n=== Enabling Group By Severity ===");
 	        enableGroup(ToolBarActions.GROUP_BY_SEVERITY);
-	        sleep(SLEEP_TIME);  // 2 seconds
+	        sleep(2000);
 	        
 	        // Wait for tree to update and expand SAST node again
 	        System.out.println("Re-expanding SAST node after grouping");
 	        sastNode.expand();
-	        sleep(SLEEP_TIME * 2);  // 4 seconds - give more time for tree update
+	        sleep(4000);
 	        
 	        System.out.println("\n=== After Grouping ===");
 	        List<String> nodes = sastNode.getNodes();
@@ -230,10 +230,10 @@ public class TestFilterState extends BaseUITest{
 	        // Try to re-get SAST node if nodes is empty
 	        if (nodes.isEmpty()) {
 	            System.out.println("Nodes empty after first try, waiting longer...");
-	            sleep(SLEEP_TIME * 3);  // 6 seconds - even longer wait
+	            sleep(6000);
 	            sastNode = rootNode.getNode("SAST (" + sastNodes.size() + ")");
 	            sastNode.expand();
-	            sleep(SLEEP_TIME);  // 2 seconds
+	            sleep(2000);
 	            nodes = sastNode.getNodes();
 	            System.out.println("Nodes after longer wait (" + nodes.size() + "): " + nodes);
 	        }
