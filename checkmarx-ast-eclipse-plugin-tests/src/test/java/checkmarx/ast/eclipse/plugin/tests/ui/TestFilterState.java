@@ -159,49 +159,41 @@ public class TestFilterState extends BaseUITest{
 
 	@Test
 	public void testResultsSeverityOrder() throws TimeoutException {
-	setUpCheckmarxPlugin(true);
-	preventWidgetWasNullInCIEnvironment();
-	
-	disableAllGroupByActions(groupByActions);
-	sleep(1000);
-	
-	String firstNodeName = _bot.tree(1).cell(0, 0);
-	System.out.println("Initial tree nodes: " + _bot.tree(1).getTreeItem(firstNodeName).expand().getNodes());
-	
-	SWTBotTreeItem sastNode = _bot.tree(1)
-		.getTreeItem(firstNodeName)
-		.expand()
-		.getNodes()
-		.stream()
-		.filter(node -> node.contains("sast"))
-		.findFirst()
-		.get();
-	sastNode.select();
-	
-	System.out.println("SAST nodes: " + sastNode.expand().getNodes());
-	
-	enableGroup(ToolBarActions.GROUP_BY_SEVERITY);
-	sleep(1000);
-	
-	List<String> expectedOrder = Arrays.asList("HIGH", "MEDIUM", "LOW");
-	List<String> severityNodes = sastNode
-		.expand()
-		.getNodes()
-		.stream()
-		.map(node -> node.split("\\(")[0].trim())
-		.collect(Collectors.toList());
-	
-	System.out.println("Severity nodes: " + severityNodes);
-	for (int i = 0; i < severityNodes.size(); i++) {
-		assertTrue("Severity order should match expected", 
-			expectedOrder.indexOf(severityNodes.get(i)) <= 
-			expectedOrder.indexOf(severityNodes.get(i > 0 ? i-1 : 0)));
+	   setUpCheckmarxPlugin(true);
+	   preventWidgetWasNullInCIEnvironment();
+	   
+	   disableAllGroupByActions(groupByActions);
+	   sleep(1000);
+	   
+	   String firstNodeName = _bot.tree(1).cell(0, 0);
+	   SWTBotTreeItem rootNode = _bot.tree(1).getTreeItem(firstNodeName);
+	   System.out.println("Initial tree nodes: " + rootNode.getNodes().stream().map(n -> n.getText()).collect(Collectors.toList()));
+	   
+	   SWTBotTreeItem sastNode = rootNode.getNodes().stream()
+		   .filter(node -> node.getText().contains("sast"))
+		   .findFirst()
+		   .get();
+	   sastNode.select();
+	   
+	   System.out.println("SAST nodes: " + sastNode.getNodes().stream().map(n -> n.getText()).collect(Collectors.toList()));
+	   
+	   enableGroup(ToolBarActions.GROUP_BY_SEVERITY);
+	   sleep(1000);
+	   
+	   List<String> expectedOrder = Arrays.asList("HIGH", "MEDIUM", "LOW");
+	   List<String> severityNodes = sastNode.getNodes().stream()
+		   .map(node -> node.getText().split("\\(")[0].trim())
+		   .collect(Collectors.toList());
+	   
+	   System.out.println("Severity nodes: " + severityNodes);
+	   for (int i = 0; i < severityNodes.size(); i++) {
+		   assertTrue("Severity order should match expected", 
+			   expectedOrder.indexOf(severityNodes.get(i)) <= 
+			   expectedOrder.indexOf(severityNodes.get(i > 0 ? i-1 : 0)));
+	   }
+	   
+	   _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
 	}
-	
-	_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
-	}
-
-	
 
 
 	private SWTBotTreeItem getFirstResultNode() {
