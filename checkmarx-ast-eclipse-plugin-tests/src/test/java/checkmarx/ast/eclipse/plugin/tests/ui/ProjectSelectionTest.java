@@ -11,7 +11,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.checkmarx.eclipse.utils.PluginConstants;
-import com.checkmarx.eclipse.views.ViewConstants;
 import checkmarx.ast.eclipse.plugin.tests.common.Environment;
 
 @RunWith(SWTBotJunit4ClassRunner.class)
@@ -59,8 +58,8 @@ public class ProjectSelectionTest extends BaseUITest {
             scanIdCombo.setText(Environment.SCAN_ID);  // CX_TEST_SCAN
             sleep(2000);
             
-            // Cleanup
-            _bot.viewByTitle(ViewConstants.VIEW_CHECKMARX_AST_SCAN).close();
+            // Cleanup 
+            _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
             
         } catch (Exception e) {
             System.out.println("\n=== Test Failed ===");
