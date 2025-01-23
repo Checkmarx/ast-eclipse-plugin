@@ -4,8 +4,8 @@ import static org.junit.Assert.*;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import com.checkmarx.eclipse.runner.Authenticator;
+import java.io.File;
 
 public class AuthenticatorIntegrationTest extends BaseIntegrationTest {
     
@@ -14,6 +14,8 @@ public class AuthenticatorIntegrationTest extends BaseIntegrationTest {
     @Test
     public void testSuccessfulAuthentication() {
         System.out.println("\n=== Starting Authentication Test ===");
+        System.out.println("Current directory: " + new File(".").getAbsolutePath());
+        System.out.println("API Key available: " + (VALID_API_KEY != null));
         String result = Authenticator.INSTANCE.doAuthentication(VALID_API_KEY, "");
         System.out.println("Authentication result: " + result);
         assertNotNull("Authentication result should not be null", result);

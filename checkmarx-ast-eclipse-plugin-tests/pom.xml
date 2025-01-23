@@ -30,13 +30,22 @@
     <build>
         <plugins>
             <plugin>
-                <groupId>org.eclipse.tycho</groupId>
-                <artifactId>tycho-surefire-plugin</artifactId>
-                <version>1.7.0</version>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.22.2</version>
                 <configuration>
-                    <useUIHarness>false</useUIHarness>
-                    <useUIThread>false</useUIThread>
+                    <includes>
+                        <include>**/integration/*Test.java</include>
+                    </includes>
+                    <testSourceDirectory>${project.basedir}/src/test/java</testSourceDirectory>
                 </configuration>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.apache.maven.surefire</groupId>
+                        <artifactId>surefire-junit4</artifactId>
+                        <version>2.22.2</version>
+                    </dependency>
+                </dependencies>
             </plugin>
         </plugins>
     </build>
