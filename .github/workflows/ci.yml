@@ -23,7 +23,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: Run tests with Maven
+      - name: Run Integration Tests
         env:
           CX_BASE_URI: ${{ secrets.CX_BASE_URI }}
           CX_TENANT: ${{ secrets.CX_TENANT }}
@@ -32,4 +32,4 @@ jobs:
           CX_NOT_MATCH_TEST_PROJECT: ${{ secrets.CX_NOT_MATCH_TEST_PROJECT }}
         run: |
           export DISPLAY=:99.0
-          Xvfb -ac :99 -screen 0 1920x1080x16 & mvn clean install
+          Xvfb -ac :99 -screen 0 1920x1080x16 & mvn clean test -Dtest=**/*IntegrationTest.java
