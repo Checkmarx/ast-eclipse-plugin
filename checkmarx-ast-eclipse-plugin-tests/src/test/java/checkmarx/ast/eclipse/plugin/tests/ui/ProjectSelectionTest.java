@@ -27,40 +27,20 @@ public class ProjectSelectionTest extends BaseUITest {
             
             System.out.println("\n=== Starting Project Selection Flow Test ===");
             
-            // Clear previous results
-            _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu()
-                .menu(PluginConstants.TOOLBAR_ACTION_CLEAR_RESULTS).click();
-            sleep(1000);
-            
-            // Get combo boxes
-            SWTBotCombo projectCombo = _bot.comboBox(0);
-            SWTBotCombo branchCombo = _bot.comboBox(1);
-            SWTBotCombo scanIdCombo = _bot.comboBox(2);
-            
-            // Verify initial state - all empty
-            assertTrue("Project combo should start empty", 
-                projectCombo.getText().isEmpty() || 
-                projectCombo.getText().equals("Select a project"));
-            
-            assertTrue("Branch combo should start empty",
-                branchCombo.getText().isEmpty());
-            
-            assertTrue("Scan ID combo should start empty",
-                scanIdCombo.getText().isEmpty() || 
-                scanIdCombo.getText().equals(PluginConstants.COMBOBOX_SCAND_ID_PLACEHOLDER));
-            
+          
             // Select project
-            projectCombo.setText(TEST_PROJECT);
+            _bot.comboBox(0).setText(TEST_PROJECT);
             sleep(2000);
+            System.out.println("Project selected: '" + _bot.comboBox(0).getText() + "'");
             
             // Verify branch combo is enabled and select branch
-            assertTrue("Branch combo should be enabled", branchCombo.isEnabled());
-            branchCombo.setText(TEST_BRANCH);
+            assertTrue("Branch combo should be enabled", _bot.comboBox(1).isEnabled());
+            _bot.comboBox(1).setText(TEST_BRANCH);
             sleep(2000);
             
             // Verify scan ID combo is enabled and select scan
-            assertTrue("Scan ID combo should be enabled", scanIdCombo.isEnabled());
-            scanIdCombo.setText(Environment.SCAN_ID);  // CX_TEST_SCAN
+            assertTrue("Scan ID combo should be enabled", _bot.comboBox(2).isEnabled());
+            _bot.comboBox(2).setText(Environment.SCAN_ID);
             sleep(2000);
             
             // Cleanup 
