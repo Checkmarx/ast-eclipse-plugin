@@ -27,6 +27,11 @@ public class ProjectSelectionTest extends BaseUITest {
             
             System.out.println("\n=== Starting Project Selection Flow Test ===");
             
+            // Clear previous results
+            _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu()
+                .menu(PluginConstants.TOOLBAR_ACTION_CLEAR_RESULTS).click();
+            sleep(1000);
+            
             // Get combo boxes
             SWTBotCombo projectCombo = _bot.comboBox(0);
             SWTBotCombo branchCombo = _bot.comboBox(1);
