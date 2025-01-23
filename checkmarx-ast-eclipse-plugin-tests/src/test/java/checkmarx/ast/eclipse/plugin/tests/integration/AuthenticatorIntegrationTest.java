@@ -13,11 +13,11 @@ public class AuthenticatorIntegrationTest extends BaseIntegrationTest {
 
     @Test
     public void testSuccessfulAuthentication() {
-        logger.info("Starting successful authentication test");
+        System.out.println("\n=== Starting Authentication Test ===");
         String result = Authenticator.INSTANCE.doAuthentication(VALID_API_KEY, "");
-        logger.info("Authentication result: {}", result);
+        System.out.println("Authentication result: " + result);
         assertNotNull("Authentication result should not be null", result);
         assertFalse("Authentication result should not contain error", result.toLowerCase().contains("error"));
-        logger.info("Authentication test completed successfully");
+        System.out.println("=== Authentication Test Completed ===\n");
     }
 }
