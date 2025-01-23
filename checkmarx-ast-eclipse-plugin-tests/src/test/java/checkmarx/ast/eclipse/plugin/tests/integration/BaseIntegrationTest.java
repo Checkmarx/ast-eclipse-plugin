@@ -8,7 +8,6 @@ import org.slf4j.Logger;
 
 import com.checkmarx.ast.wrapper.CxConfig;
 import com.checkmarx.ast.wrapper.CxWrapper;
-import com.checkmarx.eclipse.utils.PluginConstants;
 import checkmarx.ast.eclipse.plugin.tests.common.Environment;
 
 public abstract class BaseIntegrationTest {
@@ -23,14 +22,9 @@ public abstract class BaseIntegrationTest {
     protected CxWrapper cxWrapper;
     protected static boolean initialized = false;
     
-    @BeforeClass
-    public static void setUpClass() {
-        // Global test setup if needed
-    }
-    
     @Before
     public void setUp() throws Exception {
-        MockitoAnnotations.openMocks(this);
+        MockitoAnnotations.initMocks(this);
         if (!initialized) {
             initializeCxWrapper();
             initialized = true;
