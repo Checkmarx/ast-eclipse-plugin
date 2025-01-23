@@ -316,11 +316,11 @@ public class TestFilterState extends BaseUITest{
 	// Helper method to get severity weight
 	private int getSeverityWeight(String severity) {
 	    switch(severity.toUpperCase()) {
-	        case HIGH: return 0;
-	        case MEDIUM: return 1;
+	        case HIGH: return 3;
+	        case MEDIUM: return 4;
 	        case LOW: return 2;
-	        case INFO: return 3;
-	        default: return 4;
+	        case INFO: return 1;
+	        default: return 0;
 	    }
 	}
 
