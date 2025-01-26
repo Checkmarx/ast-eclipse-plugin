@@ -9,6 +9,8 @@ import org.slf4j.LoggerFactory;
 
 import com.checkmarx.ast.wrapper.CxConfig;
 import com.checkmarx.ast.wrapper.CxWrapper;
+import com.checkmarx.eclipse.runner.Authenticator;
+
 import checkmarx.ast.eclipse.plugin.tests.common.Environment;
 
 public abstract class BaseIntegrationTest {
@@ -22,6 +24,7 @@ public abstract class BaseIntegrationTest {
     @Mock
     protected Logger mockLogger;
     
+    protected Authenticator authenticator;
     protected CxWrapper cxWrapper;
     protected static boolean initialized = false;
     
@@ -30,6 +33,8 @@ public abstract class BaseIntegrationTest {
         logger.info("Setting up test: {}", this.getClass().getSimpleName());
         logger.info("API Key available: {}", VALID_API_KEY != null);
         MockitoAnnotations.initMocks(this);
+        authenticator = new Authenticator(mockLogger);
+
         if (!initialized) {
             initializeCxWrapper();
             initialized = true;

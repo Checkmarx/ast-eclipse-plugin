@@ -15,11 +15,11 @@ public class AuthenticatorIntegrationTest extends BaseIntegrationTest {
     public void testSuccessfulAuthentication() {
         System.out.println("\n=== Starting Authentication Test ===");
         System.out.println("Current directory: " + new File(".").getAbsolutePath());
-        System.out.println("API Key available: " + VALID_API_KEY );
-        String result = Authenticator.INSTANCE.doAuthentication(VALID_API_KEY, "");
+        System.out.println("API Key available: " + (VALID_API_KEY != null));
+        String result = authenticator.doAuthentication(VALID_API_KEY, "");
         System.out.println("Authentication result: " + result);
-//        assertNotNull("Authentication result should not be null", result);
-//        assertFalse("Authentication result should not contain error", result.toLowerCase().contains("error"));
-//        System.out.println("=== Authentication Test Completed ===\n");
+        assertNotNull("Authentication result should not be null", result);
+        assertFalse("Authentication result should not contain error", result.toLowerCase().contains("error"));
+        System.out.println("=== Authentication Test Completed ===\n");
     }
 }
