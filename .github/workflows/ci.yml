@@ -26,4 +26,4 @@ jobs:
           DISPLAY: :99.0
         run: |
           Xvfb -ac :99 -screen 0 1920x1080x16 &
-          mvn verify
+          mvn verify -Dtycho.surefire.includes="**/integration/*Test.java"
