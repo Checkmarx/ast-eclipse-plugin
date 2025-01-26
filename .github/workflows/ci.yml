@@ -28,7 +28,7 @@ jobs:
           DISPLAY: :99.0
         run: |
           Xvfb -ac :99 -screen 0 1920x1080x16 &
-          mvn verify -Dtest.includes="**/ui/*.java"
+          mvn verify -Dtest.includes="**/ui/*Test.java"
     
   integration-tests:
     runs-on: ubuntu-latest
