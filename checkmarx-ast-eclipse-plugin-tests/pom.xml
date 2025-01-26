@@ -36,6 +36,7 @@
                 <configuration>
                     <includes>
                         <include>**/integration/*Test.java</include>
+                        <include>**/ui/*Test.java</include>
                     </includes>
                 </configuration>
             </plugin>
