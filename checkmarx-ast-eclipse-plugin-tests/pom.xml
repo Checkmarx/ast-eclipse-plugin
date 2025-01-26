@@ -35,8 +35,7 @@
                 <version>${tycho.version}</version>
                 <configuration>
                     <includes>
-                        <include>**/integration/*Test.java</include>
-                        <include>**/ui/*Test.java</include>
+                        <include>${test.includes}</include>
                     </includes>
                 </configuration>
             </plugin>
