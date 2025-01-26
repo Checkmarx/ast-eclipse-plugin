@@ -1,32 +1,29 @@
-name: Run Integration Tests
-on:
+name: Integration Tests
+on: 
   pull_request:
-    branches:
+    branches: 
       - main
-
 jobs:
   integration-tests:
     runs-on: ubuntu-latest
     steps:
-      # Step 1: Checkout the repository
-      - name: Checkout
-        uses: actions/checkout@v3.5.2
-
-      # Step 2: Set up JDK 8
-      - name: Set up JDK 8
-        uses: actions/setup-java@v3
+      - uses: actions/checkout@v3.5.2
+      - uses: actions/setup-java@v3
         with:
           distribution: temurin
           java-version: 8
-
-      # Step 3: Cache Maven dependencies
-      - name: Cache Maven
-        uses: actions/cache@v3
+      - uses: actions/cache@v3
         with:
           path: ~/.m2/repository
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-maven-
-
-      # Step 4: Run JUnit Integration Tests
       - name: Run Integration Tests
-        run: mvn verify -Dtest.includes="**/integration/*Test.java"
+        env:
+          CX_BASE_URI: ${{ secrets.CX_BASE_URI }}
+          CX_TENANT: ${{ secrets.CX_TENANT }}
+          CX_APIKEY: ${{ secrets.CX_APIKEY }}
+          CX_TEST_SCAN: ${{ secrets.CX_TEST_SCAN }}
+          DISPLAY: :99.0
+        run: |
+          Xvfb -ac :99 -screen 0 1920x1080x16 &
+          mvn verify
