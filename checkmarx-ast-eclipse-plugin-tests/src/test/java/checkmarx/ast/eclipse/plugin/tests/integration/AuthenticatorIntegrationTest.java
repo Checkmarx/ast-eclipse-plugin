@@ -22,4 +22,15 @@ public class AuthenticatorIntegrationTest extends BaseIntegrationTest {
         assertFalse("Authentication result should not contain error", result.toLowerCase().contains("error"));
         System.out.println("=== Authentication Test Completed ===\n");
     }
+
+    @Test
+    public void testInvalidApiKeyAuthentication() {
+        System.out.println("\n=== Starting Invalid API Key Test ===");
+        String invalidApiKey = "invalid-api-key";
+        String result = authenticator.doAuthentication(invalidApiKey, "");
+        System.out.println("Authentication result with invalid API key: " + result);
+        assertNotNull("Result should not be null for invalid API key", result);
+        assertTrue("Result should contain error for invalid API key", result.toLowerCase().contains("error"));
+        System.out.println("=== Invalid API Key Test Completed ===\n");
+    }
 }
