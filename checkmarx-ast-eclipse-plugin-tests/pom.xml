@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.checkmarx.ast.eclipse.tests</groupId>
     <artifactId>com.checkmarx.ast.eclipse.tests</artifactId>
-    <description>Checkmarx Eclipse Plugin Unit Tests Project</description>
+    <description>Checkmarx Eclipse Plugin Integration Tests Project</description>
     <packaging>eclipse-test-plugin</packaging>
     <parent>
         <groupId>com.checkmarx.ast.eclipse</groupId>
@@ -26,4 +26,19 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.eclipse.tycho</groupId>
+                <artifactId>tycho-surefire-plugin</artifactId>
+                <version>${tycho.version}</version>
+                <configuration>
+                    <includes>
+                        <include>**/integration/*Test.java</include>
+                    </includes>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>
