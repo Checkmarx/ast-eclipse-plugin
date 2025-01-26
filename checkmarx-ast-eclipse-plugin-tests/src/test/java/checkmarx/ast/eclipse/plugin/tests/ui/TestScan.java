@@ -54,7 +54,7 @@ public class TestScan extends BaseUITest {
 		
 		preventWidgetWasNullInCIEnvironment();
 		
-		_bot.comboBox(2).setText("8a376d2d-c10f-4254-9a97-9bec4a79ebbd");
+		_bot.comboBox(2).setText("aa4dc993-3871-4f1b-8da3-059c1868cec8");
 		_bot.comboBox(2).pressShortcut(Keystrokes.LF);
 		
 		waitUntilBranchComboIsEnabled();
