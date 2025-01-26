@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.checkmarx.ast.eclipse.tests</groupId>
     <artifactId>com.checkmarx.ast.eclipse.tests</artifactId>
-    <description>Checkmarx Eclipse Plugin Tests Project</description>
+    <description>Checkmarx Eclipse Plugin Unit Tests Project</description>
     <packaging>eclipse-test-plugin</packaging>
     <parent>
         <groupId>com.checkmarx.ast.eclipse</groupId>
@@ -13,47 +13,39 @@
     </parent>
     
     <dependencies>
-        <!-- JUnit for writing tests -->
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>4.13.2</version>
             <scope>test</scope>
         </dependency>
-        <!-- Mockito for mocking dependencies in tests -->
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
-            <version>3.12.4</version>
-            <scope>test</scope>
-        </dependency>
-        <!-- SWTBot for UI Testing -->
-        <dependency>
-            <groupId>org.eclipse.swtbot</groupId>
-            <artifactId>org.eclipse.swtbot.swt.finder</artifactId>
-            <version>2.9.0</version>
+            <version>5.6.0</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
 
     <build>
         <plugins>
-            <!-- Tycho Surefire Plugin for Eclipse Plugin testing -->
             <plugin>
-                <groupId>org.eclipse.tycho</groupId>
-                <artifactId>tycho-surefire-plugin</artifactId>
-                <version>${tycho.version}</version>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.22.2</version>
                 <configuration>
-                    <useUIHarness>true</useUIHarness>
-                    <useUIThread>false</useUIThread>
-                    <product>org.eclipse.sdk.ide</product>
-                    <application>org.eclipse.ui.ide.workbench</application>
                     <includes>
-                        <!-- Include both UI and Integration tests -->
-                        <include>**/ui/*Test.java</include>
                         <include>**/integration/*Test.java</include>
                     </includes>
+                    <testSourceDirectory>${project.basedir}/src/test/java</testSourceDirectory>
                 </configuration>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.apache.maven.surefire</groupId>
+                        <artifactId>surefire-junit4</artifactId>
+                        <version>2.22.2</version>
+                    </dependency>
+                </dependencies>
             </plugin>
         </plugins>
     </build>
