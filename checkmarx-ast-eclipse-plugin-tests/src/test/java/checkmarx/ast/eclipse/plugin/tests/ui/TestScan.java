@@ -45,32 +45,54 @@ public class TestScan extends BaseUITest {
 	
 	@Test
 	public void testScanProjectDoesNotMatch() throws TimeoutException {
-		// Used to wait for scan to finish
-		SWTBotPreferences.TIMEOUT = 300000; // 5minutes
-		
-		testSuccessfulConnection(false);
+	    // Set SWTBot timeout to 5 minutes to wait for slow operations
+	    SWTBotPreferences.TIMEOUT = 300000; // 5 minutes
 
-		addCheckmarxPlugin(true);
-		
-		preventWidgetWasNullInCIEnvironment();
-		
-		_bot.comboBox(2).setText("9a9c75a5-2fb1-460c-80f7-f902790422b0");
-		_bot.comboBox(2).pressShortcut(Keystrokes.LF);
-		
-		waitUntilBranchComboIsEnabled();
-		
-		_bot.waitUntil(startScanButtonEnabled);
-		
-		SWTBotToolbarButton startBtn = _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).getToolbarButtons().stream().filter(btn -> btn.getToolTipText().equals(PluginConstants.CX_START_SCAN)).findFirst().get();
-		startBtn.click();
-		
-		SWTBotShell shell = _bot.shell(PluginConstants.CX_PROJECT_MISMATCH);
-		shell.activate();
-		
-		_bot.button(BTN_NO).click();
-		
-		SWTBotPreferences.TIMEOUT = 5000;
+	    // Ensure successful connection to the server
+	    testSuccessfulConnection(false);
+
+	    // Add the Checkmarx plugin to the environment
+	    addCheckmarxPlugin(true);
+
+	    // Handle potential widget null issues in CI environment
+	    preventWidgetWasNullInCIEnvironment();
+
+	    // Set the project ID in the combo box
+	    _bot.comboBox(2).setText("9a9c75a5-2fb1-460c-80f7-f902790422b0");
+	    _bot.comboBox(2).pressShortcut(Keystrokes.LF);
+
+	    // Wait until the branch combo box is enabled
+	    waitUntilBranchComboIsEnabled();
+
+	    // Wait until the Start Scan button is enabled
+	    _bot.waitUntil(startScanButtonEnabled);
+
+	    // Add a 30-second delay
+	    try {
+	        Thread.sleep(30000); // 30 seconds
+	    } catch (InterruptedException e) {
+	        e.printStackTrace(); // Handle interruption
+	    }
+
+	    // Find and click the Start Scan button
+	    SWTBotToolbarButton startBtn = _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN)
+	        .getToolbarButtons().stream()
+	        .filter(btn -> btn.getToolTipText().equals(PluginConstants.CX_START_SCAN))
+	        .findFirst()
+	        .orElseThrow(() -> new RuntimeException("Start Scan button not found"));
+	    startBtn.click();
+
+	    // Wait for and activate the project mismatch dialog
+	    SWTBotShell shell = _bot.shell(PluginConstants.CX_PROJECT_MISMATCH);
+	    shell.activate();
+
+	    // Click the "No" button in the dialog
+	    _bot.button(BTN_NO).click();
+
+	    // Reset SWTBot timeout to 5 seconds
+	    SWTBotPreferences.TIMEOUT = 5000;
 	}
+
 	
 	@Test
 	public void testCancelScan() throws TimeoutException {
