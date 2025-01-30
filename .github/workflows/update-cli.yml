@@ -41,11 +41,20 @@ jobs:
           curl "https://repo1.maven.org/maven2/com/checkmarx/ast/ast-cli-java-wrapper/${{ steps.ast-cli-java-wrapper.outputs.release_tag }}/${new_version}" --output $new_version
           # Track the new JAR file with LFS
           new_version=ast-cli-java-wrapper-${{ steps.ast-cli-java-wrapper.outputs.release_tag }}.jar
-          FILE_PATH="checkmarx-ast-eclipse-plugin/lib/$new_version"
+          FILE_PATH="checkmarx-ast-eclipse-plugin/lib/$new_version" # Correct path
+
+          # Create the directory if it doesn't exist (important!)
+          mkdir -p "checkmarx-ast-eclipse-plugin/lib"
+
+          # Ensure the file exists after download
+          if [ ! -f "$FILE_PATH" ]; then
+            echo "Error: File $FILE_PATH not found after download."
+            exit 1  # Fail the workflow
+          fi
 
           git lfs track "$FILE_PATH"
           git add .gitattributes
-          git add "$FILE_PATH"  # <--- The crucial fix
+          git add "$FILE_PATH" 
 
           git commit -m "Update ast-cli-java-wrapper to ${{ steps.ast-cli-java-wrapper.outputs.release_tag }}"
           git push origin HEAD:${{ github.ref }}
