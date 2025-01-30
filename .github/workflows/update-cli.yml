@@ -62,3 +62,4 @@ jobs:
             [1]: https://github.com/CheckmarxDev/ast-cli-java-wrapper
           labels: cxone
           branch: dependency/update_java_wrapper
+          base: ${{ github.event.pull_request.base.ref || github.ref_name }} # Dynamic Base Branch
