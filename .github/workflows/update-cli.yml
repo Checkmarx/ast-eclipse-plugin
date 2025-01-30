@@ -3,7 +3,9 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '0 0 * * *'
-
+  pull_request:
+    paths:
+      - .github/workflows/update-cli.yml
 jobs:
   update-checkmarx-cli:
     runs-on: ubuntu-latest
