@@ -13,15 +13,12 @@ jobs:
           lfs: true
 
       - name: Install Git LFS
-        run: |
-          sudo apt-get update
-          sudo apt-get install git-lfs
-          git lfs install       
+        run: git lfs install
 
       - name: Configure Git user
         run: |
-          git config --global user.name github-actions
-          git config --global user.email github-actions@github.com
+          git config --global user.name github-actions[bot]
+          git config --global user.email github-actions[bot]@users.noreply.github.com
 
       - name: Get Latest Checkmarx Java wrapper version
         id: ast-cli-java-wrapper
@@ -43,9 +40,15 @@ jobs:
           rm -rf "$current_version"
           curl "https://repo1.maven.org/maven2/com/checkmarx/ast/ast-cli-java-wrapper/${{ steps.ast-cli-java-wrapper.outputs.release_tag }}/${new_version}" --output $new_version
           # Track the new JAR file with LFS
-          git lfs track "checkmarx-ast-eclipse-plugin/lib/$new_version"
+          new_version=ast-cli-java-wrapper-${{ steps.ast-cli-java-wrapper.outputs.release_tag }}.jar
+          FILE_PATH="checkmarx-ast-eclipse-plugin/lib/$new_version"
+
+          git lfs track "$FILE_PATH"
           git add .gitattributes
-          git commit -m "Track new JAR file with Git LFS"
+          git add "$FILE_PATH"  # <--- The crucial fix
+
+          git commit -m "Update ast-cli-java-wrapper to ${{ steps.ast-cli-java-wrapper.outputs.release_tag }}"
+          git push origin HEAD:${{ github.ref }}
 
       - name: Create Pull Request
         if: steps.ast-cli-java-wrapper.outputs.current_tag != steps.ast-cli-java-wrapper.outputs.release_tag
