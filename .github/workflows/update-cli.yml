@@ -20,6 +20,11 @@ jobs:
           sudo apt-get install git-lfs
           git lfs install       
 
+      - name: Configure Git user
+        run: |
+          git config --global user.name github-actions
+          git config --global user.email github-actions@github.com
+          
       - name: Get Latest Checkmarx Java wrapper version
         id: ast-cli-java-wrapper
         run: |
@@ -43,7 +48,7 @@ jobs:
           git lfs track "checkmarx-ast-eclipse-plugin/lib/$new_version"
           git add .gitattributes
           git commit -m "Track new JAR file with Git LFS"
-          git push origin HEAD:${{ github.ref }} # Push .gitattributes          
+#          git push origin HEAD:${{ github.ref }} # Push .gitattributes          
 
       - name: Create Pull Request
         if: steps.ast-cli-java-wrapper.outputs.current_tag != steps.ast-cli-java-wrapper.outputs.release_tag
@@ -58,12 +63,3 @@ jobs:
             [1]: https://github.com/CheckmarxDev/ast-cli-java-wrapper
           labels: cxone
           branch: dependency/update_java_wrapper 
-
-      - name: Push updated files (including LFS file)
-        if: steps.ast-cli-java-wrapper.outputs.current_tag != steps.ast-cli-java-wrapper.outputs.release_tag
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add .
-          git commit -m "Updated ast-cli-java-wrapper and related files"
-          git push origin HEAD:${{ github.ref }}
