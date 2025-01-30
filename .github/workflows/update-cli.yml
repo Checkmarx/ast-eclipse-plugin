@@ -8,12 +8,22 @@ jobs:
   update-checkmarx-cli:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3.5.2
+      - uses: actions/checkout@v4.1.7
+        with:
+          lfs: true
+
+      - name: Install Git LFS
+        run: |
+          sudo apt-get update
+          sudo apt-get install git-lfs
+          git lfs install       
+
       - name: Get Latest Checkmarx Java wrapper version
         id: ast-cli-java-wrapper
         run: |
           echo ::set-output name=release_tag::$(curl -s "https://repo1.maven.org/maven2/com/checkmarx/ast/ast-cli-java-wrapper/maven-metadata.xml" | grep -oPm1 "(?<=<latest>)[^<]+")
           echo ::set-output name=current_tag::$(<ast-cli-java-wrapper.version)
+          
       - name: Update Checkmarx Java wrapper version
         if: steps.ast-cli-java-wrapper.outputs.current_tag != steps.ast-cli-java-wrapper.outputs.release_tag
         run: |
@@ -27,6 +37,12 @@ jobs:
           cd checkmarx-ast-eclipse-plugin/lib/
           rm -rf "$current_version"
           curl "https://repo1.maven.org/maven2/com/checkmarx/ast/ast-cli-java-wrapper/${{ steps.ast-cli-java-wrapper.outputs.release_tag }}/${new_version}" --output $new_version
+          # Track the new JAR file with LFS
+          git lfs track "checkmarx-ast-eclipse-plugin/lib/$new_version"
+          git add .gitattributes
+          git commit -m "Track new JAR file with Git LFS"
+          git push origin HEAD:${{ github.ref }} # Push .gitattributes          
+
       - name: Create Pull Request
         if: steps.ast-cli-java-wrapper.outputs.current_tag != steps.ast-cli-java-wrapper.outputs.release_tag
         uses: peter-evans/create-pull-request@v5
@@ -40,3 +56,12 @@ jobs:
             [1]: https://github.com/CheckmarxDev/ast-cli-java-wrapper
           labels: cxone
           branch: dependency/update_java_wrapper 
+
+      - name: Push updated files (including LFS file)
+        if: steps.ast-cli-java-wrapper.outputs.current_tag != steps.ast-cli-java-wrapper.outputs.release_tag
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Updated ast-cli-java-wrapper and related files"
+          git push origin HEAD:${{ github.ref }}
