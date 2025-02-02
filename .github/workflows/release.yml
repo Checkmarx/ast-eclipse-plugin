@@ -87,6 +87,8 @@ jobs:
         run: |
           chmod +x ./.github/scripts/extract_cli_version.sh
           ./.github/scripts/extract_cli_version.sh cx-linux
+          echo "CLI Cersion Embedded: $CLI_VERSION"
+          echo "CLI Cersion Embedded2: ${{ env.CLI_VERSION }}"
           echo "::set-output name=CLI_VERSION::${{ env.CLI_VERSION }}"
 
       - name: Release
