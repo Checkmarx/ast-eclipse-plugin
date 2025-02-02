@@ -11,7 +11,7 @@ BINARY_NAME=$1
 echo "Starting CLI version extraction for binary: $BINARY_NAME..."
 
 # Find the correct JAR file in Gradle cache (excluding javadoc JARs)
-JAR_PATH=$(find ~/.gradle -type f -name "ast-cli-java-wrapper-*.jar" ! -name "*-javadoc.jar" | head -n 1)
+JAR_PATH=$(find checkmarx-ast-eclipse-plugin/lib -type f -name "ast-cli-java-wrapper-*.jar" ! -name "*-javadoc.jar" | head -n 1)
 
 if [ -z "$JAR_PATH" ]; then
     echo "Error: ast-cli-java-wrapper JAR not found in Gradle dependencies."
