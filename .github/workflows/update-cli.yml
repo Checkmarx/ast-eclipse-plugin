@@ -50,10 +50,22 @@ jobs:
           new_version="ast-cli-java-wrapper-$release_tag.jar"
 
           echo "Updating references in project files..."
-          sed -i "s/$current_version/$new_version/g" checkmarx-ast-eclipse-plugin/build.properties
-          sed -i "s/$current_version/$new_version/g" checkmarx-ast-eclipse-plugin/.classpath
-          sed -i "s/$current_version/$new_version/g" checkmarx-ast-eclipse-plugin/META-INF/MANIFEST.MF
-
+          echo "Verifying if current version exists in files before replacement:"
+          grep -n "$current_version" checkmarx-ast-eclipse-plugin/build.properties || echo "Not found in build.properties"
+          grep -n "$current_version" checkmarx-ast-eclipse-plugin/.classpath || echo "Not found in .classpath"
+          grep -n "$current_version" checkmarx-ast-eclipse-plugin/META-INF/MANIFEST.MF || echo "Not found in MANIFEST.MF"
+      
+          echo "Updating references in project files..."
+          sed -i "s|$current_version|$new_version|g" checkmarx-ast-eclipse-plugin/build.properties
+          sed -i "s|$current_version|$new_version|g" checkmarx-ast-eclipse-plugin/.classpath
+          sed -i "s|$current_version|$new_version|g" checkmarx-ast-eclipse-plugin/META-INF/MANIFEST.MF
+      
+          echo "Verifying if the files were modified:"
+          git diff -- checkmarx-ast-eclipse-plugin/build.properties
+          git diff -- checkmarx-ast-eclipse-plugin/.classpath
+          git diff -- checkmarx-ast-eclipse-plugin/META-INF/MANIFEST.MF
+      
+          echo "If no changes are shown above, the replacement did not occur."
           # Remove old JAR and download the new one
           cd checkmarx-ast-eclipse-plugin/lib/
           echo "Removing old JAR file: $current_version"
