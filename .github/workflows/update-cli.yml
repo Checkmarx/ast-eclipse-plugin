@@ -24,10 +24,18 @@ jobs:
         id: ast-cli-java-wrapper
         run: |
           echo "Fetching latest release tag from Maven repository..."
-          echo "release_tag=$(curl -s \"https://repo1.maven.org/maven2/com/checkmarx/ast/ast-cli-java-wrapper/maven-metadata.xml\" | grep -oPm1 \"(?<=<latest>)[^<]+\")" >> $GITHUB_ENV
-          echo "current_tag=$(<ast-cli-java-wrapper.version)" >> $GITHUB_ENV
+
+          # Correctly assign variables
+          release_tag=$(curl -s "https://repo1.maven.org/maven2/com/checkmarx/ast/ast-cli-java-wrapper/maven-metadata.xml" | grep -oPm1 "(?<=<latest>)[^<]+")
+          current_tag=$(cat ast-cli-java-wrapper.version)
+
+          # Debugging output
           echo "Current tag: $current_tag"
           echo "Latest release tag: $release_tag"
+
+          # Correctly append to environment variables
+          echo "release_tag=$release_tag" >> $GITHUB_ENV
+          echo "current_tag=$current_tag" >> $GITHUB_ENV
 
       - name: Update Checkmarx Java wrapper version
         if: env.current_tag != env.release_tag
