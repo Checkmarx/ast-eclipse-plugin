@@ -57,11 +57,12 @@ jobs:
           # Remove old JAR and download the new one
           cd checkmarx-ast-eclipse-plugin/lib/
           echo "Removing old JAR file: $current_version"
+          pwd
           ls -al
           rm -f "$current_version"
           echo "Downloading new JAR file: $new_version"
           curl -o "$new_version" "https://repo1.maven.org/maven2/com/checkmarx/ast/ast-cli-java-wrapper/$release_tag/$new_version"
-          
+          ls -al
           # Track the new JAR file with LFS
           FILE_PATH="checkmarx-ast-eclipse-plugin/lib/$new_version"
           echo "Tracking new file in LFS: $FILE_PATH"
