@@ -113,7 +113,7 @@ jobs:
           target-branch: ${{ env.GH_BRANCH_NAME }}
 
   notify:
-    if: ${{ inputs.rbranch == '' || inputs.rbranch == null }}
+    if: ${{ inputs.rbranch == 'daniel-test' || inputs.rbranch == null }}
     needs: release
     uses: Checkmarx/plugins-release-workflow/.github/workflows/release-notify.yml@main
     with:
