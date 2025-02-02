@@ -43,47 +43,57 @@ jobs:
           echo "Updating Checkmarx Java wrapper version..."
           echo "Current version: $current_tag"
           echo "New version: $release_tag"
-          
+
           # Update current release
           echo "$release_tag" > ast-cli-java-wrapper.version
           current_version="ast-cli-java-wrapper-$current_tag.jar"
           new_version="ast-cli-java-wrapper-$release_tag.jar"
-          
+
           echo "Updating references in project files..."
           sed -i "s/$current_version/$new_version/g" checkmarx-ast-eclipse-plugin/build.properties
           sed -i "s/$current_version/$new_version/g" checkmarx-ast-eclipse-plugin/.classpath
           sed -i "s/$current_version/$new_version/g" checkmarx-ast-eclipse-plugin/META-INF/MANIFEST.MF
-          
-          # Remove old JAR and download the new one
+
+          # Ensure we are in the correct directory
           cd checkmarx-ast-eclipse-plugin/lib/
           echo "Removing old JAR file: $current_version"
-          ls -al  # List files BEFORE deletion
+          ls -al
           rm -f "$current_version"
-      
+
           echo "Downloading new JAR file: $new_version"
           curl -fLO "https://repo1.maven.org/maven2/com/checkmarx/ast/ast-cli-java-wrapper/$release_tag/$new_version"
-      
-          # Verify if the file actually exists
+
+          # Verify the file exists
           echo "Checking if the new file exists..."
           ls -al
           if [ ! -f "$new_version" ]; then
             echo "Error: The new JAR file was not downloaded correctly."
             exit 1
           fi
-      
-          # Track the new JAR file with LFS
-          FILE_PATH="checkmarx-ast-eclipse-plugin/lib/$new_version"
-          echo "Tracking new file in LFS: $FILE_PATH"
-      
-          git lfs track "$FILE_PATH"
-          git add .gitattributes "$FILE_PATH"
-      
-          # Ensure the file is staged before committing
+
+          # Move back to the root of the repo to ensure git tracks correctly
+          cd ../../
+
+          # Ensure Git is aware of the file
+          echo "Manually staging new JAR file..."
+          git add "checkmarx-ast-eclipse-plugin/lib/$new_version"
+
+          echo "Tracking new file in LFS..."
+          git lfs track "checkmarx-ast-eclipse-plugin/lib/$new_version"
+
+          # Ensure LFS tracking is properly staged
+          git add .gitattributes
+
+          # Check Git status before committing
+          echo "Checking Git status..."
           git status
           git diff --cached
+
+          echo "Committing changes..."
           git commit -m "Update ast-cli-java-wrapper to $release_tag"
           git push origin HEAD:${{ github.ref }}
-
+      
+      
 
       - name: Create Pull Request
         if: env.current_tag != env.release_tag
