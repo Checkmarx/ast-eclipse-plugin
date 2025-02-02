@@ -69,7 +69,7 @@ jobs:
             ${{ runner.os }}-maven-
 
       - name: Update the POM version.
-        run: mvn -B org.eclipse.tycho:tycho-versions-plugin:set-version -DnewVersion='$${{ inputs.tag }}' --file pom.xml
+        run: mvn -B org.eclipse.tycho:tycho-versions-plugin:set-version -DnewVersion='${{ inputs.tag }}' --file pom.xml
 
       - name: Create release
         run: mvn -B clean install --file pom.xml  -DskipTests -pl "!checkmarx-ast-eclipse-plugin-tests"
