@@ -57,19 +57,33 @@ jobs:
           # Remove old JAR and download the new one
           cd checkmarx-ast-eclipse-plugin/lib/
           echo "Removing old JAR file: $current_version"
-          pwd
-          ls -al
+          ls -al  # List files BEFORE deletion
           rm -f "$current_version"
+      
           echo "Downloading new JAR file: $new_version"
-          curl -o "$new_version" "https://repo1.maven.org/maven2/com/checkmarx/ast/ast-cli-java-wrapper/$release_tag/$new_version"
+          curl -fLO "https://repo1.maven.org/maven2/com/checkmarx/ast/ast-cli-java-wrapper/$release_tag/$new_version"
+      
+          # Verify if the file actually exists
+          echo "Checking if the new file exists..."
           ls -al
+          if [ ! -f "$new_version" ]; then
+            echo "Error: The new JAR file was not downloaded correctly."
+            exit 1
+          fi
+      
           # Track the new JAR file with LFS
           FILE_PATH="checkmarx-ast-eclipse-plugin/lib/$new_version"
           echo "Tracking new file in LFS: $FILE_PATH"
+      
           git lfs track "$FILE_PATH"
           git add .gitattributes "$FILE_PATH"
+      
+          # Ensure the file is staged before committing
+          git status
+          git diff --cached
           git commit -m "Update ast-cli-java-wrapper to $release_tag"
           git push origin HEAD:${{ github.ref }}
+
 
       - name: Create Pull Request
         if: env.current_tag != env.release_tag
