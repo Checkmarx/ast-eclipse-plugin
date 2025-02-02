@@ -38,7 +38,7 @@ jobs:
           echo "current_tag=$current_tag" >> $GITHUB_ENV
 
       - name: Update Checkmarx Java wrapper version
-        if: env.current_tag != env_release_tag
+        if: env.current_tag != env.release_tag
         run: |
           echo "Updating Checkmarx Java wrapper version..."
           echo "Current version: $current_tag"
