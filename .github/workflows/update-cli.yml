@@ -23,30 +23,30 @@ jobs:
       - name: Get Latest Checkmarx Java wrapper version
         id: ast-cli-java-wrapper
         run: |
-          echo "release_tag=$(curl -s \"https://repo1.maven.org/maven2/com/checkmarx/ast/ast-cli-java-wrapper/maven-metadata.xml\" | grep -oPm1 \"(?<=<latest>)[^<]+\")" >> $GITHUB_ENV
-          echo "current_tag=$(<ast-cli-java-wrapper.version)" >> $GITHUB_ENV
+          echo "release_tag=$(curl -s \"https://repo1.maven.org/maven2/com/checkmarx/ast/ast-cli-java-wrapper/maven-metadata.xml\" | grep -oPm1 \"(?<=<latest>)[^<]+\")" >> $GITHUB_OUTPUT
+          echo "current_tag=$(<ast-cli-java-wrapper.version)" >> $GITHUB_OUTPUT
 
       - name: Update Checkmarx Java wrapper version
-        if: env.current_tag != env.release_tag
+        if: steps.ast-cli-java-wrapper.outputs.current_tag != steps.ast-cli-java-wrapper.outputs.release_tag
         run: |
           # Update current release
-          echo "$release_tag" > ast-cli-java-wrapper.version
-          current_version="ast-cli-java-wrapper-$current_tag.jar"
-          new_version="ast-cli-java-wrapper-$release_tag.jar"
+          echo "${{ steps.ast-cli-java-wrapper.outputs.release_tag }}" > ast-cli-java-wrapper.version
+          current_version="ast-cli-java-wrapper-${{ steps.ast-cli-java-wrapper.outputs.current_tag }}.jar"
+          new_version="ast-cli-java-wrapper-${{ steps.ast-cli-java-wrapper.outputs.release_tag }}.jar"
           sed -i "s/$current_version/$new_version/g" checkmarx-ast-eclipse-plugin/build.properties
           sed -i "s/$current_version/$new_version/g" checkmarx-ast-eclipse-plugin/.classpath
           sed -i "s/$current_version/$new_version/g" checkmarx-ast-eclipse-plugin/META-INF/MANIFEST.MF
-          
+
           # Remove old JAR and download the new one
           cd checkmarx-ast-eclipse-plugin/lib/
           rm -f "$current_version"
-          curl -o "$new_version" "https://repo1.maven.org/maven2/com/checkmarx/ast/ast-cli-java-wrapper/$release_tag/$new_version"
-          
+          curl -o "$new_version" "https://repo1.maven.org/maven2/com/checkmarx/ast/ast-cli-java-wrapper/${{ steps.ast-cli-java-wrapper.outputs.release_tag }}/$new_version"
+
           # Track the new JAR file with LFS
           FILE_PATH="checkmarx-ast-eclipse-plugin/lib/$new_version"
           git lfs track "$FILE_PATH"
           git add .gitattributes "$FILE_PATH"
-          git commit -m "Update ast-cli-java-wrapper to $release_tag"
+          git commit -m "Update ast-cli-java-wrapper to ${{ steps.ast-cli-java-wrapper.outputs.release_tag }}"
           git push origin HEAD:${{ github.ref }}
 
       - name: Create Pull Request
