@@ -86,10 +86,14 @@ jobs:
         id: extract_cli_version
         run: |
           chmod +x ./.github/scripts/extract_cli_version.sh
-          ./.github/scripts/extract_cli_version.sh cx-linux
-          echo "CLI Cersion Embedded: $CLI_VERSION"
-          echo "CLI Cersion Embedded2: ${{ env.CLI_VERSION }}"
-          echo "::set-output name=CLI_VERSION::${{ env.CLI_VERSION }}"
+          CLI_VERSION=$(./.github/scripts/extract_cli_version.sh cx-linux | grep -Eo '^[0-9]+\.[0-9]+\.[0-9]+')
+
+          # Debugging output
+          echo "CLI Version Extracted: $CLI_VERSION"
+      
+          # Make CLI_VERSION available for later steps
+          echo "CLI_VERSION=$CLI_VERSION" >> $GITHUB_ENV
+          echo "CLI_VERSION=$CLI_VERSION" >> $GITHUB_OUTPUT
 
       - name: Release
         uses: softprops/action-gh-release@v1
