@@ -124,6 +124,6 @@ jobs:
       release_version: ${{ needs.release.outputs.TAG_NAME }}
       cli_release_version: ${{ needs.release.outputs.CLI_VERSION }}
       release_author: "Phoenix Team"
-      release_url: https://github.com/Checkmarx/ast-vscode-extension/releases/tag/${{ needs.release.outputs.TAG_NAME }}
+      release_url: https://github.com/Checkmarx/ast-eclipse-plugin/releases/tag/${{ needs.release.outputs.TAG_NAME }}
       jira_product_name: ECLIPSE
     secrets: inherit
