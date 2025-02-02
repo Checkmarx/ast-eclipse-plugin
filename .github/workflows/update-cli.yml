@@ -38,7 +38,7 @@ jobs:
           echo "current_tag=$current_tag" >> $GITHUB_ENV
 
       - name: Update Checkmarx Java wrapper version
-        if: env.current_tag != env.release_tag
+        if: env.current_tag != env_release_tag
         run: |
           echo "Updating Checkmarx Java wrapper version..."
           echo "Current version: $current_tag"
@@ -54,16 +54,15 @@ jobs:
           sed -i "s/$current_version/$new_version/g" checkmarx-ast-eclipse-plugin/.classpath
           sed -i "s/$current_version/$new_version/g" checkmarx-ast-eclipse-plugin/META-INF/MANIFEST.MF
 
-          # Ensure we are in the correct directory
+          # Remove old JAR and download the new one
           cd checkmarx-ast-eclipse-plugin/lib/
           echo "Removing old JAR file: $current_version"
-          ls -al
           rm -f "$current_version"
 
           echo "Downloading new JAR file: $new_version"
           curl -fLO "https://repo1.maven.org/maven2/com/checkmarx/ast/ast-cli-java-wrapper/$release_tag/$new_version"
 
-          # Verify the file exists
+          # Verify if the file exists
           echo "Checking if the new file exists..."
           ls -al
           if [ ! -f "$new_version" ]; then
@@ -71,27 +70,24 @@ jobs:
             exit 1
           fi
 
-          # Move back to the root of the repo to ensure git tracks correctly
-          cd ../../
+          cd ../../  # Move back to repo root
 
-          # Ensure Git is aware of the file
-          echo "Manually staging new JAR file..."
+          # Track file in LFS before staging
+          echo "Tracking file in Git LFS..."
+          git lfs track "checkmarx-ast-eclipse-plugin/lib/$new_version"
+          git add .gitattributes
           git add "checkmarx-ast-eclipse-plugin/lib/$new_version"
 
-          echo "Tracking new file in LFS..."
-          git lfs track "checkmarx-ast-eclipse-plugin/lib/$new_version"
-
-          # Ensure LFS tracking is properly staged
-          git add .gitattributes
-
-          # Check Git status before committing
-          echo "Checking Git status..."
-          git status
-          git diff --cached
-
+          # Ensure LFS files are handled correctly
           echo "Committing changes..."
           git commit -m "Update ast-cli-java-wrapper to $release_tag"
+
+          echo "Pushing LFS-tracked files..."
+          git lfs push --all origin
+
+          echo "Pushing commit to repository..."
           git push origin HEAD:${{ github.ref }}
+      
       
       
 
