@@ -14,6 +14,16 @@ jobs:
         with:
           distribution: temurin
           java-version: 8
+
+      - name: Install Git LFS
+        run: |
+          sudo apt-get update
+          sudo apt-get install git-lfs
+          git lfs install
+
+      - name: Checkout LFS objects
+        run: git lfs checkout
+
       - uses: actions/cache@v3
         with:
           path: ~/.m2/repository
@@ -38,6 +48,16 @@ jobs:
         with:
           distribution: temurin
           java-version: 8
+
+      - name: Install Git LFS
+        run: |
+          sudo apt-get update
+          sudo apt-get install git-lfs
+          git lfs install
+
+      - name: Checkout LFS objects
+        run: git lfs checkout
+
       - uses: actions/cache@v3
         with:
           path: ~/.m2/repository
