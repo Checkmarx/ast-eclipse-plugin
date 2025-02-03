@@ -44,7 +44,7 @@ jobs:
           curl "https://repo1.maven.org/maven2/com/checkmarx/ast/ast-cli-java-wrapper/${{ steps.ast-cli-java-wrapper.outputs.release_tag }}/${new_version}" --output $new_version
           
           # Track the new JAR file with LFS
-          FILE_PATH="checkmarx-ast-eclipse-plugin/lib/$new_version" # Correct path
+          FILE_PATH="$new_version" # Correct path
           # Create the directory if it doesn't exist (important!)
           mkdir -p "checkmarx-ast-eclipse-plugin/lib"
           mv $new_version $FILE_PATH
