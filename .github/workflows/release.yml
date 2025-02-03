@@ -94,7 +94,7 @@ jobs:
           echo "::set-output name=CLI_VERSION::${{ env.CLI_VERSION }}"
 
       - name: Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
         with:
           tag_name: ${{ env.GH_RELEASE_TAG_NAME }}
           generate_release_notes: true
@@ -108,7 +108,7 @@ jobs:
           git config --global https.postBuffer 2097152000
       
       - name: Create update site
-        uses: cpina/github-action-push-to-another-repository@main
+        uses: cpina/github-action-push-to-another-repository@07c4d7b3def0a8ebe788a8f2c843a4e1de4f6900 #v.1.7.2
         env:
           API_TOKEN_GITHUB: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         with:
