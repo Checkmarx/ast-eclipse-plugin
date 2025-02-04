@@ -136,10 +136,12 @@ jobs:
             exit 1
           fi
       
+          cd ..
           rsync -av --delete ./com.checkmarx.eclipse.site/target/repository/ ./update-site/
+          
+          cd update-site
           git add .
           git commit -m "Update Eclipse update site for ${{ env.GH_RELEASE_TAG_NAME }}" || echo "No changes to commit"
-
           git remote set-url origin https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/CheckmarxDev/ast-eclipse-plugin-update-site.git
           git push origin ${{ env.GH_BRANCH_NAME }}
 
