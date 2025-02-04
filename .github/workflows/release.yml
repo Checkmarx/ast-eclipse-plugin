@@ -154,8 +154,11 @@ jobs:
           echo "===== Files in update-site/ AFTER COPY ====="
           ls -lh .
 
-          # Ensure large files are properly tracked by Git LFS
-          git lfs track "plugins/*.jar"
+          # Dynamically track all .jar files in the plugins/ and features/ directories
+          find plugins -name "*.jar" -exec git lfs track {} +
+          find features -name "*.jar" -exec git lfs track {} +
+
+          # Ensure .gitattributes is added
           git add .gitattributes
           git add .
 
@@ -170,6 +173,7 @@ jobs:
 
           # Push changes
           git push origin ${{ env.GH_BRANCH_NAME }}
+  
   
   
 
