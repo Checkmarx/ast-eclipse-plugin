@@ -143,11 +143,26 @@ jobs:
             exit 1
           fi
 
+          # Debugging: List files in repository before copying
+          echo "===== Files in com.checkmarx.eclipse.site/target/repository/ BEFORE COPY ====="
+          ls -lh ../com.checkmarx.eclipse.site/target/repository/
+
           # Copy new files without deleting .git directory
           rsync -av --delete --exclude='.git' ../com.checkmarx.eclipse.site/target/repository/ ./
 
-          # Add and commit changes
+          # Debugging: List files in repository after copying
+          echo "===== Files in update-site/ AFTER COPY ====="
+          ls -lh .
+
+          # Ensure large files are properly tracked by Git LFS
+          git lfs track "plugins/*.jar"
+          git add .gitattributes
           git add .
+
+          # Debugging: Show LFS-tracked files
+          echo "===== Git LFS-tracked files ====="
+          git lfs ls-files
+
           git commit -m "Update Eclipse update site for ${{ env.GH_RELEASE_TAG_NAME }}" || echo "No changes to commit"
 
           # Ensure the correct remote URL
@@ -155,6 +170,7 @@ jobs:
 
           # Push changes
           git push origin ${{ env.GH_BRANCH_NAME }}
+  
   
 
   notify:
