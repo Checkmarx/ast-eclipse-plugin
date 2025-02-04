@@ -110,7 +110,14 @@ jobs:
           git config --global safe.directory "/tmp/**/*/"
           git config --global http.postBuffer 2097152000
           git config --global https.postBuffer 2097152000
-      
+
+      - name: Ensure Git LFS is enabled
+        run: |
+          git lfs install
+          git lfs track "plugins/*.jar" # Ensure large JARs are tracked
+          git add .gitattributes
+          git commit -m "Ensure LFS tracking for large JAR files" || echo "No changes to commit"
+
       - name: Create update site
         uses: cpina/github-action-push-to-another-repository@07c4d7b3def0a8ebe788a8f2c843a4e1de4f6900 #v.1.7.2
         env:
