@@ -123,7 +123,15 @@ jobs:
           git clone --depth 1 https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/CheckmarxDev/ast-eclipse-plugin-update-site.git update-site
           cd update-site
           git lfs install
-          git pull origin ${{ env.GH_BRANCH_NAME }} || git checkout -b ${{ env.GH_BRANCH_NAME }}
+          
+          # Check if branch exists remotely
+          if git ls-remote --heads origin ${{ env.GH_BRANCH_NAME }} | grep -q ${{ env.GH_BRANCH_NAME }}; then
+            git checkout ${{ env.GH_BRANCH_NAME }}
+            git pull origin ${{ env.GH_BRANCH_NAME }}
+          else
+            git checkout -b ${{ env.GH_BRANCH_NAME }}
+            git push origin ${{ env.GH_BRANCH_NAME }} # Push branch if it doesn’t exist
+          fi
 
       - name: Copy new files
         run: |
