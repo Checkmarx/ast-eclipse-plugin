@@ -145,6 +145,12 @@ jobs:
           cd update-site
           git push origin ${{ env.GH_BRANCH_NAME }}
 
+      - name: Push update site changes
+        run: |
+          cd update-site
+          git remote set-url origin https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/CheckmarxDev/ast-eclipse-plugin-update-site.git
+          git push origin ${{ env.GH_BRANCH_NAME }}
+
   notify:
     if: ${{ inputs.rbranch == '' || inputs.rbranch == null }}
     needs: release
