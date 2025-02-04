@@ -118,17 +118,24 @@ jobs:
           git add .gitattributes
           git commit -m "Ensure LFS tracking for large JAR files" || echo "No changes to commit"
 
-      - name: Create update site
-        uses: cpina/github-action-push-to-another-repository@07c4d7b3def0a8ebe788a8f2c843a4e1de4f6900 #v.1.7.2
-        env:
-          API_TOKEN_GITHUB: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-        with:
-          source-directory: './com.checkmarx.eclipse.site/target/repository/'
-          destination-github-username: 'cylon-bot'
-          destination-repository-username: 'CheckmarxDev'
-          destination-repository-name: 'ast-eclipse-plugin-update-site'
-          user-email: cylon-bot@checkmarx.com
-          target-branch: ${{ env.GH_BRANCH_NAME }}
+      - name: Clone target repository
+        run: |
+          git clone --depth 1 https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/CheckmarxDev/ast-eclipse-plugin-update-site.git update-site
+          cd update-site
+          git lfs install
+          git pull origin ${{ env.GH_BRANCH_NAME }} || git checkout -b ${{ env.GH_BRANCH_NAME }}
+
+      - name: Copy new files
+        run: |
+          rsync -av --delete ./com.checkmarx.eclipse.site/target/repository/ ./update-site/
+          cd update-site
+          git add .
+          git commit -m "Update Eclipse update site for ${{ env.GH_RELEASE_TAG_NAME }}" || echo "No changes to commit"
+
+      - name: Push update site changes
+        run: |
+          cd update-site
+          git push origin ${{ env.GH_BRANCH_NAME }}
 
   notify:
     if: ${{ inputs.rbranch == '' || inputs.rbranch == null }}
