@@ -120,9 +120,10 @@ jobs:
 
       - name: Clone target repository
         run: |
-          git clone --depth 1 https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/CheckmarxDev/ast-eclipse-plugin-update-site.git update-site
+          git clone https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/CheckmarxDev/ast-eclipse-plugin-update-site.git update-site
           cd update-site
           git lfs install
+          git fetch --prune --unshallow
           
           # Check if branch exists remotely
           if git ls-remote --heads origin ${{ env.GH_BRANCH_NAME }} | grep -q ${{ env.GH_BRANCH_NAME }}; then
