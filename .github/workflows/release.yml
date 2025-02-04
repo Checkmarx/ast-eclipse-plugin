@@ -118,16 +118,23 @@ jobs:
           git add .gitattributes
           git commit -m "Ensure LFS tracking for large JAR files" || echo "No changes to commit"
 
-      - name: Clone target repository
+      - name: Clone target repository and push changes
         run: |
+          # Clone the repository
           git clone https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/CheckmarxDev/ast-eclipse-plugin-update-site.git update-site
           cd update-site
+
+          # Ensure Git LFS is installed
           git lfs install
 
-          # Fetch all branches from the remote repository
+          # Configure Git user to prevent commit errors
+          git config --global user.email "cylon-bot@checkmarx.com"
+          git config --global user.name "cylon-bot"
+
+          # Fetch all branches
           git fetch --all
 
-          # Ensure the branch exists locally by checking remote references
+          # Ensure the branch exists and check it out
           if git show-ref --verify --quiet refs/remotes/origin/${{ env.GH_BRANCH_NAME }}; then
             echo "Branch ${{ env.GH_BRANCH_NAME }} exists remotely."
             git checkout -B ${{ env.GH_BRANCH_NAME }} origin/${{ env.GH_BRANCH_NAME }}
@@ -135,15 +142,20 @@ jobs:
             echo "Branch ${{ env.GH_BRANCH_NAME }} does not exist remotely."
             exit 1
           fi
-      
-          cd ..
-          rsync -av --delete ./com.checkmarx.eclipse.site/target/repository/ ./update-site/
-          
-          cd update-site
+
+          # Copy new files without deleting .git directory
+          rsync -av --delete --exclude='.git' ../com.checkmarx.eclipse.site/target/repository/ ./
+
+          # Add and commit changes
           git add .
           git commit -m "Update Eclipse update site for ${{ env.GH_RELEASE_TAG_NAME }}" || echo "No changes to commit"
+
+          # Ensure the correct remote URL
           git remote set-url origin https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/CheckmarxDev/ast-eclipse-plugin-update-site.git
+
+          # Push changes
           git push origin ${{ env.GH_BRANCH_NAME }}
+  
 
   notify:
     if: ${{ inputs.rbranch == '' || inputs.rbranch == null }}
