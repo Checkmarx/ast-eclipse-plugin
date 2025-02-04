@@ -31,27 +31,37 @@ jobs:
     if: inputs.rbranch
   release:
     runs-on: ubuntu-latest
+    outputs:
+      TAG_NAME: ${{ steps.generate_tag_name.outputs.TAG_NAME }}
+      CLI_VERSION: ${{ steps.set_outputs.outputs.CLI_VERSION }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3.5.2
         with:
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
 
-      # Set the tag in an env var
-      - name: Set env
-        run: |
-          echo "RELEASE_VERSION=${{ inputs.tag }}" >> $GITHUB_ENV
       - name: Create Release Name
+        id: generate_tag_name
         run: |
           echo "Creating release name"
+
           if [ -z "${{ inputs.rbranch }}" ]; then
-            echo "GH_RELEASE_TAG_NAME=${{ env.RELEASE_VERSION }}" >> $GITHUB_ENV
-            echo "GH_BRANCH_NAME=main" >> $GITHUB_ENV
+            export GH_RELEASE_TAG_NAME="${{ inputs.tag }}"
+            export GH_BRANCH_NAME="main"
           else
-           echo "GH_RELEASE_TAG_NAME=${{ env.RELEASE_VERSION }}-${{ inputs.rbranch }}" >> $GITHUB_ENV
-           echo "GH_BRANCH_NAME=nightly" >> $GITHUB_ENV
+            export GH_RELEASE_TAG_NAME="${{ inputs.tag }}-${{ inputs.rbranch }}"
+            export GH_BRANCH_NAME="nightly"
           fi
-        
+
+          echo "Generated TAG_NAME: $GH_RELEASE_TAG_NAME"
+
+          # Persist the variables
+          echo "GH_RELEASE_TAG_NAME=$GH_RELEASE_TAG_NAME" >> $GITHUB_ENV
+          echo "GH_BRANCH_NAME=$GH_BRANCH_NAME" >> $GITHUB_ENV
+
+          # Set outputs for future steps
+          echo "TAG_NAME=$GH_RELEASE_TAG_NAME" >> $GITHUB_OUTPUT
+
       - name: Set up JDK 8
         uses: actions/setup-java@v3
         with:
@@ -67,13 +77,24 @@ jobs:
             ${{ runner.os }}-maven-
 
       - name: Update the POM version.
-        run: mvn -B org.eclipse.tycho:tycho-versions-plugin:set-version -DnewVersion='${{ env.RELEASE_VERSION }}' --file pom.xml 
+        run: mvn -B org.eclipse.tycho:tycho-versions-plugin:set-version -DnewVersion='${{ inputs.tag }}' --file pom.xml
 
       - name: Create release
         run: mvn -B clean install --file pom.xml  -DskipTests -pl "!checkmarx-ast-eclipse-plugin-tests"
 
+      - name: Extract CLI version
+        id: extract_cli_version
+        run: |
+          chmod +x ./.github/scripts/extract_cli_version.sh
+          ./.github/scripts/extract_cli_version.sh cx-linux
+
+      - name: Echo CLI version to outputs
+        id: set_outputs
+        run: |
+          echo "::set-output name=CLI_VERSION::${{ env.CLI_VERSION }}"
+
       - name: Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
         with:
           tag_name: ${{ env.GH_RELEASE_TAG_NAME }}
           generate_release_notes: true
@@ -87,7 +108,7 @@ jobs:
           git config --global https.postBuffer 2097152000
       
       - name: Create update site
-        uses: cpina/github-action-push-to-another-repository@main
+        uses: cpina/github-action-push-to-another-repository@07c4d7b3def0a8ebe788a8f2c843a4e1de4f6900 #v.1.7.2
         env:
           API_TOKEN_GITHUB: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         with:
@@ -97,3 +118,16 @@ jobs:
           destination-repository-name: 'ast-eclipse-plugin-update-site'
           user-email: cylon-bot@checkmarx.com
           target-branch: ${{ env.GH_BRANCH_NAME }}
+
+  notify:
+    if: ${{ inputs.rbranch == '' || inputs.rbranch == null }}
+    needs: release
+    uses: Checkmarx/plugins-release-workflow/.github/workflows/release-notify.yml@main
+    with:
+      product_name: Eclipse
+      release_version: ${{ needs.release.outputs.TAG_NAME }}
+      cli_release_version: ${{ needs.release.outputs.CLI_VERSION }}
+      release_author: "Phoenix Team"
+      release_url: https://github.com/Checkmarx/ast-eclipse-plugin/releases/tag/${{ needs.release.outputs.TAG_NAME }}
+      jira_product_name: ECLIPSE
+    secrets: inherit
