@@ -123,15 +123,18 @@ jobs:
           git clone https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/CheckmarxDev/ast-eclipse-plugin-update-site.git update-site
           cd update-site
           git lfs install
-          
-          # Check if branch exists remotely
-          if git ls-remote --heads origin ${{ env.GH_BRANCH_NAME }} | grep -q ${{ env.GH_BRANCH_NAME }}; then
-            git checkout ${{ env.GH_BRANCH_NAME }}
-            git pull origin ${{ env.GH_BRANCH_NAME }}
+
+          # Fetch all branches from the remote repository
+          git fetch --all
+
+          # Ensure the branch exists locally by checking remote references
+          if git show-ref --verify --quiet refs/remotes/origin/${{ env.GH_BRANCH_NAME }}; then
+            git checkout -B ${{ env.GH_BRANCH_NAME }} origin/${{ env.GH_BRANCH_NAME }}
           else
-            git checkout -b ${{ env.GH_BRANCH_NAME }}
-            git push origin ${{ env.GH_BRANCH_NAME }} # Push branch if it doesn’t exist
+            echo "Branch ${{ env.GH_BRANCH_NAME }} does not exist remotely."
+            exit 1
           fi
+      
 
       - name: Copy new files
         run: |
