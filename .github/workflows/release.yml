@@ -129,23 +129,17 @@ jobs:
 
           # Ensure the branch exists locally by checking remote references
           if git show-ref --verify --quiet refs/remotes/origin/${{ env.GH_BRANCH_NAME }}; then
+            echo "Branch ${{ env.GH_BRANCH_NAME }} exists remotely."
             git checkout -B ${{ env.GH_BRANCH_NAME }} origin/${{ env.GH_BRANCH_NAME }}
           else
             echo "Branch ${{ env.GH_BRANCH_NAME }} does not exist remotely."
             exit 1
           fi
       
-
-      - name: Copy new files
-        run: |
           rsync -av --delete ./com.checkmarx.eclipse.site/target/repository/ ./update-site/
-          cd update-site
           git add .
           git commit -m "Update Eclipse update site for ${{ env.GH_RELEASE_TAG_NAME }}" || echo "No changes to commit"
 
-      - name: Push update site changes
-        run: |
-          cd update-site
           git remote set-url origin https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/CheckmarxDev/ast-eclipse-plugin-update-site.git
           git push origin ${{ env.GH_BRANCH_NAME }}
 
