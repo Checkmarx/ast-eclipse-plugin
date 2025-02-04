@@ -32,18 +32,22 @@ jobs:
           echo ${{ steps.ast-cli-java-wrapper.outputs.release_tag }} > ast-cli-java-wrapper.version
           current_version=ast-cli-java-wrapper-${{ steps.ast-cli-java-wrapper.outputs.current_tag }}.jar
           new_version=ast-cli-java-wrapper-${{ steps.ast-cli-java-wrapper.outputs.release_tag }}.jar
+          
           sed -i "s/$current_version/$new_version/g" checkmarx-ast-eclipse-plugin/build.properties
           sed -i "s/$current_version/$new_version/g" checkmarx-ast-eclipse-plugin/.classpath
           sed -i "s/$current_version/$new_version/g" checkmarx-ast-eclipse-plugin/META-INF/MANIFEST.MF
+          
           cd checkmarx-ast-eclipse-plugin/lib/
           rm -rf "$current_version"
           curl "https://repo1.maven.org/maven2/com/checkmarx/ast/ast-cli-java-wrapper/${{ steps.ast-cli-java-wrapper.outputs.release_tag }}/${new_version}" --output $new_version
           
+          ls -la
+          cd ../..
           # Track the new JAR file with LFS
           FILE_PATH="checkmarx-ast-eclipse-plugin/lib/$new_version" # Correct path
+          echo "FILE_PATH: $FILE_PATH"
           # Create the directory if it doesn't exist (important!)
-          mkdir -p "checkmarx-ast-eclipse-plugin/lib"
-          mv $new_version $FILE_PATH
+          # mv $new_version $FILE_PATH
           # Ensure the file exists after download
           if [ ! -f "$FILE_PATH" ]; then
             echo "Error: File $FILE_PATH not found after download."
