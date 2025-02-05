@@ -39,6 +39,10 @@ jobs:
         uses: actions/checkout@v3.5.2
         with:
           token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          lfs: true
+
+      - name: Checkout LFS objects
+        run: git lfs checkout
 
       - name: Create Release Name
         id: generate_tag_name
@@ -106,18 +110,72 @@ jobs:
           git config --global safe.directory "/tmp/**/*/"
           git config --global http.postBuffer 2097152000
           git config --global https.postBuffer 2097152000
-      
-      - name: Create update site
-        uses: cpina/github-action-push-to-another-repository@07c4d7b3def0a8ebe788a8f2c843a4e1de4f6900 #v.1.7.2
-        env:
-          API_TOKEN_GITHUB: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-        with:
-          source-directory: './com.checkmarx.eclipse.site/target/repository/'
-          destination-github-username: 'cylon-bot'
-          destination-repository-username: 'CheckmarxDev'
-          destination-repository-name: 'ast-eclipse-plugin-update-site'
-          user-email: cylon-bot@checkmarx.com
-          target-branch: ${{ env.GH_BRANCH_NAME }}
+
+      - name: Ensure Git LFS is enabled
+        run: |
+          git lfs install
+          git lfs track "plugins/*.jar" # Ensure large JARs are tracked
+          git add .gitattributes
+          git commit -m "Ensure LFS tracking for large JAR files" || echo "No changes to commit"
+
+      - name: Clone target repository and push changes
+        run: |
+          # Clone the repository
+          git clone https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/CheckmarxDev/ast-eclipse-plugin-update-site.git update-site
+          cd update-site
+
+          # Ensure Git LFS is installed
+          git lfs install
+
+          # Configure Git user to prevent commit errors
+          git config --global user.email "cylon-bot@checkmarx.com"
+          git config --global user.name "cylon-bot"
+
+          # Fetch all branches
+          git fetch --all
+
+          # Ensure the branch exists and check it out
+          if git show-ref --verify --quiet refs/remotes/origin/${{ env.GH_BRANCH_NAME }}; then
+            echo "Branch ${{ env.GH_BRANCH_NAME }} exists remotely."
+            git checkout -B ${{ env.GH_BRANCH_NAME }} origin/${{ env.GH_BRANCH_NAME }}
+          else
+            echo "Branch ${{ env.GH_BRANCH_NAME }} does not exist remotely."
+            exit 1
+          fi
+
+          # Debugging: List files in repository before copying
+          echo "===== Files in com.checkmarx.eclipse.site/target/repository/ BEFORE COPY ====="
+          ls -lh ../com.checkmarx.eclipse.site/target/repository/
+
+          # Copy new files without deleting .git directory
+          rsync -av --delete --exclude='.git' ../com.checkmarx.eclipse.site/target/repository/ ./
+
+          # Debugging: List files in repository after copying
+          echo "===== Files in update-site/ AFTER COPY ====="
+          ls -lh .
+
+          # Dynamically track all .jar files in the plugins/ and features/ directories
+          find plugins -name "*.jar" -exec git lfs track {} +
+          find features -name "*.jar" -exec git lfs track {} +
+
+          # Ensure .gitattributes is added
+          git add .gitattributes
+          git add .
+
+          # Debugging: Show LFS-tracked files
+          echo "===== Git LFS-tracked files ====="
+          git lfs ls-files
+
+          git commit -m "Update Eclipse update site for ${{ env.GH_RELEASE_TAG_NAME }}" || echo "No changes to commit"
+
+          # Ensure the correct remote URL
+          git remote set-url origin https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/CheckmarxDev/ast-eclipse-plugin-update-site.git
+
+          # Push changes
+          git push origin ${{ env.GH_BRANCH_NAME }}
+  
+  
+  
 
   notify:
     if: ${{ inputs.rbranch == '' || inputs.rbranch == null }}
