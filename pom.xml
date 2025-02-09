@@ -18,10 +18,10 @@
 	</modules>
 
 	<properties>
-		<tycho.version>1.7.0</tycho.version>
+		<tycho.version>2.7.5</tycho.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<maven.compiler.source>1.8</maven.compiler.source>
-		<maven.compiler.target>1.8</maven.compiler.target>
+		<maven.compiler.source>17</maven.compiler.source>
+		<maven.compiler.target>17</maven.compiler.target>
 	</properties>
 
 	<build>
@@ -94,7 +94,7 @@
 				<artifactId>target-platform-configuration</artifactId>
 				<version>${tycho.version}</version>
 				<configuration>
-					<executionEnvironment>JavaSE-1.8</executionEnvironment>
+					<executionEnvironment>JavaSE-17</executionEnvironment>
 					<pomDependencies>consider</pomDependencies>
 					<environments>
 						<environment>
@@ -113,6 +113,8 @@
 							<arch>x86_64</arch>
 						</environment>
 					</environments>
+					<resolver>p2</resolver>
+					<ignoreTychoRepositories>true</ignoreTychoRepositories>
 				</configuration>
 			</plugin>
 
@@ -121,9 +123,9 @@
 
 	<repositories>
 		<repository>
-			<id>2019-09</id>
+			<id>2023-12</id>
 			<layout>p2</layout>
-			<url>https://download.eclipse.org/releases/2019-09</url>
+			<url>https://download.eclipse.org/releases/2023-12</url>
 		</repository>
 	</repositories>
 
@@ -131,7 +133,7 @@
 		<dependency>
 			<groupId>jakarta.inject</groupId>
 			<artifactId>jakarta.inject-api</artifactId>
-			<version>1.0.5</version>
+			<version>2.0.1</version>
 		</dependency>
 		<dependency>
 		    <groupId>org.osgi</groupId>
