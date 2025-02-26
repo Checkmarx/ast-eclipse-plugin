@@ -1,1 +1,2 @@
 checkmarx-ast-eclipse-plugin/lib/ast-cli-java-wrapper-2.1.8.jar filter=lfs diff=lfs merge=lfs -text
+checkmarx-ast-eclipse-plugin/lib/ast-cli-java-wrapper-2.3.14.jar filter=lfs diff=lfs merge=lfs -text
