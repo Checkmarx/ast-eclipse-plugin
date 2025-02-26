@@ -57,7 +57,6 @@ jobs:
           git add .gitattributes
           git add "$FILE_PATH" 
           git commit -m "Update ast-cli-java-wrapper to ${{ steps.ast-cli-java-wrapper.outputs.release_tag }}"
-          git push origin HEAD:${{ github.ref }}
 
       - name: Create Pull Request
         if: steps.ast-cli-java-wrapper.outputs.current_tag != steps.ast-cli-java-wrapper.outputs.release_tag
