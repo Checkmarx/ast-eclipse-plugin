@@ -19,12 +19,25 @@ jobs:
         run: |
           git config --global user.name github-actions[bot]
           git config --global user.email github-actions[bot]@users.noreply.github.com
+      
 
-      - name: Get Latest Checkmarx Java wrapper version
+      - name: Get Latest Checkmarx Java Wrapper Version
         id: ast-cli-java-wrapper
         run: |
-          echo ::set-output name=release_tag::$(curl -s "https://repo1.maven.org/maven2/com/checkmarx/ast/ast-cli-java-wrapper/maven-metadata.xml" | grep -oPm1 "(?<=<latest>)[^<]+")
-          echo ::set-output name=current_tag::$(<ast-cli-java-wrapper.version)
+          latest_tag=$(curl -s "https://repo1.maven.org/maven2/com/checkmarx/ast/ast-cli-java-wrapper/maven-metadata.xml" | grep -oPm1 "(?<=<latest>)[^<]+")
+          current_tag=$(<ast-cli-java-wrapper.version)
+
+          echo "Latest Tag: $latest_tag"
+          echo "Current Tag: $current_tag"
+          if [ "$latest_tag" = "$current_tag" ]; then
+            echo "The tags match."
+          else
+            echo "The tags do not match."
+          fi
+
+          echo "release_tag=$latest_tag" >> $GITHUB_OUTPUT
+          echo "current_tag=$current_tag" >> $GITHUB_OUTPUT
+
       - name: Update Checkmarx Java wrapper version
         if: steps.ast-cli-java-wrapper.outputs.current_tag != steps.ast-cli-java-wrapper.outputs.release_tag
         run: |
