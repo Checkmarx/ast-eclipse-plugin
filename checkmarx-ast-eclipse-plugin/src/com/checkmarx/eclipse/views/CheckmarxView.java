@@ -183,6 +183,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private String latestScanId = PluginConstants.EMPTY_STRING;
 	private static String currentScanIdFormmated = PluginConstants.EMPTY_STRING;
 	private List<String> currentBranches = new ArrayList<>();
+	private List<Project> currentProjects = new ArrayList<>();
+
 
 	private boolean scansCleanedByProject = false;
 	private boolean firstTimeTriggered = false;
@@ -375,10 +377,10 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 			@Override
 			protected IStatus run(IProgressMonitor arg0) {
-				List<Project> projectList = getProjects();
+				currentProjects = getProjects();
 				sync.asyncExec(() -> {
-					projectComboViewer.setInput(projectList);
-					if (currentProjectId.isEmpty() || projectList.isEmpty()) {
+					projectComboViewer.setInput(currentProjects);
+					if (currentProjectId.isEmpty() || currentProjects.isEmpty()) {
 						PluginUtils.setTextForComboViewer(projectComboViewer, PROJECT_COMBO_VIEWER_TEXT);
 						PluginUtils.setTextForComboViewer(branchComboViewer, BRANCH_COMBO_VIEWER_TEXT);
 						PluginUtils.setTextForComboViewer(scanIdComboViewer, PluginConstants.COMBOBOX_SCAND_ID_PLACEHOLDER);
@@ -389,7 +391,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				});
 
 				// set project ID
-				String currentProjectName = getProjectFromId(projectList, currentProjectId);
+				String currentProjectName = getProjectFromId(currentProjects, currentProjectId);
 				sync.asyncExec(() -> {
 					PluginUtils.setTextForComboViewer(projectComboViewer, currentProjectName);
 				});
@@ -762,6 +764,15 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				if (selection.size() > 0) {
 
 					Project selectedProject = ((Project) selection.getFirstElement());
+
+
+					// Check if selected branch exists in currentBranches
+					if (!currentProjects.contains(selectedProject)) {
+						// Invalid branch - reset to default text and disable scan button
+						PluginUtils.setTextForComboViewer(projectComboViewer, PROJECT_COMBO_VIEWER_TEXT);
+						updateStartScanButton(false);
+						return;
+					}
 
 					// Avoid non-sense trigger changed when opening the combo
 					if (selectedProject.getId().equals(currentProjectId)) {
