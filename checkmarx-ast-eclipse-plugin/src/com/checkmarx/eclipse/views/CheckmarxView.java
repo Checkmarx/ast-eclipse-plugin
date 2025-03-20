@@ -908,6 +908,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		} else {
 			currentScanId = getLatestScanFromScanList(scanList).getId();
 		}
+		
 		sync.asyncExec(() -> {
 			loadingScans();
 			currentScanIdFormmated = getScanNameFromId(scanList, currentScanId);
