@@ -920,7 +920,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		});
 	}
 
-
 	private void loadLatestScanByDefault(List<Scan> scanList) {
 		if(scanList.isEmpty()) {
 			PluginUtils.setTextForComboViewer(scanIdComboViewer, PluginConstants.COMBOBOX_SCAND_ID_NO_SCANS_AVAILABLE);
