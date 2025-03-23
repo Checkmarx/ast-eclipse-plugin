@@ -183,6 +183,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private String latestScanId = PluginConstants.EMPTY_STRING;
 	private static String currentScanIdFormmated = PluginConstants.EMPTY_STRING;
 	private List<String> currentBranches = new ArrayList<>();
+	private List<Project> currentProjects = new ArrayList<>();
+
 
 	private boolean scansCleanedByProject = false;
 	private boolean firstTimeTriggered = false;
@@ -375,10 +377,10 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 			@Override
 			protected IStatus run(IProgressMonitor arg0) {
-				List<Project> projectList = getProjects();
+				currentProjects = getProjects();
 				sync.asyncExec(() -> {
-					projectComboViewer.setInput(projectList);
-					if (currentProjectId.isEmpty() || projectList.isEmpty()) {
+					projectComboViewer.setInput(currentProjects);
+					if (currentProjectId.isEmpty() || currentProjects.isEmpty()) {
 						PluginUtils.setTextForComboViewer(projectComboViewer, PROJECT_COMBO_VIEWER_TEXT);
 						PluginUtils.setTextForComboViewer(branchComboViewer, BRANCH_COMBO_VIEWER_TEXT);
 						PluginUtils.setTextForComboViewer(scanIdComboViewer, PluginConstants.COMBOBOX_SCAND_ID_PLACEHOLDER);
@@ -389,7 +391,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				});
 
 				// set project ID
-				String currentProjectName = getProjectFromId(projectList, currentProjectId);
+				String currentProjectName = getProjectFromId(currentProjects, currentProjectId);
 				sync.asyncExec(() -> {
 					PluginUtils.setTextForComboViewer(projectComboViewer, currentProjectName);
 				});
@@ -760,20 +762,25 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				IStructuredSelection selection = (IStructuredSelection) event.getSelection();
 
 				if (selection.size() > 0) {
-
 					Project selectedProject = ((Project) selection.getFirstElement());
+
+					// Check if selected project exists in currentProjects
+					if (!currentProjects.contains(selectedProject)) {
+						// Invalid project - reset to default text and disable scan button
+						PluginUtils.setTextForComboViewer(projectComboViewer, PROJECT_COMBO_VIEWER_TEXT);
+						updateStartScanButton(false);
+						return;
+					}
 
 					// Avoid non-sense trigger changed when opening the combo
 					if (selectedProject.getId().equals(currentProjectId)) {
 						CxLogger.info(PluginConstants.INFO_CHANGE_PROJECT_EVENT_NOT_TRIGGERED);
-
 						return;
 					}
 
 					onProjectChangePluginLoading(selectedProject.getId());
 
 					Job job = new Job("Checkmarx: Loading branches...") {
-
 						@Override
 						protected IStatus run(IProgressMonitor arg0) {
 							currentBranches = DataProvider.getInstance().getBranchesForProject(selectedProject.getId());
@@ -790,15 +797,29 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 							});
 							return Status.OK_STATUS;
 						}
-
 					};
 					job.schedule();
-
 				}
 			}
 		});
-	}
 
+		// Add ModifyListener to handle manual text input for projects
+		projectComboViewer.getCombo().addModifyListener(e -> {
+			String enteredProject = projectComboViewer.getCombo().getText();
+
+			// Check if text was modified and project doesn't exist
+			boolean projectExists = currentProjects.stream()
+					.anyMatch(p -> p.getName().equals(enteredProject));
+
+			if (!projectExists) {
+				updateStartScanButton(false); // Disable scan button
+			} else {
+				// Only enable if we also have a valid branch
+				boolean validBranch = !currentBranch.isEmpty() && currentBranches.contains(currentBranch);
+				updateStartScanButton(validBranch);
+			}
+		});
+	}
 	/**
 	 * Update state variables and make plugin fields loading when project changes
 	 * 
@@ -869,22 +890,29 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				if (selection.size() > 0) {
 					String selectedBranch = ((String) selection.getFirstElement());
 
+					// Check if selected branch exists in currentBranches
+					if (!currentBranches.contains(selectedBranch)) {
+						// Invalid branch - reset to default text and disable scan button
+						PluginUtils.setTextForComboViewer(branchComboViewer, BRANCH_COMBO_VIEWER_TEXT);
+						updateStartScanButton(false);
+						return;
+					}
+
 					// Avoid non-sense trigger changed when opening the combo
 					if (selectedBranch.equals(currentBranch) && !scansCleanedByProject) {
 						CxLogger.info(PluginConstants.INFO_CHANGE_BRANCH_EVENT_NOT_TRIGGERED);
-
 						return;
 					}
 
 					onBranchChangePluginLoading(selectedBranch);
 
 					List<Scan> scanList = DataProvider.getInstance().getScansForProject(selectedBranch);
-					if(!scanList.isEmpty()) {
+					if (!scanList.isEmpty()) {
 						latestScanId = getLatestScanFromScanList(scanList).getId();
 					}
-					scanIdComboViewer.setInput(scanList);							
+					scanIdComboViewer.setInput(scanList);
 					loadLatestScanByDefault(scanList);
-					
+
 					sync.asyncExec(new Runnable() {
 						public void run() {
 							PluginUtils.enableComboViewer(projectComboViewer, true);
@@ -892,15 +920,27 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 							PluginUtils.updateFiltersEnabledAndCheckedState(toolBarActions.getFilterActions());
 							toolBarActions.getStateFilterAction().setEnabled(true);
 							updateStartScanButton(true);
-						}	
+						}
 					});
-					
+
 					PluginUtils.updateFiltersEnabledAndCheckedState(toolBarActions.getFilterActions());
 				}
 			}
 		});
+
+		// Add ModifyListener to handle manual text input
+		branchComboViewer.getCombo().addModifyListener(e -> {
+			String enteredBranch = branchComboViewer.getCombo().getText();
+
+			// If text was modified and branch doesn't exist
+			if (!currentBranches.contains(enteredBranch)) {
+				updateStartScanButton(false); // Disable scan button
+			} else {
+				updateStartScanButton(true); // Enable scan button if branch is valid
+			}
+		});
 	}
-	
+
 	private void loadLatestScanByDefault(List<Scan> scanList) {
 		if(scanList.isEmpty()) {
 			PluginUtils.setTextForComboViewer(scanIdComboViewer, PluginConstants.COMBOBOX_SCAND_ID_NO_SCANS_AVAILABLE);
