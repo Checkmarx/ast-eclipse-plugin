@@ -1330,7 +1330,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		String currentState = selectedItem.getState();
 		selectedState = selectedItem.getResult().getState();
 		
-		// Fetch dynamic states from DataProvider
+		// [AST-92100] Fetch dynamic states from DataProvider
 		List<String> state = DataProvider.getInstance().getStatesForEngine(selectedItem.getType());
 		
 			triageStateComboViewer.setContentProvider(ArrayContentProvider.getInstance());

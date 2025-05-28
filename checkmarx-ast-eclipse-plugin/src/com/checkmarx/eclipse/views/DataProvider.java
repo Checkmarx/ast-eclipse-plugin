@@ -202,7 +202,7 @@ public class DataProvider {
 		Results scanResults = null;
 		
 		setCurrentScanId(scanId);
-		
+		// [AST-92100] Fetch all platform states before fetching results
 		try {
 			platformStates = getAllStatesFromPlatform();
 		} catch (Exception e) {
@@ -246,11 +246,8 @@ public class DataProvider {
 
 		return scan;
 	}
-	
-	public List<String> getAvailableStates() {
-		return platformStates != null ? platformStates : Collections.emptyList();
-	}
 
+	// [AST-92100] Get all states for a specific engine type
 	public List<String> getStatesForEngine(String engineType) {
 		if ("SAST".equalsIgnoreCase(engineType)) {
 			return platformStates != null ? platformStates : Collections.emptyList();
@@ -793,7 +790,7 @@ public class DataProvider {
 	}
 
 	/**
-	 * Fetch ALL platform states (predefined + custom) irrespective of
+	 * [AST-92100] Fetch ALL platform states (predefined + custom) irrespective of
 	 * vulnerabilities.
 	 */
 	private List<String> getAllStatesFromPlatform() throws Exception {
