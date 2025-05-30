@@ -82,6 +82,19 @@ class ActionFilterStatePreference extends Action implements IMenuCreator {
 		createMenuItem(menu, FILTER_IGNORED, FilterState.ignored, State.IGNORED);
 		createMenuItem(menu, FILTER_NOT_IGNORED, FilterState.not_ignored, State.NOT_IGNORED);
 
+		// Add CUSTOM STATE filter option
+		MenuItem customItem = new MenuItem(menu, SWT.CHECK);
+		customItem.setText("CUSTOM STATE");
+		customItem.setSelection(FilterState.customState);
+		customItem.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				FilterState.setCustomStateFilter();
+				pluginEventBus.post(new PluginListenerDefinition(PluginListenerType.FILTER_CHANGED,
+						DataProvider.getInstance().sortResults()));
+			}
+		});
+
 		return menu;
 	}
 
@@ -94,6 +107,7 @@ class ActionFilterStatePreference extends Action implements IMenuCreator {
 
 	private SelectionListener StateFilterSectionListener(State state) {
 		return new SelectionAdapter() {
+			@Override
 			public void widgetSelected(SelectionEvent e) {
 				FilterState.setFilterState(state);
 				pluginEventBus.post(new PluginListenerDefinition(PluginListenerType.FILTER_CHANGED,

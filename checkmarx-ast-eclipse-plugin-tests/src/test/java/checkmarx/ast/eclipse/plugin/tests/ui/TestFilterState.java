@@ -47,7 +47,7 @@ public class TestFilterState extends BaseUITest{
 		
 		SWTBotTreeItem ll = getFirstResultNode();
 		ArrayList<String> severityFilters = new ArrayList<>(Arrays.asList(Severity.HIGH.name(), Severity.MEDIUM.name(),Severity.LOW.name(),Severity.INFO.name()));
-		ArrayList<String> stateFilters = new ArrayList<>(Arrays.asList(State.CONFIRMED.name(),State.IGNORED.name(),State.NOT_EXPLOITABLE.name(),State.NOT_IGNORED.name(),State.PROPOSED_NOT_EXPLOITABLE.name(),State.TO_VERIFY.name(),State.URGENT.name()));
+		ArrayList<String> stateFilters = new ArrayList<>(Arrays.asList(State.CONFIRMED.getName(),State.IGNORED.getName(),State.NOT_EXPLOITABLE.getName(),State.NOT_IGNORED.getName(),State.PROPOSED_NOT_EXPLOITABLE.getName(),State.TO_VERIFY.getName(),State.URGENT.getName()));
 		assertTrue(!severityFilters.contains(ll.getText()));
 		
 		//enable group by severity (1st level group)

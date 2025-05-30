@@ -1330,7 +1330,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		String currentState = selectedItem.getState();
 		selectedState = selectedItem.getResult().getState();
 		
-		String[] state = { "TO_VERIFY", "NOT_EXPLOITABLE", "PROPOSED_NOT_EXPLOITABLE", "CONFIRMED", "URGENT" };
+		// [AST-92100] Fetch dynamic states from DataProvider
+		List<String> state = DataProvider.getInstance().getStatesForEngine(selectedItem.getType());
 		
 			triageStateComboViewer.setContentProvider(ArrayContentProvider.getInstance());
 			triageStateComboViewer.setInput(state);
@@ -1952,6 +1953,22 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 							 addLearnMoreSectionsToComposite(learnMoreComposite, PluginConstants.LEARN_MORE_CAUSE, learnMore.getCause().trim());
 							 addLearnMoreSectionsToComposite(learnMoreComposite, PluginConstants.LEARN_MORE_GENERAL_RECOMMENDATIONS, learnMore.getGeneralRecommendations().trim());
 							 
+							// Adding CWE link in Learn More section of SAST vulnerability
+							String cweId = selectedItem.getResult().getVulnerabilityDetails().getCweId();
+							if (cweId != null && !cweId.isEmpty()) {
+								String cweUrl = "https://cwe.mitre.org/data/definitions/" + cweId + ".html";
+								Link cweLink = new Link(learnMoreComposite, SWT.NONE);
+								cweLink.setText("<a>CWE-" + cweId + "</a>");
+								cweLink.addListener(SWT.Selection, e -> {
+									try {
+										PlatformUI.getWorkbench().getBrowserSupport().getExternalBrowser()
+												.openURL(new java.net.URL(cweUrl));
+									} catch (Exception ex) {
+										CxLogger.error("Failed to open CWE link: " + ex.getMessage(), ex);
+									}
+								});
+							}
+
 				             learnMoreScrolledComposite.setMinSize(learnMoreComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT));
 				             learnMoreComposite.layout();
 						}
