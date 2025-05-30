@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 
 import com.checkmarx.ast.codebashing.CodeBashing;
 import com.checkmarx.ast.learnMore.LearnMore;
+import com.checkmarx.ast.predicate.CustomState;
 import com.checkmarx.ast.predicate.Predicate;
 import com.checkmarx.ast.project.Project;
 import com.checkmarx.ast.results.ReportFormat;
@@ -57,6 +58,7 @@ public class DataProvider {
 	private String currentScanId;
 	private String projectId;
 	private List<DisplayModel> currentResultsTransformed;
+	private List<String> platformStates = new ArrayList<>();
 	
 	/**
 	 * Singleton data provider instance
@@ -200,7 +202,13 @@ public class DataProvider {
 		Results scanResults = null;
 		
 		setCurrentScanId(scanId);
-		
+		// [AST-92100] Fetch all platform states before fetching results
+		try {
+			platformStates = getAllStatesFromPlatform();
+		} catch (Exception e) {
+			CxLogger.warning("Failed to fetch all platform states on scan load: " + e.getMessage());
+		}
+
 		try {						
 			CxLogger.info(String.format(PluginConstants.INFO_FETCHING_RESULTS, scanId));
 			CxWrapper cxWrapper = getWrapper();
@@ -238,7 +246,16 @@ public class DataProvider {
 
 		return scan;
 	}
-	
+
+	// [AST-92100] Get all states for a specific engine type
+	public List<String> getStatesForEngine(String engineType) {
+		if ("SAST".equalsIgnoreCase(engineType)) {
+			return platformStates != null ? platformStates : Collections.emptyList();
+		} else {
+			return new ArrayList<>(com.checkmarx.eclipse.enums.State.values().keySet());
+		}
+	}
+
 	/**
 	 * Process results to be displayed in the tree
 	 * 
@@ -770,5 +787,27 @@ public class DataProvider {
 	
 	public boolean isScanAllowed() throws CxException, IOException, InterruptedException, Exception {
 		return authenticateWithAST().ideScansEnabled();
+	}
+
+	/**
+	 * [AST-92100] Fetch ALL platform states (predefined + custom) irrespective of
+	 * vulnerabilities.
+	 */
+	private List<String> getAllStatesFromPlatform() throws Exception {
+		if (currentScanId == null || projectId == null) {
+			return Collections.emptyList();
+		}
+
+		CxWrapper cxWrapper = authenticateWithAST();
+		List<String> allStates = new ArrayList<>();
+
+		try {
+			List<CustomState> customStates = cxWrapper.triageGetStates(false);
+			allStates = customStates.stream().map(CustomState::getName).collect(Collectors.toList());
+		} catch (Exception e) {
+			CxLogger.warning("Could not fetch platform states: " + e.getMessage());
+		}
+
+		return allStates;
 	}
 }
