@@ -25,6 +25,8 @@ public class FilterState {
 	public static final List<String> PREDEFINED_STATES = Arrays.asList("NOT_EXPLOITABLE", "PROPOSED_NOT_EXPLOITABLE",
 			"TO_VERIFY", "CONFIRMED", "URGENT", "NOT_IGNORED", "IGNORED");
 	public static final Set<String> PREDEFINED_STATE_SET = new HashSet<>(PREDEFINED_STATES);
+	// [AST-92100] Custom states are dynamically added based on results
+	private static final Set<String> enabledCustomStates = new HashSet<>();
 
 	// FILTER STATE FLAGS
 	public static boolean notExploitable = true;
@@ -176,8 +178,8 @@ public class FilterState {
 				break;
 			}
 		} else {
-			// Not a predefined state, treat as custom
-			return customState;
+			// [AST-92100] Not a predefined state, check if this custom state is enabled
+			return enabledCustomStates.contains(normalized);
 		}
 		return false;
 	}
@@ -230,6 +232,22 @@ public class FilterState {
 		urgent = true;
 		proposedNotExploitable = true;
 		customState = true;
+	}
+
+	public static boolean isCustomStateSelected(String stateName) {
+		return enabledCustomStates.contains(stateName.trim().toUpperCase());
+	}
+
+	/**
+	 * Toggles selection for a specific custom state.
+	 */
+	public static void toggleCustomState(String stateName) {
+		String normalized = stateName.trim().toUpperCase();
+		if (enabledCustomStates.contains(normalized)) {
+			enabledCustomStates.remove(normalized);
+		} else {
+			enabledCustomStates.add(normalized);
+		}
 	}
 
 	/**

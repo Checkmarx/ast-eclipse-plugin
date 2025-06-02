@@ -1,5 +1,7 @@
 package com.checkmarx.eclipse.views.actions;
 
+import java.util.List;
+
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuCreator;
 import org.eclipse.swt.SWT;
@@ -82,18 +84,22 @@ class ActionFilterStatePreference extends Action implements IMenuCreator {
 		createMenuItem(menu, FILTER_IGNORED, FilterState.ignored, State.IGNORED);
 		createMenuItem(menu, FILTER_NOT_IGNORED, FilterState.not_ignored, State.NOT_IGNORED);
 
-		// Add CUSTOM STATE filter option
-		MenuItem customItem = new MenuItem(menu, SWT.CHECK);
-		customItem.setText("CUSTOM STATE");
-		customItem.setSelection(FilterState.customState);
-		customItem.addSelectionListener(new SelectionAdapter() {
-			@Override
-			public void widgetSelected(SelectionEvent e) {
-				FilterState.setCustomStateFilter();
-				pluginEventBus.post(new PluginListenerDefinition(PluginListenerType.FILTER_CHANGED,
-						DataProvider.getInstance().sortResults()));
-			}
-		});
+		// [AST-92100] Add CUSTOM STATE filter option
+		List<String> customStates = DataProvider.getInstance().getCustomStates();
+
+		for (String customState : customStates) {
+			MenuItem item = new MenuItem(menu, SWT.CHECK);
+			item.setText(customState);
+			item.setSelection(FilterState.isCustomStateSelected(customState));
+			item.addSelectionListener(new SelectionAdapter() {
+				@Override
+				public void widgetSelected(SelectionEvent e) {
+					FilterState.toggleCustomState(customState);
+					pluginEventBus.post(new PluginListenerDefinition(PluginListenerType.FILTER_CHANGED,
+							DataProvider.getInstance().sortResults()));
+				}
+			});
+		}
 
 		return menu;
 	}

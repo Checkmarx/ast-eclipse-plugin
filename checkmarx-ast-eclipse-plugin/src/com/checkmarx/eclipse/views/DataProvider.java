@@ -23,7 +23,6 @@ import com.checkmarx.ast.learnMore.LearnMore;
 import com.checkmarx.ast.predicate.CustomState;
 import com.checkmarx.ast.predicate.Predicate;
 import com.checkmarx.ast.project.Project;
-import com.checkmarx.ast.results.ReportFormat;
 import com.checkmarx.ast.results.Results;
 import com.checkmarx.ast.results.result.Node;
 import com.checkmarx.ast.results.result.Result;
@@ -428,7 +427,9 @@ public class DataProvider {
 	 * @return Cleaned string with decoded HTML entities
 	 */
 	private String cleanHtmlEntities(String input) {
-	    if (input == null) return null;
+		if (input == null) {
+			return null;
+		}
 	    return input
 	        .replace("&#34;", "\"")
 	        .replace("&quot;", "\"")
@@ -810,4 +811,10 @@ public class DataProvider {
 
 		return allStates;
 	}
+
+	public List<String> getCustomStates() {
+		return platformStates.stream().filter(state -> !FilterState.PREDEFINED_STATE_SET.contains(state.toUpperCase()))
+				.collect(Collectors.toList());
+	}
+
 }
