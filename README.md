@@ -1,4 +1,4 @@
-<img src="https://raw.githubusercontent.com/Checkmarx/ci-cd-integrations/main/.images/banner.png">
+<img src="https://raw.githubusercontent.com/Checkmarx/ci-cd-integrations/main/.images/Jenkins Plugin banner.jpg">
 <br />
 <div align="center">
 
@@ -15,7 +15,7 @@
 <br />
 <p align="center">
   <a href="https://github.com/Checkmarx/ast-eclipse-plugin">
-    <img src="https://raw.githubusercontent.com/Checkmarx/ci-cd-integrations/main/.images/logo.png" alt="Logo" width="80" height="80" />
+    <img src="https://raw.githubusercontent.com/Checkmarx/ci-cd-integrations/main/.images/X Plugin logo.jpg" alt="Logo" width="80" height="80" />
   </a>
 
   <h3 align="center">CHECKMARX ONE ECLIPSE PLUGIN</h3>
