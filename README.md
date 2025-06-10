@@ -94,6 +94,16 @@ You can run new scans, or import results from scans run in your Checkmarx One ac
 
 To see how you can use our tool, please refer to the [Documentation](https://checkmarx.com/resource/documents/en/34965-68728-checkmarx-one-eclipse-plugin.html)
 
+## How To Videos
+- **Installing and Setting up the Plugin**
+![GIF - How to install and set up the plugin](https://checkmarx.com/resource/documents/en/image/164fe2f621388d.gif "GIF - How to install and set up the plugin")
+
+- **Running a Scan from the IDE**
+![Running a Scan from the IDE](https://checkmarx.com/resource/documents/en/image/164fe2f62587ef.gif "Running a Scan from the IDE")
+
+- **Loading and Viewing Scan Results**
+[![Loading and Viewing Scan Results](https://checkmarx.com/resource/documents/en/image/164fe2f6237dfa.gif "Loading and Viewing Scan Results")](https://checkmarx.com/resource/documents/en/image/164fe2f6237dfa.gif "Loading and Viewing Scan Results")
+
 ## Contribution
 
 We appreciate feedback and contribution to the ECLIPSE PLUGIN! Before you get started, please see the following:
