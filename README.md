@@ -35,7 +35,7 @@
   <summary>Table of Contents</summary>
   <ol>
     <li>
-      <a href="#about-the-project">About The Project</a>
+      <a href="#overview">Overview</a>
     </li>
     <li>
       <a href="#getting-started">Getting Started</a>
@@ -53,18 +53,20 @@
 
 
 
-<!-- ABOUT THE PROJECT -->
-## About The Project
+<!-- Overview -->
+## Overview
 
-The Checkmarx One Eclipse plugin enables you to import results from a Checkmarx One scan directly into your IDE. You can view the vulnerabilities that were identified in your source code and navigate directly to the vulnerable code in the editor. 
+Checkmarx continues to spearhead the shift-left approach to AppSec by bringing our powerful AppSec tools into your IDE. This empowers developers to identify vulnerabilities and remediate them **as they code**. The Checkmarx Eclipse plugin integrates seamlessly into your IDE, enabling you to access the full functionality of your Checkmarx One account (SAST, SCA, IaC Security) directly from your IDE.
+
+You can run new scans, or import results from scans run in your Checkmarx One account. Checkmarx provides detailed info about each vulnerability, including remediation recommendations and examples of effective remediation. The plugin enables you to navigate from a vulnerability to the relevant source code, so that you can easily zero-in on the problematic code and start working on remediation. 
 
 ### Main Features
-Import Checkmarx One scan results into your IDE
-
-* Show results from all scan types (CxSAST, CxSCA, and KICS) 
-* Group results by severity or query name
-* Navigate from results directly to the vulnerable code in the editor
-* Vulnerable code is highlighted in the editor
+* Access the full power of Checkmarx One (SAST, SCA, and IaC Security) directly from your IDE 
+* Run a new scan from your IDE even before committing the code, or import scan results from your Checkmarx One account
+* Provides actionable results including remediation recommendations. Navigate from results panel directly to the highlighted vulnerable code in the editor and get right down to work on the   remediation.
+* Group and filter results
+* Triage results (by adjusting the severity and state and adding comments) directly from the Visual Studio console
+* Links to Codebashing lessons
 
 
 <!-- GETTING STARTED -->
@@ -73,11 +75,20 @@ Import Checkmarx One scan results into your IDE
 
 ### Prerequisites
 
-- You have a Checkmarx One account and you have an [API Key](https://checkmarx.com/resource/documents/en/34965-68618-generating-an-api-key.html).
+-   An eclipse installation, version 2019-03 (4.11) or above. 
+   > Supported platforms: Windows, Mac, Linux/GTK
 
+-   You have an **API key** for your Checkmarx One account. To create an
+    API key, see [Generating an API Key](https://checkmarx.com/resource/documents/en/34965-68618-generating-an-api-key.html)
+> In order to use this integration for running an end-to-end flow of
+    scanning a project and viewing results, the API Key must have at a
+    minimum the out-of-the-box composite role `ast-scanner` as well as
+    the IAM role `default-roles`.
 ### Setting Up
 
-All the procedures to set the Eclipse plugin up can be found [here](https://checkmarx.com/resource/documents/en/34965-68728-checkmarx-one-eclipse-plugin.html).
+1.   Verify that all prerequisites are in place.
+
+2.   Install the **Checkmarx One** plugin and configure the settings as described [here](https://checkmarx.com/resource/documents/en/34965-68729-installing-and-setting-up-the-checkmarx-one-eclipse-plugin.html).
 
 ## Usage
 
