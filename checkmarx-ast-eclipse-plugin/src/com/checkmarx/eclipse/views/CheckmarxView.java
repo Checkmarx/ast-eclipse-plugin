@@ -1371,7 +1371,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 					Job job = new Job("Checkmarx: Updating triage information...") {
 						String comment = commentText.getText() != null
-								&& !commentText.getText().equalsIgnoreCase("Enter comment") ? commentText.getText()
+								&& !commentText.getText().equalsIgnoreCase("Notes") ? commentText.getText()
 										: "";
 
 						@Override
