@@ -137,7 +137,7 @@ public class PluginUtils {
 	 * Clear message in the tree
 	 * 
 	 */
-	public static void clearMessae(DisplayModel rootModel,TreeViewer viewer) {
+	public static void clearMessage(DisplayModel rootModel,TreeViewer viewer) {
 		rootModel.children.clear();
 		viewer.refresh();
 	}

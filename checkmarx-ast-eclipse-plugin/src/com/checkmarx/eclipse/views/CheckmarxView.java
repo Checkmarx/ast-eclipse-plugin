@@ -1116,7 +1116,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		String scanId = scanIdComboViewer.getCombo().getText();
 		
 		if(scanId.isEmpty()) {
-			PluginUtils.clearMessae(rootModel, resultsTree);
+			PluginUtils.clearMessage(rootModel, resultsTree);
 			CxLogger.info(String.format(PluginConstants.NO_SCAN_ID_PROVIDED, scanId));
 			return;
 		}
