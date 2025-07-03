@@ -1114,6 +1114,12 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 */
 	private void setSelectionForProjectComboViewer() {
 		String scanId = scanIdComboViewer.getCombo().getText();
+		
+		if(scanId.isEmpty()) {
+			PluginUtils.clearMessage(rootModel, resultsTree);
+			CxLogger.info(String.format(PluginConstants.NO_SCAN_ID_PROVIDED, scanId));
+			return;
+		}
 
 		if (currentScanId.equals(scanId)) {
 			PluginUtils.setTextForComboViewer(scanIdComboViewer, currentScanIdFormmated);
@@ -1371,7 +1377,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 					Job job = new Job("Checkmarx: Updating triage information...") {
 						String comment = commentText.getText() != null
-								&& !commentText.getText().equalsIgnoreCase("Notes") ? commentText.getText()
+								&& !commentText.getText().equalsIgnoreCase("Enter comment") ? commentText.getText()
 										: "";
 
 						@Override
