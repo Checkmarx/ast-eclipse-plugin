@@ -15,7 +15,7 @@
 <br />
 <p align="center">
   <a href="https://github.com/Checkmarx/ast-eclipse-plugin">
-    <img src="https://raw.githubusercontent.com/Checkmarx/ci-cd-integrations/main/.images/cx_x_icon.png" alt="Logo" width="80" height="80" />
+    <img src="https://raw.githubusercontent.com/Checkmarx/ci-cd-integrations/main/.images/cx_azure_x-icon-80px.png" alt="Logo" width="80" height="80" />
   </a>
 
   <h3 align="center">CHECKMARX ONE ECLIPSE PLUGIN</h3>
