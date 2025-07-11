@@ -15,7 +15,7 @@ public class PluginConstants {
 	public static final String NO_CHANGES = "No changes...";
 	public static final String BTN_UPDATE = "Update";
 	public static final String BTN_LOADING = "Loading";
-	public static final String DEFAULT_COMMENT_TXT = "Enter comment";
+	public static final String DEFAULT_COMMENT_TXT = "Notes";
 	public static final String LOADING_BFL = "Loading BFL";
 	public static final String BFL_FOUND = "Indicates the Best Fix Location. Speed up your remediation by fixing multiple vulnerabilities at once";
 	public static final String BFL_NOT_FOUND = "Best fix Location not available for given results";
