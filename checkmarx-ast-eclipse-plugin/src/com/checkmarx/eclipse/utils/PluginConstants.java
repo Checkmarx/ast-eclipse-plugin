@@ -53,6 +53,7 @@ public class PluginConstants {
 	/******************************** TREE MESSAGES ********************************/
 	public static final String TREE_INVALID_SCAN_ID_FORMAT = "Invalid scan id format.";
 	public static final String TREE_NO_RESULTS = "No results.";
+	public static final String NO_SCAN_ID_PROVIDED = "No scan id provided.";
 	
 	/******************************** PREFERENCES ********************************/
 	public static final String PREFERENCES_API_KEY = "API key:";
