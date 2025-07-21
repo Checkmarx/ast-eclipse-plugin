@@ -132,6 +132,16 @@ public class PluginUtils {
 		viewer.refresh();
 	}
 	
+	
+	/**
+	 * Clear message in the tree
+	 * 
+	 */
+	public static void clearMessage(DisplayModel rootModel,TreeViewer viewer) {
+		rootModel.children.clear();
+		viewer.refresh();
+	}
+		
 	/**
 	 * Get Event Broker
 	 * 
