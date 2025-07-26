@@ -811,7 +811,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 		// Add ModifyListener to handle manual text input for projects
 		projectComboViewer.getCombo().addModifyListener(e -> {
-			String enteredProject = projectComboViewer.getCombo().getText();
+			String enteredProject = projectComboViewer.getCombo().getText().trim();
 			// Skip search if the text is the default instruction
 			if (enteredProject.equals(PROJECT_COMBO_VIEWER_TEXT)) {
 				updateStartScanButton(false); // Disable scan button
@@ -819,11 +819,11 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 			}
 			
 			latestProjectSearchTerm = enteredProject; // Track the latest term
-			List<String> matchedProjects = currentProjects.stream()
-					.map(Project::getName)
-					.filter(name -> name.toLowerCase().contains(enteredProject.toLowerCase()))
+			List<String> matchedProjects;
+			matchedProjects = currentProjects.stream().map(Project::getName)
+					.filter(name -> name != null && name.toLowerCase().contains(enteredProject.toLowerCase())).limit(100)
 					.collect(Collectors.toList());
-
+			
 			if (matchedProjects.isEmpty()) {
 				CxLogger.info("Entered project is not exist in current projects list");
 				// Cancel any pending search
@@ -850,8 +850,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 								Display.getDefault().asyncExec(() -> {
 									if (searchTerm.equals(latestProjectSearchTerm)) {
 										if (result != null && !result.isEmpty()) {
+											projectComboViewer.setInput(result);
 											currentProjects = result;
-											projectComboViewer.setInput(currentProjects);
 										} else {
 											updateStartScanButton(false); // Disable scan button
 										}
