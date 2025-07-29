@@ -99,6 +99,8 @@ import com.checkmarx.eclipse.views.provider.TreeContentProvider;
 import com.google.common.base.Strings;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class CheckmarxView extends ViewPart implements EventHandler {
 
@@ -113,8 +115,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private static final String FORMATTED_SCAN_LABEL = "%s %s";
 	private static final String FORMATTED_SCAN_LABEL_LATEST = "%s %s (%s)";
 	
-	private java.util.Timer debounceTimer = new java.util.Timer("ProjectSearchDebounce", true);
-	private java.util.TimerTask pendingSearchTask;
+	private Timer debounceTimer = new Timer("ProjectSearchDebounce", true);
+	private TimerTask pendingSearchTask;
 	private static final int DEBOUNCE_DELAY_MS = 400;
 	private volatile String latestProjectSearchTerm = "";
 	
@@ -836,27 +838,26 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					public void run() {
 						final String searchTerm = latestProjectSearchTerm; // Capture the term for this search
 						// Schedule a background job for the server search
-						Job job = new Job("Checkmarx: Searching project from server...") {
+						Job job = new Job("Checkmarx: Searching for project on server...") {
 							@Override
 							protected IStatus run(IProgressMonitor monitor) {
-								List<Project> searchedProjects = null;
+								List<Project> searchedProjects;
 								try {
 									searchedProjects = DataProvider.getInstance().getProjects(searchTerm);
+									Display.getDefault().asyncExec(() -> {
+										if (searchTerm.equals(latestProjectSearchTerm)) {
+											// Update UI in UI thread
+											if (searchedProjects != null && !searchedProjects.isEmpty()) {
+												projectComboViewer.setInput(searchedProjects);
+												currentProjects = searchedProjects;
+											} else {
+												updateStartScanButton(false); // Disable scan button
+											}
+										}
+									});
 								} catch (Exception ex) {
 									ex.printStackTrace();
-								}
-								final List<Project> result = searchedProjects;
-								// Update UI in UI thread
-								Display.getDefault().asyncExec(() -> {
-									if (searchTerm.equals(latestProjectSearchTerm)) {
-										if (result != null && !result.isEmpty()) {
-											projectComboViewer.setInput(result);
-											currentProjects = result;
-										} else {
-											updateStartScanButton(false); // Disable scan button
-										}
-									}
-								});
+								}				
 								return Status.OK_STATUS;
 							}
 						};
