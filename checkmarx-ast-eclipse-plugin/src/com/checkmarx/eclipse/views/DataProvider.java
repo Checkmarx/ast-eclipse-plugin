@@ -42,6 +42,7 @@ public class DataProvider {
 	private static final List<String> SEVERITY_ORDER = Arrays.asList("CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO");
 	
 	private static final String LIMIT_FILTER="limit=10000";		
+	private static final String NAME_FILTER="name=";		
 	private static final String FILTER_SCANS_FOR_PROJECT = "project-id=%s,branch=%s,limit=10000,statuses=Completed";
 	
 	private static final String SAST_TREE_NAME = "SAST (%d)";
@@ -102,6 +103,30 @@ public class DataProvider {
 		if (cxWrapper != null) {
 			try {
 				projectList = cxWrapper.projectList(LIMIT_FILTER);
+
+			} catch (IOException | InterruptedException | CxException e) {
+				CxLogger.error(String.format(PluginConstants.ERROR_GETTING_PROJECTS, e.getMessage()), e);
+			}
+		}
+
+		return projectList;
+	}
+	
+	/**
+	 * Get One projects filtered by name
+	 * 
+	 * @return
+	 * @throws Exception 
+	 */
+	public List<Project> getProjects(String projectName) throws Exception {
+		List<Project> projectList = new ArrayList<Project>();
+		
+		CxWrapper cxWrapper = authenticateWithAST();
+		String filterProject = NAME_FILTER+projectName;
+		
+		if (cxWrapper != null) {
+			try {
+				projectList = cxWrapper.projectList(filterProject);
 
 			} catch (IOException | InterruptedException | CxException e) {
 				CxLogger.error(String.format(PluginConstants.ERROR_GETTING_PROJECTS, e.getMessage()), e);
