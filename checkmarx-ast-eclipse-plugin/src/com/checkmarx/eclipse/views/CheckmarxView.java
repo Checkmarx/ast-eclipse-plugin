@@ -2667,6 +2667,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 			} else if (lastApiKey.equalsIgnoreCase(currentApiKey)) {
 				return;
 			} else {
+				// clear result section
+				PluginUtils.clearMessage(rootModel, resultsTree);
 				// Reset state variables
 				currentProjectId = PluginConstants.EMPTY_STRING;
 				currentBranch = PluginConstants.EMPTY_STRING;
