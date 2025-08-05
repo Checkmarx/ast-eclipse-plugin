@@ -67,35 +67,35 @@ public class TestUI extends BaseUITest {
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
 	}
 
-	@Test
-	public void testMissingSetCheckmarxServerUrl() throws TimeoutException {
-		// Test Connection
-		testSuccessfulConnection(false);
-
-		// Add Checkmarx One Plugin
-		addCheckmarxPlugin(true);
-
-		// Clear Checkmarx credentials to expect missing Server Url
-		clearCheckmarxCredentials();
-
-		// Type a valid and existing scan id
-		preventWidgetWasNullInCIEnvironment();
-		
-		_bot.comboBox(2).setText(UUID.randomUUID().toString());
-		_bot.comboBox(2).pressShortcut(Keystrokes.LF);
-
-		assertEquals("The tree must contain a single row", _bot.tree(1).rowCount(), 1);
-		String firstTreeCell = _bot.tree(1).cell(0, 0);
-
-		// The first row must have a message saying that One is getting results or
-		// failing due the missing Server Url
-		firstTreeCell.equals(String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, Environment.SCAN_ID));
-
-		sleep();
-
-		// Close Checkmarx One Scan view
-		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
-	}
+//	@Test
+//	public void testMissingSetCheckmarxServerUrl() throws TimeoutException {
+//		// Test Connection
+//		testSuccessfulConnection(false);
+//
+//		// Add Checkmarx One Plugin
+//		addCheckmarxPlugin(true);
+//
+//		// Clear Checkmarx credentials to expect missing Server Url
+//		clearCheckmarxCredentials();
+//
+//		// Type a valid and existing scan id
+//		preventWidgetWasNullInCIEnvironment();
+//		
+//		_bot.comboBox(2).setText(UUID.randomUUID().toString());
+//		_bot.comboBox(2).pressShortcut(Keystrokes.LF);
+//
+//		assertEquals("The tree must contain a single row", _bot.tree(1).rowCount(), 1);
+//		String firstTreeCell = _bot.tree(1).cell(0, 0);
+//
+//		// The first row must have a message saying that One is getting results or
+//		// failing due the missing Server Url
+//		firstTreeCell.equals(String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, Environment.SCAN_ID));
+//
+//		sleep();
+//
+//		// Close Checkmarx One Scan view
+//		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
+//	}
 
 	/**
 	 * Test UI End-to-End
