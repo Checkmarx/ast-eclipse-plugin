@@ -129,6 +129,12 @@ public class ToolBarActions {
 		};
 		job.schedule();
 	}
+		
+	public void disposeToolbar() {
+		IToolBarManager toolBarManager = actionBars.getToolBarManager();
+		toolBarManager.removeAll();
+		actionBars.getMenuManager().removeAll();
+	}
 	
 	public void refreshToolbar() {
 		IToolBarManager toolBarManager = actionBars.getToolBarManager();

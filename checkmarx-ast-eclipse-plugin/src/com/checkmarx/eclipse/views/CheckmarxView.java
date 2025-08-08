@@ -88,6 +88,7 @@ import com.checkmarx.ast.wrapper.CxException;
 import com.checkmarx.eclipse.Activator;
 import com.checkmarx.eclipse.enums.ActionName;
 import com.checkmarx.eclipse.enums.Severity;
+import com.checkmarx.eclipse.properties.Preferences;
 import com.checkmarx.eclipse.utils.CxLogger;
 import com.checkmarx.eclipse.utils.NotificationPopUpUI;
 import com.checkmarx.eclipse.utils.PluginConstants;
@@ -160,6 +161,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private Button triageButton;
 	private SelectionAdapter triageButtonAdapter, codeBashingAdapter;
 	private Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell();
+	private String lastApiKey;
 
 	private boolean alreadyRunning = false;
 	private static List<LearnMore> learnMoreData;
@@ -207,6 +209,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	public CheckmarxView() {
 		super();
 		sync = new UISynchronizeImpl(PlatformUI.getWorkbench().getDisplay());
+		lastApiKey = Preferences.STORE.getString(Preferences.API_KEY);
 		rootModel = new DisplayModel.DisplayModelBuilder(PluginConstants.EMPTY_STRING).build();
 		globalSettings.loadSettings();
 		currentProjectId = globalSettings.getProjectId();
@@ -714,9 +717,17 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 * Draw panel when Checkmarx credentials are not defined
 	 */
 	private void drawMissingCredentialsPanel() {
+		
+	    // Dispose all children to remove any previous panels
+	    for (Control child : parent.getChildren()) {
+	        child.dispose();
+	    }
 		openSettingsComposite = new Composite(parent, SWT.NONE);
 
 		openSettingsComposite.setLayout(new GridLayout(1, true));
+		
+		// This is the key line: center horizontally and vertically, and expand to fill
+	    openSettingsComposite.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, true, true));
 
 		final Label hidden = new Label(openSettingsComposite, SWT.NONE);
 		hidden.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, true, false));
@@ -742,6 +753,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				}
 			}
 		});
+		parent.layout(true, true);
 	}
 
 	private void createProjectListComboBox(Composite parent) {
@@ -779,7 +791,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 						updateStartScanButton(false);
 						return;
 					}
-
 					// Avoid non-sense trigger changed when opening the combo
 					if (selectedProject.getId().equals(currentProjectId)) {
 						CxLogger.info(PluginConstants.INFO_CHANGE_PROJECT_EVENT_NOT_TRIGGERED);
@@ -1153,6 +1164,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 */
 	
 	private Scan getLatestScanFromScanList(List<Scan> scanList) {
+		
 		return scanList.get(0);
 	}
 
@@ -1425,7 +1437,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 					Job job = new Job("Checkmarx: Updating triage information...") {
 						String comment = commentText.getText() != null
-								&& !commentText.getText().equalsIgnoreCase("Notes") ? commentText.getText()
+								&& !commentText.getText().equalsIgnoreCase("Notes (Optional or required based on tenant configuration)") ? commentText.getText()
 										: "";
 
 						@Override
@@ -2686,16 +2698,32 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 */
 	@Override
 	public void handleEvent(org.osgi.service.event.Event arg0) {
-		if (!isPluginDraw) {
+		String currentApiKey = Preferences.STORE.getString(Preferences.API_KEY);
+		if (!currentApiKey.isEmpty() && !isPluginDraw) {
 			drawPluginPanel();
 		} else {
-			// If authenticated successfully and the projects are empty try to get them again
-			if (projectComboViewer.getCombo().getItemCount() == 0) {
-				clearAndRefreshPlugin();
+			// If credentials changed reload projects, branches and scans from new tenant
+			if (currentApiKey.isEmpty()) {
+				updateStartScanButton(false);
+				drawMissingCredentialsPanel();
+				//Dispose toolbar
+			    if (toolBarActions != null) {
+			        toolBarActions.disposeToolbar();
+			        toolBarActions = null;
+			    }
+				isPluginDraw = false;
+			} else if (lastApiKey.equalsIgnoreCase(currentApiKey)) {
+				return;
+			} else {
+				// clear result section
+				PluginUtils.clearMessage(rootModel, resultsTree);
+				// Reset state variables
+				currentProjectId = PluginConstants.EMPTY_STRING;
+				currentBranch = PluginConstants.EMPTY_STRING;
+				currentScanId = PluginConstants.EMPTY_STRING;
+				loadComboboxes();
 			}
-			
-			toolBarActions.refreshToolbar();
-			updateStartScanButton(true);
+			lastApiKey=currentApiKey;
 		}
 	}
 
