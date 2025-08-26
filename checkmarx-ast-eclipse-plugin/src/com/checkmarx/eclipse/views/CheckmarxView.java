@@ -120,6 +120,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private static final String FORMATTED_SCAN_LABEL = "%s %s";
 	private static final String FORMATTED_SCAN_LABEL_LATEST = "%s %s (%s)";
 	private boolean isUpdatingCombo = false;
+	private boolean resetStoredProjects = false;
 	
 	private Timer debounceTimer = new Timer("ProjectSearchDebounce", true);
 	private TimerTask pendingSearchTask;
@@ -199,6 +200,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private static String currentScanIdFormmated = PluginConstants.EMPTY_STRING;
 	private List<String> currentBranches = new ArrayList<>();
 	private List<Project> currentProjects = new ArrayList<>();
+	private List<Project> storeCurrentProjects = new ArrayList<>();
 
 
 	private boolean scansCleanedByProject = false;
@@ -394,6 +396,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 			@Override
 			protected IStatus run(IProgressMonitor arg0) {
 				currentProjects = getProjects();
+				storeCurrentProjects = currentProjects;
 				sync.asyncExec(() -> {
 					projectComboViewer.setInput(currentProjects);
 					if (currentProjectId.isEmpty() || currentProjects.isEmpty()) {
@@ -780,7 +783,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				return super.getText(element);
 			}
 		});
-
+		
+		
 		projectComboViewer.addSelectionChangedListener(new ISelectionChangedListener() {
 			@Override
 			public void selectionChanged(SelectionChangedEvent event) {
@@ -799,6 +803,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					// Avoid non-sense trigger changed when opening the combo
 					if (selectedProject.getId().equals(currentProjectId)) {
 						CxLogger.info(PluginConstants.INFO_CHANGE_PROJECT_EVENT_NOT_TRIGGERED);
+						preservCaretposition(storeCurrentProjects, selectedProject.getName());
+						currentProjects = storeCurrentProjects;
 						return;
 					}
 
@@ -811,7 +817,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 							sync.asyncExec(() -> {
 								branchComboViewer.setInput(currentBranches);
 								PluginUtils.setTextForComboViewer(branchComboViewer, currentBranches.isEmpty() ? NO_BRANCHES_AVAILABLE : BRANCH_COMBO_VIEWER_TEXT);
-
 								PluginUtils.enableComboViewer(branchComboViewer, true);
 								PluginUtils.enableComboViewer(scanIdComboViewer, true);
 								PluginUtils.updateFiltersEnabledAndCheckedState(toolBarActions.getFilterActions());
@@ -823,6 +828,13 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 						}
 					};
 					job.schedule();
+					//After project selected and branches loaded reset the project list
+					if(resetStoredProjects) {
+						storeCurrentProjects.add(selectedProject);
+						preservCaretposition(storeCurrentProjects, selectedProject.getName());
+						currentProjects = storeCurrentProjects;
+						resetStoredProjects=false;
+					}
 				}
 			}
 		});
@@ -831,6 +843,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		projectComboViewer.getCombo().addModifyListener(e -> {
 			if (isUpdatingCombo) return;
 			String enteredProject = projectComboViewer.getCombo().getText().trim();
+			
 			// Skip search if the text is the default instruction
 			if (enteredProject.equals(PROJECT_COMBO_VIEWER_TEXT) || enteredProject.equals(LOADING_PROJECTS)) {
 				updateStartScanButton(false); // Disable scan button
@@ -839,10 +852,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 			 // If user starts typing again and list is empty, restore currentProjects
 		    if (projectComboViewer.getCombo().getItemCount() == 0 && !currentProjects.isEmpty() && enteredProject.length()>0) {
 		    	isUpdatingCombo = true;
-		    	int caretPos = projectComboViewer.getCombo().getCaretPosition();
-		        projectComboViewer.setInput(currentProjects);
-		        PluginUtils.setTextForComboViewer(projectComboViewer, enteredProject);
-				projectComboViewer.getCombo().setSelection(new Point(caretPos, caretPos));
+		    	preservCaretposition(currentProjects,enteredProject);
 		        isUpdatingCombo = false;
 		    }
 			
@@ -874,13 +884,11 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 											isUpdatingCombo = true;
 											// Update UI in UI thread
 											if (searchedProjects != null && !searchedProjects.isEmpty()) {
-												projectComboViewer.setInput(searchedProjects);
+												preservCaretposition(searchedProjects,searchTerm);
 												currentProjects = searchedProjects;
+												resetStoredProjects=true;
 											} else {
-												int caretPos = projectComboViewer.getCombo().getCaretPosition();
-												projectComboViewer.setInput(Collections.emptyList());
-												PluginUtils.setTextForComboViewer(projectComboViewer, searchTerm);
-												projectComboViewer.getCombo().setSelection(new Point(caretPos, caretPos));
+												preservCaretposition(Collections.emptyList(),searchTerm);
 												updateStartScanButton(false); // Disable scan button
 												isUpdatingCombo = false;
 												return;
@@ -898,6 +906,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 					}
 				};
 				debounceTimer.schedule(pendingSearchTask, DEBOUNCE_DELAY_MS);
+				
 			}
 		});
 		
@@ -2595,6 +2604,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 			@Override
 			protected IStatus run(IProgressMonitor arg0) {
 				currentProjects = getProjects();
+				storeCurrentProjects = currentProjects;
 				sync.asyncExec(() -> {
 					projectComboViewer.setInput(currentProjects);
 					projectComboViewer.refresh();
@@ -2786,5 +2796,18 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		} else {
 			toolBarActions.getStartScanAction().setEnabled(false);
 		}
+	}
+	
+	/**
+	 * Store the user entered value and the caret position
+	 * 
+	 * @param projectList
+	 * @param searchText
+	 */
+	private void preservCaretposition( List<Project> projectList, String searchText) {
+		int caretPos = projectComboViewer.getCombo().getCaretPosition();
+		projectComboViewer.setInput(projectList);
+		PluginUtils.setTextForComboViewer(projectComboViewer, searchText);
+		projectComboViewer.getCombo().setSelection(new Point(caretPos, caretPos));
 	}
 }
