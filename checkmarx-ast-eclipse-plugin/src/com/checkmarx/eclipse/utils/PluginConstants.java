@@ -15,7 +15,7 @@ public class PluginConstants {
 	public static final String NO_CHANGES = "No changes...";
 	public static final String BTN_UPDATE = "Update";
 	public static final String BTN_LOADING = "Loading";
-	public static final String DEFAULT_COMMENT_TXT = "Enter comment";
+	public static final String DEFAULT_COMMENT_TXT = "Notes (Optional or required based on tenant configuration)";
 	public static final String LOADING_BFL = "Loading BFL";
 	public static final String BFL_FOUND = "Indicates the Best Fix Location. Speed up your remediation by fixing multiple vulnerabilities at once";
 	public static final String BFL_NOT_FOUND = "Best fix Location not available for given results";
@@ -53,6 +53,7 @@ public class PluginConstants {
 	/******************************** TREE MESSAGES ********************************/
 	public static final String TREE_INVALID_SCAN_ID_FORMAT = "Invalid scan id format.";
 	public static final String TREE_NO_RESULTS = "No results.";
+	public static final String NO_SCAN_ID_PROVIDED = "No scan id provided.";
 	
 	/******************************** PREFERENCES ********************************/
 	public static final String PREFERENCES_API_KEY = "API key:";

@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.core.resources.IFile;
@@ -47,6 +48,7 @@ import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.FontData;
 import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.RGB;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
@@ -73,7 +75,6 @@ import org.eclipse.ui.dialogs.PreferencesUtil;
 import org.eclipse.ui.ide.IDE;
 import org.eclipse.ui.part.ViewPart;
 import org.osgi.service.event.EventHandler;
-
 import com.checkmarx.ast.codebashing.CodeBashing;
 import com.checkmarx.ast.learnMore.LearnMore;
 import com.checkmarx.ast.learnMore.Sample;
@@ -87,6 +88,7 @@ import com.checkmarx.ast.wrapper.CxException;
 import com.checkmarx.eclipse.Activator;
 import com.checkmarx.eclipse.enums.ActionName;
 import com.checkmarx.eclipse.enums.Severity;
+import com.checkmarx.eclipse.properties.Preferences;
 import com.checkmarx.eclipse.utils.CxLogger;
 import com.checkmarx.eclipse.utils.NotificationPopUpUI;
 import com.checkmarx.eclipse.utils.PluginConstants;
@@ -98,6 +100,8 @@ import com.checkmarx.eclipse.views.provider.TreeContentProvider;
 import com.google.common.base.Strings;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class CheckmarxView extends ViewPart implements EventHandler {
 
@@ -111,6 +115,13 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private static final String NO_PROJECTS_AVAILABLE = "No projects available.";
 	private static final String FORMATTED_SCAN_LABEL = "%s %s";
 	private static final String FORMATTED_SCAN_LABEL_LATEST = "%s %s (%s)";
+	private boolean isUpdatingCombo = false;
+	private boolean resetStoredProjects = false;
+	
+	private Timer debounceTimer = new Timer("ProjectSearchDebounce", true);
+	private TimerTask pendingSearchTask;
+	private static final int DEBOUNCE_DELAY_MS = 400;
+	private volatile String latestProjectSearchTerm = "";
 	
 	private static final int SCROLL_WIDTH = 30;
 	/**
@@ -152,6 +163,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private Button triageButton;
 	private SelectionAdapter triageButtonAdapter, codeBashingAdapter;
 	private Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell();
+	private String lastApiKey;
 
 	private boolean alreadyRunning = false;
 	private static List<LearnMore> learnMoreData;
@@ -184,6 +196,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private static String currentScanIdFormmated = PluginConstants.EMPTY_STRING;
 	private List<String> currentBranches = new ArrayList<>();
 	private List<Project> currentProjects = new ArrayList<>();
+	private List<Project> storeCurrentProjects = new ArrayList<>();
 
 
 	private boolean scansCleanedByProject = false;
@@ -199,6 +212,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	public CheckmarxView() {
 		super();
 		sync = new UISynchronizeImpl(PlatformUI.getWorkbench().getDisplay());
+		lastApiKey = Preferences.STORE.getString(Preferences.API_KEY);
 		rootModel = new DisplayModel.DisplayModelBuilder(PluginConstants.EMPTY_STRING).build();
 		globalSettings.loadSettings();
 		currentProjectId = globalSettings.getProjectId();
@@ -378,6 +392,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 			@Override
 			protected IStatus run(IProgressMonitor arg0) {
 				currentProjects = getProjects();
+				storeCurrentProjects = currentProjects;
 				sync.asyncExec(() -> {
 					projectComboViewer.setInput(currentProjects);
 					if (currentProjectId.isEmpty() || currentProjects.isEmpty()) {
@@ -706,9 +721,17 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 * Draw panel when Checkmarx credentials are not defined
 	 */
 	private void drawMissingCredentialsPanel() {
+		
+	    // Dispose all children to remove any previous panels
+	    for (Control child : parent.getChildren()) {
+	        child.dispose();
+	    }
 		openSettingsComposite = new Composite(parent, SWT.NONE);
 
 		openSettingsComposite.setLayout(new GridLayout(1, true));
+		
+		// This is the key line: center horizontally and vertically, and expand to fill
+	    openSettingsComposite.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, true, true));
 
 		final Label hidden = new Label(openSettingsComposite, SWT.NONE);
 		hidden.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, true, false));
@@ -734,6 +757,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				}
 			}
 		});
+		parent.layout(true, true);
 	}
 
 	private void createProjectListComboBox(Composite parent) {
@@ -755,7 +779,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				return super.getText(element);
 			}
 		});
-
+		
+		
 		projectComboViewer.addSelectionChangedListener(new ISelectionChangedListener() {
 			@Override
 			public void selectionChanged(SelectionChangedEvent event) {
@@ -771,10 +796,11 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 						updateStartScanButton(false);
 						return;
 					}
-
 					// Avoid non-sense trigger changed when opening the combo
 					if (selectedProject.getId().equals(currentProjectId)) {
 						CxLogger.info(PluginConstants.INFO_CHANGE_PROJECT_EVENT_NOT_TRIGGERED);
+						preservCaretposition(storeCurrentProjects, selectedProject.getName());
+						currentProjects = storeCurrentProjects;
 						return;
 					}
 
@@ -787,7 +813,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 							sync.asyncExec(() -> {
 								branchComboViewer.setInput(currentBranches);
 								PluginUtils.setTextForComboViewer(branchComboViewer, currentBranches.isEmpty() ? NO_BRANCHES_AVAILABLE : BRANCH_COMBO_VIEWER_TEXT);
-
 								PluginUtils.enableComboViewer(branchComboViewer, true);
 								PluginUtils.enableComboViewer(scanIdComboViewer, true);
 								PluginUtils.updateFiltersEnabledAndCheckedState(toolBarActions.getFilterActions());
@@ -799,26 +824,88 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 						}
 					};
 					job.schedule();
+					//After project selected and branches loaded reset the project list
+					if(resetStoredProjects) {
+						storeCurrentProjects.add(selectedProject);
+						preservCaretposition(storeCurrentProjects, selectedProject.getName());
+						currentProjects = storeCurrentProjects;
+						resetStoredProjects=false;
+					}
 				}
 			}
 		});
 
 		// Add ModifyListener to handle manual text input for projects
 		projectComboViewer.getCombo().addModifyListener(e -> {
-			String enteredProject = projectComboViewer.getCombo().getText();
-
-			// Check if text was modified and project doesn't exist
-			boolean projectExists = currentProjects.stream()
-					.anyMatch(p -> p.getName().equals(enteredProject));
-
-			if (!projectExists) {
+			if (isUpdatingCombo) return;
+			String enteredProject = projectComboViewer.getCombo().getText().trim();
+			
+			// Skip search if the text is the default instruction
+			if (enteredProject.equals(PROJECT_COMBO_VIEWER_TEXT) || enteredProject.equals(LOADING_PROJECTS)) {
 				updateStartScanButton(false); // Disable scan button
-			} else {
-				// Only enable if we also have a valid branch
-				boolean validBranch = !currentBranch.isEmpty() && currentBranches.contains(currentBranch);
-				updateStartScanButton(validBranch);
+				return;
 			}
-		});
+			 // If user starts typing again and list is empty, restore currentProjects
+		    if (projectComboViewer.getCombo().getItemCount() == 0 && !currentProjects.isEmpty() && enteredProject.length()>0) {
+		    	isUpdatingCombo = true;
+		    	preservCaretposition(currentProjects,enteredProject);
+		        isUpdatingCombo = false;
+		    }
+			
+			latestProjectSearchTerm = enteredProject; // Track the latest term
+			List<String> matchedProjects;
+			matchedProjects = currentProjects.stream().map(Project::getName)
+					.filter(name -> name != null && name.toLowerCase().contains(enteredProject.toLowerCase())).limit(100)
+					.collect(Collectors.toList());
+			if (matchedProjects.isEmpty()) {
+				CxLogger.info("Entered project is not exist in current projects list");
+				// Cancel any pending search
+				if (pendingSearchTask != null) {
+					pendingSearchTask.cancel();
+				}
+				// Schedule a new search after the debounce delay
+				pendingSearchTask = new java.util.TimerTask() {
+					@Override
+					public void run() {
+						final String searchTerm = latestProjectSearchTerm; // Capture the term for this search
+						// Schedule a background job for the server search
+						Job job = new Job("Checkmarx: Searching for project on server...") {
+							@Override
+							protected IStatus run(IProgressMonitor monitor) {
+								List<Project> searchedProjects;
+								try {
+									searchedProjects = DataProvider.getInstance().getProjects(searchTerm);
+									Display.getDefault().asyncExec(() -> {
+										if (searchTerm.equals(latestProjectSearchTerm)) {
+											isUpdatingCombo = true;
+											// Update UI in UI thread
+											if (searchedProjects != null && !searchedProjects.isEmpty()) {
+												preservCaretposition(searchedProjects,searchTerm);
+												currentProjects = searchedProjects;
+												resetStoredProjects=true;
+											} else {
+												preservCaretposition(Collections.emptyList(),searchTerm);
+												updateStartScanButton(false); // Disable scan button
+												isUpdatingCombo = false;
+												return;
+											}
+											isUpdatingCombo = false;
+										}
+									});
+								} catch (Exception ex) {
+									ex.printStackTrace();
+								}				
+								return Status.OK_STATUS;
+							}
+						};
+						job.schedule();
+					}
+				};
+				debounceTimer.schedule(pendingSearchTask, DEBOUNCE_DELAY_MS);
+				
+			}
+		});		
+
 	}
 	/**
 	 * Update state variables and make plugin fields loading when project changes
@@ -1105,6 +1192,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 */
 	
 	private Scan getLatestScanFromScanList(List<Scan> scanList) {
+		
 		return scanList.get(0);
 	}
 
@@ -1114,6 +1202,12 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 */
 	private void setSelectionForProjectComboViewer() {
 		String scanId = scanIdComboViewer.getCombo().getText();
+		
+		if(scanId.isEmpty()) {
+			PluginUtils.clearMessage(rootModel, resultsTree);
+			CxLogger.info(String.format(PluginConstants.NO_SCAN_ID_PROVIDED, scanId));
+			return;
+		}
 
 		if (currentScanId.equals(scanId)) {
 			PluginUtils.setTextForComboViewer(scanIdComboViewer, currentScanIdFormmated);
@@ -1371,7 +1465,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 					Job job = new Job("Checkmarx: Updating triage information...") {
 						String comment = commentText.getText() != null
-								&& !commentText.getText().equalsIgnoreCase("Enter comment") ? commentText.getText()
+								&& !commentText.getText().equalsIgnoreCase("Notes (Optional or required based on tenant configuration)") ? commentText.getText()
 										: "";
 
 						@Override
@@ -1800,20 +1894,20 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	}
 
 	private void drawPackageData(DisplayModel selectedItem) {
-	    ScrolledComposite sc = new ScrolledComposite(attackVectorCompositePanel, SWT.H_SCROLL | SWT.V_SCROLL);
+		ScrolledComposite sc = new ScrolledComposite(attackVectorCompositePanel, SWT.H_SCROLL | SWT.V_SCROLL);
 
-	    Composite child = new Composite(sc, SWT.NONE);
-	    child.setLayoutData(new GridData(GridData.FILL, GridData.BEGINNING, true, true));
-	    child.setLayout(new GridLayout(1, false));	
-	    child.setBackground(attackVectorCompositePanel.getBackground());
+		Composite child = new Composite(sc, SWT.NONE);
+		child.setLayoutData(new GridData(GridData.FILL, GridData.BEGINNING, true, true));
+		child.setLayout(new GridLayout(1, false));	
+		child.setBackground(attackVectorCompositePanel.getBackground());
 
-	    drawAttackVectorTitle(child, PluginConstants.PACKAGE_DATA);
-	    drawIndividualPackageData(child, selectedItem.getResult().getData().getPackageData());
+		drawAttackVectorTitle(child, PluginConstants.PACKAGE_DATA);
+		drawIndividualPackageData(child, selectedItem.getResult().getData().getPackageData());
 	   
-	    sc.setContent(child);
-	    sc.setMinSize(child.computeSize(SWT.DEFAULT, SWT.DEFAULT));
-	    sc.setExpandHorizontal(true);
-	    sc.setExpandVertical(true);
+		sc.setContent(child);
+		sc.setMinSize(child.computeSize(SWT.DEFAULT, SWT.DEFAULT));
+		sc.setExpandHorizontal(true);
+		sc.setExpandVertical(true);
 	}
 	
 	/**
@@ -1924,18 +2018,18 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		final ScrolledComposite learnMoreScrolledComposite = new ScrolledComposite(folder, SWT.V_SCROLL);
 		learnMoreScrolledComposite.setExpandHorizontal(true);
 		learnMoreScrolledComposite.setExpandVertical(true);
-	    
-	    final Composite learnMoreComposite = new Composite(learnMoreScrolledComposite, SWT.NONE);
-	    learnMoreComposite.setLayout(new GridLayout());
-	    
-	    learnMoreScrolledComposite.setContent(learnMoreComposite);
-	    learnMoreScrolledComposite.setMinSize(learnMoreComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT));
 		
-	    if(learnMoreData == null) {
-	    	CLabel loadingLabel = new CLabel(learnMoreComposite, SWT.NONE);
+		final Composite learnMoreComposite = new Composite(learnMoreScrolledComposite, SWT.NONE);
+		learnMoreComposite.setLayout(new GridLayout());
+		
+		learnMoreScrolledComposite.setContent(learnMoreComposite);
+		learnMoreScrolledComposite.setMinSize(learnMoreComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT));
+		
+		if(learnMoreData == null) {
+			CLabel loadingLabel = new CLabel(learnMoreComposite, SWT.NONE);
 			loadingLabel.setText(PluginConstants.LEARN_MORE_LOADING);
-	    }
-	    
+		}
+		
 		learnMoreTab.setControl(learnMoreScrolledComposite);
 		
 		Job job = new Job(PluginConstants.GETTING_LEARN_MORE_JOB) {
@@ -1969,8 +2063,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 								});
 							}
 
-				             learnMoreScrolledComposite.setMinSize(learnMoreComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT));
-				             learnMoreComposite.layout();
+							 learnMoreScrolledComposite.setMinSize(learnMoreComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT));
+							 learnMoreComposite.layout();
 						}
 					} catch (Exception e) {
 						CxLogger.error(String.format(PluginConstants.ERROR_GETTING_LEARN_MORE, e.getMessage()), e);
@@ -2018,17 +2112,17 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		final ScrolledComposite remediationExamplesScrolledComposite = new ScrolledComposite(folder, SWT.V_SCROLL | SWT.BORDER);
 		remediationExamplesScrolledComposite.setExpandHorizontal(true);
 		remediationExamplesScrolledComposite.setExpandVertical(true);
-	    
-	    final Composite remediationExamplesComposite = new Composite(remediationExamplesScrolledComposite, SWT.NONE);
-	    remediationExamplesComposite.setLayout(new GridLayout());
-	    
-	    remediationExamplesScrolledComposite.setContent(remediationExamplesComposite);
-	    remediationExamplesScrolledComposite.setMinSize(remediationExamplesComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT));
 		
-	    if(learnMoreData == null) {
-	    	Label loadingLabel = new Label(remediationExamplesComposite, SWT.NONE);
+		final Composite remediationExamplesComposite = new Composite(remediationExamplesScrolledComposite, SWT.NONE);
+		remediationExamplesComposite.setLayout(new GridLayout());
+		
+		remediationExamplesScrolledComposite.setContent(remediationExamplesComposite);
+		remediationExamplesScrolledComposite.setMinSize(remediationExamplesComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT));
+		
+		if(learnMoreData == null) {
+			Label loadingLabel = new Label(remediationExamplesComposite, SWT.NONE);
 			loadingLabel.setText(PluginConstants.LEARN_MORE_LOADING);
-	    }
+		}
 		
 		remediationExamplesTab.setControl(remediationExamplesScrolledComposite);
 		
@@ -2056,14 +2150,14 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 							for(Sample sample : samples) {
 								StyledText sampleTitle = new StyledText(remediationExamplesComposite, SWT.WRAP);
 								sampleTitle.setText(String.format(PluginConstants.REMEDIATION_EXAMPLE_TITLE_FORMAT, sample.getTitle(), sample.getProgLanguage())); 
-						        GridData titleLayoutData = new GridData( GridData.FILL_HORIZONTAL ) ;
-						        titleLayoutData.grabExcessHorizontalSpace = true;
-						        titleLayoutData.horizontalAlignment = SWT.FILL;
-						        titleLayoutData.widthHint = remediationExamplesScrolledComposite.getClientArea().width - SCROLL_WIDTH;
-						        titleLayoutData.horizontalSpan = 2;
-						        sampleTitle.setLayoutData(titleLayoutData);
-						        sampleTitle.setMargins(2, 5, 2, 5);
-					            									
+								GridData titleLayoutData = new GridData( GridData.FILL_HORIZONTAL ) ;
+								titleLayoutData.grabExcessHorizontalSpace = true;
+								titleLayoutData.horizontalAlignment = SWT.FILL;
+								titleLayoutData.widthHint = remediationExamplesScrolledComposite.getClientArea().width - SCROLL_WIDTH;
+								titleLayoutData.horizontalSpan = 2;
+								sampleTitle.setLayoutData(titleLayoutData);
+								sampleTitle.setMargins(2, 5, 2, 5);
+																	
 								Composite sampleExampleComposite = new Composite(remediationExamplesComposite, SWT.NONE);
 								sampleExampleComposite.setBackground(remediationExamplesComposite.getBackground());
 								GridLayout layout = new GridLayout();
@@ -2074,12 +2168,12 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 								
 								Label sampleExample = new Label(sampleExampleComposite, SWT.WRAP);
 								sampleExample.setText(sample.getCode()); 
-						        GridData exampleLayoutData = new GridData(GridData.FILL_HORIZONTAL) ;
-						        exampleLayoutData.grabExcessHorizontalSpace = true;
-						        exampleLayoutData.horizontalAlignment = SWT.FILL;
-						        exampleLayoutData.widthHint = remediationExamplesScrolledComposite.getClientArea().width - SCROLL_WIDTH;
-						        exampleLayoutData.horizontalSpan = 2;
-						        sampleExample.setLayoutData(exampleLayoutData);
+								GridData exampleLayoutData = new GridData(GridData.FILL_HORIZONTAL) ;
+								exampleLayoutData.grabExcessHorizontalSpace = true;
+								exampleLayoutData.horizontalAlignment = SWT.FILL;
+								exampleLayoutData.widthHint = remediationExamplesScrolledComposite.getClientArea().width - SCROLL_WIDTH;
+								exampleLayoutData.horizontalSpan = 2;
+								sampleExample.setLayoutData(exampleLayoutData);
 							
 								remediationExamplesScrolledComposite.setMinSize(remediationExamplesComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT));
 								remediationExamplesComposite.layout();
@@ -2128,14 +2222,14 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		titleLabel.setFont(boldFont);
 
 		StyledText descriptionLabel = new StyledText(composite, SWT.WRAP);
-        descriptionLabel.setText(description); 
-        GridData descriptionLayout = new GridData(GridData.FILL_HORIZONTAL);
-        descriptionLayout.grabExcessHorizontalSpace = true;
-        descriptionLayout.horizontalAlignment = SWT.FILL;
-        descriptionLayout.widthHint = composite.getClientArea().width - SCROLL_WIDTH;
-        descriptionLayout.horizontalSpan = 2;
-        descriptionLabel.setLayoutData(descriptionLayout);
-        descriptionLabel.setBottomMargin(20);
+		descriptionLabel.setText(description); 
+		GridData descriptionLayout = new GridData(GridData.FILL_HORIZONTAL);
+		descriptionLayout.grabExcessHorizontalSpace = true;
+		descriptionLayout.horizontalAlignment = SWT.FILL;
+		descriptionLayout.widthHint = composite.getClientArea().width - SCROLL_WIDTH;
+		descriptionLayout.horizontalSpan = 2;
+		descriptionLabel.setLayoutData(descriptionLayout);
+		descriptionLabel.setBottomMargin(20);
 	}
 
 	/*private void populateBFLMessage(Image image, String bflMessage) {
@@ -2214,18 +2308,18 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private void drawVulnerabilityLocation(DisplayModel selectedItem) {		
 		ScrolledComposite sc = new ScrolledComposite(attackVectorCompositePanel, SWT.H_SCROLL | SWT.V_SCROLL);
 
-	    Composite child = new Composite(sc, SWT.NONE);
-	    child.setLayoutData(new GridData(GridData.FILL, GridData.BEGINNING, true, true));
-	    child.setLayout(new GridLayout(1, false));	
-	    child.setBackground(attackVectorCompositePanel.getBackground());
+		Composite child = new Composite(sc, SWT.NONE);
+		child.setLayoutData(new GridData(GridData.FILL, GridData.BEGINNING, true, true));
+		child.setLayout(new GridLayout(1, false));	
+		child.setBackground(attackVectorCompositePanel.getBackground());
 
-	    drawAttackVectorTitle(child, PluginConstants.LOCATION);
+		drawAttackVectorTitle(child, PluginConstants.LOCATION);
 		drawIndividualLocationData(child, selectedItem);
 	   
-	    sc.setContent(child);
-	    sc.setMinSize(child.computeSize(SWT.DEFAULT, SWT.DEFAULT));
-	    sc.setExpandHorizontal(true);
-	    sc.setExpandVertical(true);
+		sc.setContent(child);
+		sc.setMinSize(child.computeSize(SWT.DEFAULT, SWT.DEFAULT));
+		sc.setExpandHorizontal(true);
+		sc.setExpandVertical(true);
 	}
 
 	private void drawIndividualLocationData(Composite parent, DisplayModel selectedItem) {
@@ -2504,9 +2598,10 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 			@Override
 			protected IStatus run(IProgressMonitor arg0) {
-				List<Project> projectList = getProjects();
+				currentProjects = getProjects();
+				storeCurrentProjects = currentProjects;
 				sync.asyncExec(() -> {
-					projectComboViewer.setInput(projectList);
+					projectComboViewer.setInput(currentProjects);
 					projectComboViewer.refresh();
 					PluginUtils.setTextForComboViewer(projectComboViewer, PROJECT_COMBO_VIEWER_TEXT);
 					PluginUtils.enableComboViewer(projectComboViewer, true);
@@ -2632,16 +2727,32 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 */
 	@Override
 	public void handleEvent(org.osgi.service.event.Event arg0) {
-		if (!isPluginDraw) {
+		String currentApiKey = Preferences.STORE.getString(Preferences.API_KEY);
+		if (!currentApiKey.isEmpty() && !isPluginDraw) {
 			drawPluginPanel();
 		} else {
-			// If authenticated successfully and the projects are empty try to get them again
-			if (projectComboViewer.getCombo().getItemCount() == 0) {
-				clearAndRefreshPlugin();
+			// If credentials changed reload projects, branches and scans from new tenant
+			if (currentApiKey.isEmpty()) {
+				updateStartScanButton(false);
+				drawMissingCredentialsPanel();
+				//Dispose toolbar
+			    if (toolBarActions != null) {
+			        toolBarActions.disposeToolbar();
+			        toolBarActions = null;
+			    }
+				isPluginDraw = false;
+			} else if (lastApiKey.equalsIgnoreCase(currentApiKey)) {
+				return;
+			} else {
+				// clear result section
+				PluginUtils.clearMessage(rootModel, resultsTree);
+				// Reset state variables
+				currentProjectId = PluginConstants.EMPTY_STRING;
+				currentBranch = PluginConstants.EMPTY_STRING;
+				currentScanId = PluginConstants.EMPTY_STRING;
+				loadComboboxes();
 			}
-			
-			toolBarActions.refreshToolbar();
-			updateStartScanButton(true);
+			lastApiKey=currentApiKey;
 		}
 	}
 
@@ -2680,5 +2791,18 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		} else {
 			toolBarActions.getStartScanAction().setEnabled(false);
 		}
+	}
+	
+	/**
+	 * Store the user entered value and the caret position
+	 * 
+	 * @param projectList
+	 * @param searchText
+	 */
+	private void preservCaretposition( List<Project> projectList, String searchText) {
+		int caretPos = projectComboViewer.getCombo().getCaretPosition();
+		projectComboViewer.setInput(projectList);
+		PluginUtils.setTextForComboViewer(projectComboViewer, searchText);
+		projectComboViewer.getCombo().setSelection(new Point(caretPos, caretPos));
 	}
 }
