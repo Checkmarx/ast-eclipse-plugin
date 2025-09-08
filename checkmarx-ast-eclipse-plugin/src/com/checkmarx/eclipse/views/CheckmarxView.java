@@ -41,15 +41,16 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CLabel;
 import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.custom.StyledText;
+import org.eclipse.swt.events.MouseAdapter;
+import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
-import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.FontData;
 import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.graphics.ImageData;
 import org.eclipse.swt.graphics.Point;
-import org.eclipse.swt.graphics.RGB;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -74,6 +75,8 @@ import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.dialogs.PreferencesUtil;
 import org.eclipse.ui.ide.IDE;
 import org.eclipse.ui.part.ViewPart;
+import org.eclipse.ui.themes.ITheme;
+import org.eclipse.ui.themes.IThemeManager;
 import org.osgi.service.event.EventHandler;
 import com.checkmarx.ast.codebashing.CodeBashing;
 import com.checkmarx.ast.learnMore.LearnMore;
@@ -153,7 +156,9 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	public static final Image STATE = Activator.getImageDescriptor("/icons/state.png").createImage();
 
 	public static final Image BFL = Activator.getImageDescriptor("/icons/CxFlatLogo12x12.png").createImage();
-
+	
+	public static final Image CODEBASHING_LOGO = Activator.getImageDescriptor("/icons/codebashing_light.png").createImage();
+	
 	private TreeViewer resultsTree;
 	private ComboViewer scanIdComboViewer, projectComboViewer, branchComboViewer, triageSeverityComboViewew, triageStateComboViewer;
 	private ISelectionChangedListener triageSeverityComboViewerListener, triageStateComboViewerListener;
@@ -161,7 +166,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private DisplayModel rootModel;
 	private String selectedSeverity, selectedState;
 	private Button triageButton;
-	private SelectionAdapter triageButtonAdapter, codeBashingAdapter;
+	private SelectionAdapter triageButtonAdapter;
 	private Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell();
 	private String lastApiKey;
 
@@ -177,8 +182,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private Composite openSettingsComposite;
 	private CLabel titleLabel;
 	private Text titleText;
-	private Link codeBashingLinkText;
-
+	private Label codeBashingImageLabel;
+	private DisplayModel selectedItem;
 	private CLabel attackVectorLabel;
 	//private CLabel bflLabel;
 	//private Text bflText;
@@ -198,13 +203,10 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private List<Project> currentProjects = new ArrayList<>();
 	private List<Project> storeCurrentProjects = new ArrayList<>();
 
-
 	private boolean scansCleanedByProject = false;
 	private boolean firstTimeTriggered = false;
-
 	private Composite parent;
 	private ScrolledComposite scrolledComposite;
-
 	private boolean isPluginDraw = false;
 	protected TabFolder tabFolder;
 	protected int bflNode;
@@ -252,6 +254,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		} else {
 			drawMissingCredentialsPanel();
 		}
+
 	}
 
 	/**
@@ -328,6 +331,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 * Draw Plugin
 	 */
 	private void drawPluginPanel() {
+				
 		// Dispose missing credentials panel
 		if (openSettingsComposite != null && !openSettingsComposite.isDisposed()) {
 			openSettingsComposite.dispose();
@@ -594,19 +598,19 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		CLabel codeBashingLink = new CLabel(codeBashingComposite, SWT.HORIZONTAL);
 		codeBashingLink.setRightMargin(0);
 		codeBashingLink.setText("Learn more at");
-
-		CLabel clogo = new CLabel(codeBashingComposite, SWT.HORIZONTAL);
-		GridData gd_clogo = new GridData(SWT.RIGHT, SWT.LEFT, false, false, 1, 1);
-		gd_clogo.widthHint = 18;
-		clogo.setLayoutData(gd_clogo);
-		clogo.setForeground(new Color(display, new RGB(243, 106, 34)));
-		clogo.setText(">_");
-		clogo.setLeftMargin(0);
-		clogo.setRightMargin(0);
-
-		codeBashingLinkText = new Link(codeBashingComposite, SWT.HORIZONTAL);
-		codeBashingLinkText.setText("<a>codebashing</a>");
-		codeBashingLinkText.setData(PluginConstants.DATA_ID_KEY, PluginConstants.CODEBASHING_LINK_ID);
+	    
+		// Resize the image to fit the desired dimensions
+	    int desiredWidth = 180; // Set the desired width
+	    int desiredHeight = 40; // Set the desired height
+	    ImageData originalImageData = CODEBASHING_LOGO.getImageData();
+	    ImageData resizedImageData = originalImageData.scaledTo(desiredWidth, desiredHeight);
+	    Image resizedImage = new Image(display, resizedImageData);
+		
+		codeBashingImageLabel = new Label(codeBashingComposite, SWT.NONE);
+		GridData gd_image = new GridData(SWT.RIGHT, SWT.LEFT, false, false, 1, 1);
+		codeBashingImageLabel.setLayoutData(gd_image);
+		codeBashingImageLabel.setImage(resizedImage);
+		codeBashingImageLabel.setCursor(display.getSystemCursor(SWT.CURSOR_HAND));
 
 		Label separator = new Label(resultViewComposite, SWT.HORIZONTAL | SWT.SEPARATOR);
 		separator.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
@@ -668,6 +672,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		scrolledComposite.setMinSize(resultViewComposite.computeSize(SWT.DEFAULT, SWT.DEFAULT));
 
 		resultViewComposite.setVisible(false);
+
 	}
 
 	/**
@@ -1348,7 +1353,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				}
 				if (event.getSelection() instanceof IStructuredSelection) {
 					IStructuredSelection selection = (IStructuredSelection) event.getSelection();
-					DisplayModel selectedItem = (DisplayModel) selection.getFirstElement();
+					selectedItem = (DisplayModel) selection.getFirstElement();
 
 					if (selectedItem == null || selectedItem.getType() == null) {
 						return;
@@ -1534,26 +1539,24 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 * 
 	 */
 
-	private void populateCodeBashingToolTip(DisplayModel selectedItem) {
-		codeBashingLinkText.setToolTipText(
-				"Learn more about " + selectedItem.getQueryName() + " using Checkmarx's eLearning platform");
+	private void populateCodeBashingToolTip(DisplayModel selectedItem) {		
+		 // Set the tooltip text for the image label
+	    codeBashingImageLabel.setToolTipText(
+	        "Learn more about " + selectedItem.getQueryName() + " using Checkmarx's eLearning platform"
+	    );
 
-		// remove the previous listeners to make sure multiple listeners are not lined
-		// up
-		if (codeBashingAdapter != null) {
-			codeBashingLinkText.removeSelectionListener(codeBashingAdapter);
-		}
+	    // Remove any previous listeners to avoid duplicates
+	    for (Listener listener : codeBashingImageLabel.getListeners(SWT.MouseUp)) {
+	        codeBashingImageLabel.removeListener(SWT.MouseUp, listener);
+	    }
 
-		// add the latest selection event as selection adapter
-		codeBashingAdapter = new SelectionAdapter() {
-			public void widgetSelected(SelectionEvent e) {
-				openBrowserLink(selectedItem);
-			}
-
-		};
-
-		// bind the selection listener to the link
-		codeBashingLinkText.addSelectionListener(codeBashingAdapter);
+	    // Add a click listener to open the browser link
+	    codeBashingImageLabel.addMouseListener(new MouseAdapter() {
+	        @Override
+	        public void mouseUp(MouseEvent e) {
+	            openBrowserLink(selectedItem);
+	        }
+	    });
 
 	}
 
@@ -1899,8 +1902,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		Composite child = new Composite(sc, SWT.NONE);
 		child.setLayoutData(new GridData(GridData.FILL, GridData.BEGINNING, true, true));
 		child.setLayout(new GridLayout(1, false));	
-		child.setBackground(attackVectorCompositePanel.getBackground());
-
 		drawAttackVectorTitle(child, PluginConstants.PACKAGE_DATA);
 		drawIndividualPackageData(child, selectedItem.getResult().getData().getPackageData());
 	   
@@ -2254,8 +2255,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 						String.format("<a>%s[%d,%d]</a>", node.getFileName(), node.getLine(), node.getColumn()),
 						new Listener() {
 							public void handleEvent(Event event) {
-								openTheSelectedFile(node.getFileName(), node.getLine(),
-										groupName + "_" + queryName + "_" + node.getName());
+								openTheSelectedFile(node.getFileName(), node.getLine());
 							}
 						});
 
@@ -2333,7 +2333,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				new Listener() {
 					public void handleEvent(Event event) {
 						openTheSelectedFile(selectedItem.getResult().getData().getFileName(),
-								selectedItem.getResult().getData().getLine(), null);
+								selectedItem.getResult().getData().getLine());
 					}
 				});
 
@@ -2390,7 +2390,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		}
 	}
 
-	private void openTheSelectedFile(String fileName, Integer lineNumber, String markerDescription) {
+	private void openTheSelectedFile(String fileName, Integer lineNumber) {
 		Path filePath = new Path(fileName);
 		List<IFile> filesFound = PluginUtils.findFileInWorkspace(filePath.lastSegment());
 
@@ -2805,4 +2805,5 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		PluginUtils.setTextForComboViewer(projectComboViewer, searchText);
 		projectComboViewer.getCombo().setSelection(new Point(caretPos, caretPos));
 	}
+
 }
