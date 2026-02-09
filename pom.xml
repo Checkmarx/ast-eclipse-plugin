@@ -110,9 +110,8 @@
 				<configuration>
 					<!-- We should turn on this flag and resolve all the warning
 					issues! -->
-					<showWarnings>false</showWarnings>
-					<!--
-					<compilerArgument>-warn:+discouraged,+forbidden,-unavoidableGenericProblems,-warningToken</compilerArgument> -->
+					<showWarnings>true</showWarnings>
+					<compilerArgument>-warn:+discouraged,+forbidden,-unavoidableGenericProblems,-warningToken</compilerArgument>
 				</configuration>
 			</plugin>
 

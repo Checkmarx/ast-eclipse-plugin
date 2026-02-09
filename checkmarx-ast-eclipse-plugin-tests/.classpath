@@ -7,9 +7,8 @@
 			<attribute name="test" value="true"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry exported="true" kind="lib" path="lib/jmockit-1.19.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/mockito-core-1.10.19.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/mockito-core-5.14.2.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/objenesis-2.2.jar"/>
-	<classpathentry exported="true" kind="lib" path="lib/junit-4.13.2.jar"/>
+	<classpathentry exported="true" kind="lib" path="lib/junit-jupiter-5.11.4.jar"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>
