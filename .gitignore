@@ -4,5 +4,4 @@
 /.metadata/
 .idea/
 .vs/
-.vscode/checkmarx-ast-eclipse-plugin/lib/ast-cli-java-wrapper-*.jar
-checkmarx-ast-eclipse-plugin/lib/ast-cli-java-wrapper-*.jar
+*.jar

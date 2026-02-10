@@ -16,7 +16,16 @@
 	<classpathentry exported="true" kind="lib" path="lib/jackson-databind-2.21.0.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/org.eclipse.mylyn.commons.ui_4.9.0.v20251121-0615.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/org-eclipse-mylyn-commons-core.jar"/>
-	<classpathentry kind="lib" path="lib/commons-lang3-3.18.0.jar"/>
-	<classpathentry kind="src" path="src"/>
-	<classpathentry kind="output" path="target/classes"/>
+	<classpathentry kind="src" output="bin" path="src">
+		<attributes>
+			<attribute name="optional" value="true"/>
+			<attribute name="maven.pomderived" value="true"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="con" path="org.eclipse.m2e.MAVEN2_CLASSPATH_CONTAINER">
+		<attributes>
+			<attribute name="maven.pomderived" value="true"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="output" path="bin"/>
 </classpath>

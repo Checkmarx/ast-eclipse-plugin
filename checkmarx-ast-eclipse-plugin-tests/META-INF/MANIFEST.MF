@@ -5,10 +5,10 @@ Bundle-SymbolicName: com.checkmarx.ast.eclipse.tests
 Bundle-Version: 1.0.0.qualifier
 Require-Bundle: org.eclipse.swtbot.swt.finder,
  org.eclipse.swtbot.eclipse.finder,
- org.eclipse.swtbot.junit4_x,
+ org.eclipse.swtbot.junit5_x,
  org.eclipse.swt,
- org.eclipse.ui,
- org.junit
+ org.junit,
+ junit-jupiter-api
 Bundle-RequiredExecutionEnvironment: JavaSE-17
 Bundle-ClassPath: ., lib/mockito-core-5.14.2.jar, lib/objenesis-2.2.jar, lib/junit-jupiter-5.11.4.jar
 Fragment-Host: com.checkmarx.eclipse.plugin;bundle-version=0.0.0

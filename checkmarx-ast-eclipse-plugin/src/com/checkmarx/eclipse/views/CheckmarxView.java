@@ -654,7 +654,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		commentText.addListener(SWT.FocusOut, new Listener() {
 			public void handleEvent(Event e) {
 				Text textReceived = (Text) e.widget;
-				if (textReceived.getText() == null || textReceived.getText() == "") {
+				if (textReceived.getText() == null || textReceived.getText().isEmpty()) {
 					commentText.setText(PluginConstants.DEFAULT_COMMENT_TXT);
 					resultViewComposite.layout();
 				}

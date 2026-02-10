@@ -3,7 +3,7 @@ package checkmarx.ast.eclipse.plugin.tests.ui;
 import org.eclipse.jface.bindings.keys.KeyStroke;
 import org.eclipse.jface.bindings.keys.ParseException;
 
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -11,18 +11,15 @@ import java.util.List;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
-import org.eclipse.swtbot.swt.finder.junit.SWTBotJunit4ClassRunner;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotMenu;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotToolbarDropDownButton;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotTreeItem;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
 
 import com.checkmarx.eclipse.enums.Severity;
 import com.checkmarx.eclipse.enums.State;
 import com.checkmarx.eclipse.views.actions.ToolBarActions;
 
-@RunWith(SWTBotJunit4ClassRunner.class)
 public class TestFilterState extends BaseUITest{
 	
 	List<String> groupByActions = Arrays.asList(ToolBarActions.GROUP_BY_QUERY_NAME,ToolBarActions.GROUP_BY_SEVERITY,ToolBarActions.GROUP_BY_STATE_NAME);
@@ -126,7 +123,7 @@ public class TestFilterState extends BaseUITest{
 			assertTrue(!filteredGroup.contains(firstGroup));
 		}
 		else {
-			assertTrue(TestUI.ASSERT_NO_CHINDREN, _bot.tree(1).getTreeItem(_bot.tree(1).cell(0, 0)).expand().getNodes().isEmpty());
+			assertTrue( _bot.tree(1).getTreeItem(_bot.tree(1).cell(0, 0)).expand().getNodes().isEmpty(), TestUI.ASSERT_NO_CHINDREN);
 		}
 		
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
@@ -152,10 +149,8 @@ public class TestFilterState extends BaseUITest{
             .expand()
             .getNodes();
         
-        assertTrue("Should contain SAST results", 
-            scannerTypes.stream().anyMatch(node -> node.contains("SAST")));
-        assertTrue("Scanner types format should be correct", 
-            scannerTypes.stream().allMatch(node -> node.matches(".*\\(\\d+\\)")));
+        assertTrue(scannerTypes.stream().anyMatch(node -> node.contains("SAST")), "Should contain SAST results");
+        assertTrue(scannerTypes.stream().allMatch(node -> node.matches(".*\\(\\d+\\)")), "Scanner types format should be correct");
             
         _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
     }
@@ -294,11 +289,10 @@ public class TestFilterState extends BaseUITest{
 	            String currentSeverity = actualSeverities.get(i);
 	            String nextSeverity = actualSeverities.get(i + 1);
 	            
-	            assertTrue(
-	                String.format("Wrong severity order: %s found before %s", 
-	                    currentSeverity, nextSeverity),
-	                getSeverityWeight(currentSeverity) >= getSeverityWeight(nextSeverity)
-	            );
+				assertTrue(getSeverityWeight(currentSeverity) >= getSeverityWeight(nextSeverity),
+						String.format("Wrong severity order: %s found before %s", currentSeverity, nextSeverity)
+
+				);
 	        }
 	        
 	        _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
