@@ -3,5 +3,9 @@ Bundle-ManifestVersion: 2
 Bundle-Name: checkmarx-eclipse-plugin
 Bundle-SymbolicName: checkmarx-eclipse-plugin
 Bundle-Version: 1.0.0.qualifier
+Require-Bundle:
+ org.slf4j.api,
+ org.apache.commons.lang3,
+ org.eclipse.mylyn.commons.ui
 Bundle-RequiredExecutionEnvironment: JavaSE-17
 Automatic-Module-Name: checkmarx.eclipse.plugin
