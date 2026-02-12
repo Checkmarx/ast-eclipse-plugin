@@ -21,6 +21,7 @@ import com.checkmarx.eclipse.utils.PluginConstants;
 
 public class TestTriage  extends BaseUITest {
 
+	//First triage action may take some time to complete, so we need to wait for the button to be enabled before performing the next action
 	private static final ICondition triageButtonEnabled = new ICondition() {
 		private SWTBot bot;
 		
