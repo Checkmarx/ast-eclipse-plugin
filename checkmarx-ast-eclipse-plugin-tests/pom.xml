@@ -1,27 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-    <groupId>com.checkmarx.ast.eclipse.tests</groupId>
-    <artifactId>com.checkmarx.ast.eclipse.tests</artifactId>
-    <description>Checkmarx Eclipse Plugin Integration Tests Project</description>
-    <packaging>eclipse-test-plugin</packaging>
-    <parent>
-        <groupId>com.checkmarx.ast.eclipse</groupId>
-        <artifactId>checkmarx-eclipse-plugin</artifactId>
-        <version>1.0.0-SNAPSHOT</version>
-    </parent>
-    <dependencies>
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <version>5.11.4</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-core</artifactId>
-            <version>5.14.2</version>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>com.checkmarx.ast.eclipse.tests</groupId>
+	<artifactId>com.checkmarx.ast.eclipse.tests</artifactId>
+	<description>Checkmarx Eclipse Plugin Integration Tests Project</description>
+	<packaging>eclipse-test-plugin</packaging>
+	<parent>
+		<groupId>com.checkmarx.ast.eclipse</groupId>
+		<artifactId>checkmarx-eclipse-plugin</artifactId>
+		<version>1.0.0-SNAPSHOT</version>
+	</parent>
+	<dependencies>
+		<dependency>
+			<groupId>org.mockito</groupId>
+			<artifactId>mockito-core</artifactId>
+			<version>5.14.2</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
@@ -34,13 +29,10 @@
 				<configuration>
 					<useUIHarness>true</useUIHarness>
 					<useUIThread>false</useUIThread>
-					<failIfNoTests>false</failIfNoTests>
-					<includes>
-						<include>**/*Test.java</include>
-					</includes>
+					<providerHint>junit5</providerHint>
+					<failIfNoTests>true</failIfNoTests>
 				</configuration>
 			</plugin>
-
 		</plugins>
-    </build>
+	</build>
 </project>

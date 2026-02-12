@@ -7,8 +7,8 @@ Require-Bundle: org.eclipse.swtbot.swt.finder,
  org.eclipse.swtbot.eclipse.finder,
  org.eclipse.swtbot.junit5_x,
  org.eclipse.swt,
- org.junit,
+ org.eclipse.jdt.junit5.runtime,
  junit-jupiter-api
 Bundle-RequiredExecutionEnvironment: JavaSE-17
-Bundle-ClassPath: ., lib/mockito-core-5.14.2.jar, lib/objenesis-2.2.jar, lib/junit-jupiter-5.11.4.jar
+Bundle-ClassPath: ., lib/mockito-core-5.14.2.jar, lib/objenesis-2.2.jar
 Fragment-Host: com.checkmarx.eclipse.plugin;bundle-version=0.0.0
