@@ -14,7 +14,6 @@
 	<classpathentry exported="true" kind="lib" path="lib/commons-lang3-3.18.0.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/ast-cli-java-wrapper-2.4.18.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/jackson-databind-2.21.0.jar"/>
-	
 	<classpathentry exported="true" kind="lib" path="lib/org.eclipse.mylyn.commons.ui_4.9.0.v20251121-0615.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/org-eclipse-mylyn-commons-core.jar"/>
 	<classpathentry kind="src" output="bin" path="src">
