@@ -3,6 +3,10 @@ on:
   pull_request:
     branches: 
       - main
+  push:
+    branches:
+      - codeMigration
+      
 
 jobs:
 
@@ -61,4 +65,5 @@ jobs:
         run: |
           Xvfb -ac :99 -screen 0 1920x1080x16 &
           mvn verify -Dtest.includes="**/integration/*Test.java"
+
 
