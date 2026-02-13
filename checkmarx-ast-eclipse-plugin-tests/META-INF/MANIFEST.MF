@@ -1,14 +1,16 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
-Bundle-Name: checkmarx-ast-eclipse-plugin-tests
+Bundle-Name: Checkmarx AST Eclipse Tests
 Bundle-SymbolicName: com.checkmarx.ast.eclipse.tests
 Bundle-Version: 1.0.0.qualifier
-Require-Bundle: org.eclipse.swtbot.swt.finder,
+Fragment-Host: com.checkmarx.eclipse.plugin;bundle-version="1.0.0"
+Require-Bundle: 
+ org.eclipse.swtbot.swt.finder,
  org.eclipse.swtbot.eclipse.finder,
  org.eclipse.swtbot.junit5_x,
  org.eclipse.swt,
  org.eclipse.jdt.junit5.runtime,
  junit-jupiter-api
 Bundle-RequiredExecutionEnvironment: JavaSE-17
-Bundle-ClassPath: ., lib/mockito-core-5.14.2.jar, lib/objenesis-2.2.jar
-Fragment-Host: com.checkmarx.eclipse.plugin;bundle-version=0.0.0
+Bundle-ClassPath: .,lib/mockito-core-5.14.2.jar,lib/powermock-core-*.jar
+Automatic-Module-Name: com.checkmarx.ast.eclipse.tests

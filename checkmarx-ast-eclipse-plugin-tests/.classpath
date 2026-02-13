@@ -2,6 +2,7 @@
 <classpath>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-17">
 		<attributes>
+			<attribute name="module" value="true"/>
 			<attribute name="maven.pomderived" value="true"/>
 		</attributes>
 	</classpathentry>
@@ -15,6 +16,14 @@
 	<classpathentry exported="true" kind="lib" path="lib/mockito-core-5.14.2.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/objenesis-2.2.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/junit-jupiter-5.11.4.jar"/>
+	<classpathentry kind="lib" path="lib/objenesis-3.3.jar"/>
+	<classpathentry kind="lib" path="lib/powermock-api-mockito2-2.0.7.jar"/>
+	<classpathentry kind="lib" path="lib/powermock-core-2.0.9.jar"/>
+	<classpathentry kind="lib" path="lib/powermock-api-support-1.4.9.jar"/>
+	<classpathentry kind="lib" path="lib/powermock-module-junit4-2.0.9.jar"/>
+	<classpathentry kind="lib" path="lib/powermock-module-junit4-common-2.0.9.jar"/>
+	<classpathentry kind="lib" path="lib/powermock-module-junit4-rule-2.0.9.jar"/>
+	<classpathentry kind="lib" path="lib/powermock-reflect-2.0.9.jar"/>
 	<classpathentry kind="con" path="org.eclipse.m2e.MAVEN2_CLASSPATH_CONTAINER">
 		<attributes>
 			<attribute name="maven.pomderived" value="true"/>
