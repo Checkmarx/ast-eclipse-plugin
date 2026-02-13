@@ -1,7 +1,7 @@
 package checkmarx.ast.eclipse.plugin.tests.ui;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.concurrent.TimeoutException;
 
@@ -12,9 +12,9 @@ import org.eclipse.swtbot.swt.finder.results.VoidResult;
 import org.eclipse.swtbot.swt.finder.utils.SWTBotPreferences;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotShell;
 import org.eclipse.ui.PlatformUI;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 
 import com.checkmarx.eclipse.utils.PluginConstants;
 
@@ -52,29 +52,29 @@ public abstract class BaseUITest {
 	
 	protected static boolean _cxSettingsDefined = false;
 	
-	@BeforeClass
+	@BeforeAll
 	public static void beforeClass() throws Exception {
 		// Needed to set CI environment keyboard layout
-		SWTBotPreferences.KEYBOARD_LAYOUT = "EN_US"; 
+		SWTBotPreferences.KEYBOARD_LAYOUT = "EN_US";
 
 		// Used to decrease tests velocity
 		SWTBotPreferences.PLAYBACK_DELAY = 500;
-		
+
 		SWTBotPreferences.TIMEOUT = 30000;
 
 		_bot = new SWTWorkbenchBot();
-				
+
 		if(!eclipseProjectExist) {
 			createEclipseProject();
 			eclipseProjectExist = true;
 		}
 	}
 
-	@After
+	@AfterEach
 	public void tearDown() throws Exception {
 	}
-	
-	@AfterClass
+
+	@AfterAll
 	public static void sleep() {
 		_bot.sleep(2000);
 	}
@@ -120,7 +120,7 @@ public abstract class BaseUITest {
 
 			sleep(1000);
 
-			assertEquals("The tree must contain one row with an error message", _bot.tree(1).rowCount(), 1);
+			assertEquals(1, _bot.tree(1).rowCount(), "The tree must contain one row with an error message");
 			assertEquals("An incorrect scanId format message must be displayed", PluginConstants.TREE_INVALID_SCAN_ID_FORMAT, _bot.tree(1).cell(0, 0));
 		}
 		
@@ -132,13 +132,14 @@ public abstract class BaseUITest {
 		// type a valid and existing Scan ID
 		typeValidScanID();
 
-		assertEquals("The tree must contain one row", _bot.tree().rowCount(), 1);		
+		assertEquals(1, _bot.tree().rowCount(), "The tree must contain one row");
 		boolean retrievingOrRetrievedResults = _bot.tree(1).cell(0, 0).contains(Environment.SCAN_ID);
-		assertTrue("The plugin should have or should be retrieving results", retrievingOrRetrievedResults);
+		assertTrue(retrievingOrRetrievedResults, "The plugin should have or should be retrieving results");
 
 		waitWhileTreeNodeEqualsTo(String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, Environment.SCAN_ID));
-		
-		assertTrue("The plugin should retrieve results", _bot.tree(1).cell(0, 0).startsWith(Environment.SCAN_ID));
+
+		assertTrue(_bot.tree(1).cell(0, 0).startsWith(Environment.SCAN_ID), "The plugin should retrieve results");
+
 	}
 
 	/**

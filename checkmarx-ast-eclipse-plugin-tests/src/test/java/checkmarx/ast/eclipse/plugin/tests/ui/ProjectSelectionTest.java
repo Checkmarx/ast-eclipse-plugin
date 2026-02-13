@@ -1,19 +1,13 @@
 package checkmarx.ast.eclipse.plugin.tests.ui;
 
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.concurrent.TimeoutException;
 
-import org.eclipse.swtbot.swt.finder.junit.SWTBotJunit4ClassRunner;
-import org.eclipse.swtbot.swt.finder.widgets.SWTBotCombo;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
 
-import com.checkmarx.eclipse.utils.PluginConstants;
 import checkmarx.ast.eclipse.plugin.tests.common.Environment;
 
-@RunWith(SWTBotJunit4ClassRunner.class)
 public class ProjectSelectionTest extends BaseUITest {
     
     private static final String TEST_PROJECT = "pedrompflopes/WebGoat";
@@ -34,12 +28,12 @@ public class ProjectSelectionTest extends BaseUITest {
             System.out.println("Project selected: '" + _bot.comboBox(0).getText() + "'");
             
             // Verify branch combo is enabled and select branch
-            assertTrue("Branch combo should be enabled", _bot.comboBox(1).isEnabled());
+            assertTrue(_bot.comboBox(1).isEnabled(), "Branch combo should be enabled");
             _bot.comboBox(1).setText(TEST_BRANCH);
             sleep(2000);
             
             // Verify scan ID combo is enabled and select scan
-            assertTrue("Scan ID combo should be enabled", _bot.comboBox(2).isEnabled());
+            assertTrue(_bot.comboBox(2).isEnabled(), "Scan ID combo should be enabled");
             _bot.comboBox(2).setText(Environment.SCAN_ID);
             sleep(2000);
             

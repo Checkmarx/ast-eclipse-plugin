@@ -4,4 +4,4 @@
 /.metadata/
 .idea/
 .vs/
-.vscode/
+*.jar

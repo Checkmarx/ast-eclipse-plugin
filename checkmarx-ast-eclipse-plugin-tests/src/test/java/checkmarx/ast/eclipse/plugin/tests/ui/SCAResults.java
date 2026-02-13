@@ -1,16 +1,13 @@
 package checkmarx.ast.eclipse.plugin.tests.ui;
 
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.concurrent.TimeoutException;
 
-import org.eclipse.swtbot.swt.finder.junit.SWTBotJunit4ClassRunner;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotTreeItem;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
 
-@RunWith(SWTBotJunit4ClassRunner.class)
 public class SCAResults extends BaseUITest {
     
     @Test
@@ -38,10 +35,7 @@ public class SCAResults extends BaseUITest {
             System.out.println("Available scanners: " + scannerNodes);
             
             // Verify SCA exists
-            assertTrue(
-                "SCA scanner should exist in results",
-                scannerNodes.stream().anyMatch(node -> node.startsWith("SCA"))
-            );
+			assertTrue(scannerNodes.stream().anyMatch(node -> node.startsWith("SCA")));
             
             // Get SCA node
             SWTBotTreeItem scaNode = null;
@@ -59,17 +53,14 @@ public class SCAResults extends BaseUITest {
             List<String> severityNodes = scaNode.getNodes();
             System.out.println("SCA severity nodes: " + severityNodes);
             
-            // Verify HIGH and MEDIUM exist
-            assertTrue(
-                "SCA should have HIGH severity findings",
-                severityNodes.stream().anyMatch(node -> node.startsWith("HIGH"))
-            );
-            
-            assertTrue(
-                "SCA should have MEDIUM severity findings",
-                severityNodes.stream().anyMatch(node -> node.startsWith("MEDIUM"))
-            );
-            
+			// Verify HIGH and MEDIUM exist
+			assertTrue(severityNodes.stream().anyMatch(node -> node.startsWith("HIGH")));
+
+			assertTrue(severityNodes.stream().anyMatch(node -> node.startsWith("MEDIUM")),
+					"SCA should have MEDIUM severity findings"
+
+			);
+
             // Cleanup
             _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
             

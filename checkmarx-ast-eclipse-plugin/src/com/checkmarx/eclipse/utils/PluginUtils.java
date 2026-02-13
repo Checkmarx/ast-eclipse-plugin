@@ -6,7 +6,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.lang3.StringUtils;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IResource;
@@ -21,7 +20,7 @@ import org.eclipse.jface.action.Action;
 import org.eclipse.jface.viewers.ComboViewer;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.ui.PlatformUI;
-
+import org.apache.commons.lang3.StringUtils;
 import com.checkmarx.ast.results.result.Node;
 import com.checkmarx.ast.results.result.Result;
 import com.checkmarx.eclipse.enums.ActionName;

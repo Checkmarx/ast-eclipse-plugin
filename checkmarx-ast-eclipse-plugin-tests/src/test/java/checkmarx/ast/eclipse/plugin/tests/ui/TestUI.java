@@ -1,7 +1,7 @@
 package checkmarx.ast.eclipse.plugin.tests.ui;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -13,14 +13,12 @@ import java.util.stream.Collectors;
 import org.eclipse.jface.bindings.keys.KeyStroke;
 import org.eclipse.jface.bindings.keys.ParseException;
 import org.eclipse.swtbot.swt.finder.exceptions.WidgetNotFoundException;
-import org.eclipse.swtbot.swt.finder.junit.SWTBotJunit4ClassRunner;
 import org.eclipse.swtbot.swt.finder.keyboard.Keystrokes;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotMenu;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotToolbarButton;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotToolbarDropDownButton;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 import com.checkmarx.eclipse.enums.ActionName;
 import com.checkmarx.eclipse.enums.Severity;
@@ -29,7 +27,6 @@ import com.checkmarx.eclipse.views.actions.ToolBarActions;
 
 import checkmarx.ast.eclipse.plugin.tests.common.Environment;
 
-@RunWith(SWTBotJunit4ClassRunner.class)
 public class TestUI extends BaseUITest {
 	
 	
@@ -58,18 +55,18 @@ public class TestUI extends BaseUITest {
 		preventWidgetWasNullInCIEnvironment();
 
 		// Assert that active view is the Checkmarx One Scan
-		assertTrue("Active view must be the Checkmarx One Scan", _bot.activeView().getTitle().equals(VIEW_CHECKMARX_AST_SCAN));
+		assertTrue(_bot.activeView().getTitle().equals(VIEW_CHECKMARX_AST_SCAN), "Active view must be the Checkmarx One Scan");
 		
 		preventWidgetWasNullInCIEnvironment();
 		
-		assertTrue(ASSERT_CREDENTIALS_PANEL, _bot.button(PluginConstants.BTN_OPEN_SETTINGS) != null);
+		assertTrue(_bot.button(PluginConstants.BTN_OPEN_SETTINGS) != null, ASSERT_CREDENTIALS_PANEL);
 		
 		// Close Checkmarx One Scan view
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
 	}
 
 	@Test
-	@Ignore("Disabled due we changed behaviour of credeantials to show Open Setting window on clearing credentials")
+	@Disabled("Disabled due we changed behaviour of credeantials to show Open Setting window on clearing credentials")
 	public void testMissingSetCheckmarxServerUrl() throws TimeoutException {
 		// Test Connection
 		testSuccessfulConnection(false);
@@ -86,7 +83,7 @@ public class TestUI extends BaseUITest {
 		_bot.comboBox(2).setText(UUID.randomUUID().toString());
 		_bot.comboBox(2).pressShortcut(Keystrokes.LF);
 
-		assertEquals("The tree must contain a single row", _bot.tree(1).rowCount(), 1);
+		assertEquals(1, _bot.tree(1).rowCount(),"The tree must contain a single row");
 		String firstTreeCell = _bot.tree(1).cell(0, 0);
 
 		// The first row must have a message saying that One is getting results or
@@ -139,13 +136,13 @@ public class TestUI extends BaseUITest {
 		List<String> filterActions = Arrays.asList(ActionName.HIGH.name(), ActionName.MEDIUM.name(), ActionName.LOW.name(), ActionName.INFO.name());
 		
 		// Assert all filter actions are present in the tool bar
-		assertTrue(ASSERT_FILTER_ACTIONS_IN_TOOLBAR, toolBarButtonsNames.containsAll(filterActions));	
+		assertTrue(toolBarButtonsNames.containsAll(filterActions),ASSERT_FILTER_ACTIONS_IN_TOOLBAR);	
 		
 		List<String> groupByActions = Arrays.asList(ToolBarActions.GROUP_BY_SEVERITY, ToolBarActions.GROUP_BY_QUERY_NAME);
 		List<String> toolBarGroupByActions = _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menuItems();
 		
 		// Assert all group by actions are present in the tool bar
-		assertTrue(ASSERT_GROUP_BY_ACTIONS_IN_TOOLBAR, toolBarGroupByActions.containsAll(groupByActions));	
+		assertTrue(toolBarGroupByActions.containsAll(groupByActions),ASSERT_GROUP_BY_ACTIONS_IN_TOOLBAR);	
 		
 		// Close Checkmarx One Scan view
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
@@ -174,21 +171,21 @@ public class TestUI extends BaseUITest {
 		ArrayList<String> currentActiveFilters = new ArrayList<>(Arrays.asList(Severity.HIGH.name(), Severity.MEDIUM.name()));	
 				
 		// Checks that tree contains High and Medium results
-		assertTrue(ASSERT_TREE_CONSTAIN_HIGH_MEDIUM, expandTreeUntilFirstEngineAndGetCurrentSeverities().containsAll(currentActiveFilters));			
+		assertTrue(expandTreeUntilFirstEngineAndGetCurrentSeverities().containsAll(currentActiveFilters), ASSERT_TREE_CONSTAIN_HIGH_MEDIUM);			
 		
 		// Click to include Low severity
 		clickSeverityFilter(ActionName.LOW.name());
 		currentActiveFilters.add(Severity.LOW.name());
 		
 		// Checks that tree contains High, Medium and Low results
-		assertTrue(ASSERT_TREE_CONSTAIN_HIGH_MEDIUM_LOW, expandTreeUntilFirstEngineAndGetCurrentSeverities().containsAll(currentActiveFilters));	
+		assertTrue(expandTreeUntilFirstEngineAndGetCurrentSeverities().containsAll(currentActiveFilters),ASSERT_TREE_CONSTAIN_HIGH_MEDIUM_LOW);	
 		
 		// Click to include Info severity
 		clickSeverityFilter(ActionName.INFO.name());
 		currentActiveFilters.add(Severity.INFO.name());
 		
 		// Checks that tree contains High, Medium, Low and Info results
-		assertTrue(ASSERT_TREE_CONSTAIN_HIGH_MEDIUM_LOW_INFO, expandTreeUntilFirstEngineAndGetCurrentSeverities().containsAll(currentActiveFilters));	
+		assertTrue(expandTreeUntilFirstEngineAndGetCurrentSeverities().containsAll(currentActiveFilters), ASSERT_TREE_CONSTAIN_HIGH_MEDIUM_LOW_INFO);	
 		
 		// Get all filter buttons individually
 		SWTBotToolbarButton filterHighBtn = _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).getToolbarButtons().stream().filter(btn -> btn.getToolTipText().toUpperCase().equals(ActionName.HIGH.name())).findFirst().get();
@@ -223,7 +220,7 @@ public class TestUI extends BaseUITest {
 		_bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).expand().getNode(0).expand().getNode(0).select();
 		
 		// Asserts that the vulnerability has the same name as the parent node which means it is grouped by query name
-		assertTrue(ASSERT_GROUP_BY_QUERY_NAME, groupByQueryNameChild.contains(groupByQueryNameParent.split("\\(")[0].trim()));
+		assertTrue(groupByQueryNameChild.contains(groupByQueryNameParent.split("\\(")[0].trim()), ASSERT_GROUP_BY_QUERY_NAME);
 		
 		// Remove either group by severity and query name
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(ToolBarActions.GROUP_BY_QUERY_NAME).click();
@@ -247,8 +244,8 @@ public class TestUI extends BaseUITest {
 		boolean engineChildDontStartWithINFO = !firstEngineChild.startsWith(ActionName.INFO.name());
 		
 		// Asserts group by options are not enabled
-		assertTrue(ASSERT_NO_CHINDREN, _bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName).getNode(0).getNodes().isEmpty());
-		assertTrue(ASSERT_GROUP_BY_SEVERITY_NOT_SELECTED, engineChildDontStartWithHIGH && engineChildDontStartWithMEDIUM && engineChildDontStartWithLOW && engineChildDontStartWithINFO);
+		assertTrue(_bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName).getNode(0).getNodes().isEmpty(), ASSERT_NO_CHINDREN);
+		assertTrue(engineChildDontStartWithHIGH && engineChildDontStartWithMEDIUM && engineChildDontStartWithLOW && engineChildDontStartWithINFO, ASSERT_GROUP_BY_SEVERITY_NOT_SELECTED);
 		
 		// re-enable group by and severity
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(ToolBarActions.GROUP_BY_QUERY_NAME).click();
@@ -258,15 +255,15 @@ public class TestUI extends BaseUITest {
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
 	}
 	
-	@Test(expected = WidgetNotFoundException.class)
+	@Test
 	public void testInitialPanelWhenMissingCredentials() throws TimeoutException {
 		// Add Checkmarx plugin to the eclipse view
 		addCheckmarxPlugin(false);
 
 		// Assert that active view is the Checkmarx One Scan
-		assertTrue("Active view must be the Checkmarx One Scan", _bot.activeView().getTitle().equals(VIEW_CHECKMARX_AST_SCAN));
+		assertTrue(_bot.activeView().getTitle().equals(VIEW_CHECKMARX_AST_SCAN), "Active view must be the Checkmarx One Scan");
 		
-		assertTrue(ASSERT_CREDENTIALS_PANEL, _bot.button(PluginConstants.BTN_OPEN_SETTINGS) != null);
+		assertTrue(_bot.button(PluginConstants.BTN_OPEN_SETTINGS) != null, ASSERT_CREDENTIALS_PANEL);
 		
 		_bot.button(PluginConstants.BTN_OPEN_SETTINGS).click();
 		

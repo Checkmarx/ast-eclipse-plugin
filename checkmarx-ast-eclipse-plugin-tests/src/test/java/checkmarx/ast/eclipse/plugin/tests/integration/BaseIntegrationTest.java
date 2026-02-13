@@ -1,7 +1,7 @@
 package checkmarx.ast.eclipse.plugin.tests.integration;
 
-import org.junit.Before;
-import org.junit.BeforeClass;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.slf4j.Logger;
@@ -14,21 +14,21 @@ import com.checkmarx.eclipse.runner.Authenticator;
 import checkmarx.ast.eclipse.plugin.tests.common.Environment;
 
 public abstract class BaseIntegrationTest {
-    
+
     private static final Logger logger = LoggerFactory.getLogger(BaseIntegrationTest.class);
-    
+
     protected static final String VALID_SCAN_ID = Environment.SCAN_ID;
     protected static final String INVALID_SCAN_ID = "invalid-scan-id";
     protected static final String VALID_API_KEY = Environment.API_KEY;
-    
+
     @Mock
     protected Logger mockLogger;
-    
+
     protected Authenticator authenticator;
     protected CxWrapper cxWrapper;
     protected static boolean initialized = false;
-    
-    @Before
+
+    @BeforeEach
     public void setUp() throws Exception {
         logger.info("Setting up test: {}", this.getClass().getSimpleName());
         logger.info("API Key available: {}", VALID_API_KEY != null);
