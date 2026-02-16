@@ -23,14 +23,14 @@ Import-Package: org.eclipse.core.resources,
  org.osgi.service.event;version="1.4.1"
 Bundle-ActivationPolicy: lazy
 Bundle-Activator: com.checkmarx.eclipse.Activator
-Bundle-ClassPath: lib/slf4j-simple-2.0.17.jar,
+Bundle-ClassPath: .,
+ lib/slf4j-simple-2.0.17.jar,
  lib/slf4j-reload4j-2.0.17.jar,
  lib/slf4j-api-2.0.17.jar,
  lib/jackson-annotations-2.21.jar,
  lib/jackson-core-2.21.0.jar,
+ lib/jackson-databind-2.21.0.jar,
  lib/commons-lang3-3.18.0.jar,
  lib/ast-cli-java-wrapper-2.4.18.jar,
- lib/jackson-databind-2.21.0.jar,
  lib/org.eclipse.mylyn.commons.ui_4.9.0.v20251121-0615.jar,
- lib/org-eclipse-mylyn-commons-core.jar,
- .
+ lib/org-eclipse-mylyn-commons-core.jar
