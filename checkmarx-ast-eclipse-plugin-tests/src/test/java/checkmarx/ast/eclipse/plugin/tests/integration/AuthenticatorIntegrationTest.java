@@ -2,6 +2,7 @@ package checkmarx.ast.eclipse.plugin.tests.integration;
 
 
 import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.checkmarx.eclipse.runner.Authenticator;
@@ -15,9 +16,13 @@ import java.io.File;
 public class AuthenticatorIntegrationTest extends BaseIntegrationTest {
     
     private static final Logger logger = LoggerFactory.getLogger(AuthenticatorIntegrationTest.class);
+    
+    @Mock
+    private Authenticator authenticator; 
 
     @Test
     public void testSuccessfulAuthentication() {
+    	 authenticator = new Authenticator(LoggerFactory.getLogger(Authenticator.class)); 
         System.out.println("\n=== Starting Authentication Test ===");
         System.out.println("Current directory: " + new File(".").getAbsolutePath());
         System.out.println("API Key available: " + (VALID_API_KEY != null));
@@ -30,6 +35,7 @@ public class AuthenticatorIntegrationTest extends BaseIntegrationTest {
 
     @Test
 	public void testInvalidApiKeyAuthentication() {
+    	 authenticator = new Authenticator(LoggerFactory.getLogger(Authenticator.class)); 
 		System.out.println("\n=== Starting Invalid API Key Test ===");
 		String invalidApiKey = "invalid-api-key";
 		String result = authenticator.doAuthentication(invalidApiKey, "");

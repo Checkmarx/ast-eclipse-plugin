@@ -1,9 +1,12 @@
 package checkmarx.ast.eclipse.plugin.tests.integration;
 
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+// DELETE these Mockito imports - not needed
+// import org.mockito.Mock;
+// import org.mockito.Mockito;
+// import org.mockito.MockitoAnnotations;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,24 +24,21 @@ public abstract class BaseIntegrationTest {
     protected static final String INVALID_SCAN_ID = "invalid-scan-id";
     protected static final String VALID_API_KEY = Environment.API_KEY;
 
-    @Mock
-    protected Logger mockLogger;
+    // DELETE @Mock - not initialized
+    // protected Logger mockLogger;
 
     protected Authenticator authenticator;
     protected CxWrapper cxWrapper;
     protected static boolean initialized = false;
 
     @BeforeEach
-    public void setUp() throws Exception {
-        logger.info("Setting up test: {}", this.getClass().getSimpleName());
-        logger.info("API Key available: {}", VALID_API_KEY != null);
-        MockitoAnnotations.initMocks(this);
-        authenticator = new Authenticator(mockLogger);
+    void setUp() {
+        // Nothing needed
+    }
 
-        if (!initialized) {
-            initializeCxWrapper();
-            initialized = true;
-        }
+    @AfterEach
+    void tearDown() {
+        // Nothing needed
     }
     
     protected void initializeCxWrapper() throws Exception {
@@ -46,7 +46,8 @@ public abstract class BaseIntegrationTest {
         CxConfig config = CxConfig.builder()
                 .apiKey(VALID_API_KEY)
                 .build();
-        cxWrapper = new CxWrapper(config, mockLogger);
+        // FIX: Use real logger, not mock
+        cxWrapper = new CxWrapper(config, logger);  // ← Changed mockLogger to logger
         logger.info("CxWrapper initialized successfully");
     }
     
@@ -55,7 +56,8 @@ public abstract class BaseIntegrationTest {
         CxConfig config = CxConfig.builder()
                 .apiKey(apiKey)
                 .build();
-        cxWrapper = new CxWrapper(config, mockLogger);
+        // FIX: Use real logger
+        cxWrapper = new CxWrapper(config, logger);  // ← Changed mockLogger to logger
         logger.info("CxWrapper reinitialized successfully");
     }
 }
