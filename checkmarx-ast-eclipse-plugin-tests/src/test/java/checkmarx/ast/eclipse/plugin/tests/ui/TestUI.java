@@ -90,7 +90,7 @@ public class TestUI extends BaseUITest {
 		// failing due the missing Server Url
 		firstTreeCell.equals(String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, Environment.SCAN_ID));
 
-		sleep();
+		sleep(2000);
 
 		// Close Checkmarx One Scan view
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
