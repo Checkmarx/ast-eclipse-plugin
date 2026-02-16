@@ -30,7 +30,7 @@ jobs:
         env:
           CX_BASE_URI: ${{ secrets.CX_BASE_URI }}
           CX_TENANT: ${{ secrets.CX_TENANT }}
-          CX_APIKEY: ${{ secrets.CX_APIKEY }}
+          CX_APIKEY: eyJhbGciOiJIUzUxMiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICI3MzkxY2E1OC1iN2IyLTQxNDctYTI3Ni0xM2RiMGQxMmQ2MzYifQ.eyJpYXQiOjE3NjkwMDE0ODcsImp0aSI6IjlkZDMyYzc1LTM5OGYtNDc5Zi04YTM3LWRjZDA3Zjc2NzdkNSIsImlzcyI6Imh0dHBzOi8vaWFtLWRldi5kZXYuY3hhc3QubmV0L2F1dGgvcmVhbG1zL21hc3Rlci1zeXBoZXIiLCJhdWQiOiJodHRwczovL2lhbS1kZXYuZGV2LmN4YXN0Lm5ldC9hdXRoL3JlYWxtcy9tYXN0ZXItc3lwaGVyIiwic3ViIjoiMjE0OTM2MWItZDNjYi00N2I1LTk1ZTYtNzU2ZjA4YjYyMTdiIiwidHlwIjoiT2ZmbGluZSIsImF6cCI6ImFzdC1hcHAiLCJzaWQiOiI3NmVmZGQ4YS0wZTc0LTQ1NTgtYTkzMC03NzhmNDJjMzgyZTgiLCJzY29wZSI6ImFzdC1hcGkgcm9sZXMgZW1haWwgaWFtLWFwaSBwcm9maWxlIG9mZmxpbmVfYWNjZXNzIn0.rKrLZ75hCOKVXNutR1AnHuNQOkHXPr8npFS9h20uRNrowAwKdm7DXIMF_bJ7B64cneYXElX3Rw6vC2VA3lR3Kw
           CX_TEST_SCAN: ${{ secrets.CX_TEST_SCAN }}
           DISPLAY: :99.0
         run: |
@@ -58,9 +58,10 @@ jobs:
         env:
           CX_BASE_URI: ${{ secrets.CX_BASE_URI }}
           CX_TENANT: ${{ secrets.CX_TENANT }}
-          CX_APIKEY: ${{ secrets.CX_APIKEY }}
+          CX_APIKEY: eyJhbGciOiJIUzUxMiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICI3MzkxY2E1OC1iN2IyLTQxNDctYTI3Ni0xM2RiMGQxMmQ2MzYifQ.eyJpYXQiOjE3NjkwMDE0ODcsImp0aSI6IjlkZDMyYzc1LTM5OGYtNDc5Zi04YTM3LWRjZDA3Zjc2NzdkNSIsImlzcyI6Imh0dHBzOi8vaWFtLWRldi5kZXYuY3hhc3QubmV0L2F1dGgvcmVhbG1zL21hc3Rlci1zeXBoZXIiLCJhdWQiOiJodHRwczovL2lhbS1kZXYuZGV2LmN4YXN0Lm5ldC9hdXRoL3JlYWxtcy9tYXN0ZXItc3lwaGVyIiwic3ViIjoiMjE0OTM2MWItZDNjYi00N2I1LTk1ZTYtNzU2ZjA4YjYyMTdiIiwidHlwIjoiT2ZmbGluZSIsImF6cCI6ImFzdC1hcHAiLCJzaWQiOiI3NmVmZGQ4YS0wZTc0LTQ1NTgtYTkzMC03NzhmNDJjMzgyZTgiLCJzY29wZSI6ImFzdC1hcGkgcm9sZXMgZW1haWwgaWFtLWFwaSBwcm9maWxlIG9mZmxpbmVfYWNjZXNzIn0.rKrLZ75hCOKVXNutR1AnHuNQOkHXPr8npFS9h20uRNrowAwKdm7DXIMF_bJ7B64cneYXElX3Rw6vC2VA3lR3Kw
           CX_TEST_SCAN: ${{ secrets.CX_TEST_SCAN }}
           DISPLAY: :99.0
         run: |
           Xvfb -ac :99 -screen 0 1920x1080x16 &
           mvn verify -Dtest.includes="**/integration/*Test.java"
+
