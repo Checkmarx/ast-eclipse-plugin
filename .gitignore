@@ -5,3 +5,4 @@
 .idea/
 .vs/
 *.jar
+!checkmarx-ast-eclipse-plugin/lib/*.jar
