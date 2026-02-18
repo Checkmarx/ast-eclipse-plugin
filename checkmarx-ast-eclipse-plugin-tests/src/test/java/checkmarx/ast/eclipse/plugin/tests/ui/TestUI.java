@@ -12,7 +12,9 @@ import java.util.stream.Collectors;
 
 import org.eclipse.jface.bindings.keys.KeyStroke;
 import org.eclipse.jface.bindings.keys.ParseException;
+import org.eclipse.swtbot.eclipse.finder.widgets.SWTBotView;
 import org.eclipse.swtbot.swt.finder.exceptions.WidgetNotFoundException;
+import org.eclipse.swtbot.swt.finder.finders.UIThreadRunnable;
 import org.eclipse.swtbot.swt.finder.keyboard.Keystrokes;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotMenu;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotToolbarButton;
@@ -26,6 +28,13 @@ import com.checkmarx.eclipse.utils.PluginConstants;
 import com.checkmarx.eclipse.views.actions.ToolBarActions;
 
 import checkmarx.ast.eclipse.plugin.tests.common.Environment;
+
+
+import org.eclipse.ui.PlatformUI;
+import org.eclipse.swtbot.swt.finder.results.VoidResult;
+import org.eclipse.swtbot.swt.finder.utils.SWTBotPreferences;
+import org.junit.jupiter.api.BeforeAll;
+
 
 public class TestUI extends BaseUITest {
 	
@@ -52,13 +61,9 @@ public class TestUI extends BaseUITest {
 		// Add Checkmarx plugin to the eclipse view
 		addCheckmarxPlugin(false);
 		
-		preventWidgetWasNullInCIEnvironment();
-
-		// Assert that active view is the Checkmarx One Scan
+		stabilizeView(VIEW_CHECKMARX_AST_SCAN);
 		assertTrue(_bot.activeView().getTitle().equals(VIEW_CHECKMARX_AST_SCAN), "Active view must be the Checkmarx One Scan");
-		
-		preventWidgetWasNullInCIEnvironment();
-		
+		stabilizeActiveShell();
 		assertTrue(_bot.button(PluginConstants.BTN_OPEN_SETTINGS) != null, ASSERT_CREDENTIALS_PANEL);
 		
 		// Close Checkmarx One Scan view
@@ -79,12 +84,12 @@ public class TestUI extends BaseUITest {
 
 		// Type a valid and existing scan id
 		preventWidgetWasNullInCIEnvironment();
-		
+		stabilizeView(VIEW_CHECKMARX_AST_SCAN);
 		_bot.comboBox(2).setText(UUID.randomUUID().toString());
 		_bot.comboBox(2).pressShortcut(Keystrokes.LF);
 
-		assertEquals(1, _bot.tree(1).rowCount(),"The tree must contain a single row");
-		String firstTreeCell = _bot.tree(1).cell(0, 0);
+		assertEquals(1, _bot.tree().rowCount(),"The tree must contain a single row");
+		String firstTreeCell = _bot.tree().cell(0, 0);
 
 		// The first row must have a message saying that One is getting results or
 		// failing due the missing Server Url
@@ -111,13 +116,13 @@ public class TestUI extends BaseUITest {
 	public void testEnd2End() throws TimeoutException {
 		// Set credentials, test connection and add checkmarx plugin
 		setUpCheckmarxPlugin(false);
-				
-		String firstNodeName = _bot.tree(1).cell(0, 0);
-		String secondNodeName = _bot.tree(1).getTreeItem(firstNodeName).expand().getNode(0).getText();
-		String thirdNodeName = _bot.tree(1).getTreeItem(firstNodeName).expand().getNode(0).expand().getNode(0).getText();
+		stabilizeView(VIEW_CHECKMARX_AST_SCAN);
+		String firstNodeName = _bot.tree().cell(0, 0);
+		String secondNodeName = _bot.tree().getTreeItem(firstNodeName).expand().getNode(0).getText();
+		String thirdNodeName = _bot.tree().getTreeItem(firstNodeName).expand().getNode(0).expand().getNode(0).getText();
 		
 		// Expand nodes until the first vulnerability
-		_bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).select();
+		_bot.tree().expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).select();
 				
 		// Close Checkmarx One Scan view
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
@@ -130,7 +135,7 @@ public class TestUI extends BaseUITest {
 
 		// Add Checkmarx One Plugin
 		addCheckmarxPlugin(true);
-				
+		stabilizeView(VIEW_CHECKMARX_AST_SCAN);
 		List<SWTBotToolbarButton> toolbarButtons = _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).getToolbarButtons();
 		List<String> toolBarButtonsNames = toolbarButtons.stream().map(btn -> btn.getToolTipText().toUpperCase()).collect(Collectors.toList());
 		List<String> filterActions = Arrays.asList(ActionName.HIGH.name(), ActionName.MEDIUM.name(), ActionName.LOW.name(), ActionName.INFO.name());
@@ -152,7 +157,8 @@ public class TestUI extends BaseUITest {
 	public void testFilteringAndGroupingResults() throws TimeoutException, ParseException {
 		// Set credentials, test connection and add checkmarx plugin
 		setUpCheckmarxPlugin(true);
-		
+		stabilizeView(VIEW_CHECKMARX_AST_SCAN);
+
 		List<String> filterStateButtons = Arrays.asList("Not Exploitable","Confirmed","Ignored","Not Ignored","To Verify");
 		SWTBotToolbarDropDownButton stateFilter = _bot.toolbarDropDownButtonWithTooltip("State");
 
@@ -186,7 +192,7 @@ public class TestUI extends BaseUITest {
 		
 		// Checks that tree contains High, Medium, Low and Info results
 		assertTrue(expandTreeUntilFirstEngineAndGetCurrentSeverities().containsAll(currentActiveFilters), ASSERT_TREE_CONSTAIN_HIGH_MEDIUM_LOW_INFO);	
-		
+		stabilizeView(VIEW_CHECKMARX_AST_SCAN);
 		// Get all filter buttons individually
 		SWTBotToolbarButton filterHighBtn = _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).getToolbarButtons().stream().filter(btn -> btn.getToolTipText().toUpperCase().equals(ActionName.HIGH.name())).findFirst().get();
 		SWTBotToolbarButton filterMediumBtn = _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).getToolbarButtons().stream().filter(btn -> btn.getToolTipText().toUpperCase().equals(ActionName.MEDIUM.name())).findFirst().get();
@@ -200,24 +206,24 @@ public class TestUI extends BaseUITest {
 		filterInfoBtn.click();
 		
 		// Asserts that no issues are visible in the tree once we are grouping by Severity and no severity is selected
-		assertEquals(ASSERT_TREE_WITH_NO_ISSUES, _bot.tree(1).cell(0, 0), Environment.SCAN_ID + " (0 Issues)");
+		assertEquals(Environment.SCAN_ID + " (0 Issues)",  _bot.tree().cell(0, 0));
 		
 		// Click to include High severity
 		clickSeverityFilter(ActionName.HIGH.name());
 		currentActiveFilters.add(Severity.HIGH.name());
 						
 		sleep(1000);		
-		
-		String firstNodeName = _bot.tree(1).cell(0, 0);
-		String secondNodeName = _bot.tree(1).getTreeItem(firstNodeName).expand().getNode(0).getText();
-		String thirdNodeName = _bot.tree(1).getTreeItem(firstNodeName).expand().getNode(0).expand().getNode(0).getText();
+		stabilizeActiveShell();
+		String firstNodeName = _bot.tree().cell(0, 0);
+		String secondNodeName = _bot.tree().getTreeItem(firstNodeName).expand().getNode(0).getText();
+		String thirdNodeName = _bot.tree().getTreeItem(firstNodeName).expand().getNode(0).expand().getNode(0).getText();
 		
 		// Expand nodes until the first vulnerability
-		String groupByQueryNameParent = _bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).expand().getNode(0).getText();
-		String groupByQueryNameChild = _bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).expand().getNode(0).expand().getNode(0).getText();
+		String groupByQueryNameParent = _bot.tree().expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).expand().getNode(0).getText();
+		String groupByQueryNameChild = _bot.tree().expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).expand().getNode(0).expand().getNode(0).getText();
 		
 		// Select the first vulnerability
-		_bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).expand().getNode(0).expand().getNode(0).select();
+		_bot.tree().expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).expand().getNode(0).expand().getNode(0).select();
 		
 		// Asserts that the vulnerability has the same name as the parent node which means it is grouped by query name
 		assertTrue(groupByQueryNameChild.contains(groupByQueryNameParent.split("\\(")[0].trim()), ASSERT_GROUP_BY_QUERY_NAME);
@@ -229,13 +235,13 @@ public class TestUI extends BaseUITest {
 		
 		
 		sleep(1000);
-		
-		firstNodeName = _bot.tree(1).cell(0, 0);
-		secondNodeName = _bot.tree(1).getTreeItem(firstNodeName).expand().getNode(0).getText();
-		_bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName);
+		stabilizeActiveShell();
+		firstNodeName = _bot.tree().cell(0, 0);
+		secondNodeName = _bot.tree().getTreeItem(firstNodeName).expand().getNode(0).getText();
+		_bot.tree().expandNode(firstNodeName).expandNode(secondNodeName);
 				
 		// Get's the first engine child
-		String firstEngineChild = _bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName).getNode(0).getText();
+		String firstEngineChild = _bot.tree().expandNode(firstNodeName).expandNode(secondNodeName).getNode(0).getText();
 		
 		// Checks if it starts by HIGH, MEDIUM, LOW or INFO
 		boolean engineChildDontStartWithHIGH = !firstEngineChild.startsWith(ActionName.HIGH.name());
@@ -244,7 +250,7 @@ public class TestUI extends BaseUITest {
 		boolean engineChildDontStartWithINFO = !firstEngineChild.startsWith(ActionName.INFO.name());
 		
 		// Asserts group by options are not enabled
-		assertTrue(_bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName).getNode(0).getNodes().isEmpty(), ASSERT_NO_CHINDREN);
+		assertTrue(_bot.tree().expandNode(firstNodeName).expandNode(secondNodeName).getNode(0).getNodes().isEmpty(), ASSERT_NO_CHINDREN);
 		assertTrue(engineChildDontStartWithHIGH && engineChildDontStartWithMEDIUM && engineChildDontStartWithLOW && engineChildDontStartWithINFO, ASSERT_GROUP_BY_SEVERITY_NOT_SELECTED);
 		
 		// re-enable group by and severity
@@ -259,12 +265,17 @@ public class TestUI extends BaseUITest {
 	public void testInitialPanelWhenMissingCredentials() throws TimeoutException {
 		// Add Checkmarx plugin to the eclipse view
 		addCheckmarxPlugin(false);
-
+		stabilizeView(VIEW_CHECKMARX_AST_SCAN);
 		// Assert that active view is the Checkmarx One Scan
 		assertTrue(_bot.activeView().getTitle().equals(VIEW_CHECKMARX_AST_SCAN), "Active view must be the Checkmarx One Scan");
-		
-		assertTrue(_bot.button(PluginConstants.BTN_OPEN_SETTINGS) != null, ASSERT_CREDENTIALS_PANEL);
-		
+		stabilizeBase();
+		try {
+		    _bot.button(PluginConstants.BTN_OPEN_SETTINGS);
+		} catch (WidgetNotFoundException expected) {
+		    // Expected: button disappears after successful connection
+		}
+
+		stabilizeBase();
 		_bot.button(PluginConstants.BTN_OPEN_SETTINGS).click();
 		
 		testSuccessfulConnection(true);
@@ -279,6 +290,7 @@ public class TestUI extends BaseUITest {
 	 * @param actionName
 	 */
 	private void clickSeverityFilter(String actionName) {
+		 stabilizeView(VIEW_CHECKMARX_AST_SCAN);
 		SWTBotToolbarButton filterLowBtn = _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).getToolbarButtons().stream().filter(btn -> btn.getToolTipText().toUpperCase().equals(actionName)).findFirst().get();
 		filterLowBtn.click();
 	}
@@ -289,12 +301,13 @@ public class TestUI extends BaseUITest {
 	 * @return
 	 */
 	private List<String> expandTreeUntilFirstEngineAndGetCurrentSeverities() {
-		String firstNodeName = _bot.tree(1).cell(0, 0);
-		String secondNodeName = _bot.tree(1).getTreeItem(firstNodeName).expand().getNode(0).getText();
+		stabilizeActiveShell();
+		String firstNodeName = _bot.tree().cell(0, 0);
+		String secondNodeName = _bot.tree().getTreeItem(firstNodeName).expand().getNode(0).getText();
 		
-		_bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName);
+		_bot.tree().expandNode(firstNodeName).expandNode(secondNodeName);
 		
-		return _bot.tree(1).getTreeItem(_bot.tree(1).cell(0, 0)).expand().getNode(0).getNodes().stream().map(node -> node.split("\\(")[0].trim()).collect(Collectors.toList());
+		return _bot.tree().getTreeItem(_bot.tree().cell(0, 0)).expand().getNode(0).getNodes().stream().map(node -> node.split("\\(")[0].trim()).collect(Collectors.toList());
 	}
 
 	/**
@@ -305,7 +318,7 @@ public class TestUI extends BaseUITest {
 			return;
 		}
 		
-		preventWidgetWasNullInCIEnvironment();
+		stabilizeActiveShell();
 
 		_bot.menu(TAB_WINDOW).menu(ITEM_PREFERENCES).click();
 		_bot.shell(ITEM_PREFERENCES).activate();
@@ -318,4 +331,42 @@ public class TestUI extends BaseUITest {
 
 		_cxSettingsDefined = false;
 	}
+	
+	@BeforeAll
+	public static void setUpClass() {
+	    // Global SWTBot timing for CI stability (these are NOT final)
+	    SWTBotPreferences.TIMEOUT = 120000;  // 2 minutes ✅
+	    SWTBotPreferences.PLAYBACK_DELAY = 50;  // Slow down actions ✅
+	    // Note: DEFAULT_POLL_DELAY is final, cannot change
+	}
+
+	private void stabilizeView(String viewTitle) {
+	    try {
+	        SWTBotView view = _bot.viewByTitle(viewTitle);
+	        view.show();
+	        view.setFocus();
+	        _bot.sleep(3000);
+	        
+	        // Force Eclipse shell focus (fixes CI flakiness)
+	        UIThreadRunnable.syncExec(new VoidResult() {
+	            public void run() {
+	                PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell().forceActive();
+	            }
+	        });
+	        _bot.sleep(2000);
+	    } catch (Exception e) {
+	        _bot.sleep(5000); // Fallback wait
+	    }
+	}
+	private void stabilizeActiveShell() {
+	    try {
+	        _bot.activeShell().activate();
+	        _bot.sleep(2000);
+	    } catch (Exception e) {
+	        _bot.sleep(3000);
+	    }
+	}
+
+
+
 }

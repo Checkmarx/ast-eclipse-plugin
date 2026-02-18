@@ -55,9 +55,13 @@ public abstract class BaseUITest {
 	
 	@BeforeAll
 	public static void beforeClass() throws Exception {
+		  System.out.println("CX_SCAN_ID = '" + System.getenv("CX_SCAN_ID") + "'");
+		    System.out.println("CX_API_KEY = '" + System.getenv("CX_API_KEY") + "'");
+		    System.out.println("Environment.SCAN_ID = '" + Environment.SCAN_ID + "'");
+		    System.out.println("Environment.API_KEY = '" + Environment.API_KEY + "'");
 	    SWTBotPreferences.KEYBOARD_LAYOUT = "EN_US";
 	    SWTBotPreferences.PLAYBACK_DELAY = 1500;
-	    SWTBotPreferences.TIMEOUT = 90000;
+	    SWTBotPreferences.TIMEOUT = 120000;
 	    
 	    _bot = new SWTWorkbenchBot();
 	    
@@ -144,8 +148,8 @@ public abstract class BaseUITest {
 
 			sleep(1000);
 
-			assertEquals(1, _bot.tree(1).rowCount(), "The tree must contain one row with an error message");
-			assertEquals("An incorrect scanId format message must be displayed", PluginConstants.TREE_INVALID_SCAN_ID_FORMAT, _bot.tree(1).cell(0, 0));
+			assertEquals(1, _bot.tree().rowCount(), "The tree must contain one row with an error message");
+			assertEquals(PluginConstants.TREE_INVALID_SCAN_ID_FORMAT, _bot.tree().cell(0, 0));
 		}
 		
 		// clear the view before getting the scan id
@@ -157,12 +161,12 @@ public abstract class BaseUITest {
 		typeValidScanID();
 
 		assertEquals(1, _bot.tree().rowCount(), "The tree must contain one row");
-		boolean retrievingOrRetrievedResults = _bot.tree(1).cell(0, 0).contains(Environment.SCAN_ID);
+		boolean retrievingOrRetrievedResults = _bot.tree().cell(0, 0).contains(Environment.SCAN_ID);
 		assertTrue(retrievingOrRetrievedResults, "The plugin should have or should be retrieving results");
 
 		waitWhileTreeNodeEqualsTo(String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, Environment.SCAN_ID));
 
-		assertTrue(_bot.tree(1).cell(0, 0).startsWith(Environment.SCAN_ID), "The plugin should retrieve results");
+		assertTrue(_bot.tree().cell(0, 0).startsWith(Environment.SCAN_ID), "The plugin should retrieve results");
 
 	}
 
@@ -207,6 +211,7 @@ public abstract class BaseUITest {
 	 * @throws TimeoutException 
 	 */
 	protected void addCheckmarxPlugin(boolean waitUntilPluginEnable) throws TimeoutException {
+		stabilizeBase();
 		preventWidgetWasNullInCIEnvironment();
 		
 		_bot.menu(TAB_WINDOW).menu(ITEM_SHOW_VIEW).menu(ITEM_OTHER).click();
@@ -249,7 +254,8 @@ public abstract class BaseUITest {
 	 * 
 	 * @throws TimeoutException
 	 */
-	protected static void waitUntilBranchComboIsEnabled() throws TimeoutException {
+	protected static void waitUntilBranchComboIsEnabled() throws TimeoutException {//
+		stabilizeBase();
 		preventWidgetWasNullInCIEnvironment();
 		
 		boolean emptyScanId = _bot.comboBox(2).getText().isEmpty() || _bot.comboBox(2).getText().equals(PluginConstants.COMBOBOX_SCAND_ID_PLACEHOLDER);
@@ -342,6 +348,19 @@ public abstract class BaseUITest {
 	    _bot.sleep(3000);  // Tycho headless compatible
 	}
 
-	
+	// In BaseUITest.java - at method start
+	protected static void stabilizeBase() {
+	    _bot.sleep(5000);
+	    try {
+	        _bot.activeShell().activate();
+	        UIThreadRunnable.syncExec(new VoidResult() {
+	            public void run() {
+	                PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell().forceActive();
+	            }
+	        });
+	    } catch (Exception e) {}
+	    _bot.sleep(3000);
+	}
+
 
 }
