@@ -1,24 +1,21 @@
 package checkmarx.ast.eclipse.plugin.tests.ui;
 
-import static org.junit.Assert.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import java.util.concurrent.TimeoutException;
 
 import org.eclipse.swtbot.swt.finder.SWTBot;
-import org.eclipse.swtbot.swt.finder.junit.SWTBotJunit4ClassRunner;
 import org.eclipse.swtbot.swt.finder.keyboard.Keystrokes;
 import org.eclipse.swtbot.swt.finder.utils.SWTBotPreferences;
 import org.eclipse.swtbot.swt.finder.waits.ICondition;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotShell;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotToolbarButton;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
 
 import com.checkmarx.eclipse.utils.PluginConstants;
 
 import checkmarx.ast.eclipse.plugin.tests.common.Environment;
 
-@RunWith(SWTBotJunit4ClassRunner.class)
 public class TestScan extends BaseUITest {
 	
 	public static final String ASSERT_START_SCAN_DISABLED = "Start scan must be disabled since there is no project or branch selected.";
@@ -38,9 +35,9 @@ public class TestScan extends BaseUITest {
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(PluginConstants.TOOLBAR_ACTION_CLEAR_RESULTS).click();
 		
 		SWTBotToolbarButton startBtn = _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).getToolbarButtons().stream().filter(btn -> btn.getToolTipText().equals(PluginConstants.CX_START_SCAN)).findFirst().get();
-		assertFalse(ASSERT_START_SCAN_DISABLED, startBtn.isEnabled());
+		assertFalse(startBtn.isEnabled(), ASSERT_START_SCAN_DISABLED);
 		SWTBotToolbarButton cancelBtn = _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).getToolbarButtons().stream().filter(btn -> btn.getToolTipText().equals(PluginConstants.CX_CANCEL_RUNNING_SCAN)).findFirst().get();
-		assertFalse(ASSERT_CANCEL_SCAN_DISABLED, cancelBtn.isEnabled());
+		assertFalse(cancelBtn.isEnabled(), ASSERT_CANCEL_SCAN_DISABLED);
 	}
 	
 	@Test
