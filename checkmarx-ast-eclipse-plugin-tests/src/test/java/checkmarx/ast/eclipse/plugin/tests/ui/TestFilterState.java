@@ -3,7 +3,7 @@ package checkmarx.ast.eclipse.plugin.tests.ui;
 import org.eclipse.jface.bindings.keys.KeyStroke;
 import org.eclipse.jface.bindings.keys.ParseException;
 
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -11,18 +11,16 @@ import java.util.List;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
-import org.eclipse.swtbot.swt.finder.junit.SWTBotJunit4ClassRunner;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotMenu;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotToolbarDropDownButton;
+import org.eclipse.swtbot.swt.finder.widgets.SWTBotTree;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotTreeItem;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
 
 import com.checkmarx.eclipse.enums.Severity;
 import com.checkmarx.eclipse.enums.State;
 import com.checkmarx.eclipse.views.actions.ToolBarActions;
 
-@RunWith(SWTBotJunit4ClassRunner.class)
 public class TestFilterState extends BaseUITest{
 	
 	List<String> groupByActions = Arrays.asList(ToolBarActions.GROUP_BY_QUERY_NAME,ToolBarActions.GROUP_BY_SEVERITY,ToolBarActions.GROUP_BY_STATE_NAME);
@@ -34,6 +32,7 @@ public class TestFilterState extends BaseUITest{
 	
 	@Test
 	public void testGroupByActionsInToolBar() throws TimeoutException {
+		preventWidgetWasNullInCIEnvironment();
 		int SECOND_NODE = 2;
 		int THIRD_NODE = 3;
 		int FOURTH_NODE = 4;
@@ -73,7 +72,7 @@ public class TestFilterState extends BaseUITest{
 	}
 	
 	private String getNodeLabel(int i) {
-		SWTBotTreeItem treeNode = _bot.tree(1).getTreeItem(_bot.tree(1).cell(0, 0));
+		SWTBotTreeItem treeNode = getResultsTree().getTreeItem(getResultsTree().cell(0, 0));
 		String value = "";
 		while(i>0) {
 			treeNode = treeNode.expand().getNode(0);
@@ -87,6 +86,18 @@ public class TestFilterState extends BaseUITest{
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(groupBy).click();
 	}
 
+	/**
+	 * Gets the Checkmarx results tree. Tries tree(1) first (when multiple trees exist),
+	 * falls back to tree(0) when only one tree is present (avoids IndexOutOfBoundsException).
+	 */
+	private SWTBotTree getResultsTree() {
+		try {
+			return _bot.tree(1);
+		} catch (IndexOutOfBoundsException e) {
+			return _bot.tree(0);
+		}
+	}
+
 	private void disableAllGroupByActions(List<String> groupByActions) {
 		for(String action : groupByActions) {
 			SWTBotMenu groupMenu = _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(action);
@@ -98,7 +109,8 @@ public class TestFilterState extends BaseUITest{
 
 	@Test
 	public void testFilterStateActionsInToolBar() throws TimeoutException, ParseException{
-		sleep(1000);
+		preventWidgetWasNullInCIEnvironment();
+		sleep(2000);
 		setUpCheckmarxPlugin(true);
 		
 		// deselect all group by actions and enable only the state group by
@@ -109,7 +121,7 @@ public class TestFilterState extends BaseUITest{
 		
 		// get all filter nodes
 		List<String> filterStateButtons = Arrays.asList("Not Exploitable","Confirmed","Proposed Not Exploitable","Urgent","Ignored","Not Ignored","To Verify");
-		List<String> enabledFilters = _bot.tree(1).getTreeItem(_bot.tree(1).cell(0, 0)).expand().getNode(0).expand().getNodes().stream().map(node -> node.split("\\(")[0].trim()).collect(Collectors.toList());
+		List<String> enabledFilters = getResultsTree().getTreeItem(getResultsTree().cell(0, 0)).expand().getNode(0).expand().getNodes().stream().map(node -> node.split("\\(")[0].trim()).collect(Collectors.toList());
 		String firstGroup = enabledFilters.get(0);
 		List<String> filterButton = filterStateButtons.stream().filter(node -> node.equalsIgnoreCase(firstGroup.replace("_", " "))).collect(Collectors.toList());
 		assertTrue(filterButton.size()==1);
@@ -122,11 +134,11 @@ public class TestFilterState extends BaseUITest{
 		sleep(1000);
 		List<String> filteredGroup = new ArrayList<String>();
 		if(enabledFilters.size()>0) {
-			filteredGroup = _bot.tree(1).getTreeItem(_bot.tree(1).cell(0, 0)).expand().getNode(0).expand().getNodes().stream().map(node -> node.split("\\(")[0].trim()).collect(Collectors.toList());
+			filteredGroup = getResultsTree().getTreeItem(getResultsTree().cell(0, 0)).expand().getNode(0).expand().getNodes().stream().map(node -> node.split("\\(")[0].trim()).collect(Collectors.toList());
 			assertTrue(!filteredGroup.contains(firstGroup));
 		}
 		else {
-			assertTrue(TestUI.ASSERT_NO_CHINDREN, _bot.tree(1).getTreeItem(_bot.tree(1).cell(0, 0)).expand().getNodes().isEmpty());
+			assertTrue( getResultsTree().getTreeItem(getResultsTree().cell(0, 0)).expand().getNodes().isEmpty(), TestUI.ASSERT_NO_CHINDREN);
 		}
 		
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
@@ -143,19 +155,17 @@ public class TestFilterState extends BaseUITest{
         disableAllGroupByActions(groupByActions);
         sleep(1000);
         
-        // Verify basic results exist
-        SWTBotTreeItem baseNode = getFirstResultNode();
+        // Verify basic results exist (getFirstResultNode ensures tree is populated)
+        getFirstResultNode();
         
-        String firstNodeName = _bot.tree(1).cell(0, 0);
-        List<String> scannerTypes = _bot.tree(1)
+        String firstNodeName = getResultsTree().cell(0, 0);
+        List<String> scannerTypes = getResultsTree()
             .getTreeItem(firstNodeName)
             .expand()
             .getNodes();
         
-        assertTrue("Should contain SAST results", 
-            scannerTypes.stream().anyMatch(node -> node.contains("SAST")));
-        assertTrue("Scanner types format should be correct", 
-            scannerTypes.stream().allMatch(node -> node.matches(".*\\(\\d+\\)")));
+        assertTrue(scannerTypes.stream().anyMatch(node -> node.contains("SAST")), "Should contain SAST results");
+        assertTrue(scannerTypes.stream().allMatch(node -> node.matches(".*\\(\\d+\\)")), "Scanner types format should be correct");
             
         _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
     }
@@ -172,10 +182,10 @@ public class TestFilterState extends BaseUITest{
 	        disableAllGroupByActions(groupByActions);
 	        sleep(2000);
 	        
-	        String firstNodeName = _bot.tree(1).cell(0, 0);
+	        String firstNodeName = getResultsTree().cell(0, 0);
 	        System.out.println("Root node name: " + firstNodeName);
-	        
-	        SWTBotTreeItem rootNode = _bot.tree(1).getTreeItem(firstNodeName);
+        
+	        SWTBotTreeItem rootNode = getResultsTree().getTreeItem(firstNodeName);
 	        rootNode.expand();
 	        sleep(1000);
 	        
@@ -223,7 +233,7 @@ public class TestFilterState extends BaseUITest{
 	        sleep(2000);
 
 	        // Get fresh nodes
-	        rootNode = _bot.tree(1).getTreeItem(firstNodeName);
+	        rootNode = getResultsTree().getTreeItem(firstNodeName);
 	        rootNode.expand();
 	        sleep(2000);
 
@@ -294,11 +304,10 @@ public class TestFilterState extends BaseUITest{
 	            String currentSeverity = actualSeverities.get(i);
 	            String nextSeverity = actualSeverities.get(i + 1);
 	            
-	            assertTrue(
-	                String.format("Wrong severity order: %s found before %s", 
-	                    currentSeverity, nextSeverity),
-	                getSeverityWeight(currentSeverity) >= getSeverityWeight(nextSeverity)
-	            );
+				assertTrue(getSeverityWeight(currentSeverity) >= getSeverityWeight(nextSeverity),
+						String.format("Wrong severity order: %s found before %s", currentSeverity, nextSeverity)
+
+				);
 	        }
 	        
 	        _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
@@ -325,8 +334,8 @@ public class TestFilterState extends BaseUITest{
 	}
 
 	private SWTBotTreeItem getFirstResultNode() {
-		String firstNodeName = _bot.tree(1).cell(0, 0);
-		SWTBotTreeItem node = _bot.tree(1).getTreeItem(firstNodeName);
+		String firstNodeName = getResultsTree().cell(0, 0);
+		SWTBotTreeItem node = getResultsTree().getTreeItem(firstNodeName);
 		while(!node.getNodes().isEmpty()) {
 			node = node.expand().getNode(0);
 		}

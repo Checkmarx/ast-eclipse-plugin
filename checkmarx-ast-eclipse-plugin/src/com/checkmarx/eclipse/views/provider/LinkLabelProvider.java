@@ -1,19 +1,6 @@
 package com.checkmarx.eclipse.views.provider;
 
-import org.eclipse.jface.viewers.ColumnViewer;
 import org.eclipse.jface.viewers.StyledCellLabelProvider;
-import org.eclipse.jface.viewers.ViewerCell;
-import org.eclipse.jface.viewers.ViewerColumn;
-import org.eclipse.swt.SWT;
-import org.eclipse.swt.custom.StyleRange;
-import org.eclipse.swt.events.MouseAdapter;
-import org.eclipse.swt.events.MouseEvent;
-import org.eclipse.swt.graphics.Point;
-import org.eclipse.swt.graphics.Rectangle;
-import org.eclipse.swt.program.Program;
-import org.eclipse.swt.widgets.Event;
-
-import com.checkmarx.eclipse.views.DisplayModel;
 
 public class LinkLabelProvider extends StyledCellLabelProvider {
 
