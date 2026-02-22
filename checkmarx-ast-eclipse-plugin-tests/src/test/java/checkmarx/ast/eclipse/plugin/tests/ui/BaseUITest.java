@@ -74,7 +74,12 @@ public abstract class BaseUITest {
 	    
 	    closeIntroScreens();  // ← Now this exists!
 	    
-	    // Skip project creation in CI
+	    // Enable deterministic plugin behavior for SWTBot UI tests
+	    System.setProperty("com.checkmarx.eclipse.testmode", "true");
+	    
+	    // Always skip wizard-based project creation in automated UI tests to avoid blocking popups
+	    eclipseProjectExist = true;
+	    // Skip project creation in CI and local test runs (kept for safety)
 	    if (!eclipseProjectExist && !isCI) {
 	        createEclipseProject();
 	        eclipseProjectExist = true;
@@ -160,8 +165,18 @@ public abstract class BaseUITest {
 		// type a valid and existing Scan ID
 		typeValidScanID();
 
+		// Wait for tree to show scan ID (retry for up to 30 seconds - results may take time to load)
+		int retryIdx = 0;
+		boolean retrievingOrRetrievedResults = false;
+		while (retryIdx < 20) {
+			if (_bot.tree().rowCount() >= 1 && _bot.tree().cell(0, 0).contains(Environment.SCAN_ID)) {
+				retrievingOrRetrievedResults = true;
+				break;
+			}
+			sleep(1500);
+			retryIdx++;
+		}
 		assertEquals(1, _bot.tree().rowCount(), "The tree must contain one row");
-		boolean retrievingOrRetrievedResults = _bot.tree().cell(0, 0).contains(Environment.SCAN_ID);
 		assertTrue(retrievingOrRetrievedResults, "The plugin should have or should be retrieving results");
 
 		waitWhileTreeNodeEqualsTo(String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, Environment.SCAN_ID));
@@ -215,7 +230,9 @@ public abstract class BaseUITest {
 		preventWidgetWasNullInCIEnvironment();
 		
 		_bot.menu(TAB_WINDOW).menu(ITEM_SHOW_VIEW).menu(ITEM_OTHER).click();
+		sleep(2000);
 		_bot.shell(ITEM_SHOW_VIEW).activate();
+		sleep(1000);
 		_bot.tree().expandNode(ITEM_CHECKMARX).select(ITEM_CHECKMARX_AST_SCAN);
 		_bot.button(BTN_OPEN).click();
 		
@@ -235,7 +252,7 @@ public abstract class BaseUITest {
 
 		while (_bot.tree().getAllItems()[0].getText().equals(nodeText)) {
 
-			if (retryIdx == 20) {
+			if (retryIdx == 10) {
 				break;
 			}
 
@@ -269,7 +286,7 @@ public abstract class BaseUITest {
 
 		while (!_bot.comboBox(1).isEnabled()) {
 
-			if (retryIdx == 15) {
+			if (retryIdx == 10) {
 				break;
 			}
 
@@ -320,6 +337,8 @@ public abstract class BaseUITest {
 	 */
 	private void typeValidScanID() throws TimeoutException {
 		preventWidgetWasNullInCIEnvironment();
+		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).setFocus();
+		sleep(2000);
 		
 		_bot.comboBox(2).setText(Environment.SCAN_ID);
 		_bot.comboBox(2).pressShortcut(Keystrokes.LF);

@@ -101,8 +101,8 @@ public class TestTriage  extends BaseUITest {
 	}
 
 	private List<String> getStateResultNodes(String state) throws TimeoutException {
-		String firstNodeName = _bot.tree(1).cell(0, 0);
-		SWTBotTreeItem node = _bot.tree(1).getTreeItem(firstNodeName);
+		String firstNodeName = _bot.tree().cell(0, 0);
+		SWTBotTreeItem node = _bot.tree().getTreeItem(firstNodeName);
 		List<String> sastHigh = node.expand().getNode(0).expand().getNode(0).expand().getNodes();
 		List<String> result = null;
 		for(int toVerifyIndex=0;toVerifyIndex < sastHigh.size();toVerifyIndex++) {
@@ -115,8 +115,8 @@ public class TestTriage  extends BaseUITest {
 
 
 	private SWTBotTreeItem getFirstResultNode() {
-		String firstNodeName = _bot.tree(1).cell(0, 0);
-		SWTBotTreeItem node = _bot.tree(1).getTreeItem(firstNodeName);
+		String firstNodeName = _bot.tree().cell(0, 0);
+		SWTBotTreeItem node = _bot.tree().getTreeItem(firstNodeName);
 		while(!node.getNodes().isEmpty()) {
 			node = node.expand().getNode(0);
 		}

@@ -3,6 +3,9 @@
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
+	<properties>
+		<test.includes>**/Test*.java,**/*Test.java,**/*Tests.java,**/*TestCase.java</test.includes>
+	</properties>
 	<groupId>com.checkmarx.ast.eclipse.tests</groupId>
 	<artifactId>com.checkmarx.ast.eclipse.tests</artifactId>
 	<description>Checkmarx Eclipse Plugin Integration Tests Project</description>
@@ -23,6 +26,9 @@
 					<useUIThread>false</useUIThread>
 					<providerHint>junit5</providerHint>
 					<failIfNoTests>true</failIfNoTests>
+					<includes>
+						<include>${test.includes}</include>
+					</includes>
 				</configuration>
 			</plugin>
 		</plugins>

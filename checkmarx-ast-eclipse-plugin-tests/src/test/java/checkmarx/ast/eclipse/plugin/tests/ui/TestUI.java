@@ -1,6 +1,8 @@
 package checkmarx.ast.eclipse.plugin.tests.ui;
 
+import static org.junit.Assert.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
@@ -10,6 +12,7 @@ import java.util.UUID;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
+import org.eclipse.swtbot.swt.finder.exceptions.WidgetNotFoundException;
 import org.eclipse.jface.bindings.keys.KeyStroke;
 import org.eclipse.jface.bindings.keys.ParseException;
 import org.eclipse.swtbot.eclipse.finder.widgets.SWTBotView;
@@ -263,25 +266,48 @@ public class TestUI extends BaseUITest {
 	
 	@Test
 	public void testInitialPanelWhenMissingCredentials() throws TimeoutException {
-		// Add Checkmarx plugin to the eclipse view
-		addCheckmarxPlugin(false);
-		stabilizeView(VIEW_CHECKMARX_AST_SCAN);
-		// Assert that active view is the Checkmarx One Scan
-		assertTrue(_bot.activeView().getTitle().equals(VIEW_CHECKMARX_AST_SCAN), "Active view must be the Checkmarx One Scan");
-		stabilizeBase();
-		try {
-		    _bot.button(PluginConstants.BTN_OPEN_SETTINGS);
-		} catch (WidgetNotFoundException expected) {
-		    // Expected: button disappears after successful connection
-		}
 
-		stabilizeBase();
-		_bot.button(PluginConstants.BTN_OPEN_SETTINGS).click();
-		
-		testSuccessfulConnection(true);
-		
-		// Button Open Settings must not be present at this moment so we are expecting WidgetNotFoundException in this test
-		_bot.button(PluginConstants.BTN_OPEN_SETTINGS);
+	    // Step 1: Clear API key to force the "missing credentials" panel
+	    _bot.menu(TAB_WINDOW).menu(ITEM_PREFERENCES).click();
+	    _bot.shell(ITEM_PREFERENCES).activate();
+	    _bot.tree().select(ITEM_CHECKMARX_AST);
+	    _bot.sleep(500);
+	    _bot.textWithLabel(PluginConstants.PREFERENCES_API_KEY).setText("");
+	    _bot.button(BTN_APPLY_AND_CLOSE).click();
+	    _bot.sleep(1000);
+
+	    // Reset static flag so testSuccessfulConnection runs again
+	    _cxSettingsDefined = false;
+
+	    // Step 2: Add Checkmarx plugin to the eclipse view
+	    addCheckmarxPlugin(false);
+	    _bot.sleep(500);
+	    preventWidgetWasNullInCIEnvironment();
+
+	    // Step 3: Assert that active view is the Checkmarx One Scan
+	    assertTrue(
+	        _bot.activeView().getTitle().equals(VIEW_CHECKMARX_AST_SCAN),
+	        "Active view must be the Checkmarx One Scan"
+	    );
+
+	    // Step 4: Assert Open Settings button is present (missing credentials panel)
+	    assertTrue(
+	        _bot.button(PluginConstants.BTN_OPEN_SETTINGS) != null,
+	        ASSERT_CREDENTIALS_PANEL
+	    );
+
+	    // Step 5: Click Open Settings and re-enter valid credentials
+	    _bot.button(PluginConstants.BTN_OPEN_SETTINGS).click();
+	    _bot.sleep(500);
+
+	    testSuccessfulConnection(true);
+	    _bot.sleep(1000);
+
+	    // Step 6: Button Open Settings must NOT be present now —
+	    // JUnit 5 uses assertThrows instead of @Test(expected=...)
+	    org.junit.jupiter.api.Assertions.assertThrows(WidgetNotFoundException.class, () -> {
+	        _bot.button(PluginConstants.BTN_OPEN_SETTINGS);
+	    });
 	}
 	
 	/**
