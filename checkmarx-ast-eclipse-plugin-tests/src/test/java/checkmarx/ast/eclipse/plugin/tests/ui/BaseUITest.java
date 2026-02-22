@@ -94,8 +94,7 @@ public abstract class BaseUITest {
 
 	private static boolean isCIEnvironment() {
 	    return System.getProperty("CI") != null || 
-	           System.getenv("GITHUB_ACTIONS") != null ||
-	           "linux".equals(System.getProperty("osgi.os"));
+	           System.getenv("GITHUB_ACTIONS") != null;
 	}
 
 
