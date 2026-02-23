@@ -233,20 +233,29 @@ public abstract class BaseUITest {
 	/**
 	 * Wait while tree node equals a specific message. Fails after 20 retries.
 	 */
-	protected static void waitWhileTreeNodeEqualsTo(String nodeText) throws TimeoutException {
-		int retryIdx = 0;
+	protected void waitWhileTreeNodeEqualsTo(String nodeText) throws TimeoutException {
+	    int retryIdx = 0;
 
-		while (_bot.tree(1).getAllItems()[0].getText().equals(nodeText)) {
-			if (retryIdx == 20) {
-				break;
-			}
-			_bot.sleep(1500);
-			retryIdx++;
-		}
+	    while (true) {
+	        SWTBotTree tree = getResultsTree();
 
-		if (retryIdx == 20) {
-			throw new TimeoutException("Timeout after waiting. Scan results should be retrieved");
-		}
+	        if (tree.rowCount() == 0) {
+	            break;
+	        }
+
+	        String currentText = tree.getAllItems()[0].getText();
+
+	        if (!currentText.equals(nodeText)) {
+	            break;
+	        }
+
+	        if (retryIdx == 20) {
+	            throw new TimeoutException("Timeout after waiting. Scan results should be retrieved");
+	        }
+
+	        sleep(1500);
+	        retryIdx++;
+	    }
 	}
 
 	/**
