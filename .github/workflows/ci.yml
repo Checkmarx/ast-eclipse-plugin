@@ -3,9 +3,6 @@ on:
   pull_request:
     branches: 
       - main
-  push:
-    branches:
-      - codeMigration
 
 jobs:
 
@@ -17,10 +14,10 @@ jobs:
           lfs: true
       - name: Checkout LFS objects
         run: git lfs checkout
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v3
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 8
       - uses: actions/cache@v3
         with:
           path: ~/.m2/repository
@@ -45,10 +42,10 @@ jobs:
           lfs: true
       - name: Checkout LFS objects
         run: git lfs checkout
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v3
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 8
       - uses: actions/cache@v3
         with:
           path: ~/.m2/repository
