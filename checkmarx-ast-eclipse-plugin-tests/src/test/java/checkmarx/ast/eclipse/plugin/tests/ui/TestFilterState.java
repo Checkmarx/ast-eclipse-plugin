@@ -13,332 +13,297 @@ import java.util.stream.Collectors;
 
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotMenu;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotToolbarDropDownButton;
-import org.eclipse.swtbot.swt.finder.widgets.SWTBotTree;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotTreeItem;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.checkmarx.eclipse.enums.Severity;
 import com.checkmarx.eclipse.enums.State;
 import com.checkmarx.eclipse.views.actions.ToolBarActions;
 
-public class TestFilterState extends BaseUITest{
-	
-	List<String> groupByActions = Arrays.asList(ToolBarActions.GROUP_BY_QUERY_NAME,ToolBarActions.GROUP_BY_SEVERITY,ToolBarActions.GROUP_BY_STATE_NAME);
-	
-	private static final String HIGH = "HIGH";
-	private static final String MEDIUM = "MEDIUM";
-	private static final String LOW = "LOW";
-	private static final String INFO = "INFO";
-	
-	@Test
-	public void testGroupByActionsInToolBar() throws TimeoutException {
-		preventWidgetWasNullInCIEnvironment();
-		int SECOND_NODE = 2;
-		int THIRD_NODE = 3;
-		int FOURTH_NODE = 4;
+public class TestFilterState extends BaseUITest {
 
-		setUpCheckmarxPlugin(true);     
+    List<String> groupByActions = Arrays.asList(
+            ToolBarActions.GROUP_BY_QUERY_NAME,
+            ToolBarActions.GROUP_BY_SEVERITY,
+            ToolBarActions.GROUP_BY_STATE_NAME);
 
-		// remove all groups and get the first individual node
-		disableAllGroupByActions(groupByActions);
+    private static final String HIGH = "HIGH";
+    private static final String MEDIUM = "MEDIUM";
+    private static final String LOW = "LOW";
+    private static final String INFO = "INFO";
 
-		sleep(1000);
-		
-		SWTBotTreeItem ll = getFirstResultNode();
-		ArrayList<String> severityFilters = new ArrayList<>(Arrays.asList(Severity.HIGH.name(), Severity.MEDIUM.name(),Severity.LOW.name(),Severity.INFO.name()));
-		ArrayList<String> stateFilters = new ArrayList<>(Arrays.asList(State.CONFIRMED.getName(),State.IGNORED.getName(),State.NOT_EXPLOITABLE.getName(),State.NOT_IGNORED.getName(),State.PROPOSED_NOT_EXPLOITABLE.getName(),State.TO_VERIFY.getName(),State.URGENT.getName()));
-		assertTrue(!severityFilters.contains(ll.getText()));
-		
-		//enable group by severity (1st level group)
-		enableGroup(ToolBarActions.GROUP_BY_SEVERITY);
-		sleep(1000);
-		String severityFilter = getNodeLabel(SECOND_NODE);
-		assertTrue(severityFilters.contains(severityFilter));
-		
-		// enable group by state (2nd level group)
-		enableGroup(ToolBarActions.GROUP_BY_STATE_NAME);
-		sleep(1000);
-		String stateFilter = getNodeLabel(THIRD_NODE);
-		assertTrue(stateFilters.contains(stateFilter));
-		
-		// enable group by query name (3rd level group)
-		enableGroup(ToolBarActions.GROUP_BY_QUERY_NAME);
-		sleep(1000);
-		String queryNameFilter = getNodeLabel(FOURTH_NODE);
-		assertTrue(queryNameFilter.startsWith(ll.getText()));
-
-		// Close Checkmarx One Scan view
-		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
-	}
-	
-	private String getNodeLabel(int i) {
-		SWTBotTreeItem treeNode = getResultsTree().getTreeItem(getResultsTree().cell(0, 0));
-		String value = "";
-		while(i>0) {
-			treeNode = treeNode.expand().getNode(0);
-			i--;
-		}
-		value= treeNode.getText().split("\\(")[0].trim();
-		return value;
-	}
-
-	private void enableGroup(String groupBy) {
-		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(groupBy).click();
-	}
-
-	/**
-	 * Gets the Checkmarx results tree. Tries tree(1) first (when multiple trees exist),
-	 * falls back to tree(0) when only one tree is present (avoids IndexOutOfBoundsException).
-	 */
-	private SWTBotTree getResultsTree() {
-		try {
-			return _bot.tree(1);
-		} catch (IndexOutOfBoundsException e) {
-			return _bot.tree(0);
-		}
-	}
-
-	private void disableAllGroupByActions(List<String> groupByActions) {
-		for(String action : groupByActions) {
-			SWTBotMenu groupMenu = _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(action);
-			if(groupMenu.isChecked())
-				groupMenu.click();
-		}
-		
-	}
-
-	@Test
-	public void testFilterStateActionsInToolBar() throws TimeoutException, ParseException{
-		preventWidgetWasNullInCIEnvironment();
-		sleep(2000);
-		setUpCheckmarxPlugin(true);
-		
-		// deselect all group by actions and enable only the state group by
-		disableAllGroupByActions(groupByActions);
-		
-		sleep(1000);
-		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(ToolBarActions.GROUP_BY_STATE_NAME).click();
-		
-		// get all filter nodes
-		List<String> filterStateButtons = Arrays.asList("Not Exploitable","Confirmed","Proposed Not Exploitable","Urgent","Ignored","Not Ignored","To Verify");
-		List<String> enabledFilters = getResultsTree().getTreeItem(getResultsTree().cell(0, 0)).expand().getNode(0).expand().getNodes().stream().map(node -> node.split("\\(")[0].trim()).collect(Collectors.toList());
-		String firstGroup = enabledFilters.get(0);
-		List<String> filterButton = filterStateButtons.stream().filter(node -> node.equalsIgnoreCase(firstGroup.replace("_", " "))).collect(Collectors.toList());
-		assertTrue(filterButton.size()==1);
-		SWTBotToolbarDropDownButton stateFilter = _bot.toolbarDropDownButtonWithTooltip("State");
-		final SWTBotMenu menuItem = stateFilter.menuItem(filterButton.get(0));
-		menuItem.setFocus();
-		menuItem.click();
-		stateFilter.pressShortcut(KeyStroke.getInstance("ESC"));
-		
-		sleep(1000);
-		List<String> filteredGroup = new ArrayList<String>();
-		if(enabledFilters.size()>0) {
-			filteredGroup = getResultsTree().getTreeItem(getResultsTree().cell(0, 0)).expand().getNode(0).expand().getNodes().stream().map(node -> node.split("\\(")[0].trim()).collect(Collectors.toList());
-			assertTrue(!filteredGroup.contains(firstGroup));
-		}
-		else {
-			assertTrue( getResultsTree().getTreeItem(getResultsTree().cell(0, 0)).expand().getNodes().isEmpty(), TestUI.ASSERT_NO_CHINDREN);
-		}
-		
-		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
-		
-	}
-
- 
-    @Test
-    public void testScannerTypesDisplay() throws TimeoutException {
-        setUpCheckmarxPlugin(true);
+    @BeforeEach
+    void init() {
         preventWidgetWasNullInCIEnvironment();
-        
-        // Clear all existing group by actions
+    }
+
+    @Test
+    void testGroupByActionsInToolBar() throws TimeoutException {
+
+        int SECOND_NODE = 2;
+        int THIRD_NODE = 3;
+        int FOURTH_NODE = 4;
+
+        setUpCheckmarxPlugin(true);
+
         disableAllGroupByActions(groupByActions);
         sleep(1000);
-        
-        // Verify basic results exist (getFirstResultNode ensures tree is populated)
-        getFirstResultNode();
-        
-        String firstNodeName = getResultsTree().cell(0, 0);
-        List<String> scannerTypes = getResultsTree()
-            .getTreeItem(firstNodeName)
-            .expand()
-            .getNodes();
-        
-        assertTrue(scannerTypes.stream().anyMatch(node -> node.contains("SAST")), "Should contain SAST results");
-        assertTrue(scannerTypes.stream().allMatch(node -> node.matches(".*\\(\\d+\\)")), "Scanner types format should be correct");
-            
+
+        SWTBotTreeItem ll = getFirstResultNode();
+
+        ArrayList<String> severityFilters = new ArrayList<>(
+                Arrays.asList(Severity.HIGH.name(),
+                        Severity.MEDIUM.name(),
+                        Severity.LOW.name(),
+                        Severity.INFO.name()));
+
+        ArrayList<String> stateFilters = new ArrayList<>(
+                Arrays.asList(State.CONFIRMED.getName(),
+                        State.IGNORED.getName(),
+                        State.NOT_EXPLOITABLE.getName(),
+                        State.NOT_IGNORED.getName(),
+                        State.PROPOSED_NOT_EXPLOITABLE.getName(),
+                        State.TO_VERIFY.getName(),
+                        State.URGENT.getName()));
+
+        assertTrue(!severityFilters.contains(ll.getText()));
+
+        enableGroup(ToolBarActions.GROUP_BY_SEVERITY);
+        sleep(1000);
+        String severityFilter = getNodeLabel(SECOND_NODE);
+        assertTrue(severityFilters.contains(severityFilter));
+
+        enableGroup(ToolBarActions.GROUP_BY_STATE_NAME);
+        sleep(1000);
+        String stateFilter = getNodeLabel(THIRD_NODE);
+        assertTrue(stateFilters.contains(stateFilter));
+
+        enableGroup(ToolBarActions.GROUP_BY_QUERY_NAME);
+        sleep(1000);
+        String queryNameFilter = getNodeLabel(FOURTH_NODE);
+        assertTrue(queryNameFilter.startsWith(ll.getText()));
+
         _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
     }
 
+    @Test
+    void testFilterStateActionsInToolBar()
+            throws TimeoutException, ParseException {
 
-	@Test
-	public void testResultsSeverityOrder() throws TimeoutException {
-	    try {
-	        setUpCheckmarxPlugin(true);
-	        preventWidgetWasNullInCIEnvironment();
-	        
-	        System.out.println("\n=== Starting Severity Order Test ===");
-	        
-	        disableAllGroupByActions(groupByActions);
-	        sleep(2000);
-	        
-	        String firstNodeName = getResultsTree().cell(0, 0);
-	        System.out.println("Root node name: " + firstNodeName);
-        
-	        SWTBotTreeItem rootNode = getResultsTree().getTreeItem(firstNodeName);
-	        rootNode.expand();
-	        sleep(1000);
-	        
-	        // Check if root node has any nodes
-	        List<String> rootNodes = rootNode.getNodes();
-	        System.out.println("Root nodes (" + rootNodes.size() + "): " + rootNodes);
-	        
-	        if (rootNodes.isEmpty()) {
-	            System.out.println("Root node has no nodes - test passes by default");
-	            return;
-	        }
-	        
-	        // Find SAST node
-	        SWTBotTreeItem sastNode = null;
-	        for (String nodeName : rootNodes) {
-	            System.out.println("Checking node: " + nodeName);
-	            if (nodeName.toLowerCase().contains("sast")) {
-	                sastNode = rootNode.getNode(nodeName);
-	                System.out.println("Found SAST node: " + nodeName);
-	                break;
-	            }
-	        }
-	        
-	        if (sastNode == null) {
-	            System.out.println("No SAST node found - test passes by default");
-	            return;
-	        }
-	        
-	        sastNode.select();
-	        sastNode.expand();
-	        sleep(1000);
-	        
-	        // Check nodes at each stage
-	        System.out.println("\n=== Before Grouping ===");
-	        List<String> sastNodes = sastNode.getNodes();
-	        System.out.println("SAST nodes (" + sastNodes.size() + "): " + sastNodes);
-	        
-	        if (sastNodes.isEmpty()) {
-	            System.out.println("SAST node has no results before grouping - test passes by default");
-	            return;
-	        }
-	        
-	        System.out.println("\n=== Enabling Group By Severity ===");
-	        enableGroup(ToolBarActions.GROUP_BY_SEVERITY);
-	        sleep(2000);
+        sleep(1000);
+        setUpCheckmarxPlugin(true);
 
-	        // Get fresh nodes
-	        rootNode = getResultsTree().getTreeItem(firstNodeName);
-	        rootNode.expand();
-	        sleep(2000);
+        disableAllGroupByActions(groupByActions);
+        sleep(1000);
 
-	        // Find SAST node name
-	        String sastNodeName = null;
-	        for (String nodeName : rootNode.getNodes()) {
-	            if (nodeName.toLowerCase().contains("sast")) {
-	                sastNodeName = nodeName;
-	                System.out.println("Found SAST node after grouping: " + nodeName);
-	                break;
-	            }
-	        }
+        _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN)
+                .viewMenu()
+                .menu(ToolBarActions.MENU_GROUP_BY)
+                .menu(ToolBarActions.GROUP_BY_STATE_NAME)
+                .click();
 
-	        if (sastNodeName == null) {
-	            System.out.println("Could not find SAST node after grouping - test passes by default");
-	            return;
-	        }
+        List<String> filterStateButtons = Arrays.asList(
+                "Not Exploitable", "Confirmed",
+                "Proposed Not Exploitable", "Urgent",
+                "Ignored", "Not Ignored", "To Verify");
 
-	        // Get fresh SAST node and expand
-	        sastNode = rootNode.getNode(sastNodeName);
-	        sastNode.expand();
-	        sleep(2000);
-	        
-	        System.out.println("\n=== After Grouping ===");
-	        List<String> nodes = sastNode.getNodes();
-	        System.out.println("Nodes after grouping (" + nodes.size() + "): " + nodes);
-	        
-	        if (nodes.isEmpty()) {
-	            System.out.println("No results found after grouping by severity - test passes by default");
-	            return;
-	        }
-	        
-	        System.out.println("\n=== Processing Severities ===");
-	        List<String> severityNodes = new ArrayList<>();
-	        for (String nodeName : nodes) {
-	            String severityText = nodeName.split("\\(")[0].trim();
-	            System.out.println("Processing node: '" + nodeName + "' -> Severity: '" + severityText + "'");
-	            if (getSeverityWeight(severityText) > 0) {
-	                System.out.println("Valid severity found: " + severityText + " (weight: " + getSeverityWeight(severityText) + ")");
-	                severityNodes.add(severityText);
-	            } else {
-	                System.out.println("Ignoring invalid severity: " + severityText);
-	            }
-	        }
-	        
-	        System.out.println("\n=== Final Results ===");
-	        System.out.println("Found severity nodes: " + severityNodes);
-	        
-	        // Get actual severities and check order only if we have severities
-	        List<String> actualSeverities = severityNodes.stream()
-	            .distinct()
-	            .collect(Collectors.toList());
-	        
-	        System.out.println("Found severities: " + actualSeverities);
+        List<String> enabledFilters = _bot.tree(1)
+                .getTreeItem(_bot.tree(1).cell(0, 0))
+                .expand()
+                .getNode(0)
+                .expand()
+                .getNodes()
+                .stream()
+                .map(node -> node.split("\\(")[0].trim())
+                .collect(Collectors.toList());
 
-	        if (actualSeverities.isEmpty()) {
-	            System.out.println("No severities found after filtering - test passes by default");
-	            return;
-	        }
+        String firstGroup = enabledFilters.get(0);
 
-	        if (actualSeverities.size() == 1) {
-	            System.out.println("Only one severity found (" + actualSeverities.get(0) + ") - no need to check order");
-	            return;
-	        }
-	        
-	        // Check order only if we have more than one severity
-	        for (int i = 0; i < actualSeverities.size() - 1; i++) {
-	            String currentSeverity = actualSeverities.get(i);
-	            String nextSeverity = actualSeverities.get(i + 1);
-	            
-				assertTrue(getSeverityWeight(currentSeverity) >= getSeverityWeight(nextSeverity),
-						String.format("Wrong severity order: %s found before %s", currentSeverity, nextSeverity)
+        List<String> filterButton = filterStateButtons.stream()
+                .filter(node -> node.equalsIgnoreCase(firstGroup.replace("_", " ")))
+                .collect(Collectors.toList());
 
-				);
-	        }
-	        
-	        _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
-	        
-	    } catch (Exception e) {
-	        System.out.println("\n=== Test Failed ===");
-	        System.out.println("Exception: " + e.getClass().getName());
-	        System.out.println("Message: " + e.getMessage());
-	        System.out.println("Stack trace:");
-	        e.printStackTrace();
-	        throw e;
-	    }
-	}
+        assertTrue(filterButton.size() == 1);
 
-	// Helper method to get severity weight
-	private int getSeverityWeight(String severity) {
-	    switch(severity.toUpperCase()) {
-	        case HIGH: return 4;
-	        case MEDIUM: return 3;
-	        case LOW: return 2;
-	        case INFO: return 1;
-	        default: return 0;
-	    }
-	}
+        SWTBotToolbarDropDownButton stateFilter =
+                _bot.toolbarDropDownButtonWithTooltip("State");
 
-	private SWTBotTreeItem getFirstResultNode() {
-		String firstNodeName = getResultsTree().cell(0, 0);
-		SWTBotTreeItem node = getResultsTree().getTreeItem(firstNodeName);
-		while(!node.getNodes().isEmpty()) {
-			node = node.expand().getNode(0);
-		}
-		return node;
-	}
+        SWTBotMenu menuItem = stateFilter.menuItem(filterButton.get(0));
+        menuItem.setFocus();
+        menuItem.click();
+        stateFilter.pressShortcut(KeyStroke.getInstance("ESC"));
+
+        sleep(1000);
+
+        if (enabledFilters.size() > 0) {
+            List<String> filteredGroup = _bot.tree(1)
+                    .getTreeItem(_bot.tree(1).cell(0, 0))
+                    .expand()
+                    .getNode(0)
+                    .expand()
+                    .getNodes()
+                    .stream()
+                    .map(node -> node.split("\\(")[0].trim())
+                    .collect(Collectors.toList());
+
+            assertTrue(!filteredGroup.contains(firstGroup));
+        } else {
+            assertTrue(
+                    _bot.tree(1)
+                            .getTreeItem(_bot.tree(1).cell(0, 0))
+                            .expand()
+                            .getNodes()
+                            .isEmpty(),
+                    TestUI.ASSERT_NO_CHINDREN
+            );
+        }
+
+        _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
+    }
+
+    @Test
+    void testScannerTypesDisplay() throws TimeoutException {
+
+        setUpCheckmarxPlugin(true);
+        sleep(1000);
+
+        disableAllGroupByActions(groupByActions);
+        sleep(1000);
+
+        String firstNodeName = _bot.tree(1).cell(0, 0);
+
+        List<String> scannerTypes = _bot.tree(1)
+                .getTreeItem(firstNodeName)
+                .expand()
+                .getNodes();
+
+        assertTrue(
+                scannerTypes.stream().anyMatch(node -> node.contains("SAST")),
+                "Should contain SAST results"
+        );
+
+        assertTrue(
+                scannerTypes.stream().allMatch(node -> node.matches(".*\\(\\d+\\)")),
+                "Scanner types format should be correct"
+        );
+
+        _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
+    }
+
+    @Test
+    void testResultsSeverityOrder() throws TimeoutException {
+
+        setUpCheckmarxPlugin(true);
+        sleep(2000);
+
+        disableAllGroupByActions(groupByActions);
+
+        String firstNodeName = _bot.tree(1).cell(0, 0);
+        SWTBotTreeItem rootNode = _bot.tree(1).getTreeItem(firstNodeName);
+        rootNode.expand();
+        sleep(1000);
+
+        List<String> rootNodes = rootNode.getNodes();
+        if (rootNodes.isEmpty()) return;
+
+        SWTBotTreeItem sastNode = null;
+        for (String nodeName : rootNodes) {
+            if (nodeName.toLowerCase().contains("sast")) {
+                sastNode = rootNode.getNode(nodeName);
+                break;
+            }
+        }
+
+        if (sastNode == null) return;
+
+        enableGroup(ToolBarActions.GROUP_BY_SEVERITY);
+        sleep(2000);
+
+        rootNode = _bot.tree(1).getTreeItem(firstNodeName);
+        rootNode.expand();
+
+        String sastNodeName = rootNode.getNodes().stream()
+                .filter(n -> n.toLowerCase().contains("sast"))
+                .findFirst()
+                .orElse(null);
+
+        if (sastNodeName == null) return;
+
+        sastNode = rootNode.getNode(sastNodeName);
+        sastNode.expand();
+        sleep(1000);
+
+        List<String> severityNodes = sastNode.getNodes();
+
+        List<String> actualSeverities = severityNodes.stream()
+                .map(node -> node.split("\\(")[0].trim())
+                .filter(s -> getSeverityWeight(s) > 0)
+                .distinct()
+                .collect(Collectors.toList());
+
+        if (actualSeverities.size() <= 1) return;
+
+        for (int i = 0; i < actualSeverities.size() - 1; i++) {
+            String current = actualSeverities.get(i);
+            String next = actualSeverities.get(i + 1);
+
+            assertTrue(
+                    getSeverityWeight(current) >= getSeverityWeight(next),
+                    String.format("Wrong severity order: %s before %s", current, next)
+            );
+        }
+
+        _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
+    }
+
+    private int getSeverityWeight(String severity) {
+        switch (severity.toUpperCase()) {
+            case HIGH: return 4;
+            case MEDIUM: return 3;
+            case LOW: return 2;
+            case INFO: return 1;
+            default: return 0;
+        }
+    }
+
+    private SWTBotTreeItem getFirstResultNode() {
+        String firstNodeName = _bot.tree(1).cell(0, 0);
+        SWTBotTreeItem node = _bot.tree(1).getTreeItem(firstNodeName);
+        while (!node.getNodes().isEmpty()) {
+            node = node.expand().getNode(0);
+        }
+        return node;
+    }
+
+    private String getNodeLabel(int i) {
+        SWTBotTreeItem treeNode =
+                _bot.tree(1).getTreeItem(_bot.tree(1).cell(0, 0));
+        while (i > 0) {
+            treeNode = treeNode.expand().getNode(0);
+            i--;
+        }
+        return treeNode.getText().split("\\(")[0].trim();
+    }
+
+    private void enableGroup(String groupBy) {
+        _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN)
+                .viewMenu()
+                .menu(ToolBarActions.MENU_GROUP_BY)
+                .menu(groupBy)
+                .click();
+    }
+
+    private void disableAllGroupByActions(List<String> groupByActions) {
+        for (String action : groupByActions) {
+            SWTBotMenu groupMenu =
+                    _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN)
+                            .viewMenu()
+                            .menu(ToolBarActions.MENU_GROUP_BY)
+                            .menu(action);
+            if (groupMenu.isChecked()) {
+                groupMenu.click();
+            }
+        }
+    }
 }
