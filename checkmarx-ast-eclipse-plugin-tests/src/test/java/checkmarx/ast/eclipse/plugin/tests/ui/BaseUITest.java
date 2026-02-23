@@ -16,6 +16,8 @@ import org.eclipse.ui.PlatformUI;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.eclipse.swtbot.swt.finder.widgets.SWTBotTree;
+import org.eclipse.swt.widgets.Tree;
 
 import com.checkmarx.eclipse.utils.PluginConstants;
 
@@ -145,8 +147,8 @@ public abstract class BaseUITest {
 
 			sleep(1000);
 
-			assertEquals(1, _bot.tree(1).rowCount(), "The tree must contain one row with an error message");
-			assertEquals(PluginConstants.TREE_INVALID_SCAN_ID_FORMAT, _bot.tree(1).cell(0, 0));
+			assertEquals(1, getResultsTree().rowCount(), "The tree must contain one row with an error message");
+			assertEquals(PluginConstants.TREE_INVALID_SCAN_ID_FORMAT, getResultsTree().cell(0, 0));
 		}
 
 		// Clear the view before getting the scan id
@@ -161,7 +163,7 @@ public abstract class BaseUITest {
 		int retryIdx = 0;
 		boolean retrievingOrRetrievedResults = false;
 		while (retryIdx < 20) {
-			if (_bot.tree(1).rowCount() >= 1 && _bot.tree(1).cell(0, 0).contains(Environment.SCAN_ID)) {
+			if (getResultsTree().rowCount() >= 1 && getResultsTree().cell(0, 0).contains(Environment.SCAN_ID)) {
 				retrievingOrRetrievedResults = true;
 				break;
 			}
@@ -169,12 +171,12 @@ public abstract class BaseUITest {
 			retryIdx++;
 		}
 
-		assertEquals(1, _bot.tree(1).rowCount(), "The tree must contain one row");
+		assertEquals(1, getResultsTree().rowCount(), "The tree must contain one row");
 		assertTrue(retrievingOrRetrievedResults, "The plugin should have or should be retrieving results");
 
 		waitWhileTreeNodeEqualsTo(String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, Environment.SCAN_ID));
 
-		assertTrue(_bot.tree(1).cell(0, 0).startsWith(Environment.SCAN_ID), "The plugin should retrieve results");
+		assertTrue(getResultsTree().cell(0, 0).startsWith(Environment.SCAN_ID), "The plugin should retrieve results");
 	}
 
 	/**
@@ -361,5 +363,13 @@ public abstract class BaseUITest {
 			});
 		} catch (Exception ignored) {}
 		_bot.sleep(3000);
+	}
+	
+	protected SWTBotTree getResultsTree() {
+	    try {
+	        return _bot.tree(1);
+	    } catch (IndexOutOfBoundsException e) {
+	        return _bot.tree(0);
+	    }
 	}
 }
