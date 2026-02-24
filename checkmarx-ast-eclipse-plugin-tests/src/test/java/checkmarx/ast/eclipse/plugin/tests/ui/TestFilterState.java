@@ -108,8 +108,8 @@ public class TestFilterState extends BaseUITest {
                 "Proposed Not Exploitable", "Urgent",
                 "Ignored", "Not Ignored", "To Verify");
 
-        List<String> enabledFilters = _bot.tree(1)
-                .getTreeItem(_bot.tree(1).cell(0, 0))
+        List<String> enabledFilters = getResultsTree()
+                .getTreeItem(getResultsTree().cell(0, 0))
                 .expand()
                 .getNode(0)
                 .expand()
@@ -137,8 +137,8 @@ public class TestFilterState extends BaseUITest {
         sleep(1000);
 
         if (enabledFilters.size() > 0) {
-            List<String> filteredGroup = _bot.tree(1)
-                    .getTreeItem(_bot.tree(1).cell(0, 0))
+            List<String> filteredGroup = getResultsTree()
+                    .getTreeItem(getResultsTree().cell(0, 0))
                     .expand()
                     .getNode(0)
                     .expand()
@@ -150,8 +150,8 @@ public class TestFilterState extends BaseUITest {
             assertTrue(!filteredGroup.contains(firstGroup));
         } else {
             assertTrue(
-                    _bot.tree(1)
-                            .getTreeItem(_bot.tree(1).cell(0, 0))
+            		getResultsTree()
+                            .getTreeItem(getResultsTree().cell(0, 0))
                             .expand()
                             .getNodes()
                             .isEmpty(),
@@ -171,9 +171,9 @@ public class TestFilterState extends BaseUITest {
         disableAllGroupByActions(groupByActions);
         sleep(1000);
 
-        String firstNodeName = _bot.tree(1).cell(0, 0);
+        String firstNodeName = getResultsTree().cell(0, 0);
 
-        List<String> scannerTypes = _bot.tree(1)
+        List<String> scannerTypes =getResultsTree()
                 .getTreeItem(firstNodeName)
                 .expand()
                 .getNodes();
@@ -199,8 +199,8 @@ public class TestFilterState extends BaseUITest {
 
         disableAllGroupByActions(groupByActions);
 
-        String firstNodeName = _bot.tree(1).cell(0, 0);
-        SWTBotTreeItem rootNode = _bot.tree(1).getTreeItem(firstNodeName);
+        String firstNodeName = getResultsTree().cell(0, 0);
+        SWTBotTreeItem rootNode = getResultsTree().getTreeItem(firstNodeName);
         rootNode.expand();
         sleep(1000);
 
@@ -220,7 +220,7 @@ public class TestFilterState extends BaseUITest {
         enableGroup(ToolBarActions.GROUP_BY_SEVERITY);
         sleep(2000);
 
-        rootNode = _bot.tree(1).getTreeItem(firstNodeName);
+        rootNode = getResultsTree().getTreeItem(firstNodeName);
         rootNode.expand();
 
         String sastNodeName = rootNode.getNodes().stream()
@@ -268,8 +268,8 @@ public class TestFilterState extends BaseUITest {
     }
 
     private SWTBotTreeItem getFirstResultNode() {
-        String firstNodeName = _bot.tree(1).cell(0, 0);
-        SWTBotTreeItem node = _bot.tree(1).getTreeItem(firstNodeName);
+        String firstNodeName = getResultsTree().cell(0, 0);
+        SWTBotTreeItem node = getResultsTree().getTreeItem(firstNodeName);
         while (!node.getNodes().isEmpty()) {
             node = node.expand().getNode(0);
         }
@@ -278,7 +278,7 @@ public class TestFilterState extends BaseUITest {
 
     private String getNodeLabel(int i) {
         SWTBotTreeItem treeNode =
-                _bot.tree(1).getTreeItem(_bot.tree(1).cell(0, 0));
+        		getResultsTree().getTreeItem(getResultsTree().cell(0, 0));
         while (i > 0) {
             treeNode = treeNode.expand().getNode(0);
             i--;
