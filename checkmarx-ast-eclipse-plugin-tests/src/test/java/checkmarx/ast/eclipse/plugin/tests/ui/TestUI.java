@@ -1,7 +1,9 @@
 package checkmarx.ast.eclipse.plugin.tests.ui;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -10,17 +12,18 @@ import java.util.UUID;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
+import org.eclipse.swtbot.swt.finder.exceptions.WidgetNotFoundException;
 import org.eclipse.jface.bindings.keys.KeyStroke;
 import org.eclipse.jface.bindings.keys.ParseException;
+import org.eclipse.swtbot.eclipse.finder.widgets.SWTBotView;
 import org.eclipse.swtbot.swt.finder.exceptions.WidgetNotFoundException;
-import org.eclipse.swtbot.swt.finder.junit.SWTBotJunit4ClassRunner;
+import org.eclipse.swtbot.swt.finder.finders.UIThreadRunnable;
 import org.eclipse.swtbot.swt.finder.keyboard.Keystrokes;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotMenu;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotToolbarButton;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotToolbarDropDownButton;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 import com.checkmarx.eclipse.enums.ActionName;
 import com.checkmarx.eclipse.enums.Severity;
@@ -29,7 +32,13 @@ import com.checkmarx.eclipse.views.actions.ToolBarActions;
 
 import checkmarx.ast.eclipse.plugin.tests.common.Environment;
 
-@RunWith(SWTBotJunit4ClassRunner.class)
+
+import org.eclipse.ui.PlatformUI;
+import org.eclipse.swtbot.swt.finder.results.VoidResult;
+import org.eclipse.swtbot.swt.finder.utils.SWTBotPreferences;
+import org.junit.jupiter.api.BeforeAll;
+
+
 public class TestUI extends BaseUITest {
 	
 	
@@ -55,21 +64,17 @@ public class TestUI extends BaseUITest {
 		// Add Checkmarx plugin to the eclipse view
 		addCheckmarxPlugin(false);
 		
-		preventWidgetWasNullInCIEnvironment();
-
-		// Assert that active view is the Checkmarx One Scan
-		assertTrue("Active view must be the Checkmarx One Scan", _bot.activeView().getTitle().equals(VIEW_CHECKMARX_AST_SCAN));
-		
-		preventWidgetWasNullInCIEnvironment();
-		
-		assertTrue(ASSERT_CREDENTIALS_PANEL, _bot.button(PluginConstants.BTN_OPEN_SETTINGS) != null);
+		stabilizeView(VIEW_CHECKMARX_AST_SCAN);
+		assertTrue(_bot.activeView().getTitle().equals(VIEW_CHECKMARX_AST_SCAN), "Active view must be the Checkmarx One Scan");
+		stabilizeActiveShell();
+		assertTrue(_bot.button(PluginConstants.BTN_OPEN_SETTINGS) != null, ASSERT_CREDENTIALS_PANEL);
 		
 		// Close Checkmarx One Scan view
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
 	}
 
 	@Test
-	@Ignore("Disabled due we changed behaviour of credeantials to show Open Setting window on clearing credentials")
+	@Disabled("Disabled due we changed behaviour of credeantials to show Open Setting window on clearing credentials")
 	public void testMissingSetCheckmarxServerUrl() throws TimeoutException {
 		// Test Connection
 		testSuccessfulConnection(false);
@@ -82,18 +87,18 @@ public class TestUI extends BaseUITest {
 
 		// Type a valid and existing scan id
 		preventWidgetWasNullInCIEnvironment();
-		
+		stabilizeView(VIEW_CHECKMARX_AST_SCAN);
 		_bot.comboBox(2).setText(UUID.randomUUID().toString());
 		_bot.comboBox(2).pressShortcut(Keystrokes.LF);
 
-		assertEquals("The tree must contain a single row", _bot.tree(1).rowCount(), 1);
-		String firstTreeCell = _bot.tree(1).cell(0, 0);
+		assertEquals(1, _bot.tree().rowCount(),"The tree must contain a single row");
+		String firstTreeCell = _bot.tree().cell(0, 0);
 
 		// The first row must have a message saying that One is getting results or
 		// failing due the missing Server Url
 		firstTreeCell.equals(String.format(PluginConstants.RETRIEVING_RESULTS_FOR_SCAN, Environment.SCAN_ID));
 
-		sleep();
+		sleep(2000);
 
 		// Close Checkmarx One Scan view
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
@@ -114,13 +119,13 @@ public class TestUI extends BaseUITest {
 	public void testEnd2End() throws TimeoutException {
 		// Set credentials, test connection and add checkmarx plugin
 		setUpCheckmarxPlugin(false);
-				
-		String firstNodeName = _bot.tree(1).cell(0, 0);
-		String secondNodeName = _bot.tree(1).getTreeItem(firstNodeName).expand().getNode(0).getText();
-		String thirdNodeName = _bot.tree(1).getTreeItem(firstNodeName).expand().getNode(0).expand().getNode(0).getText();
+		stabilizeView(VIEW_CHECKMARX_AST_SCAN);
+		String firstNodeName = _bot.tree().cell(0, 0);
+		String secondNodeName = _bot.tree().getTreeItem(firstNodeName).expand().getNode(0).getText();
+		String thirdNodeName = _bot.tree().getTreeItem(firstNodeName).expand().getNode(0).expand().getNode(0).getText();
 		
 		// Expand nodes until the first vulnerability
-		_bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).select();
+		_bot.tree().expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).select();
 				
 		// Close Checkmarx One Scan view
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
@@ -133,19 +138,19 @@ public class TestUI extends BaseUITest {
 
 		// Add Checkmarx One Plugin
 		addCheckmarxPlugin(true);
-				
+		stabilizeView(VIEW_CHECKMARX_AST_SCAN);
 		List<SWTBotToolbarButton> toolbarButtons = _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).getToolbarButtons();
 		List<String> toolBarButtonsNames = toolbarButtons.stream().map(btn -> btn.getToolTipText().toUpperCase()).collect(Collectors.toList());
 		List<String> filterActions = Arrays.asList(ActionName.HIGH.name(), ActionName.MEDIUM.name(), ActionName.LOW.name(), ActionName.INFO.name());
 		
 		// Assert all filter actions are present in the tool bar
-		assertTrue(ASSERT_FILTER_ACTIONS_IN_TOOLBAR, toolBarButtonsNames.containsAll(filterActions));	
+		assertTrue(toolBarButtonsNames.containsAll(filterActions),ASSERT_FILTER_ACTIONS_IN_TOOLBAR);	
 		
 		List<String> groupByActions = Arrays.asList(ToolBarActions.GROUP_BY_SEVERITY, ToolBarActions.GROUP_BY_QUERY_NAME);
 		List<String> toolBarGroupByActions = _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menuItems();
 		
 		// Assert all group by actions are present in the tool bar
-		assertTrue(ASSERT_GROUP_BY_ACTIONS_IN_TOOLBAR, toolBarGroupByActions.containsAll(groupByActions));	
+		assertTrue(toolBarGroupByActions.containsAll(groupByActions),ASSERT_GROUP_BY_ACTIONS_IN_TOOLBAR);	
 		
 		// Close Checkmarx One Scan view
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
@@ -155,7 +160,8 @@ public class TestUI extends BaseUITest {
 	public void testFilteringAndGroupingResults() throws TimeoutException, ParseException {
 		// Set credentials, test connection and add checkmarx plugin
 		setUpCheckmarxPlugin(true);
-		
+		stabilizeView(VIEW_CHECKMARX_AST_SCAN);
+
 		List<String> filterStateButtons = Arrays.asList("Not Exploitable","Confirmed","Ignored","Not Ignored","To Verify");
 		SWTBotToolbarDropDownButton stateFilter = _bot.toolbarDropDownButtonWithTooltip("State");
 
@@ -174,22 +180,22 @@ public class TestUI extends BaseUITest {
 		ArrayList<String> currentActiveFilters = new ArrayList<>(Arrays.asList(Severity.HIGH.name(), Severity.MEDIUM.name()));	
 				
 		// Checks that tree contains High and Medium results
-		assertTrue(ASSERT_TREE_CONSTAIN_HIGH_MEDIUM, expandTreeUntilFirstEngineAndGetCurrentSeverities().containsAll(currentActiveFilters));			
+		assertTrue(expandTreeUntilFirstEngineAndGetCurrentSeverities().containsAll(currentActiveFilters), ASSERT_TREE_CONSTAIN_HIGH_MEDIUM);			
 		
 		// Click to include Low severity
 		clickSeverityFilter(ActionName.LOW.name());
 		currentActiveFilters.add(Severity.LOW.name());
 		
 		// Checks that tree contains High, Medium and Low results
-		assertTrue(ASSERT_TREE_CONSTAIN_HIGH_MEDIUM_LOW, expandTreeUntilFirstEngineAndGetCurrentSeverities().containsAll(currentActiveFilters));	
+		assertTrue(expandTreeUntilFirstEngineAndGetCurrentSeverities().containsAll(currentActiveFilters),ASSERT_TREE_CONSTAIN_HIGH_MEDIUM_LOW);	
 		
 		// Click to include Info severity
 		clickSeverityFilter(ActionName.INFO.name());
 		currentActiveFilters.add(Severity.INFO.name());
 		
 		// Checks that tree contains High, Medium, Low and Info results
-		assertTrue(ASSERT_TREE_CONSTAIN_HIGH_MEDIUM_LOW_INFO, expandTreeUntilFirstEngineAndGetCurrentSeverities().containsAll(currentActiveFilters));	
-		
+		assertTrue(expandTreeUntilFirstEngineAndGetCurrentSeverities().containsAll(currentActiveFilters), ASSERT_TREE_CONSTAIN_HIGH_MEDIUM_LOW_INFO);	
+		stabilizeView(VIEW_CHECKMARX_AST_SCAN);
 		// Get all filter buttons individually
 		SWTBotToolbarButton filterHighBtn = _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).getToolbarButtons().stream().filter(btn -> btn.getToolTipText().toUpperCase().equals(ActionName.HIGH.name())).findFirst().get();
 		SWTBotToolbarButton filterMediumBtn = _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).getToolbarButtons().stream().filter(btn -> btn.getToolTipText().toUpperCase().equals(ActionName.MEDIUM.name())).findFirst().get();
@@ -203,27 +209,27 @@ public class TestUI extends BaseUITest {
 		filterInfoBtn.click();
 		
 		// Asserts that no issues are visible in the tree once we are grouping by Severity and no severity is selected
-		assertEquals(ASSERT_TREE_WITH_NO_ISSUES, _bot.tree(1).cell(0, 0), Environment.SCAN_ID + " (0 Issues)");
+		assertEquals(Environment.SCAN_ID + " (0 Issues)",  _bot.tree().cell(0, 0));
 		
 		// Click to include High severity
 		clickSeverityFilter(ActionName.HIGH.name());
 		currentActiveFilters.add(Severity.HIGH.name());
 						
 		sleep(1000);		
-		
-		String firstNodeName = _bot.tree(1).cell(0, 0);
-		String secondNodeName = _bot.tree(1).getTreeItem(firstNodeName).expand().getNode(0).getText();
-		String thirdNodeName = _bot.tree(1).getTreeItem(firstNodeName).expand().getNode(0).expand().getNode(0).getText();
+		stabilizeActiveShell();
+		String firstNodeName = _bot.tree().cell(0, 0);
+		String secondNodeName = _bot.tree().getTreeItem(firstNodeName).expand().getNode(0).getText();
+		String thirdNodeName = _bot.tree().getTreeItem(firstNodeName).expand().getNode(0).expand().getNode(0).getText();
 		
 		// Expand nodes until the first vulnerability
-		String groupByQueryNameParent = _bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).expand().getNode(0).getText();
-		String groupByQueryNameChild = _bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).expand().getNode(0).expand().getNode(0).getText();
+		String groupByQueryNameParent = _bot.tree().expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).expand().getNode(0).getText();
+		String groupByQueryNameChild = _bot.tree().expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).expand().getNode(0).expand().getNode(0).getText();
 		
 		// Select the first vulnerability
-		_bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).expand().getNode(0).expand().getNode(0).select();
+		_bot.tree().expandNode(firstNodeName).expandNode(secondNodeName).expandNode(thirdNodeName).getNode(0).expand().getNode(0).expand().getNode(0).select();
 		
 		// Asserts that the vulnerability has the same name as the parent node which means it is grouped by query name
-		assertTrue(ASSERT_GROUP_BY_QUERY_NAME, groupByQueryNameChild.contains(groupByQueryNameParent.split("\\(")[0].trim()));
+		assertTrue(groupByQueryNameChild.contains(groupByQueryNameParent.split("\\(")[0].trim()), ASSERT_GROUP_BY_QUERY_NAME);
 		
 		// Remove either group by severity and query name
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(ToolBarActions.GROUP_BY_QUERY_NAME).click();
@@ -232,13 +238,13 @@ public class TestUI extends BaseUITest {
 		
 		
 		sleep(1000);
-		
-		firstNodeName = _bot.tree(1).cell(0, 0);
-		secondNodeName = _bot.tree(1).getTreeItem(firstNodeName).expand().getNode(0).getText();
-		_bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName);
+		stabilizeActiveShell();
+		firstNodeName = _bot.tree().cell(0, 0);
+		secondNodeName = _bot.tree().getTreeItem(firstNodeName).expand().getNode(0).getText();
+		_bot.tree().expandNode(firstNodeName).expandNode(secondNodeName);
 				
 		// Get's the first engine child
-		String firstEngineChild = _bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName).getNode(0).getText();
+		String firstEngineChild = _bot.tree().expandNode(firstNodeName).expandNode(secondNodeName).getNode(0).getText();
 		
 		// Checks if it starts by HIGH, MEDIUM, LOW or INFO
 		boolean engineChildDontStartWithHIGH = !firstEngineChild.startsWith(ActionName.HIGH.name());
@@ -247,8 +253,8 @@ public class TestUI extends BaseUITest {
 		boolean engineChildDontStartWithINFO = !firstEngineChild.startsWith(ActionName.INFO.name());
 		
 		// Asserts group by options are not enabled
-		assertTrue(ASSERT_NO_CHINDREN, _bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName).getNode(0).getNodes().isEmpty());
-		assertTrue(ASSERT_GROUP_BY_SEVERITY_NOT_SELECTED, engineChildDontStartWithHIGH && engineChildDontStartWithMEDIUM && engineChildDontStartWithLOW && engineChildDontStartWithINFO);
+		assertTrue(_bot.tree().expandNode(firstNodeName).expandNode(secondNodeName).getNode(0).getNodes().isEmpty(), ASSERT_NO_CHINDREN);
+		assertTrue(engineChildDontStartWithHIGH && engineChildDontStartWithMEDIUM && engineChildDontStartWithLOW && engineChildDontStartWithINFO, ASSERT_GROUP_BY_SEVERITY_NOT_SELECTED);
 		
 		// re-enable group by and severity
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).viewMenu().menu(ToolBarActions.MENU_GROUP_BY).menu(ToolBarActions.GROUP_BY_QUERY_NAME).click();
@@ -258,22 +264,50 @@ public class TestUI extends BaseUITest {
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
 	}
 	
-	@Test(expected = WidgetNotFoundException.class)
+	@Test
 	public void testInitialPanelWhenMissingCredentials() throws TimeoutException {
-		// Add Checkmarx plugin to the eclipse view
-		addCheckmarxPlugin(false);
 
-		// Assert that active view is the Checkmarx One Scan
-		assertTrue("Active view must be the Checkmarx One Scan", _bot.activeView().getTitle().equals(VIEW_CHECKMARX_AST_SCAN));
-		
-		assertTrue(ASSERT_CREDENTIALS_PANEL, _bot.button(PluginConstants.BTN_OPEN_SETTINGS) != null);
-		
-		_bot.button(PluginConstants.BTN_OPEN_SETTINGS).click();
-		
-		testSuccessfulConnection(true);
-		
-		// Button Open Settings must not be present at this moment so we are expecting WidgetNotFoundException in this test
-		_bot.button(PluginConstants.BTN_OPEN_SETTINGS);
+	    // Step 1: Clear API key to force the "missing credentials" panel
+	    _bot.menu(TAB_WINDOW).menu(ITEM_PREFERENCES).click();
+	    _bot.shell(ITEM_PREFERENCES).activate();
+	    _bot.tree().select(ITEM_CHECKMARX_AST);
+	    _bot.sleep(500);
+	    _bot.textWithLabel(PluginConstants.PREFERENCES_API_KEY).setText("");
+	    _bot.button(BTN_APPLY_AND_CLOSE).click();
+	    _bot.sleep(1000);
+
+	    // Reset static flag so testSuccessfulConnection runs again
+	    _cxSettingsDefined = false;
+
+	    // Step 2: Add Checkmarx plugin to the eclipse view
+	    addCheckmarxPlugin(false);
+	    _bot.sleep(500);
+	    preventWidgetWasNullInCIEnvironment();
+
+	    // Step 3: Assert that active view is the Checkmarx One Scan
+	    assertTrue(
+	        _bot.activeView().getTitle().equals(VIEW_CHECKMARX_AST_SCAN),
+	        "Active view must be the Checkmarx One Scan"
+	    );
+
+	    // Step 4: Assert Open Settings button is present (missing credentials panel)
+	    assertTrue(
+	        _bot.button(PluginConstants.BTN_OPEN_SETTINGS) != null,
+	        ASSERT_CREDENTIALS_PANEL
+	    );
+
+	    // Step 5: Click Open Settings and re-enter valid credentials
+	    _bot.button(PluginConstants.BTN_OPEN_SETTINGS).click();
+	    _bot.sleep(500);
+
+	    testSuccessfulConnection(true);
+	    _bot.sleep(1000);
+
+	    // Step 6: Button Open Settings must NOT be present now —
+	    // JUnit 5 uses assertThrows instead of @Test(expected=...)
+	    org.junit.jupiter.api.Assertions.assertThrows(WidgetNotFoundException.class, () -> {
+	        _bot.button(PluginConstants.BTN_OPEN_SETTINGS);
+	    });
 	}
 	
 	/**
@@ -282,6 +316,7 @@ public class TestUI extends BaseUITest {
 	 * @param actionName
 	 */
 	private void clickSeverityFilter(String actionName) {
+		 stabilizeView(VIEW_CHECKMARX_AST_SCAN);
 		SWTBotToolbarButton filterLowBtn = _bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).getToolbarButtons().stream().filter(btn -> btn.getToolTipText().toUpperCase().equals(actionName)).findFirst().get();
 		filterLowBtn.click();
 	}
@@ -292,12 +327,13 @@ public class TestUI extends BaseUITest {
 	 * @return
 	 */
 	private List<String> expandTreeUntilFirstEngineAndGetCurrentSeverities() {
-		String firstNodeName = _bot.tree(1).cell(0, 0);
-		String secondNodeName = _bot.tree(1).getTreeItem(firstNodeName).expand().getNode(0).getText();
+		stabilizeActiveShell();
+		String firstNodeName = _bot.tree().cell(0, 0);
+		String secondNodeName = _bot.tree().getTreeItem(firstNodeName).expand().getNode(0).getText();
 		
-		_bot.tree(1).expandNode(firstNodeName).expandNode(secondNodeName);
+		_bot.tree().expandNode(firstNodeName).expandNode(secondNodeName);
 		
-		return _bot.tree(1).getTreeItem(_bot.tree(1).cell(0, 0)).expand().getNode(0).getNodes().stream().map(node -> node.split("\\(")[0].trim()).collect(Collectors.toList());
+		return _bot.tree().getTreeItem(_bot.tree().cell(0, 0)).expand().getNode(0).getNodes().stream().map(node -> node.split("\\(")[0].trim()).collect(Collectors.toList());
 	}
 
 	/**
@@ -308,7 +344,7 @@ public class TestUI extends BaseUITest {
 			return;
 		}
 		
-		preventWidgetWasNullInCIEnvironment();
+		stabilizeActiveShell();
 
 		_bot.menu(TAB_WINDOW).menu(ITEM_PREFERENCES).click();
 		_bot.shell(ITEM_PREFERENCES).activate();
@@ -321,4 +357,42 @@ public class TestUI extends BaseUITest {
 
 		_cxSettingsDefined = false;
 	}
+	
+	@BeforeAll
+	public static void setUpClass() {
+	    // Global SWTBot timing for CI stability (these are NOT final)
+	    SWTBotPreferences.TIMEOUT = 120000;  // 2 minutes ✅
+	    SWTBotPreferences.PLAYBACK_DELAY = 50;  // Slow down actions ✅
+	    // Note: DEFAULT_POLL_DELAY is final, cannot change
+	}
+
+	private void stabilizeView(String viewTitle) {
+	    try {
+	        SWTBotView view = _bot.viewByTitle(viewTitle);
+	        view.show();
+	        view.setFocus();
+	        _bot.sleep(3000);
+	        
+	        // Force Eclipse shell focus (fixes CI flakiness)
+	        UIThreadRunnable.syncExec(new VoidResult() {
+	            public void run() {
+	                PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell().forceActive();
+	            }
+	        });
+	        _bot.sleep(2000);
+	    } catch (Exception e) {
+	        _bot.sleep(5000); // Fallback wait
+	    }
+	}
+	private void stabilizeActiveShell() {
+	    try {
+	        _bot.activeShell().activate();
+	        _bot.sleep(2000);
+	    } catch (Exception e) {
+	        _bot.sleep(3000);
+	    }
+	}
+
+
+
 }

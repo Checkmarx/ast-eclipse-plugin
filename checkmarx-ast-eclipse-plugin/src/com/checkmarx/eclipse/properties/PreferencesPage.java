@@ -63,6 +63,7 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 		StringFieldEditor apiKey = new StringFieldEditor(Preferences.API_KEY, PluginConstants.PREFERENCES_API_KEY, topComposite);
 		addField(apiKey);
 		Text textControl = apiKey.getTextControl(topComposite);
+		textControl.setEchoChar('*');
 
 		StringFieldEditor additionalParams = new StringFieldEditor(Preferences.ADDITIONAL_OPTIONS,
 		        PluginConstants.PREFERENCES_ADDITIONAL_OPTIONS, StringFieldEditor.UNLIMITED, StringFieldEditor.VALIDATE_ON_KEY_STROKE, topComposite);
@@ -92,6 +93,10 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 
 		Button connectionButton = new Button(topComposite, SWT.PUSH);
 		connectionButton.setText(PluginConstants.PREFERENCES_TEST_CONNECTION);
+		connectionButton.setEnabled(!apiKey.getStringValue().trim().isEmpty());
+		textControl.addModifyListener(e -> {
+		    connectionButton.setEnabled(!textControl.getText().trim().isEmpty());
+		});
 		connectionButton.addSelectionListener(new SelectionAdapter() {
 
 			public void widgetSelected(SelectionEvent e) {

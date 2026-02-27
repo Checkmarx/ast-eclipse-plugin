@@ -152,7 +152,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 	public static final Image STATE = Activator.getImageDescriptor("/icons/state.png").createImage();
 
-	public static final Image BFL = Activator.getImageDescriptor("/icons/CxFlatLogo12x12.png").createImage();
+	public static final Image BFL = Activator.getImageDescriptor("/icons/checkmarx-plugin-13_dark.png").createImage();
 
 	private TreeViewer resultsTree;
 	private ComboViewer scanIdComboViewer, projectComboViewer, branchComboViewer, triageSeverityComboViewew, triageStateComboViewer;
@@ -654,7 +654,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		commentText.addListener(SWT.FocusOut, new Listener() {
 			public void handleEvent(Event e) {
 				Text textReceived = (Text) e.widget;
-				if (textReceived.getText() == null || textReceived.getText() == "") {
+				if (textReceived.getText() == null || textReceived.getText().isEmpty()) {
 					commentText.setText(PluginConstants.DEFAULT_COMMENT_TXT);
 					resultViewComposite.layout();
 				}
