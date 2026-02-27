@@ -15,7 +15,7 @@
        <view
              category="com.checkmarx.eclipse"
              class="com.checkmarx.eclipse.views.CheckmarxView"
-             icon="icons/CxFlatLogo12x12.png"
+             icon="icons/checkmarx-plugin-13_dark.png"
              id="com.checkmarx.eclipse.views.CheckmarxView"
              inject="true"
              name="Checkmarx One Scan"

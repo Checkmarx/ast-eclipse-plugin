@@ -1,6 +1,6 @@
 package checkmarx.ast.eclipse.plugin.tests.ui;
 
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.UUID;
@@ -8,22 +8,20 @@ import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 import org.eclipse.swtbot.swt.finder.SWTBot;
-import org.eclipse.swtbot.swt.finder.junit.SWTBotJunit4ClassRunner;
 import org.eclipse.swtbot.swt.finder.waits.ICondition;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotButton;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotCombo;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotTabItem;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotText;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotTreeItem;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
 
 import com.checkmarx.eclipse.enums.Severity;
 import com.checkmarx.eclipse.utils.PluginConstants;
 
-@RunWith(SWTBotJunit4ClassRunner.class)
 public class TestTriage  extends BaseUITest {
 
+	//First triage action may take some time to complete, so we need to wait for the button to be enabled before performing the next action
 	private static final ICondition triageButtonEnabled = new ICondition() {
 		private SWTBot bot;
 		
@@ -92,15 +90,19 @@ public class TestTriage  extends BaseUITest {
 		// since the order of the list changes, we need to make sure that the changed result is in HIGH -> TO_VERIFY nodes
 		// split(" ")[0] provides the initial part of the name, which is the query id, both in the group and in resultName
 		List<String> stateResults = getStateResultNodes("TO_VERIFY").stream().map(element -> (element.split(" ")[0]).trim()).collect(Collectors.toList());		
-		assertTrue(String.format("%s - %s", stateResults.toString(), resultName), stateResults.contains(resultName.split(" ")[0]));
+		assertTrue(
+			    stateResults.contains(resultName.split(" ")[0]),
+			    String.format("%s - %s", stateResults.toString(), resultName)
+			);
+
 		
 		// Close Checkmarx One Scan view
 		_bot.viewByTitle(VIEW_CHECKMARX_AST_SCAN).close();
 	}
 
 	private List<String> getStateResultNodes(String state) throws TimeoutException {
-		String firstNodeName = _bot.tree(1).cell(0, 0);
-		SWTBotTreeItem node = _bot.tree(1).getTreeItem(firstNodeName);
+		String firstNodeName = _bot.tree().cell(0, 0);
+		SWTBotTreeItem node = _bot.tree().getTreeItem(firstNodeName);
 		List<String> sastHigh = node.expand().getNode(0).expand().getNode(0).expand().getNodes();
 		List<String> result = null;
 		for(int toVerifyIndex=0;toVerifyIndex < sastHigh.size();toVerifyIndex++) {
@@ -113,8 +115,8 @@ public class TestTriage  extends BaseUITest {
 
 
 	private SWTBotTreeItem getFirstResultNode() {
-		String firstNodeName = _bot.tree(1).cell(0, 0);
-		SWTBotTreeItem node = _bot.tree(1).getTreeItem(firstNodeName);
+		String firstNodeName = _bot.tree().cell(0, 0);
+		SWTBotTreeItem node = _bot.tree().getTreeItem(firstNodeName);
 		while(!node.getNodes().isEmpty()) {
 			node = node.expand().getNode(0);
 		}
