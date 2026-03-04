@@ -39,7 +39,7 @@ jobs:
       - name: Upload Coverage Report
         uses: actions/upload-artifact@v4
         with:
-          name: jacoco-coverage-report
+          name: jacoco-coverage-report-ui
           path: checkmarx-ast-eclipse-plugin-tests/target/site/jacoco-aggregate
 
   integration-tests:
@@ -72,7 +72,7 @@ jobs:
       - name: Upload Coverage Report
         uses: actions/upload-artifact@v4
         with:
-          name: jacoco-coverage-report
+          name: jacoco-coverage-report-integration
           path: checkmarx-ast-eclipse-plugin-tests/target/site/jacoco-aggregate
   unit-tests:
     runs-on: ubuntu-latest
@@ -104,7 +104,7 @@ jobs:
       - name: Upload Coverage Report
         uses: actions/upload-artifact@v4
         with:
-          name: jacoco-coverage-report
+          name: jacoco-coverage-report-unit
           path: checkmarx-ast-eclipse-plugin-tests/target/site/jacoco-aggregate
       
 
