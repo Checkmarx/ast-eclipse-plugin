@@ -96,5 +96,9 @@ jobs:
         with:
           name: jacoco-coverage-report
           path: target/site/jacoco-aggregate
+      - name: Copy JaCoCo result
+        run: |
+          mkdir -p target
+          cp checkmarx-ast-eclipse-plugin-tests/target/jacoco.exec target/
 
 
