@@ -118,7 +118,7 @@
 								${project.artifactId}_${unqualifiedVersion}.${buildQualifier}
 							</finalName>
 						</configuration>
-					</execution>
+					</execution>					
 				</executions>
 				<!-- <configuration> <format>'v'yyyyMMddHHmm</format>
 				</configuration> -->
@@ -155,14 +155,36 @@
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
 				<version>0.8.11</version>
+
 				<executions>
+
+					<execution>
+						<id>merge</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>merge</goal>
+						</goals>
+						<configuration>
+							<fileSets>
+								<fileSet>
+									<directory>.</directory>
+									<includes>
+										<include>**/target/jacoco.exec</include>
+									</includes>
+								</fileSet>
+							</fileSets>
+							<destFile>${project.build.directory}/jacoco.exec</destFile>
+						</configuration>
+					</execution>
+
 					<execution>
 						<id>report</id>
 						<phase>verify</phase>
 						<goals>
 							<goal>report-aggregate</goal>
-						</goals>						
+						</goals>
 					</execution>
+
 				</executions>
 			</plugin>
 		</plugins>
