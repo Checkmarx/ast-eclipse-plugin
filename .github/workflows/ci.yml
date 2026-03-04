@@ -91,14 +91,15 @@ jobs:
         run: |
           Xvfb -ac :99 -screen 0 1920x1080x16 &
           mvn clean verify -Dtest.includes="**/unit/*Test.java"
+      - name: Copy JaCoCo result
+        run: |
+          mkdir -p target
+          cp checkmarx-ast-eclipse-plugin-tests/target/jacoco.exec target/
       - name: Upload Coverage Report
         uses: actions/upload-artifact@v4
         with:
           name: jacoco-coverage-report
           path: target/site/jacoco-aggregate
-      - name: Copy JaCoCo result
-        run: |
-          mkdir -p target
-          cp checkmarx-ast-eclipse-plugin-tests/target/jacoco.exec target/
+      
 
 
