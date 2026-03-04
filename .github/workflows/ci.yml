@@ -99,7 +99,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: jacoco-coverage-report
-          path: target/site/jacoco-aggregate
+          path: checkmarx-ast-eclipse-plugin-tests/target/site/jacoco-aggregate
       
 
 
