@@ -106,6 +106,28 @@ jobs:
         with:
           name: jacoco-coverage-report-unit
           path: checkmarx-ast-eclipse-plugin-tests/target/site/jacoco-aggregate
-      
+      - name: Generate JaCoCo Coverage Summary
+        run: |
+          REPORT="checkmarx-ast-eclipse-plugin-tests/target/site/jacoco-aggregate/jacoco.xml"
 
+          LINE_COVERED=$(grep 'type="LINE"' $REPORT | sed -E 's/.*covered="([0-9]+)".*/\1/')
+          LINE_MISSED=$(grep 'type="LINE"' $REPORT | sed -E 's/.*missed="([0-9]+)".*/\1/')
+
+          BRANCH_COVERED=$(grep 'type="BRANCH"' $REPORT | sed -E 's/.*covered="([0-9]+)".*/\1/')
+          BRANCH_MISSED=$(grep 'type="BRANCH"' $REPORT | sed -E 's/.*missed="([0-9]+)".*/\1/')
+
+          LINE_TOTAL=$((LINE_COVERED + LINE_MISSED))
+          BRANCH_TOTAL=$((BRANCH_COVERED + BRANCH_MISSED))
+
+          LINE_PERCENT=$(awk "BEGIN {printf \"%.2f\", ($LINE_COVERED/$LINE_TOTAL)*100}")
+          BRANCH_PERCENT=$(awk "BEGIN {printf \"%.2f\", ($BRANCH_COVERED/$BRANCH_TOTAL)*100}")
+
+          echo "## 🧪 JaCoCo Test Coverage Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Coverage |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Line Coverage** | ${LINE_PERCENT}% |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Branch Coverage** | ${BRANCH_PERCENT}% |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📊 Generated from JaCoCo report" >> $GITHUB_STEP_SUMMARY
 
