@@ -303,7 +303,7 @@ public abstract class BaseUITest {
 	 */
 	protected static void waitForConnectionResponse() throws TimeoutException {
 		int retryIdx = 0;
-		while (!_bot.text(3).getText().equals(INFO_SUCCESSFUL_CONNECTION)) {
+		while (!_bot.text().getText().equals(INFO_SUCCESSFUL_CONNECTION)) {
 			if (retryIdx == 10) {
 				break;
 			}
