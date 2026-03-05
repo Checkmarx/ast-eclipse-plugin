@@ -17,6 +17,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotTree;
+import org.eclipse.swt.widgets.Decorations;
 import org.eclipse.swt.widgets.Tree;
 
 import com.checkmarx.eclipse.utils.PluginConstants;
@@ -305,8 +306,13 @@ public abstract class BaseUITest {
 		boolean found = false;
 		int retryIdx = 0;
 		while (!found) {
-		    found = _bot.text().stream()
-		        .anyMatch(t -> t.getText().equals(INFO_SUCCESSFUL_CONNECTION));
+			
+			for (var text : _bot.texts()) {
+	            if (((Decorations) text).getText().contains(INFO_SUCCESSFUL_CONNECTION)) {
+	            	found=true;
+	            }
+	        }
+
 		    if (found) break;
 		    if (retryIdx == 10) break;
 		    _bot.sleep(1000);
