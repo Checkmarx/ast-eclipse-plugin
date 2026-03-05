@@ -312,7 +312,6 @@ public abstract class BaseUITest {
 	            	found=true;
 	            }
 	        }
-
 		    if (found) break;
 		    if (retryIdx == 10) break;
 		    _bot.sleep(1000);
