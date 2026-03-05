@@ -305,7 +305,7 @@ public abstract class BaseUITest {
 		boolean found = false;
 		int retryIdx = 0;
 		while (!found) {
-		    found = _bot.texts().stream()
+		    found = _bot.text().stream()
 		        .anyMatch(t -> t.getText().equals(INFO_SUCCESSFUL_CONNECTION));
 		    if (found) break;
 		    if (retryIdx == 10) break;
