@@ -122,12 +122,11 @@ jobs:
           LINE_PERCENT=$(awk "BEGIN {printf \"%.2f\", ($LINE_COVERED/$LINE_TOTAL)*100}")
           BRANCH_PERCENT=$(awk "BEGIN {printf \"%.2f\", ($BRANCH_COVERED/$BRANCH_TOTAL)*100}")
 
-          echo "## 🧪 JaCoCo Test Coverage Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## 🧪 Test Coverage Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Metric | Coverage |" >> $GITHUB_STEP_SUMMARY
           echo "|------|------|" >> $GITHUB_STEP_SUMMARY
           echo "| **Line Coverage** | ${LINE_PERCENT}% |" >> $GITHUB_STEP_SUMMARY
           echo "| **Branch Coverage** | ${BRANCH_PERCENT}% |" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "📊 Generated from JaCoCo report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY          
 
