@@ -305,6 +305,7 @@ public abstract class BaseUITest {
 	protected static void waitForConnectionResponse() throws TimeoutException {
 		boolean found = false;
 		int retryIdx = 0;
+		//check for the success message in the shell's decorations (where info messages are shown in Eclipse)
 		while (!found) {			
 			for (var text : _bot.text()) {
 	            if (((Decorations) text).getText().contains(INFO_SUCCESSFUL_CONNECTION)) {
