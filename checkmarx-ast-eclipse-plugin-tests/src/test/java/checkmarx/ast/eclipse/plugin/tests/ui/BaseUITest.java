@@ -307,7 +307,7 @@ public abstract class BaseUITest {
 		int retryIdx = 0;
 		while (!found) {
 			
-			for (var text : _bot.texts()) {
+			for (var text : _bot.text()) {
 	            if (((Decorations) text).getText().contains(INFO_SUCCESSFUL_CONNECTION)) {
 	            	found=true;
 	            }
