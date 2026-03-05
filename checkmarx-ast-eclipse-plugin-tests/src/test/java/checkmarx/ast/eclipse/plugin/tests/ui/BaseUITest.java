@@ -302,23 +302,18 @@ public abstract class BaseUITest {
 	 * Wait for connection response
 	 */
 	protected static void waitForConnectionResponse() throws TimeoutException {
-	    int retryIdx = 0;
+		int retryIdx = 0;
+		while (!_bot.text(3).getText().equals(INFO_SUCCESSFUL_CONNECTION)) {
+			if (retryIdx == 10) {
+				break;
+			}
+			_bot.sleep(1000);
+			retryIdx++;
+		}
 
-	    while (true) {
-
-	        String text = _bot.text().getText();
-
-	        if (text.contains(INFO_SUCCESSFUL_CONNECTION)) {
-	            return;
-	        }
-
-	        if (retryIdx == 10) {
-	            throw new TimeoutException("Connection validation timeout after 10000ms.");
-	        }
-
-	        _bot.sleep(1000);
-	        retryIdx++;
-	    }
+		if (retryIdx == 10) {
+			throw new TimeoutException("Connection validation timeout after 10000ms.");
+		}
 	}
 
 	/**
