@@ -100,7 +100,7 @@ jobs:
           DISPLAY: :99.0
         run: |
           Xvfb -ac :99 -screen 0 1920x1080x16 &
-          mvn clean verify -Dtest.includes="**/unit/*Test.java"
+          mvn clean verify -Dtest.includes="**/unit/**/*Test.java"
       - name: Upload Coverage Report
         uses: actions/upload-artifact@v4
         with:
