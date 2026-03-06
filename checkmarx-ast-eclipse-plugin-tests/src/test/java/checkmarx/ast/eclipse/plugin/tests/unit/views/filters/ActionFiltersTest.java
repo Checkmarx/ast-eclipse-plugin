@@ -69,7 +69,6 @@ class ActionFiltersTest {
             dp.when(DataProvider::getInstance).thenReturn(provider);
             when(provider.containsResults()).thenReturn(true);
             fs.when(() -> com.checkmarx.eclipse.views.filters.FilterState.isSeverityEnabled(anyString())).thenReturn(true);
-            fs.when(() -> com.checkmarx.eclipse.views.filters.FilterState.setState(any(Severity.class))).thenReturn(null);
             activator.when(() -> com.checkmarx.eclipse.Activator.getImageDescriptor(anyString())).thenReturn(mock(ImageDescriptor.class));
             when(provider.sortResults()).thenReturn(mock(List.class));
 
