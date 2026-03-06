@@ -1,4 +1,4 @@
-package checkmarx.ast.eclipse.plugin.tests.unit;
+package checkmarx.ast.eclipse.plugin.tests.unit.views.actions;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;

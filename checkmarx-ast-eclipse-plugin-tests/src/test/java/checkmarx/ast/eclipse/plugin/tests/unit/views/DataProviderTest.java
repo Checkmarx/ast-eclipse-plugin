@@ -1,4 +1,4 @@
-package checkmarx.ast.eclipse.plugin.tests.unit;
+package checkmarx.ast.eclipse.plugin.tests.unit.views;
 
 import com.checkmarx.eclipse.views.DataProvider;
 
