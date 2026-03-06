@@ -307,18 +307,35 @@ public abstract class BaseUITest {
 	    while (retryIdx < 10) {
 	        boolean found = false;
 	        int index = 0;
+	        // Search text widgets
 	        while (true) {
 	            try {
 	                String textValue = _bot.text(index).getText();
-
+	                System.out.println("[waitForConnectionResponse] text[" + index + "]: '" + textValue + "'");
 	                if (textValue.contains(INFO_SUCCESSFUL_CONNECTION)) {
 	                    found = true;
 	                    break;
 	                }
 	                index++;
 	            } catch (Exception e) {
-	                // No more text widgets available
 	                break;
+	            }
+	        }
+	        // Search label widgets if not found
+	        if (!found) {
+	            index = 0;
+	            while (true) {
+	                try {
+	                    String labelValue = _bot.label(index).getText();
+	                    System.out.println("[waitForConnectionResponse] label[" + index + "]: '" + labelValue + "'");
+	                    if (labelValue.contains(INFO_SUCCESSFUL_CONNECTION)) {
+	                        found = true;
+	                        break;
+	                    }
+	                    index++;
+	                } catch (Exception e) {
+	                    break;
+	                }
 	            }
 	        }
 	        if (found) {
@@ -327,7 +344,7 @@ public abstract class BaseUITest {
 	        _bot.sleep(1000);
 	        retryIdx++;
 	    }
-	    throw new TimeoutException("Connection validation timeout after 10000ms.");
+	    throw new TimeoutException("Connection validation timeout after 10000ms. See logs for widget contents.");
 	}
 
 	/**
