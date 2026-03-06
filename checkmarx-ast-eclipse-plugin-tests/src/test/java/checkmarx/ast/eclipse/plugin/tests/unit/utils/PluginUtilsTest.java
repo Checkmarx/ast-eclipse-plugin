@@ -4,8 +4,20 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.IWorkbench;
+import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.resources.IWorkspaceRoot;
 
+import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IMarker;
+import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.IResourceProxyVisitor;
+import org.eclipse.core.resources.IWorkspace;
+import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.e4.core.services.events.IEventBroker;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.viewers.ComboViewer;
 import org.eclipse.jface.viewers.TreeViewer;
@@ -13,12 +25,19 @@ import org.eclipse.swt.widgets.Combo;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
+import org.mockito.stubbing.Answer;
 
+import com.checkmarx.ast.results.result.Data;
+import com.checkmarx.ast.results.result.Node;
+import com.checkmarx.ast.results.result.Result;
+import com.checkmarx.eclipse.enums.Severity;
 import com.checkmarx.eclipse.properties.Preferences;
+import com.checkmarx.eclipse.utils.PluginConstants;
 import com.checkmarx.eclipse.utils.PluginUtils;
 import com.checkmarx.eclipse.views.DataProvider;
 import com.checkmarx.eclipse.views.DisplayModel;
 import com.checkmarx.eclipse.views.filters.FilterState;
+import org.eclipse.core.runtime.IStatus;
 
 public class PluginUtilsTest {
 
@@ -118,7 +137,6 @@ public class PluginUtilsTest {
 
     @Test
     void testShowMessage() {
-
         DisplayModel root = new DisplayModel.DisplayModelBuilder("root").build();
         TreeViewer viewer = mock(TreeViewer.class);
 
@@ -165,6 +183,117 @@ public class PluginUtilsTest {
             boolean result = PluginUtils.areCredentialsDefined();
 
             assertFalse(result);
+        }
+    }
+
+    @Test
+    void testGetEventBroker() {
+        IEventBroker mockBroker = mock(IEventBroker.class);
+        IWorkbench mockWorkbench = mock(IWorkbench.class);
+        try (MockedStatic<PlatformUI> platformUI = Mockito.mockStatic(PlatformUI.class)) {
+            platformUI.when(PlatformUI::getWorkbench).thenReturn(mockWorkbench);
+            when(mockWorkbench.getService(IEventBroker.class)).thenReturn(mockBroker);
+            IEventBroker result = PluginUtils.getEventBroker();
+            assertSame(mockBroker, result);
+        }
+    }
+
+    @Test
+    void testAddVulnerabilitiesToProblemsView_normal() throws Exception {
+        Result mockResult = mock(Result.class);
+        Node mockNode = mock(Node.class);
+        IFile mockFile = mock(IFile.class);
+        IMarker mockMarker = mock(IMarker.class);
+        List<Node> nodeList = Collections.singletonList(mockNode);
+        List<IFile> fileList = Collections.singletonList(mockFile);
+        List<Result> resultsList = Collections.singletonList(mockResult);
+
+        Data mockData = mock(Data.class);
+        when(mockData.getNodes()).thenReturn(nodeList);
+        when(mockResult.getData()).thenReturn(mockData);
+        when(mockNode.getFileName()).thenReturn("file.java");
+        when(mockNode.getName()).thenReturn("VulnName");
+        when(mockNode.getLine()).thenReturn(42);
+        when(mockFile.createMarker(IMarker.PROBLEM)).thenReturn(mockMarker);
+        when(mockResult.getSeverity()).thenReturn(Severity.HIGH.name());
+
+        try (MockedStatic<PluginUtils> pu = Mockito.mockStatic(PluginUtils.class, Mockito.CALLS_REAL_METHODS)) {
+            pu.when(() -> PluginUtils.findFileInWorkspace("file.java")).thenReturn(fileList);
+            PluginUtils.addVulnerabilitiesToProblemsView(resultsList);
+            verify(mockMarker).setAttribute(IMarker.MESSAGE, "VulnName");
+            verify(mockMarker).setAttribute(IMarker.LOCATION, "line 42");
+            verify(mockMarker).setAttribute(IMarker.LINE_NUMBER, 42);
+            verify(mockMarker).setAttribute(IMarker.SOURCE_ID, PluginConstants.PROBLEM_SOURCE_ID);
+            verify(mockMarker).setAttribute(IMarker.SEVERITY, IMarker.SEVERITY_ERROR);
+        }
+    }
+
+    @Test
+    void testFindFileInWorkspace_normal() throws Exception {
+        IFile mockFile = mock(IFile.class);
+        IWorkspaceRoot root = mock(IWorkspaceRoot.class);
+        IWorkspace workspace = mock(IWorkspace.class);
+        IResourceProxyVisitor[] visitorHolder = new IResourceProxyVisitor[1];
+        try (MockedStatic<ResourcesPlugin> rp = Mockito.mockStatic(ResourcesPlugin.class)) {
+            rp.when(ResourcesPlugin::getWorkspace).thenReturn(workspace);
+            when(workspace.getRoot()).thenReturn(root);
+            doAnswer((Answer<Void>) invocation -> {
+                visitorHolder[0] = invocation.getArgument(0);
+                // Simulate visit
+                return null;
+            }).when(root).accept(any(IResourceProxyVisitor.class), anyInt());
+            List<IFile> files = PluginUtils.findFileInWorkspace("file.java");
+            assertNotNull(files);
+        }
+    }
+
+    @Test
+    void testFindFileInWorkspace_exception() throws Exception {
+        IWorkspaceRoot root = mock(IWorkspaceRoot.class);
+        IWorkspace workspace = mock(IWorkspace.class);
+        try (MockedStatic<ResourcesPlugin> rp = Mockito.mockStatic(ResourcesPlugin.class)) {
+            rp.when(ResourcesPlugin::getWorkspace).thenReturn(workspace);
+            when(workspace.getRoot()).thenReturn(root);
+            doThrow(new RuntimeException("fail")).when(root).accept(any(IResourceProxyVisitor.class), anyInt());
+            List<IFile> files = PluginUtils.findFileInWorkspace("file.java");
+            assertNotNull(files);
+            assertTrue(files.isEmpty());
+        }
+    }
+
+    @Test
+    void testClearVulnerabilitiesFromProblemsView_normal() throws Exception {
+        IWorkspace workspace = mock(IWorkspace.class);
+        IWorkspaceRoot resource = mock(IWorkspaceRoot.class);
+        IMarker marker1 = mock(IMarker.class);
+        IMarker marker2 = mock(IMarker.class);
+        when(workspace.getRoot()).thenReturn(resource);
+        when(resource.findMarkers(IMarker.MARKER, true, IResource.DEPTH_INFINITE)).thenReturn(new IMarker[]{marker1, marker2});
+        when(marker1.getAttribute(IMarker.SOURCE_ID)).thenReturn(PluginConstants.PROBLEM_SOURCE_ID);
+        when(marker2.getAttribute(IMarker.SOURCE_ID)).thenReturn("other");
+        try (MockedStatic<ResourcesPlugin> rp = Mockito.mockStatic(ResourcesPlugin.class)) {
+            rp.when(ResourcesPlugin::getWorkspace).thenReturn(workspace);
+            PluginUtils.clearVulnerabilitiesFromProblemsView();
+            verify(marker1).delete();
+            verify(marker2, never()).delete();
+        }
+    }
+
+    @Test
+    void testClearVulnerabilitiesFromProblemsView_coreException() throws Exception {
+        IWorkspace workspace = mock(IWorkspace.class);
+        IWorkspaceRoot resource = mock(IWorkspaceRoot.class);
+        IMarker marker1 = mock(IMarker.class);
+        when(workspace.getRoot()).thenReturn(resource);
+        when(resource.findMarkers(IMarker.MARKER, true, IResource.DEPTH_INFINITE)).thenReturn(new IMarker[]{marker1});
+        when(marker1.getAttribute(IMarker.SOURCE_ID)).thenReturn(PluginConstants.PROBLEM_SOURCE_ID);
+        IStatus status = mock(IStatus.class);
+        when(status.getMessage()).thenReturn("error");
+        doThrow(new CoreException(status)).when(marker1).delete();
+        try (MockedStatic<ResourcesPlugin> rp = Mockito.mockStatic(ResourcesPlugin.class)) {
+            rp.when(ResourcesPlugin::getWorkspace).thenReturn(workspace);
+            PluginUtils.clearVulnerabilitiesFromProblemsView();
+            // Should not throw
         }
     }
 }
