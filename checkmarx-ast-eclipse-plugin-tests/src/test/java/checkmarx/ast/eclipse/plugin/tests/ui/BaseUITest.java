@@ -303,23 +303,31 @@ public abstract class BaseUITest {
 	 * Wait for connection response
 	 */
 	protected static void waitForConnectionResponse() throws TimeoutException {
-		boolean found = false;
-		int retryIdx = 0;
-		//check for the success message in the shell's decorations (where info messages are shown in Eclipse)
-		while (!found) {			
-			for (var text : _bot.text()) {
-	            if (((Decorations) text).getText().contains(INFO_SUCCESSFUL_CONNECTION)) {
-	            	found=true;
+	    int retryIdx = 0;
+	    while (retryIdx < 10) {
+	        boolean found = false;
+	        int index = 0;
+	        while (true) {
+	            try {
+	                String textValue = _bot.text(index).getText();
+
+	                if (textValue.contains(INFO_SUCCESSFUL_CONNECTION)) {
+	                    found = true;
+	                    break;
+	                }
+	                index++;
+	            } catch (Exception e) {
+	                // No more text widgets available
+	                break;
 	            }
 	        }
-		    if (found) break;
-		    if (retryIdx == 10) break;
-		    _bot.sleep(1000);
-		    retryIdx++;
-		}
-		if (!found) {
-		    throw new TimeoutException("Connection validation timeout after 10000ms.");
-		}
+	        if (found) {
+	            return;
+	        }
+	        _bot.sleep(1000);
+	        retryIdx++;
+	    }
+	    throw new TimeoutException("Connection validation timeout after 10000ms.");
 	}
 
 	/**
