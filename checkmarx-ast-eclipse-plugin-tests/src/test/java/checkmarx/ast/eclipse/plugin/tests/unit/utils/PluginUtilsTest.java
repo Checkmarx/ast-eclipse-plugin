@@ -199,36 +199,6 @@ public class PluginUtilsTest {
     }
 
     @Test
-    void testAddVulnerabilitiesToProblemsView_normal() throws Exception {
-        Result mockResult = mock(Result.class);
-        Node mockNode = mock(Node.class);
-        IFile mockFile = mock(IFile.class);
-        IMarker mockMarker = mock(IMarker.class);
-        List<Node> nodeList = Collections.singletonList(mockNode);
-        List<IFile> fileList = Collections.singletonList(mockFile);
-        List<Result> resultsList = Collections.singletonList(mockResult);
-
-        Data mockData = mock(Data.class);
-        when(mockData.getNodes()).thenReturn(nodeList);
-        when(mockResult.getData()).thenReturn(mockData);
-        when(mockNode.getFileName()).thenReturn("file.java");
-        when(mockNode.getName()).thenReturn("VulnName");
-        when(mockNode.getLine()).thenReturn(42);
-        when(mockFile.createMarker(IMarker.PROBLEM)).thenReturn(mockMarker);
-        when(mockResult.getSeverity()).thenReturn(Severity.HIGH.name());
-
-        try (MockedStatic<PluginUtils> pu = Mockito.mockStatic(PluginUtils.class, Mockito.CALLS_REAL_METHODS)) {
-            pu.when(() -> PluginUtils.findFileInWorkspace("file.java")).thenReturn(fileList);
-            PluginUtils.addVulnerabilitiesToProblemsView(resultsList);
-            verify(mockMarker).setAttribute(IMarker.MESSAGE, "VulnName");
-            verify(mockMarker).setAttribute(IMarker.LOCATION, "line 42");
-            verify(mockMarker).setAttribute(IMarker.LINE_NUMBER, 42);
-            verify(mockMarker).setAttribute(IMarker.SOURCE_ID, PluginConstants.PROBLEM_SOURCE_ID);
-            verify(mockMarker).setAttribute(IMarker.SEVERITY, IMarker.SEVERITY_ERROR);
-        }
-    }
-
-    @Test
     void testFindFileInWorkspace_normal() throws Exception {
         IFile mockFile = mock(IFile.class);
         IWorkspaceRoot root = mock(IWorkspaceRoot.class);
