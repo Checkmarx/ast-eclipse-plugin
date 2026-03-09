@@ -62,7 +62,6 @@ class DataProviderTest {
     @Test
     void testGetProjectsByNameReturnsList() throws Exception {
         List<Project> projects = dataProvider.getProjects(TEST_PROJECT);
-        System.out.println("Projects found: " + projects.size());
         assertNotNull(projects);
     }
 
@@ -132,5 +131,76 @@ class DataProviderTest {
                     )
             );
         }
+    }
+    
+    @Test
+    void testContainsResultsTrue() {
+
+        Results results = mock(Results.class);
+
+        List<com.checkmarx.ast.results.result.Result> list = new ArrayList<>();
+        list.add(mock(com.checkmarx.ast.results.result.Result.class));
+
+        when(results.getResults()).thenReturn(list);
+
+        dataProvider.setCurrentResults(results);
+
+        assertTrue(dataProvider.containsResults());
+    }
+
+    @Test
+    void testGetStatesForEngineSAST() {
+
+        List<String> states = dataProvider.getStatesForEngine("SAST");
+
+        assertNotNull(states);
+    }
+
+    @Test
+    void testGetStatesForEngineOther() {
+
+        List<String> states = dataProvider.getStatesForEngine("SCA");
+
+        assertNotNull(states);
+    }
+
+    @Test
+    void testGetCustomStates() {
+
+        List<String> states = dataProvider.getCustomStates();
+
+        assertNotNull(states);
+    }
+
+    @Test
+    void testGetResultsForScanIdInvalid() {
+
+        List<?> results = dataProvider.getResultsForScanId("invalid-uuid");
+
+        assertNotNull(results);
+    }
+
+    @Test
+    void testGetBranchesForProjectEmpty() {
+
+        List<String> branches = dataProvider.getBranchesForProject("");
+
+        assertNotNull(branches);
+    }
+
+    @Test
+    void testGetScansForProjectNullBranch() {
+
+        List<Scan> scans = dataProvider.getScansForProject(null);
+
+        assertNotNull(scans);
+    }
+
+    @Test
+    void testGetScanInformationException() {
+
+        assertThrows(Exception.class, () -> {
+            dataProvider.getScanInformation("invalid-scan");
+        });
     }
 }
