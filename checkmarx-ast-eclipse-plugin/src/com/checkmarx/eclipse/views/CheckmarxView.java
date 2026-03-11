@@ -1096,6 +1096,10 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 			@Override
 			public String getText(Object element) {
 				if (element instanceof Scan) {
+					// Always fetch the latest scan id from preferences before rendering
+					if(!GlobalSettings.getFromPreferences("LATEST_SCAN_ID", "").isEmpty()) {
+						latestScanId = GlobalSettings.getFromPreferences("LATEST_SCAN_ID", "");
+					}
 					Scan scan = (Scan) element;
 					return formatScanLabel(scan);
 				}
