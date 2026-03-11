@@ -33,7 +33,20 @@
 							<destFile>${project.build.directory}/jacoco.exec</destFile>
 						</configuration>
 					</execution>
-				</executions>
+					 <execution>
+			            <id>report</id>
+			            <phase>verify</phase>
+			            <goals>
+			                <goal>report</goal>
+			            </goals>
+			            <configuration>
+			                <formats>
+			                    <format>XML</format>
+			                    <format>CSV</format>
+			                </formats>
+			            </configuration>
+			        </execution>
+				</executions>				
 			</plugin>
 			<plugin>
 				<groupId>org.eclipse.tycho</groupId>
