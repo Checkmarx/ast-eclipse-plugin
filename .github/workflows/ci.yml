@@ -38,7 +38,11 @@ jobs:
         with:
           name: jacoco-coverage-report-ui
           path: checkmarx-ast-eclipse-plugin-tests/target/site/jacoco-aggregate
-
+      - name: Generate JaCoCo Badge
+        uses: cicirello/jacoco-badge-generator@f33476a5a3fd5a4f77cb5eef2ebe728c1dd5b921
+        with:
+          jacoco-csv-file: checkmarx-ast-eclipse-plugin-tests/target/site/jacoco-aggregate/jacoco.csv
+          generate-summary: true
   integration-tests:
     runs-on: ubuntu-latest
     steps:
@@ -71,6 +75,11 @@ jobs:
         with:
           name: jacoco-coverage-report-integration
           path: checkmarx-ast-eclipse-plugin-tests/target/site/jacoco-aggregate
+      - name: Generate JaCoCo Badge
+        uses: cicirello/jacoco-badge-generator@f33476a5a3fd5a4f77cb5eef2ebe728c1dd5b921
+        with:
+          jacoco-csv-file: checkmarx-ast-eclipse-plugin-tests/target/site/jacoco-aggregate/jacoco.csv
+          generate-summary: true
   unit-tests:
     runs-on: ubuntu-latest
     steps:
