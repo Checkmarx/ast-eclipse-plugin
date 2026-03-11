@@ -1205,6 +1205,14 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 * on the chosen scan id
 	 */
 	private void setSelectionForProjectComboViewer() {
+		
+		if(scanIdComboViewer.getCombo().getText().isEmpty()) {
+			PluginUtils.clearMessage(rootModel, resultsTree);
+			PluginUtils.showMessage(rootModel, resultsTree, PluginConstants.NO_SCAN_ID_PROVIDED);
+			CxLogger.info(String.format(PluginConstants.NO_SCAN_ID_PROVIDED, PluginConstants.EMPTY_STRING));
+			return;
+		}
+		
 		String scanIdText = scanIdComboViewer.getCombo().getText().trim();
 
 		String[] parts = scanIdText.split("\\s+");
@@ -1213,13 +1221,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		}
 		
 		final String scanId = scanIdText;
-		
-		if(scanId.isEmpty()) {
-			PluginUtils.clearMessage(rootModel, resultsTree);
-			PluginUtils.showMessage(rootModel, resultsTree, PluginConstants.NO_SCAN_ID_PROVIDED);
-			CxLogger.info(String.format(PluginConstants.NO_SCAN_ID_PROVIDED, scanId));
-			return;
-		}
 
 		if (currentScanId.equals(scanId)) {
 		    PluginUtils.clearMessage(rootModel, resultsTree);
