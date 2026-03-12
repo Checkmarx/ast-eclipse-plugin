@@ -1096,6 +1096,10 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 			@Override
 			public String getText(Object element) {
 				if (element instanceof Scan) {
+					// Always fetch the latest scan id from preferences before rendering
+					if(!GlobalSettings.getFromPreferences("LATEST_SCAN_ID", "").isEmpty()) {
+						latestScanId = GlobalSettings.getFromPreferences("LATEST_SCAN_ID", "");
+					}
 					Scan scan = (Scan) element;
 					return formatScanLabel(scan);
 				}
@@ -1201,15 +1205,30 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 * on the chosen scan id
 	 */
 	private void setSelectionForProjectComboViewer() {
-		String scanId = scanIdComboViewer.getCombo().getText();
 		
-		if(scanId.isEmpty()) {
+		if(scanIdComboViewer.getCombo().getText().isEmpty()) {
 			PluginUtils.clearMessage(rootModel, resultsTree);
-			CxLogger.info(String.format(PluginConstants.NO_SCAN_ID_PROVIDED, scanId));
+			PluginUtils.showMessage(rootModel, resultsTree, PluginConstants.NO_SCAN_ID_PROVIDED);
+			CxLogger.info(String.format(PluginConstants.NO_SCAN_ID_PROVIDED, PluginConstants.EMPTY_STRING));
 			return;
 		}
+		
+		String scanIdText = scanIdComboViewer.getCombo().getText().trim();
+
+		String[] parts = scanIdText.split("\\s+");
+		if (parts.length >= 3) {
+		    scanIdText = parts[2];
+		}
+		
+		final String scanId = scanIdText;
 
 		if (currentScanId.equals(scanId)) {
+		    PluginUtils.clearMessage(rootModel, resultsTree);
+		    // reload cached results
+		    List<DisplayModel> results = DataProvider.getInstance().sortResults();
+
+		    rootModel.setChildren(results);
+		    resultsTree.refresh();
 			PluginUtils.setTextForComboViewer(scanIdComboViewer, currentScanIdFormmated);
 			CxLogger.info(String.format(PluginConstants.INFO_RESULTS_ALREADY_RETRIEVED, scanId));
 			return;
