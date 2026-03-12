@@ -17,6 +17,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotTree;
+import org.eclipse.swt.widgets.Decorations;
 import org.eclipse.swt.widgets.Tree;
 
 import com.checkmarx.eclipse.utils.PluginConstants;
@@ -302,18 +303,48 @@ public abstract class BaseUITest {
 	 * Wait for connection response
 	 */
 	protected static void waitForConnectionResponse() throws TimeoutException {
-		int retryIdx = 0;
-		while (!_bot.text(3).getText().equals(INFO_SUCCESSFUL_CONNECTION)) {
-			if (retryIdx == 10) {
-				break;
-			}
-			_bot.sleep(1000);
-			retryIdx++;
-		}
-
-		if (retryIdx == 10) {
-			throw new TimeoutException("Connection validation timeout after 10000ms.");
-		}
+	    int retryIdx = 0;
+	    while (retryIdx < 10) {
+	        boolean found = false;
+	        int index = 0;
+	        // Search text widgets
+	        while (true) {
+	            try {
+	                String textValue = _bot.text(index).getText();
+	                System.out.println("[waitForConnectionResponse] text[" + index + "]: '" + textValue + "'");
+	                if (textValue.contains(INFO_SUCCESSFUL_CONNECTION)) {
+	                    found = true;
+	                    break;
+	                }
+	                index++;
+	            } catch (Exception e) {
+	                break;
+	            }
+	        }
+	        // Search label widgets if not found
+	        if (!found) {
+	            index = 0;
+	            while (true) {
+	                try {
+	                    String labelValue = _bot.label(index).getText();
+	                    System.out.println("[waitForConnectionResponse] label[" + index + "]: '" + labelValue + "'");
+	                    if (labelValue.contains(INFO_SUCCESSFUL_CONNECTION)) {
+	                        found = true;
+	                        break;
+	                    }
+	                    index++;
+	                } catch (Exception e) {
+	                    break;
+	                }
+	            }
+	        }
+	        if (found) {
+	            return;
+	        }
+	        _bot.sleep(1000);
+	        retryIdx++;
+	    }
+	    throw new TimeoutException("Connection validation timeout after 10000ms. See logs for widget contents.");
 	}
 
 	/**

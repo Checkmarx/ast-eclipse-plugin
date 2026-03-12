@@ -334,6 +334,25 @@ public class ActionStartScan extends CxBaseAction {
 					startScanAction.setEnabled(true);
 
 					if (scan.getStatus().toLowerCase(Locale.ROOT).equals(PluginConstants.CX_SCAN_COMPLETED_STATUS)) {
+						// Automatically update UI with new scan result
+						Display.getDefault().syncExec(new Runnable() {
+							@Override
+							public void run() {
+								// Fetch the latest scan list for the branch
+								List<Scan> scanList = DataProvider.getInstance().getScansForProject(branchesCombo.getCombo().getText());
+								// Set the new scan as latest by updating preferences
+								GlobalSettings.storeInPreferences("LATEST_SCAN_ID", scanId);
+								// Set the scan list in the combo viewer
+                                scansCombo.setInput(scanList);
+                                // Set the new scan as selected
+                                scansCombo.getCombo().setText(scanId);
+								// Post event to load results for the new scan
+								pluginEventBus.post(new PluginListenerDefinition(
+									PluginListenerType.LOAD_RESULTS_FOR_SCAN,
+									Collections.emptyList()));
+							}
+						});
+						// Show notification as before
 						Display.getDefault().syncExec(new Runnable() {
 							AbstractNotificationPopup notification;
 
@@ -347,8 +366,8 @@ public class ActionStartScan extends CxBaseAction {
 											public void widgetSelected(SelectionEvent e) {
 												scansCombo.getCombo().setText(scanId);
 												pluginEventBus.post(new PluginListenerDefinition(
-														PluginListenerType.LOAD_RESULTS_FOR_SCAN,
-														Collections.emptyList()));
+													PluginListenerType.LOAD_RESULTS_FOR_SCAN,
+													Collections.emptyList()));
 												notification.close();
 											}
 										});

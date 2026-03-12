@@ -4,7 +4,8 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<properties>
-		<test.includes>**/Test*.java,**/*Test.java,**/*Tests.java,**/*TestCase.java</test.includes>
+		<test.includes>
+			**/Test*.java,**/*Test.java,**/*Tests.java,**/*TestCase.java</test.includes>
 	</properties>
 	<groupId>com.checkmarx.ast.eclipse.tests</groupId>
 	<artifactId>com.checkmarx.ast.eclipse.tests</artifactId>
@@ -18,6 +19,36 @@
 	<build>
 		<plugins>
 			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<version>0.8.11</version>
+				<executions>
+					<execution>
+						<id>prepare-agent</id>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
+						<configuration>
+							<propertyName>tycho.testArgLine</propertyName>
+							<destFile>${project.build.directory}/jacoco.exec</destFile>
+						</configuration>
+					</execution>
+					 <execution>
+			            <id>report</id>
+			            <phase>verify</phase>
+			            <goals>
+			                <goal>report</goal>
+			            </goals>
+			            <configuration>
+			                <formats>
+			                    <format>XML</format>
+			                    <format>CSV</format>
+			                </formats>
+			            </configuration>
+			        </execution>
+				</executions>				
+			</plugin>
+			<plugin>
 				<groupId>org.eclipse.tycho</groupId>
 				<artifactId>tycho-surefire-plugin</artifactId>
 				<version>${tycho.version}</version>
@@ -26,11 +57,13 @@
 					<useUIThread>false</useUIThread>
 					<providerHint>junit5</providerHint>
 					<failIfNoTests>true</failIfNoTests>
+					<argLine>${tycho.testArgLine}</argLine>
 					<includes>
 						<include>${test.includes}</include>
 					</includes>
 				</configuration>
 			</plugin>
+
 		</plugins>
 	</build>
 </project>

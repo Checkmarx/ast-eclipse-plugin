@@ -33,7 +33,8 @@
 					<version>${tycho.version}</version>
 				</plugin>
 
-				<!-- This plugin configuration is used to store Eclipse m2e settings only. -->
+				<!-- This plugin configuration is used to store Eclipse m2e
+				settings only. -->
 				<!-- It has no influence on the Maven build itself. -->
 				<plugin>
 					<groupId>org.eclipse.m2e</groupId>
@@ -74,6 +75,7 @@
 						</lifecycleMappingMetadata>
 					</configuration>
 				</plugin>
+
 			</plugins>
 		</pluginManagement>
 
@@ -98,7 +100,8 @@
 					<!-- We should turn on this flag and resolve all the warning
 					issues! -->
 					<showWarnings>true</showWarnings>
-					<compilerArgument>-warn:+discouraged,+forbidden,-unavoidableGenericProblems,-warningToken</compilerArgument>
+					<compilerArgument>
+						-warn:+discouraged,+forbidden,-unavoidableGenericProblems,-warningToken</compilerArgument>
 				</configuration>
 			</plugin>
 
@@ -115,7 +118,7 @@
 								${project.artifactId}_${unqualifiedVersion}.${buildQualifier}
 							</finalName>
 						</configuration>
-					</execution>
+					</execution>					
 				</executions>
 				<!-- <configuration> <format>'v'yyyyMMddHHmm</format>
 				</configuration> -->
@@ -145,10 +148,45 @@
 							<arch>x86_64</arch>
 						</environment>
 					</environments>
-					
+
 				</configuration>
 			</plugin>
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<version>0.8.11</version>
 
+				<executions>
+
+					<execution>
+						<id>merge</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>merge</goal>
+						</goals>
+						<configuration>
+							<fileSets>
+								<fileSet>
+									<directory>.</directory>
+									<includes>
+										<include>**/target/jacoco.exec</include>
+									</includes>
+								</fileSet>
+							</fileSets>
+							<destFile>${project.build.directory}/jacoco.exec</destFile>
+						</configuration>
+					</execution>
+
+					<execution>
+						<id>report</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>report-aggregate</goal>
+						</goals>
+					</execution>
+
+				</executions>
+			</plugin>
 		</plugins>
 	</build>
 
@@ -164,9 +202,10 @@
 			<url>https://download.eclipse.org/technology/swtbot/releases/latest</url>
 		</repository>
 		<repository>
-		  <id>orbit-4.32</id>
-		  <layout>p2</layout>
-		  <url>https://download.eclipse.org/tools/orbit/simrel/orbit-aggregation/release/4.32.0</url>
+			<id>orbit-4.32</id>
+			<layout>p2</layout>
+			<url>
+				https://download.eclipse.org/tools/orbit/simrel/orbit-aggregation/release/4.32.0</url>
 		</repository>
 		<repository>
 			<id>mylyn</id>
@@ -186,5 +225,5 @@
 			<artifactId>org.osgi.service.event</artifactId>
 			<version>1.4.1</version>
 		</dependency>
-    </dependencies>
+	</dependencies>
 </project>

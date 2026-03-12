@@ -3,9 +3,6 @@ on:
   pull_request:
     branches: 
       - main
-  push:
-    branches:
-      - codeMigration
 
 jobs:
 
@@ -36,7 +33,16 @@ jobs:
         run: |
           Xvfb -ac :99 -screen 0 1920x1080x16 &
           mvn verify -Dtest.includes="**/ui/*.java"
-
+      - name: Upload Coverage Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-coverage-report-ui
+          path: checkmarx-ast-eclipse-plugin-tests/target/site/jacoco-aggregate
+      - name: Generate JaCoCo Badge
+        uses: cicirello/jacoco-badge-generator@f33476a5a3fd5a4f77cb5eef2ebe728c1dd5b921
+        with:
+          jacoco-csv-file: checkmarx-ast-eclipse-plugin-tests/target/site/jacoco-aggregate/jacoco.csv
+          generate-summary: true
   integration-tests:
     runs-on: ubuntu-latest
     steps:
@@ -64,5 +70,50 @@ jobs:
         run: |
           Xvfb -ac :99 -screen 0 1920x1080x16 &
           mvn verify -Dtest.includes="**/integration/*Test.java"
-
-
+      - name: Upload Coverage Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-coverage-report-integration
+          path: checkmarx-ast-eclipse-plugin-tests/target/site/jacoco-aggregate
+      - name: Generate JaCoCo Badge
+        uses: cicirello/jacoco-badge-generator@f33476a5a3fd5a4f77cb5eef2ebe728c1dd5b921
+        with:
+          jacoco-csv-file: checkmarx-ast-eclipse-plugin-tests/target/site/jacoco-aggregate/jacoco.csv
+          generate-summary: true
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3.5.2
+        with:
+          lfs: true
+      - name: Checkout LFS objects
+        run: git lfs checkout
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: actions/cache@v3
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-maven-
+      - name: Run Unit Tests with Coverage
+        env:
+          CX_BASE_URI: ${{ secrets.CX_BASE_URI }}
+          CX_TENANT: ${{ secrets.CX_TENANT }}
+          CX_APIKEY: ${{ secrets.CX_APIKEY }}
+          CX_TEST_SCAN: ${{ secrets.CX_TEST_SCAN }}
+          DISPLAY: :99.0
+        run: |
+          Xvfb -ac :99 -screen 0 1920x1080x16 &
+          mvn clean verify -Dtest.includes="**/unit/**/*Test.java"
+      - name: Upload Coverage Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-coverage-report-unit
+          path: checkmarx-ast-eclipse-plugin-tests/target/site/jacoco-aggregate
+      - name: Generate JaCoCo Badge
+        uses: cicirello/jacoco-badge-generator@f33476a5a3fd5a4f77cb5eef2ebe728c1dd5b921
+        with:
+          jacoco-csv-file: checkmarx-ast-eclipse-plugin-tests/target/site/jacoco-aggregate/jacoco.csv
+          generate-summary: true

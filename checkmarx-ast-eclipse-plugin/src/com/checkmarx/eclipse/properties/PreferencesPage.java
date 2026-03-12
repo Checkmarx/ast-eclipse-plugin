@@ -14,6 +14,7 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPreferencePage;
@@ -24,6 +25,13 @@ import com.checkmarx.eclipse.utils.CxLogger;
 import com.checkmarx.eclipse.utils.PluginConstants;
 import com.checkmarx.eclipse.utils.PluginUtils;
 import org.eclipse.swt.widgets.Link;
+import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.browser.IWorkbenchBrowserSupport;
+import org.eclipse.ui.PartInitException;
+
+import java.net.MalformedURLException;
+import java.net.URL;
+
 
 public class PreferencesPage extends FieldEditorPreferencePage implements IWorkbenchPreferencePage {
 	public PreferencesPage() {
@@ -84,12 +92,25 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
         cliHelp.setLayoutData(new GridData(SWT.BEGINNING, SWT.CENTER, true, false));
 		GridData linkGridData = new GridData(SWT.END, SWT.CENTER, true, false);
 		cliHelp.setLayoutData(linkGridData);
+		cliHelp.addSelectionListener(new SelectionAdapter() {
+		    @Override
+		    public void widgetSelected(SelectionEvent e) {		      
+		            IWorkbenchBrowserSupport browserSupport = PlatformUI.getWorkbench().getBrowserSupport();
+		            try {
+						browserSupport.getExternalBrowser().openURL(new URL(e.text));
+					} catch (PartInitException | MalformedURLException e1) {
+						CxLogger.error("Failed to open CLI help documentation link.", e1);
+						e1.printStackTrace();
+					}		        
+		    }
+		});
 
         addField(space());
 
-		Text connectionLabel = new Text(getFieldEditorParent(), SWT.MULTI | SWT.WRAP | SWT.READ_ONLY | SWT.V_SCROLL);
-		//Set layout for scroll area to fit to page
-		connectionLabel.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+        Label connectionLabel = new Label(getFieldEditorParent(), SWT.WRAP);
+        connectionLabel.setLayoutData(
+                new GridData(SWT.FILL, SWT.CENTER, true, false)
+        );
 
 		Button connectionButton = new Button(topComposite, SWT.PUSH);
 		connectionButton.setText(PluginConstants.PREFERENCES_TEST_CONNECTION);
