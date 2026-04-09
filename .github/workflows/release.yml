@@ -196,11 +196,11 @@ jobs:
             --body "Automated update of Eclipse update site for release ${{ env.GH_RELEASE_TAG_NAME }}."
 
           # Squash and merge the PR, then delete the branch
-          # gh pr merge \
-          #   --repo CheckmarxDev/ast-eclipse-plugin-update-site \
-          #   --squash \
-          #   --auto \
-          #   --delete-branch
+          gh pr merge \
+            --repo CheckmarxDev/ast-eclipse-plugin-update-site \
+            --squash \
+            --auto \
+            --delete-branch
   
   
   
