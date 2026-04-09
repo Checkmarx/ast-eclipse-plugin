@@ -204,8 +204,6 @@ jobs:
             --auto \
             --delete-branch
   
-  
-  
 
   notify:
     if: ${{ inputs.rbranch == '' || inputs.rbranch == null }}
