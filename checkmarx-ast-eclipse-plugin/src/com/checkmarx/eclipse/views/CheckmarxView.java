@@ -1082,8 +1082,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		scanIdComboViewer.setContentProvider(ArrayContentProvider.getInstance());
 		scanIdComboViewer.setInput(new ArrayList<>());
 
-		GridData gridData = new GridData();
-		gridData.widthHint = 520;
+		GridData gridData = new GridData(SWT.FILL, SWT.CENTER, true, false);
 		scanIdComboViewer.getCombo().setLayoutData(gridData);
 
 		scanIdComboViewer.getCombo().addListener(SWT.DefaultSelection, new Listener() {
@@ -2489,6 +2488,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 	private void updateResultsTree(List<DisplayModel> results, boolean expand) {
 		sync.asyncExec(() -> {
+			resultViewComposite.setVisible(false);
+			attackVectorCompositePanel.setVisible(false);
 			rootModel.children.clear();
 			rootModel.children.addAll(results);
 			Object[] expanded = resultsTree.getExpandedElements();
