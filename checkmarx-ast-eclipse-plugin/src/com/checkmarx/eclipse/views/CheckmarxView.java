@@ -160,6 +160,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private Text commentText;
 	private DisplayModel rootModel;
 	private String selectedSeverity, selectedState;
+	private DisplayModel currentlyDisplayedItem;
 	private Button triageButton;
 	private SelectionAdapter triageButtonAdapter, codeBashingAdapter;
 	private Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell();
@@ -1385,6 +1386,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 							if (selectedItem.getResult() != null && selectedItem.getResult().getSimilarityId() != null) {
 								sync.asyncExec(() -> {
+									currentlyDisplayedItem = selectedItem;
 									createTriageSeverityAndStateCombos(selectedItem);
 									populateTriageChanges(selectedItem);
 									resultViewComposite.setVisible(true);
@@ -2488,8 +2490,12 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 	private void updateResultsTree(List<DisplayModel> results, boolean expand) {
 		sync.asyncExec(() -> {
-			resultViewComposite.setVisible(false);
-			attackVectorCompositePanel.setVisible(false);
+			if (currentlyDisplayedItem == null
+					|| currentlyDisplayedItem.getSeverity() == null
+					|| !FilterState.isSeverityEnabled(currentlyDisplayedItem.getSeverity())) {
+				resultViewComposite.setVisible(false);
+				attackVectorCompositePanel.setVisible(false);
+			}
 			rootModel.children.clear();
 			rootModel.children.addAll(results);
 			Object[] expanded = resultsTree.getExpandedElements();
