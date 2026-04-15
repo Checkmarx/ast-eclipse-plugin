@@ -89,7 +89,7 @@ class ActionFilterStatePreference extends Action implements IMenuCreator {
 
 		for (String customState : customStates) {
 			MenuItem item = new MenuItem(menu, SWT.CHECK);
-			item.setText(customState);
+			item.setText(truncate(customState));
 			item.setSelection(FilterState.isCustomStateSelected(customState));
 			item.addSelectionListener(new SelectionAdapter() {
 				@Override
@@ -126,5 +126,9 @@ class ActionFilterStatePreference extends Action implements IMenuCreator {
 	@Override
 	public Menu getMenu(final Menu parent) {
 		return null;
+	}
+
+	private static String truncate(String text) {
+		return text.length() > 50 ? text.substring(0, 47) + "..." : text;
 	}
 }
