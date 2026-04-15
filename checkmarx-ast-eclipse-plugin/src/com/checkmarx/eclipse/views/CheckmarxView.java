@@ -2474,6 +2474,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private void listener(PluginListenerDefinition definition) {
 		switch (definition.getListenerType()) {
 			case FILTER_CHANGED:
+				updateResultsTree(definition.getResutls(), true);
+				break;
 			case GET_RESULTS:
 				updateResultsTree(definition.getResutls(), false);
 				break;
@@ -2496,9 +2498,9 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				resultViewComposite.setVisible(false);
 				attackVectorCompositePanel.setVisible(false);
 			}
+			Object[] expanded = resultsTree.getExpandedElements();
 			rootModel.children.clear();
 			rootModel.children.addAll(results);
-			Object[] expanded = resultsTree.getExpandedElements();
 			resultsTree.refresh();
 			if (expand) {
 				Set<String> expandedDMNames = new HashSet<>();
