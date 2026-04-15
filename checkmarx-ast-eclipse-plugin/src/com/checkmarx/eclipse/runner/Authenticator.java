@@ -33,7 +33,7 @@ public class Authenticator {
 	       try {
 	           CxWrapper wrapper = new CxWrapper(config, log);
 	           String cxValidateOutput = wrapper.authValidate();
-	           CxLogger.info(AUTH_STATUS + cxValidateOutput);
+	           CxLogger.info(String.format(PluginConstants.INFO_AUTHENTICATION_STATUS, cxValidateOutput));
 	           return cxValidateOutput;
 	       } catch (IOException | InterruptedException | CxException e) {
 	           CxLogger.error(String.format(PluginConstants.ERROR_AUTHENTICATING_AST, e.getMessage()), e);

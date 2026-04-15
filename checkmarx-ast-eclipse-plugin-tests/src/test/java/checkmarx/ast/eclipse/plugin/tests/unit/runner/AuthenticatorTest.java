@@ -34,7 +34,7 @@ class AuthenticatorTest {
             String result = authenticator.doAuthentication("dummyKey", "--param");
 
             assertEquals("SUCCESS", result);
-            mockedCxLogger.verify(() -> CxLogger.info("Authentication Status: SUCCESS"));
+            mockedCxLogger.verify(() -> CxLogger.info(String.format(PluginConstants.INFO_AUTHENTICATION_STATUS, "SUCCESS")));
         }
     }
 
