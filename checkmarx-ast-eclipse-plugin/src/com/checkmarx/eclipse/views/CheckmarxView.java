@@ -41,6 +41,8 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CLabel;
 import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.custom.StyledText;
+import org.eclipse.swt.events.FocusEvent;
+import org.eclipse.swt.events.FocusListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
@@ -904,7 +906,26 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				debounceTimer.schedule(pendingSearchTask, DEBOUNCE_DELAY_MS);
 				
 			}
-		});		
+		});
+
+		// Add FocusListener to disable branch combo when project is cleared and focus lost
+		projectComboViewer.getCombo().addFocusListener(new FocusListener() {
+			@Override
+			public void focusLost(FocusEvent e) {
+				// When user clicks outside project combo, check if project is empty
+				String enteredProject = projectComboViewer.getCombo().getText().trim();
+				// If project field is empty or contains only the placeholder text, disable branch combo
+				if (enteredProject.isEmpty() || enteredProject.equals(PROJECT_COMBO_VIEWER_TEXT)) {
+					currentProjectId = PluginConstants.EMPTY_STRING;
+					PluginUtils.enableComboViewer(branchComboViewer, false);
+				}
+			}
+
+			@Override
+			public void focusGained(FocusEvent e) {
+				// No action needed on focus gain
+			}
+		});
 
 	}
 	/**
