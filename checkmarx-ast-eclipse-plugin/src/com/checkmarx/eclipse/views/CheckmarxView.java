@@ -160,6 +160,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private Text commentText;
 	private DisplayModel rootModel;
 	private String selectedSeverity, selectedState;
+	private DisplayModel currentlyDisplayedItem;
 	private Button triageButton;
 	private SelectionAdapter triageButtonAdapter, codeBashingAdapter;
 	private Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell();
@@ -1082,8 +1083,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		scanIdComboViewer.setContentProvider(ArrayContentProvider.getInstance());
 		scanIdComboViewer.setInput(new ArrayList<>());
 
-		GridData gridData = new GridData();
-		gridData.widthHint = 520;
+		GridData gridData = new GridData(SWT.FILL, SWT.CENTER, true, false);
 		scanIdComboViewer.getCombo().setLayoutData(gridData);
 
 		scanIdComboViewer.getCombo().addListener(SWT.DefaultSelection, new Listener() {
@@ -1386,6 +1386,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 							if (selectedItem.getResult() != null && selectedItem.getResult().getSimilarityId() != null) {
 								sync.asyncExec(() -> {
+									currentlyDisplayedItem = selectedItem;
 									createTriageSeverityAndStateCombos(selectedItem);
 									populateTriageChanges(selectedItem);
 									resultViewComposite.setVisible(true);
@@ -2473,6 +2474,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private void listener(PluginListenerDefinition definition) {
 		switch (definition.getListenerType()) {
 			case FILTER_CHANGED:
+				updateResultsTree(definition.getResutls(), true);
+				break;
 			case GET_RESULTS:
 				updateResultsTree(definition.getResutls(), false);
 				break;
@@ -2489,9 +2492,15 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 	private void updateResultsTree(List<DisplayModel> results, boolean expand) {
 		sync.asyncExec(() -> {
+			if (currentlyDisplayedItem == null
+					|| currentlyDisplayedItem.getSeverity() == null
+					|| !FilterState.isSeverityEnabled(currentlyDisplayedItem.getSeverity())) {
+				resultViewComposite.setVisible(false);
+				attackVectorCompositePanel.setVisible(false);
+			}
+			Object[] expanded = resultsTree.getExpandedElements();
 			rootModel.children.clear();
 			rootModel.children.addAll(results);
-			Object[] expanded = resultsTree.getExpandedElements();
 			resultsTree.refresh();
 			if (expand) {
 				Set<String> expandedDMNames = new HashSet<>();
