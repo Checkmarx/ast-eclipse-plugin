@@ -627,6 +627,13 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		combo_1.setLayoutData(gd_combo_1);
 
 		triageStateComboViewer = new ComboViewer(triageView, SWT.READ_ONLY);
+		triageStateComboViewer.setLabelProvider(new LabelProvider() {
+			@Override
+			public String getText(Object element) {
+				String s = element instanceof String ? (String) element : super.getText(element);
+				return s.length() > 50 ? s.substring(0, 47) + "..." : s;
+			}
+		});
 		Combo combo_2 = triageStateComboViewer.getCombo();
 		combo_2.setEnabled(true);
 		combo_2.setData(PluginConstants.DATA_ID_KEY, PluginConstants.TRIAGE_STATE_COMBO_ID);
