@@ -5,16 +5,21 @@ import java.util.List;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IMenuCreator;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.MenuAdapter;
+import org.eclipse.swt.events.MenuEvent;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
+import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.swt.widgets.ToolItem;
+import org.eclipse.swt.widgets.ToolTip;
 
 import com.checkmarx.eclipse.Activator;
 import com.checkmarx.eclipse.enums.ActionName;
@@ -27,6 +32,9 @@ import com.google.common.eventbus.EventBus;
 
 class ActionFilterStatePreference extends Action implements IMenuCreator {
 	private Menu menu;
+	private ToolTip activeTip;
+	private Listener armFilter;
+	private Runnable tipTimer;
 	private static final String ACTION_FILTER_STATE_TOOLTIP = "State";
 	private static final String ACTION_FILTER_STATE_ICON_PATH = "/icons/filter_ps.png";
 	private EventBus pluginEventBus;
@@ -75,6 +83,12 @@ class ActionFilterStatePreference extends Action implements IMenuCreator {
 			menu.dispose();
 		}
 		menu = new Menu(parent);
+		menu.addMenuListener(new MenuAdapter() {
+			@Override
+			public void menuHidden(MenuEvent e) {
+				disposeActiveTip();
+			}
+		});
 		createMenuItem(menu, FILTER_CONFIRMED, FilterState.confirmed, State.CONFIRMED);
 		createMenuItem(menu, FILTER_NOT_EXPLOITABLE, FilterState.notExploitable, State.NOT_EXPLOITABLE);
 		createMenuItem(menu, FILTER_PROPOSED_NON_EXPLOITABLE, FilterState.proposedNotExploitable,
@@ -91,6 +105,17 @@ class ActionFilterStatePreference extends Action implements IMenuCreator {
 			MenuItem item = new MenuItem(menu, SWT.CHECK);
 			item.setText(truncate(customState));
 			item.setSelection(FilterState.isCustomStateSelected(customState));
+			if (customState.length() > 50) {
+				item.addArmListener(e -> {
+					disposeActiveTip();
+					activeTip = new ToolTip(menu.getShell(), SWT.NONE);
+					activeTip.setMessage(customState);
+					Point loc = Display.getCurrent().getCursorLocation();
+					activeTip.setLocation(loc.x + 16, loc.y + 16);
+					activeTip.setVisible(true);
+					installArmFilter(item);
+				});
+			}
 			item.addSelectionListener(new SelectionAdapter() {
 				@Override
 				public void widgetSelected(SelectionEvent e) {
@@ -126,6 +151,33 @@ class ActionFilterStatePreference extends Action implements IMenuCreator {
 	@Override
 	public Menu getMenu(final Menu parent) {
 		return null;
+	}
+
+	private void installArmFilter(MenuItem armedItem) {
+		Display d = Display.getCurrent();
+		if (armFilter != null) {
+			d.removeFilter(SWT.Arm, armFilter);
+		}
+		armFilter = event -> { if (event.widget != armedItem) disposeActiveTip(); };
+		d.addFilter(SWT.Arm, armFilter);
+		tipTimer = this::disposeActiveTip;
+		d.timerExec(1800, tipTimer);
+	}
+
+	private void disposeActiveTip() {
+		Display d = Display.getCurrent();
+		if (armFilter != null) {
+			d.removeFilter(SWT.Arm, armFilter);
+			armFilter = null;
+		}
+		if (tipTimer != null) {
+			d.timerExec(-1, tipTimer);
+			tipTimer = null;
+		}
+		if (activeTip != null && !activeTip.isDisposed()) {
+			activeTip.dispose();
+		}
+		activeTip = null;
 	}
 
 	private static String truncate(String text) {

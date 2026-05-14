@@ -41,6 +41,8 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CLabel;
 import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.custom.StyledText;
+import org.eclipse.swt.events.MouseEvent;
+import org.eclipse.swt.events.MouseTrackAdapter;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
@@ -640,6 +642,16 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		GridData gd_combo_2 = new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1);
 		// gd_combo_2.widthHint = 180;
 		combo_2.setLayoutData(gd_combo_2);
+		combo_2.addMouseTrackListener(new MouseTrackAdapter() {
+			@Override
+			public void mouseHover(MouseEvent e) {
+				IStructuredSelection sel = (IStructuredSelection) triageStateComboViewer.getSelection();
+				if (!sel.isEmpty()) {
+					String fullName = (String) sel.getFirstElement();
+					combo_2.setToolTipText(fullName.length() > 50 ? fullName : "");
+				}
+			}
+		});
 
 		triageButton = new Button(triageView, SWT.FLAT | SWT.CENTER);
 		triageButton.setData(PluginConstants.DATA_ID_KEY, PluginConstants.TRIAGE_BUTTON_ID);
