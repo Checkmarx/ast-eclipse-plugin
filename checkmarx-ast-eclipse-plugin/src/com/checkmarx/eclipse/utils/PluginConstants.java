@@ -49,6 +49,8 @@ public class PluginConstants {
 	public static final String INFO_CHANGE_SCAN_EVENT_NOT_TRIGGERED = "Change scan id event not triggered. Request already running: %s. Scan id results already retrieved: %s";
 	public static final String INFO_CHANGE_BRANCH_EVENT_NOT_TRIGGERED = "Change branch event not triggered. Branch already selected";
 	public static final String INFO_CHANGE_PROJECT_EVENT_NOT_TRIGGERED = "Change project event not triggered. Project already selected";
+	public static final String AUTH_SUCCESS_PATTERN = "Successfully authenticated";
+	public static final String AUTH_SUCCESS_DISPLAY = "You are connected to Checkmarx One";
 	
 	/******************************** TREE MESSAGES ********************************/
 	public static final String TREE_INVALID_SCAN_ID_FORMAT = "Invalid scan id format.";

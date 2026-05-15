@@ -1283,13 +1283,31 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				List<Project> projectList = getProjects();
 				if (projectList.isEmpty())
 					return null;
-				String projectName = getProjectFromId(projectList, projectId);
+
+				// Fetch the project directly by ID — the full list may not contain it (e.g. pagination limits)
+				Project fetchedProject = DataProvider.getInstance().getProjectById(projectId);
+
+				// Determine project name: prefer the directly-fetched result, fall back to list lookup
+				String projectName = (fetchedProject != null)
+						? fetchedProject.getName()
+						: getProjectFromId(projectList, projectId);
+
+				// If the project was not already in the list, prepend it so it's visible in the dropdown
+				if (fetchedProject != null && projectList.stream().noneMatch(p -> p.getId().equals(projectId))) {
+					projectList = new ArrayList<>(projectList);
+					projectList.add(0, fetchedProject);
+				}
+				final List<Project> finalProjectList = projectList;
+
 				currentProjectId = projectId;
 				GlobalSettings.storeInPreferences(GlobalSettings.PARAM_PROJECT_ID, currentProjectId);
 
 				sync.asyncExec(() -> {
-					projectComboViewer.setInput(projectList);
+					currentProjects = finalProjectList;
+					storeCurrentProjects = finalProjectList;
+					projectComboViewer.setInput(finalProjectList);
 					PluginUtils.setTextForComboViewer(projectComboViewer, projectName);
+					PluginUtils.enableComboViewer(projectComboViewer, true);
 					setSelectionForBranchComboViewer(scan.getBranch(), projectId);
 					setSelectionForScanIdComboViewer(scan.getId(), scan.getBranch());
 					updateStartScanButton(true);
