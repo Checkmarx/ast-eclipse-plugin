@@ -7,7 +7,7 @@ on:
 
 jobs:
   set_tag:
-    runs-on: ubuntu-latest
+    runs-on: cx-public-ubuntu-x64
     outputs:
       tag_name: ${{ steps.tagname.outputs.tag_name }}
     steps:
