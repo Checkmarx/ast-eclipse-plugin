@@ -10,7 +10,7 @@ jobs:
   pr-labeler:
     permissions:
       pull-requests: write  # for TimonVS/pr-labeler-action to add labels in PR
-    runs-on: ubuntu-latest
+    runs-on: cx-public-ubuntu-x64
     steps:
       - uses: TimonVS/pr-labeler-action@8b99f404a073744885d8021d1de4e40c6eaf38e2 # v4
         with:
