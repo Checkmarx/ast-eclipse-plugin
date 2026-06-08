@@ -24,7 +24,8 @@ public class DisplayModel {
     	this.severity = builder.severity;
     	this.queryName = builder.queryName;
     	this.children = builder.children;
-    	this.state = builder.state;    	
+    	this.state = builder.state;
+    	this.parent = builder.parent;
     	this.result = builder.result;
     }
     

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.eclipse.ui.PlatformUI;
@@ -14,6 +15,7 @@ import org.eclipse.core.resources.IWorkspaceRoot;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.IResourceProxy;
 import org.eclipse.core.resources.IResourceProxyVisitor;
 import org.eclipse.core.resources.IWorkspace;
 import org.eclipse.core.resources.ResourcesPlugin;
@@ -265,5 +267,174 @@ public class PluginUtilsTest {
             PluginUtils.clearVulnerabilitiesFromProblemsView();
             // Should not throw
         }
+    }
+
+    @Test
+    void testAddVulnerabilitiesToProblemsView_withMatchingNode_createsMarker() throws Exception {
+        Node mockNode = mock(Node.class);
+        when(mockNode.getFileName()).thenReturn("src/main/MyClass.java");
+        when(mockNode.getName()).thenReturn("SQL_Injection");
+        when(mockNode.getLine()).thenReturn(42);
+
+        Data mockData = mock(Data.class);
+        when(mockData.getNodes()).thenReturn(Arrays.asList(mockNode));
+
+        Result mockResult = mock(Result.class);
+        when(mockResult.getData()).thenReturn(mockData);
+        when(mockResult.getSeverity()).thenReturn("HIGH");
+
+        IFile mockFile = mock(IFile.class);
+        IMarker mockMarker = mock(IMarker.class);
+        when(mockFile.createMarker(anyString())).thenReturn(mockMarker);
+
+        IWorkspaceRoot root = mock(IWorkspaceRoot.class);
+        IWorkspace workspace = mock(IWorkspace.class);
+        when(workspace.getRoot()).thenReturn(root);
+
+        doAnswer((Answer<Void>) invocation -> {
+            IResourceProxyVisitor visitor = invocation.getArgument(0);
+            IResourceProxy matchProxy = mock(IResourceProxy.class);
+            when(matchProxy.getType()).thenReturn(IResource.FILE);
+            when(matchProxy.getName()).thenReturn("MyClass.java");
+            when(matchProxy.requestResource()).thenReturn(mockFile);
+            visitor.visit(matchProxy);
+            return null;
+        }).when(root).accept(any(IResourceProxyVisitor.class), anyInt());
+
+        try (MockedStatic<ResourcesPlugin> rp = Mockito.mockStatic(ResourcesPlugin.class)) {
+            rp.when(ResourcesPlugin::getWorkspace).thenReturn(workspace);
+            PluginUtils.addVulnerabilitiesToProblemsView(Arrays.asList(mockResult));
+            verify(mockMarker).setAttribute(IMarker.MESSAGE, "SQL_Injection");
+        }
+    }
+
+    @Test
+    void testAddVulnerabilitiesToProblemsView_visitorNonFileAndNoMatch_noMarker() throws Exception {
+        Node mockNode = mock(Node.class);
+        when(mockNode.getFileName()).thenReturn("src/Other.java");
+        when(mockNode.getName()).thenReturn("XSS");
+        when(mockNode.getLine()).thenReturn(10);
+
+        Data mockData = mock(Data.class);
+        when(mockData.getNodes()).thenReturn(Arrays.asList(mockNode));
+
+        Result mockResult = mock(Result.class);
+        when(mockResult.getData()).thenReturn(mockData);
+        when(mockResult.getSeverity()).thenReturn("MEDIUM");
+
+        IWorkspaceRoot root = mock(IWorkspaceRoot.class);
+        IWorkspace workspace = mock(IWorkspace.class);
+        when(workspace.getRoot()).thenReturn(root);
+
+        doAnswer((Answer<Void>) invocation -> {
+            IResourceProxyVisitor visitor = invocation.getArgument(0);
+            // Visitor: non-file resource
+            IResourceProxy folderProxy = mock(IResourceProxy.class);
+            when(folderProxy.getType()).thenReturn(IResource.FOLDER);
+            visitor.visit(folderProxy);
+            // Visitor: file with non-matching name
+            IResourceProxy noMatchProxy = mock(IResourceProxy.class);
+            when(noMatchProxy.getType()).thenReturn(IResource.FILE);
+            when(noMatchProxy.getName()).thenReturn("DifferentClass.java");
+            visitor.visit(noMatchProxy);
+            return null;
+        }).when(root).accept(any(IResourceProxyVisitor.class), anyInt());
+
+        try (MockedStatic<ResourcesPlugin> rp = Mockito.mockStatic(ResourcesPlugin.class)) {
+            rp.when(ResourcesPlugin::getWorkspace).thenReturn(workspace);
+            PluginUtils.addVulnerabilitiesToProblemsView(Arrays.asList(mockResult));
+        }
+    }
+
+    @Test
+    void testAddVulnerabilitiesToProblemsView_createMarkerThrows_doesNotPropagate() throws Exception {
+        Node mockNode = mock(Node.class);
+        when(mockNode.getFileName()).thenReturn("src/MyClass.java");
+        when(mockNode.getName()).thenReturn("PathTraversal");
+        when(mockNode.getLine()).thenReturn(5);
+
+        Data mockData = mock(Data.class);
+        when(mockData.getNodes()).thenReturn(Arrays.asList(mockNode));
+
+        Result mockResult = mock(Result.class);
+        when(mockResult.getData()).thenReturn(mockData);
+        when(mockResult.getSeverity()).thenReturn("CRITICAL");
+
+        IFile mockFile = mock(IFile.class);
+        IStatus status = mock(IStatus.class);
+        when(status.getMessage()).thenReturn("marker error");
+        CoreException markerException = new CoreException(status);
+        when(mockFile.createMarker(anyString())).thenThrow(markerException);
+
+        IWorkspaceRoot root = mock(IWorkspaceRoot.class);
+        IWorkspace workspace = mock(IWorkspace.class);
+        when(workspace.getRoot()).thenReturn(root);
+
+        doAnswer((Answer<Void>) invocation -> {
+            IResourceProxyVisitor visitor = invocation.getArgument(0);
+            IResourceProxy proxy = mock(IResourceProxy.class);
+            when(proxy.getType()).thenReturn(IResource.FILE);
+            when(proxy.getName()).thenReturn("MyClass.java");
+            when(proxy.requestResource()).thenReturn(mockFile);
+            visitor.visit(proxy);
+            return null;
+        }).when(root).accept(any(IResourceProxyVisitor.class), anyInt());
+
+        try (MockedStatic<ResourcesPlugin> rp = Mockito.mockStatic(ResourcesPlugin.class)) {
+            rp.when(ResourcesPlugin::getWorkspace).thenReturn(workspace);
+            assertDoesNotThrow(() -> PluginUtils.addVulnerabilitiesToProblemsView(Arrays.asList(mockResult)));
+        }
+    }
+
+    @Test
+    void testAddVulnerabilitiesToProblemsView_allSeverities_coversGetIMarkerSeverity() throws Exception {
+        String[] severities = {"CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"};
+        for (String sev : severities) {
+            Node mockNode = mock(Node.class);
+            when(mockNode.getFileName()).thenReturn("Foo.java");
+            when(mockNode.getName()).thenReturn("vuln");
+            when(mockNode.getLine()).thenReturn(1);
+
+            Data mockData = mock(Data.class);
+            when(mockData.getNodes()).thenReturn(Arrays.asList(mockNode));
+
+            Result mockResult = mock(Result.class);
+            when(mockResult.getData()).thenReturn(mockData);
+            when(mockResult.getSeverity()).thenReturn(sev);
+
+            IFile mockFile = mock(IFile.class);
+            IMarker mockMarker = mock(IMarker.class);
+            when(mockFile.createMarker(anyString())).thenReturn(mockMarker);
+
+            IWorkspaceRoot root = mock(IWorkspaceRoot.class);
+            IWorkspace workspace = mock(IWorkspace.class);
+            when(workspace.getRoot()).thenReturn(root);
+
+            doAnswer((Answer<Void>) invocation -> {
+                IResourceProxyVisitor visitor = invocation.getArgument(0);
+                IResourceProxy proxy = mock(IResourceProxy.class);
+                when(proxy.getType()).thenReturn(IResource.FILE);
+                when(proxy.getName()).thenReturn("Foo.java");
+                when(proxy.requestResource()).thenReturn(mockFile);
+                visitor.visit(proxy);
+                return null;
+            }).when(root).accept(any(IResourceProxyVisitor.class), anyInt());
+
+            try (MockedStatic<ResourcesPlugin> rp = Mockito.mockStatic(ResourcesPlugin.class)) {
+                rp.when(ResourcesPlugin::getWorkspace).thenReturn(workspace);
+                PluginUtils.addVulnerabilitiesToProblemsView(Arrays.asList(mockResult));
+            }
+        }
+    }
+
+    @Test
+    void testAddVulnerabilitiesToProblemsView_nullNodes_skipsLoop() {
+        Data mockData = mock(Data.class);
+        when(mockData.getNodes()).thenReturn(null);
+
+        Result mockResult = mock(Result.class);
+        when(mockResult.getData()).thenReturn(mockData);
+
+        assertDoesNotThrow(() -> PluginUtils.addVulnerabilitiesToProblemsView(Arrays.asList(mockResult)));
     }
 }
