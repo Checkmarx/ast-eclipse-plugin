@@ -12,7 +12,7 @@ import org.osgi.service.prefs.Preferences;
 import com.checkmarx.eclipse.views.GlobalSettings;
 import com.checkmarx.eclipse.views.filters.FilterState;
 
-class GlobalSettingsTest {
+public class GlobalSettingsTest {
 
 	private GlobalSettings globalSettings;
 

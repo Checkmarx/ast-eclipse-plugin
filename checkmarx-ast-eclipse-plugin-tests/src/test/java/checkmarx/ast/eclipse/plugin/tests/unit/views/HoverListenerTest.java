@@ -20,7 +20,7 @@ import org.mockito.MockedStatic;
 
 import com.checkmarx.eclipse.views.HoverListener;
 
-class HoverListenerTest {
+public class HoverListenerTest {
 
 	private List<Control> mockControls;
 	private Control mockControl1;
