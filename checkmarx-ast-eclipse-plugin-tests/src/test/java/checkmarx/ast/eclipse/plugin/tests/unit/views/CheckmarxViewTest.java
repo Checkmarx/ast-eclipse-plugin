@@ -1,11 +1,13 @@
 package checkmarx.ast.eclipse.plugin.tests.unit.views;
 
+import com.checkmarx.eclipse.enums.ActionName;
 import com.checkmarx.eclipse.views.CheckmarxView;
 import com.checkmarx.eclipse.views.DataProvider;
 import com.checkmarx.eclipse.views.GlobalSettings;
 import com.checkmarx.eclipse.views.actions.ToolBarActions;
 import com.checkmarx.eclipse.properties.Preferences;
 import com.checkmarx.eclipse.utils.PluginUtils;
+import com.checkmarx.eclipse.views.filters.FilterState;
 import com.checkmarx.ast.project.Project;
 import com.checkmarx.ast.scan.Scan;
 import com.checkmarx.eclipse.Activator;
@@ -660,6 +662,123 @@ class CheckmarxViewTest {
                     throw new RuntimeException(e.getCause());
                 }
             });
+        }
+    }
+
+    @Test
+    void testLoadingProjects_doesNotThrow() throws Exception {
+        Method method = CheckmarxView.class.getDeclaredMethod("loadingProjects");
+        method.setAccessible(true);
+        assertDoesNotThrow(() -> {
+            try {
+                method.invoke(checkmarxView);
+            } catch (java.lang.reflect.InvocationTargetException e) {
+                throw new RuntimeException(e.getCause());
+            }
+        });
+    }
+
+    @Test
+    void testLoadingBranches_doesNotThrow() throws Exception {
+        injectComboViewers();
+        Method method = CheckmarxView.class.getDeclaredMethod("loadingBranches");
+        method.setAccessible(true);
+        assertDoesNotThrow(() -> {
+            try {
+                method.invoke(checkmarxView);
+            } catch (java.lang.reflect.InvocationTargetException e) {
+                throw new RuntimeException(e.getCause());
+            }
+        });
+    }
+
+    @Test
+    void testLoadingScans_doesNotThrow() throws Exception {
+        injectComboViewers();
+        Method method = CheckmarxView.class.getDeclaredMethod("loadingScans");
+        method.setAccessible(true);
+        assertDoesNotThrow(() -> {
+            try {
+                method.invoke(checkmarxView);
+            } catch (java.lang.reflect.InvocationTargetException e) {
+                throw new RuntimeException(e.getCause());
+            }
+        });
+    }
+
+    @Test
+    void testResetFiltersState_withMockedDataProvider_doesNotThrow() throws Exception {
+        FilterState.resetFilters();
+
+        try (MockedStatic<DataProvider> dpMock = Mockito.mockStatic(DataProvider.class)) {
+            DataProvider mockProvider = Mockito.mock(DataProvider.class);
+            dpMock.when(DataProvider::getInstance).thenReturn(mockProvider);
+
+            Method method = CheckmarxView.class.getDeclaredMethod("resetFiltersState");
+            method.setAccessible(true);
+            assertDoesNotThrow(() -> {
+                try {
+                    method.invoke(checkmarxView);
+                } catch (java.lang.reflect.InvocationTargetException e) {
+                    throw new RuntimeException(e.getCause());
+                }
+            });
+
+            Mockito.verify(mockProvider).setCurrentScanId(null);
+            Mockito.verify(mockProvider).setCurrentResults(null);
+        }
+    }
+
+    @Test
+    void testEnablePluginFields_withEmptyActions_doesNotThrow() throws Exception {
+        Field tbField = CheckmarxView.class.getDeclaredField("toolBarActions");
+        tbField.setAccessible(true);
+        ToolBarActions toolbarMock = (ToolBarActions) tbField.get(checkmarxView);
+        Mockito.when(toolbarMock.getToolBarActions()).thenReturn(Collections.emptyList());
+
+        try (MockedStatic<DataProvider> dpMock = Mockito.mockStatic(DataProvider.class)) {
+            DataProvider mockProvider = Mockito.mock(DataProvider.class);
+            Mockito.when(mockProvider.containsResults()).thenReturn(false);
+            dpMock.when(DataProvider::getInstance).thenReturn(mockProvider);
+
+            Method method = CheckmarxView.class.getDeclaredMethod("enablePluginFields", boolean.class);
+            method.setAccessible(true);
+            assertDoesNotThrow(() -> {
+                try {
+                    method.invoke(checkmarxView, true);
+                } catch (java.lang.reflect.InvocationTargetException e) {
+                    throw new RuntimeException(e.getCause());
+                }
+            });
+        }
+    }
+
+    @Test
+    void testEnablePluginFields_withResultsAvailable_enablesNonGroupBySeverityActions() throws Exception {
+        Action mockAction = Mockito.mock(Action.class);
+        Mockito.when(mockAction.getId()).thenReturn(ActionName.GROUP_BY_QUERY_NAME.name());
+
+        Field tbField = CheckmarxView.class.getDeclaredField("toolBarActions");
+        tbField.setAccessible(true);
+        ToolBarActions toolbarMock = (ToolBarActions) tbField.get(checkmarxView);
+        Mockito.when(toolbarMock.getToolBarActions()).thenReturn(Arrays.asList(mockAction));
+
+        try (MockedStatic<DataProvider> dpMock = Mockito.mockStatic(DataProvider.class)) {
+            DataProvider mockProvider = Mockito.mock(DataProvider.class);
+            Mockito.when(mockProvider.containsResults()).thenReturn(true);
+            dpMock.when(DataProvider::getInstance).thenReturn(mockProvider);
+
+            Method method = CheckmarxView.class.getDeclaredMethod("enablePluginFields", boolean.class);
+            method.setAccessible(true);
+            assertDoesNotThrow(() -> {
+                try {
+                    method.invoke(checkmarxView, false);
+                } catch (java.lang.reflect.InvocationTargetException e) {
+                    throw new RuntimeException(e.getCause());
+                }
+            });
+
+            Mockito.verify(mockAction).setEnabled(true);
         }
     }
 }
