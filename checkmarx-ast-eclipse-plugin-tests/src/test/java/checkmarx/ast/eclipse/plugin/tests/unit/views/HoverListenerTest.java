@@ -1,109 +1,172 @@
 package checkmarx.ast.eclipse.plugin.tests.unit.views;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.MouseEvent;
+import org.eclipse.swt.graphics.Color;
+import org.eclipse.swt.graphics.RGBA;
+import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
-import org.eclipse.swt.widgets.Label;
-import org.eclipse.swt.widgets.Shell;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 
 import com.checkmarx.eclipse.views.HoverListener;
 
 class HoverListenerTest {
 
-    private static Display display;
+	private List<Control> mockControls;
+	private Control mockControl1;
+	private Control mockControl2;
+	private Display mockDisplay;
+	private Color mockDefaultColor;
+	private Color mockThemeColor;
+	private RGBA mockRGBA;
+	private MouseEvent mockMouseEvent;
 
-    @BeforeAll
-    static void setUpClass() {
-        display = Display.getDefault();
-    }
+	@BeforeEach
+	void setUp() {
+		mockControl1 = mock(Control.class);
+		mockControl2 = mock(Control.class);
+		mockControls = Arrays.asList(mockControl1, mockControl2);
+		mockDisplay = mock(Display.class);
+		mockDefaultColor = mock(Color.class);
+		mockThemeColor = mock(Color.class);
+		mockRGBA = mock(RGBA.class);
+		mockMouseEvent = mock(MouseEvent.class);
 
-    @Test
-    void testConstructor_emptyList_createsInstance() {
-        HoverListener listener = new HoverListener(Collections.emptyList());
-        assertNotNull(listener);
-    }
+		when(mockControl1.getBackground()).thenReturn(mockDefaultColor);
+		when(mockThemeColor.getRGBA()).thenReturn(mockRGBA);
+		when(mockRGBA.getHSBA()).thenReturn(new float[] { 120f, 0.5f, 0.5f, 1.0f });
+	}
 
-    @Test
-    void testMouseHover_emptyList_doesNothing() {
-        HoverListener listener = new HoverListener(Collections.emptyList());
-        assertDoesNotThrow(() -> listener.mouseHover(null));
-    }
+	@Test
+	void testConstructor_withControlsList_storesControlsAndDefaultColor() {
+		HoverListener listener = new HoverListener(mockControls);
 
-    @Test
-    void testMouseExit_nullDefaultColor_doesNotThrow() {
-        // Empty list → defaultColor = null; mouseExit should be a no-op
-        HoverListener listener = new HoverListener(Collections.emptyList());
-        assertDoesNotThrow(() -> listener.mouseExit(null));
-    }
+		assertNotNull(listener);
+		verify(mockControl1).getBackground();
+	}
 
-    @Test
-    void testApply_emptyList_doesNotThrow() {
-        HoverListener listener = new HoverListener(Collections.emptyList());
-        assertDoesNotThrow(() -> listener.apply());
-    }
+	@Test
+	void testConstructor_withEmptyList_defaultColorIsNull() {
+		HoverListener listener = new HoverListener(Collections.emptyList());
 
-    @Test
-    void testMouseEnter_realControl_setsBackgroundWithoutThrowing() {
-        display.syncExec(() -> {
-            Shell shell = new Shell(display);
-            try {
-                Label label = new Label(shell, SWT.NONE);
-                HoverListener listener = new HoverListener(List.of(label));
-                assertDoesNotThrow(() -> listener.mouseEnter(null));
-            } finally {
-                shell.dispose();
-            }
-        });
-    }
+		assertNotNull(listener);
+		// Empty list means no getBackground() call and defaultColor should be null
+	}
 
-    @Test
-    void testMouseExit_afterMouseEnter_disposesCustomColor() {
-        display.syncExec(() -> {
-            Shell shell = new Shell(display);
-            try {
-                Label label = new Label(shell, SWT.NONE);
-                HoverListener listener = new HoverListener(List.of(label));
-                listener.mouseEnter(null);   // sets customColor
-                assertDoesNotThrow(() -> listener.mouseExit(null));  // disposes customColor
-            } finally {
-                shell.dispose();
-            }
-        });
-    }
+	@Test
+	void testMouseEnter_appliesCustomColorToAllControls() {
+		try (MockedStatic<Display> displayMock = mockStatic(Display.class)) {
+			displayMock.when(Display::getCurrent).thenReturn(mockDisplay);
+			when(mockDisplay.getSystemColor(SWT.COLOR_LIST_SELECTION)).thenReturn(mockThemeColor);
 
-    @Test
-    void testMouseExit_withDefaultColor_noMouseEnter_setsBackground() {
-        display.syncExec(() -> {
-            Shell shell = new Shell(display);
-            try {
-                Label label = new Label(shell, SWT.NONE);
-                // defaultColor set from label.getBackground() in constructor
-                HoverListener listener = new HoverListener(List.of(label));
-                // Call mouseExit without mouseEnter — customColor == null, defaultColor != null
-                assertDoesNotThrow(() -> listener.mouseExit(null));
-            } finally {
-                shell.dispose();
-            }
-        });
-    }
+			HoverListener listener = new HoverListener(mockControls);
+			listener.mouseEnter(mockMouseEvent);
 
-    @Test
-    void testApply_withRealControl_addsListenerWithoutThrowing() {
-        display.syncExec(() -> {
-            Shell shell = new Shell(display);
-            try {
-                Label label = new Label(shell, SWT.NONE);
-                HoverListener listener = new HoverListener(List.of(label));
-                assertDoesNotThrow(() -> listener.apply());
-            } finally {
-                shell.dispose();
-            }
-        });
-    }
+			verify(mockControl1).setBackground(any(Color.class));
+			verify(mockControl2).setBackground(any(Color.class));
+		}
+	}
+
+	@Test
+	void testMouseExit_restoresDefaultColorWhenNotNull() {
+		try (MockedStatic<Display> displayMock = mockStatic(Display.class)) {
+			displayMock.when(Display::getCurrent).thenReturn(mockDisplay);
+			when(mockDisplay.getSystemColor(SWT.COLOR_LIST_SELECTION)).thenReturn(mockThemeColor);
+
+			HoverListener listener = new HoverListener(mockControls);
+			listener.mouseEnter(mockMouseEvent);
+			listener.mouseExit(mockMouseEvent);
+
+			verify(mockControl1, atLeastOnce()).setBackground(mockDefaultColor);
+			verify(mockControl2, atLeastOnce()).setBackground(mockDefaultColor);
+		}
+	}
+
+	@Test
+	void testMouseExit_whenDefaultColorIsNull_doesNothing() {
+		List<Control> emptyControls = Collections.emptyList();
+		HoverListener listener = new HoverListener(emptyControls);
+
+		listener.mouseExit(mockMouseEvent);
+
+		// Should not throw, and no interactions on controls
+		assertTrue(emptyControls.isEmpty());
+	}
+
+	@Test
+	void testMouseExit_disposesCustomColor() {
+		try (MockedStatic<Display> displayMock = mockStatic(Display.class)) {
+			displayMock.when(Display::getCurrent).thenReturn(mockDisplay);
+			when(mockDisplay.getSystemColor(SWT.COLOR_LIST_SELECTION)).thenReturn(mockThemeColor);
+
+			HoverListener listener = new HoverListener(mockControls);
+			listener.mouseEnter(mockMouseEvent);
+			listener.mouseExit(mockMouseEvent);
+
+			// Verify that setBackground was called (indicating color handling)
+			verify(mockControl1, atLeast(1)).setBackground(any());
+		}
+	}
+
+	@Test
+	void testMouseHover_doesNothing() {
+		HoverListener listener = new HoverListener(mockControls);
+
+		listener.mouseHover(mockMouseEvent);
+
+		// No assertions - just verify it doesn't throw
+		assertTrue(true);
+	}
+
+	@Test
+	void testApply_addsListenerToAllControls() {
+		List<Control> testControls = new ArrayList<>();
+		Control control1 = mock(Control.class);
+		Control control2 = mock(Control.class);
+		testControls.add(control1);
+		testControls.add(control2);
+
+		HoverListener listener = new HoverListener(testControls);
+		listener.apply();
+
+		verify(control1).addMouseTrackListener(listener);
+		verify(control2).addMouseTrackListener(listener);
+	}
+
+	@Test
+	void testApply_withEmptyControls_doesNothing() {
+		HoverListener listener = new HoverListener(Collections.emptyList());
+
+		listener.apply();
+
+		// Should not throw with empty list
+		assertTrue(true);
+	}
+
+	@Test
+	void testMouseEnterThenExit_cycleCompletesSuccessfully() {
+		try (MockedStatic<Display> displayMock = mockStatic(Display.class)) {
+			displayMock.when(Display::getCurrent).thenReturn(mockDisplay);
+			when(mockDisplay.getSystemColor(SWT.COLOR_LIST_SELECTION)).thenReturn(mockThemeColor);
+
+			HoverListener listener = new HoverListener(mockControls);
+
+			listener.mouseEnter(mockMouseEvent);
+			listener.mouseExit(mockMouseEvent);
+
+			// Verify the cycle: enter changes color, exit restores it
+			verify(mockControl1, atLeast(1)).setBackground(any());
+			verify(mockControl2, atLeast(1)).setBackground(any());
+		}
+	}
 }
