@@ -86,46 +86,34 @@ class ActionOpenPreferencesPageTest {
 
     @Test
     void testCreateAction_runMethod_prefDialogNull_doesNotThrow() {
+        // MockedStatic is thread-local — run action on test thread (not syncExec) so the mock is visible
         try (MockedStatic<PreferencesUtil> prefUtilMock = Mockito.mockStatic(PreferencesUtil.class)) {
             prefUtilMock.when(() -> PreferencesUtil.createPreferenceDialogOn(any(), anyString(), any(), any()))
                     .thenReturn(null);
 
-            display.syncExec(() -> {
-                Shell shell = new Shell(display);
-                try {
-                    DisplayModel rootModel = new DisplayModel.DisplayModelBuilder(PluginConstants.EMPTY_STRING).build();
-                    TreeViewer mockTree = mock(TreeViewer.class);
-                    ActionOpenPreferencesPage actionPage = new ActionOpenPreferencesPage(rootModel, mockTree, shell);
-                    Action result = actionPage.createAction();
-                    assertDoesNotThrow(result::run);
-                } finally {
-                    shell.dispose();
-                }
-            });
+            DisplayModel rootModel = new DisplayModel.DisplayModelBuilder(PluginConstants.EMPTY_STRING).build();
+            TreeViewer mockTree = mock(TreeViewer.class);
+            ActionOpenPreferencesPage actionPage = new ActionOpenPreferencesPage(rootModel, mockTree, null);
+            Action result = actionPage.createAction();
+            assertDoesNotThrow(result::run);
         }
     }
 
     @Test
     void testCreateAction_runMethod_prefDialogNonNull_callsOpen() {
+        // MockedStatic is thread-local — run action on test thread (not syncExec) so the mock is visible
         try (MockedStatic<PreferencesUtil> prefUtilMock = Mockito.mockStatic(PreferencesUtil.class)) {
             PreferenceDialog mockDialog = mock(PreferenceDialog.class);
             when(mockDialog.open()).thenReturn(0);
             prefUtilMock.when(() -> PreferencesUtil.createPreferenceDialogOn(any(), anyString(), any(), any()))
                     .thenReturn(mockDialog);
 
-            display.syncExec(() -> {
-                Shell shell = new Shell(display);
-                try {
-                    DisplayModel rootModel = new DisplayModel.DisplayModelBuilder(PluginConstants.EMPTY_STRING).build();
-                    TreeViewer mockTree = mock(TreeViewer.class);
-                    ActionOpenPreferencesPage actionPage = new ActionOpenPreferencesPage(rootModel, mockTree, shell);
-                    Action result = actionPage.createAction();
-                    assertDoesNotThrow(result::run);
-                    verify(mockDialog).open();
-                } finally {
-                    shell.dispose();
-                }
-            });
+            DisplayModel rootModel = new DisplayModel.DisplayModelBuilder(PluginConstants.EMPTY_STRING).build();
+            TreeViewer mockTree = mock(TreeViewer.class);
+            ActionOpenPreferencesPage actionPage = new ActionOpenPreferencesPage(rootModel, mockTree, null);
+            Action result = actionPage.createAction();
+            assertDoesNotThrow(result::run);
+            verify(mockDialog).open();
         }
     }
 }
