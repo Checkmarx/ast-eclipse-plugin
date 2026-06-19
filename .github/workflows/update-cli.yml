@@ -4,11 +4,14 @@ on:
   repository_dispatch:
     types: [java-wrapper-version-update]
 
+permissions:
+  contents: read
+
 jobs:
   update-checkmarx-cli:
-    runs-on: ubuntu-latest
+    runs-on: cx-public-ubuntu-x64
     steps:
-      - uses: actions/checkout@v4.1.7
+      - uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
         with:
           lfs: true
 
@@ -73,7 +76,7 @@ jobs:
 
       - name: Create Pull Request
         if: steps.ast-cli-java-wrapper.outputs.current_tag != steps.ast-cli-java-wrapper.outputs.release_tag
-        uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c #v6.1.0
+        uses: step-security/create-pull-request@50c103da2b9ca12cd5bc013fc6931051a5aa872b # v8.1.1
         with:
           token: ${{ secrets.AUTOMATION_TOKEN }}
           commit-message: Update ast-cli-java-wrapper to ${{ steps.ast-cli-java-wrapper.outputs.release_tag }}
