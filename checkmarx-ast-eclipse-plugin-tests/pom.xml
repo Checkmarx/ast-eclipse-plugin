@@ -16,36 +16,6 @@
 		<artifactId>checkmarx-eclipse-plugin</artifactId>
 		<version>1.0.0-SNAPSHOT</version>
 	</parent>
-	<profiles>
-		<profile>
-			<id>unit-tests</id>
-			<activation>
-				<activeByDefault>false</activeByDefault>
-			</activation>
-			<properties>
-				<unit.test.includes>**/unit/**/*Test.java</unit.test.includes>
-			</properties>
-		</profile>
-		<profile>
-			<id>integration-tests</id>
-			<activation>
-				<activeByDefault>false</activeByDefault>
-			</activation>
-			<properties>
-				<unit.test.includes>**/integration/**/*Test.java</unit.test.includes>
-			</properties>
-		</profile>
-		<profile>
-			<id>all-tests</id>
-			<activation>
-				<activeByDefault>true</activeByDefault>
-			</activation>
-			<properties>
-				<unit.test.includes>**/*Test.java</unit.test.includes>
-			</properties>
-		</profile>
-	</profiles>
-
 	<build>
 		<plugins>
 			<plugin>
@@ -126,12 +96,12 @@
 					<failIfNoTests>false</failIfNoTests>
 					<argLine>${tycho.testArgLine}</argLine>
 					<includes>
-						<include>${unit.test.includes}</include>
+						<include>**/*Test.java</include>
 					</includes>
 					<excludes>
 						<exclude>**/ui/**</exclude>
 					</excludes>
-					<work>${project.build.directory}/work</work>
+					<work>${project.build.directory}/work-unit</work>
 				</configuration>
 			</plugin>
 
