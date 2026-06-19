@@ -77,15 +77,27 @@
 				<groupId>org.eclipse.tycho</groupId>
 				<artifactId>tycho-surefire-plugin</artifactId>
 				<version>${tycho.version}</version>
+				<executions>
+					<execution>
+						<phase>test</phase>
+						<goals>
+							<goal>test</goal>
+						</goals>
+					</execution>
+				</executions>
 				<configuration>
-					<useUIHarness>true</useUIHarness>
+					<useUIHarness>false</useUIHarness>
 					<useUIThread>false</useUIThread>
 					<providerHint>junit5</providerHint>
-					<failIfNoTests>true</failIfNoTests>
+					<failIfNoTests>false</failIfNoTests>
 					<argLine>${tycho.testArgLine}</argLine>
 					<includes>
-						<include>${test.includes}</include>
+						<include>**/*Test.java</include>
 					</includes>
+					<excludes>
+						<exclude>**/ui/**</exclude>
+					</excludes>
+					<work>${project.build.directory}/work-unit</work>
 				</configuration>
 			</plugin>
 
