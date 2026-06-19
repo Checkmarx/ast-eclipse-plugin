@@ -40,11 +40,15 @@
 			                <goal>report</goal>
 			            </goals>
 			            <configuration>
+			                <dataFile>${project.build.directory}/jacoco.exec</dataFile>
+			                <classesDirectory>${project.basedir}/../checkmarx-ast-eclipse-plugin/target/classes</classesDirectory>
+			                <sourceEncoding>UTF-8</sourceEncoding>
 			                <formats>
 			                    <format>XML</format>
 			                    <format>CSV</format>
 			                    <format>HTML</format>
 			                </formats>
+			                <outputDirectory>${project.build.directory}/site/jacoco</outputDirectory>
 			            </configuration>
 			        </execution>
 			        <execution>
