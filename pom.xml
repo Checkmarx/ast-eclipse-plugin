@@ -167,10 +167,9 @@
 						<configuration>
 							<fileSets>
 								<fileSet>
-									<directory>${project.basedir}</directory>
+									<directory>.</directory>
 									<includes>
-										<include>*/target/jacoco.exec</include>
-										<include>checkmarx-ast-eclipse-plugin-tests/target/jacoco.exec</include>
+										<include>**/target/jacoco.exec</include>
 									</includes>
 								</fileSet>
 							</fileSets>
@@ -187,12 +186,6 @@
 						<configuration>
 							<dataFile>${project.build.directory}/jacoco.exec</dataFile>
 							<outputDirectory>${project.build.directory}/site/jacoco-aggregate</outputDirectory>
-							<sourceEncoding>UTF-8</sourceEncoding>
-							<formats>
-								<format>XML</format>
-								<format>CSV</format>
-								<format>HTML</format>
-							</formats>
 						</configuration>
 					</execution>
 
