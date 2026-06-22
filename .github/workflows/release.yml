@@ -188,21 +188,21 @@ jobs:
           git push origin "$FEATURE_BRANCH"
 
           # Create PR with Jira ID at the end of the title
-          gh pr create \
+          PR_URL=$(gh pr create \
             --repo CheckmarxDev/ast-eclipse-plugin-update-site \
             --base "${{ env.GH_BRANCH_NAME }}" \
             --head "$FEATURE_BRANCH" \
             --title "Update Eclipse update site for ${{ env.GH_RELEASE_TAG_NAME }} (${{ inputs.jira_ticket }})" \
-            --body "Automated update of Eclipse update site for release ${{ env.GH_RELEASE_TAG_NAME }}."
+            --body "Automated update of Eclipse update site for release ${{ env.GH_RELEASE_TAG_NAME }}.")
+
+          echo "PR created: $PR_URL"
 
           # Squash and merge the PR, then delete the branch
-          gh pr merge \
+          gh pr merge "$PR_URL" \
             --repo CheckmarxDev/ast-eclipse-plugin-update-site \
             --squash \
             --auto \
             --delete-branch
-  
-  
   
 
   notify:
