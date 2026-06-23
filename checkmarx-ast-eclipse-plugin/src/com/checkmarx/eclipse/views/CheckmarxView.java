@@ -41,6 +41,10 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CLabel;
 import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.custom.StyledText;
+import org.eclipse.swt.events.MouseEvent;
+import org.eclipse.swt.events.MouseTrackAdapter;
+import org.eclipse.swt.events.FocusEvent;
+import org.eclipse.swt.events.FocusListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
@@ -160,6 +164,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private Text commentText;
 	private DisplayModel rootModel;
 	private String selectedSeverity, selectedState;
+	private DisplayModel currentlyDisplayedItem;
 	private Button triageButton;
 	private SelectionAdapter triageButtonAdapter, codeBashingAdapter;
 	private Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell();
@@ -626,12 +631,29 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		combo_1.setLayoutData(gd_combo_1);
 
 		triageStateComboViewer = new ComboViewer(triageView, SWT.READ_ONLY);
+		triageStateComboViewer.setLabelProvider(new LabelProvider() {
+			@Override
+			public String getText(Object element) {
+				String s = element instanceof String ? (String) element : super.getText(element);
+				return s.length() > 50 ? s.substring(0, 47) + "..." : s;
+			}
+		});
 		Combo combo_2 = triageStateComboViewer.getCombo();
 		combo_2.setEnabled(true);
 		combo_2.setData(PluginConstants.DATA_ID_KEY, PluginConstants.TRIAGE_STATE_COMBO_ID);
 		GridData gd_combo_2 = new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1);
 		// gd_combo_2.widthHint = 180;
 		combo_2.setLayoutData(gd_combo_2);
+		combo_2.addMouseTrackListener(new MouseTrackAdapter() {
+			@Override
+			public void mouseHover(MouseEvent e) {
+				IStructuredSelection sel = (IStructuredSelection) triageStateComboViewer.getSelection();
+				if (!sel.isEmpty()) {
+					String fullName = (String) sel.getFirstElement();
+					combo_2.setToolTipText(fullName.length() > 50 ? fullName : "");
+				}
+			}
+		});
 
 		triageButton = new Button(triageView, SWT.FLAT | SWT.CENTER);
 		triageButton.setData(PluginConstants.DATA_ID_KEY, PluginConstants.TRIAGE_BUTTON_ID);
@@ -904,7 +926,26 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				debounceTimer.schedule(pendingSearchTask, DEBOUNCE_DELAY_MS);
 				
 			}
-		});		
+		});
+
+		// Add FocusListener to disable branch combo when project is cleared and focus lost
+		projectComboViewer.getCombo().addFocusListener(new FocusListener() {
+			@Override
+			public void focusLost(FocusEvent e) {
+				// When user clicks outside project combo, check if project is empty
+				String enteredProject = projectComboViewer.getCombo().getText().trim();
+				// If project field is empty or contains only the placeholder text, disable branch combo
+				if (enteredProject.isEmpty() || enteredProject.equals(PROJECT_COMBO_VIEWER_TEXT)) {
+					currentProjectId = PluginConstants.EMPTY_STRING;
+					PluginUtils.enableComboViewer(branchComboViewer, false);
+				}
+			}
+
+			@Override
+			public void focusGained(FocusEvent e) {
+				// No action needed on focus gain
+			}
+		});
 
 	}
 	/**
@@ -1082,8 +1123,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		scanIdComboViewer.setContentProvider(ArrayContentProvider.getInstance());
 		scanIdComboViewer.setInput(new ArrayList<>());
 
-		GridData gridData = new GridData();
-		gridData.widthHint = 520;
+		GridData gridData = new GridData(SWT.FILL, SWT.CENTER, true, false);
 		scanIdComboViewer.getCombo().setLayoutData(gridData);
 
 		scanIdComboViewer.getCombo().addListener(SWT.DefaultSelection, new Listener() {
@@ -1264,13 +1304,31 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				List<Project> projectList = getProjects();
 				if (projectList.isEmpty())
 					return null;
-				String projectName = getProjectFromId(projectList, projectId);
+
+				// Fetch the project directly by ID — the full list may not contain it (e.g. pagination limits)
+				Project fetchedProject = DataProvider.getInstance().getProjectById(projectId);
+
+				// Determine project name: prefer the directly-fetched result, fall back to list lookup
+				String projectName = (fetchedProject != null)
+						? fetchedProject.getName()
+						: getProjectFromId(projectList, projectId);
+
+				// If the project was not already in the list, prepend it so it's visible in the dropdown
+				if (fetchedProject != null && projectList.stream().noneMatch(p -> p.getId().equals(projectId))) {
+					projectList = new ArrayList<>(projectList);
+					projectList.add(0, fetchedProject);
+				}
+				final List<Project> finalProjectList = projectList;
+
 				currentProjectId = projectId;
 				GlobalSettings.storeInPreferences(GlobalSettings.PARAM_PROJECT_ID, currentProjectId);
 
 				sync.asyncExec(() -> {
-					projectComboViewer.setInput(projectList);
+					currentProjects = finalProjectList;
+					storeCurrentProjects = finalProjectList;
+					projectComboViewer.setInput(finalProjectList);
 					PluginUtils.setTextForComboViewer(projectComboViewer, projectName);
+					PluginUtils.enableComboViewer(projectComboViewer, true);
 					setSelectionForBranchComboViewer(scan.getBranch(), projectId);
 					setSelectionForScanIdComboViewer(scan.getId(), scan.getBranch());
 					updateStartScanButton(true);
@@ -1386,6 +1444,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 							if (selectedItem.getResult() != null && selectedItem.getResult().getSimilarityId() != null) {
 								sync.asyncExec(() -> {
+									currentlyDisplayedItem = selectedItem;
 									createTriageSeverityAndStateCombos(selectedItem);
 									populateTriageChanges(selectedItem);
 									resultViewComposite.setVisible(true);
@@ -2473,6 +2532,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private void listener(PluginListenerDefinition definition) {
 		switch (definition.getListenerType()) {
 			case FILTER_CHANGED:
+				updateResultsTree(definition.getResutls(), true);
+				break;
 			case GET_RESULTS:
 				updateResultsTree(definition.getResutls(), false);
 				break;
@@ -2489,9 +2550,15 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 	private void updateResultsTree(List<DisplayModel> results, boolean expand) {
 		sync.asyncExec(() -> {
+			if (currentlyDisplayedItem == null
+					|| currentlyDisplayedItem.getSeverity() == null
+					|| !FilterState.isSeverityEnabled(currentlyDisplayedItem.getSeverity())) {
+				resultViewComposite.setVisible(false);
+				attackVectorCompositePanel.setVisible(false);
+			}
+			Object[] expanded = resultsTree.getExpandedElements();
 			rootModel.children.clear();
 			rootModel.children.addAll(results);
-			Object[] expanded = resultsTree.getExpandedElements();
 			resultsTree.refresh();
 			if (expand) {
 				Set<String> expandedDMNames = new HashSet<>();
