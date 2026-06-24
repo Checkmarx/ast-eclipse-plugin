@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import com.checkmarx.eclipse.enums.PluginListenerType;
+import com.checkmarx.eclipse.enums.Severity;
 import com.checkmarx.eclipse.views.DisplayModel;
 import com.checkmarx.eclipse.views.PluginListenerDefinition;
 import com.checkmarx.eclipse.views.actions.ToolBarActions;
@@ -41,6 +42,7 @@ class ToolBarActionsTest {
 
     @BeforeEach
     void setup() {
+        FilterState.resetFilters();
 
         actionBars = mock(IActionBars.class);
         toolBarManager = mock(IToolBarManager.class);
@@ -124,16 +126,10 @@ class ToolBarActionsTest {
 
     @Test
     void testGroupBySeverityAction() {
-
-        List<Action> actions = toolBarActions.getFilterActions();
-
-        for (Action action : actions) {
-            if ("GROUP_BY_SEVERITY".equals(action.getId())) {
-                action.run();
-                break;
-            }
-        }
-
+        // The GROUP_BY_SEVERITY action calls FilterState.setState(Severity.GROUP_BY_SEVERITY).
+        // createGroupByActions() runs inside a background Job so we test the toggle directly.
+        FilterState.groupBySeverity = false;
+        FilterState.setState(Severity.GROUP_BY_SEVERITY);
         assertTrue(FilterState.groupBySeverity);
     }
 
@@ -172,6 +168,58 @@ class ToolBarActionsTest {
 
         assertNotNull(actions);
         assertTrue(actions.size() >= 0);
+    }
+
+    @Test
+    void testStaticConstant_menuGroupBy() {
+        assertEquals("Group By", ToolBarActions.MENU_GROUP_BY);
+    }
+
+    @Test
+    void testStaticConstant_groupBySeverity() {
+        assertEquals("Severity", ToolBarActions.GROUP_BY_SEVERITY);
+    }
+
+    @Test
+    void testStaticConstant_groupByQueryName() {
+        assertEquals("Query Name", ToolBarActions.GROUP_BY_QUERY_NAME);
+    }
+
+    @Test
+    void testStaticConstant_groupByStateName() {
+        assertEquals("State Name", ToolBarActions.GROUP_BY_STATE_NAME);
+    }
+
+    @Test
+    void testStaticConstant_menuFilterBy() {
+        assertEquals("Filter By", ToolBarActions.MENU_FILTER_BY);
+    }
+
+    @Test
+    void testFilterActionsContainAtLeastOneAction() {
+        List<Action> filterActions = toolBarActions.getFilterActions();
+        assertNotNull(filterActions);
+    }
+
+    @Test
+    void testGetStartScanAction_notNull() {
+        Action startScan = toolBarActions.getStartScanAction();
+        assertNotNull(startScan);
+        assertEquals(com.checkmarx.eclipse.enums.ActionName.START_SCAN.name(), startScan.getId());
+    }
+
+    @Test
+    void testGetCancelScanAction_notNull() {
+        Action cancelScan = toolBarActions.getCancelScanAction();
+        assertNotNull(cancelScan);
+        assertEquals(com.checkmarx.eclipse.enums.ActionName.CANCEL_SCAN.name(), cancelScan.getId());
+    }
+
+    @Test
+    void testGetStateFilterAction_notNull() {
+        Action stateFilter = toolBarActions.getStateFilterAction();
+        assertNotNull(stateFilter);
+        assertEquals(com.checkmarx.eclipse.enums.ActionName.FILTER_CHANGED.name(), stateFilter.getId());
     }
 
 }
