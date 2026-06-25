@@ -25,10 +25,25 @@ jobs:
 
       - name: Delete releases and tags
         continue-on-error: true
-        uses: dev-drprasad/delete-older-releases@653dc03d96473ac9e585c68c8bf5aaccb0dadb61 # 0.2.1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          keep_latest: 0
-          delete_tag_pattern: "-${{inputs.tag}}"
-          delete_tags: true
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+
+          # Find every release whose tag name contains "-<input tag>"
+          tags=$(gh release list --limit 1000 --json tagName \
+            --jq ".[] | select(.tagName | contains(\"-${TAG}\")) | .tagName")
+
+          if [ -z "$tags" ]; then
+            echo "No releases matching pattern '-${TAG}' found."
+            exit 0
+          fi
+
+          while IFS= read -r tag; do
+            [ -z "$tag" ] && continue
+            echo "Deleting release and tag: $tag"
+            # --cleanup-tag also deletes the underlying git tag
+            gh release delete "$tag" --yes --cleanup-tag
+          done <<< "$tags"
