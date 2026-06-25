@@ -137,12 +137,21 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 						return t.getMessage();
 					}
 				}).thenAccept((result) -> Display.getDefault().syncExec(() -> {
-					connectionLabel.setText(result);
+					connectionLabel.setText(mapAuthResult(result));
 					getFieldEditorParent().layout();
 					connectionButton.setEnabled(true);
 				}));
 			}
 		});
+	}
+
+
+
+	private static String mapAuthResult(String result) {
+		if (result != null && result.contains(PluginConstants.AUTH_SUCCESS_PATTERN)) {
+			return PluginConstants.AUTH_SUCCESS_DISPLAY;
+		}
+		return result;
 	}
 
 	private FieldEditor space() {

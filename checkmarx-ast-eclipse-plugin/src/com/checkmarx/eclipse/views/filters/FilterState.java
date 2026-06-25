@@ -15,8 +15,8 @@ public class FilterState {
 	public static boolean critical = true;
 	public static boolean high = true;
 	public static boolean medium = true;
-	public static boolean low = false;
-	public static boolean info = false;
+	public static boolean low = true;
+	public static boolean info = true;
 	public static boolean groupBySeverity = true;
 	public static boolean groupByQueryName = false;
 	public static boolean groupByStateName = false;
@@ -42,8 +42,8 @@ public class FilterState {
 		critical = Boolean.parseBoolean(GlobalSettings.getFromPreferences(Severity.CRITICAL.name(), "true"));
 		high = Boolean.parseBoolean(GlobalSettings.getFromPreferences(Severity.HIGH.name(), "true"));
 		medium = Boolean.parseBoolean(GlobalSettings.getFromPreferences(Severity.MEDIUM.name(), "true"));
-		low = Boolean.parseBoolean(GlobalSettings.getFromPreferences(Severity.LOW.name(), "false"));
-		info = Boolean.parseBoolean(GlobalSettings.getFromPreferences(Severity.INFO.name(), "false"));
+		low = Boolean.parseBoolean(GlobalSettings.getFromPreferences(Severity.LOW.name(), "true"));
+		info = Boolean.parseBoolean(GlobalSettings.getFromPreferences(Severity.INFO.name(), "true"));
 		groupBySeverity = Boolean
 				.parseBoolean(GlobalSettings.getFromPreferences(Severity.GROUP_BY_SEVERITY.name(), "true"));
 		groupByQueryName = Boolean

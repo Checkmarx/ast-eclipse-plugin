@@ -39,4 +39,8 @@
         </perspectiveExtension>
     </extension>
 
+    <extension point="org.eclipse.ui.startup">
+        <startup class="com.checkmarx.eclipse.startup.PluginStartup"/>
+    </extension>
+
 </plugin>
