@@ -220,7 +220,7 @@ public class ActionStartScan extends CxBaseAction {
 	 */
 	private boolean cxProjectMatchesWorkspaceProject() {
 		Results results = DataProvider.getInstance().getCurrentResults();
-		boolean noResultsInScan = results == null || results.getResults().isEmpty();
+		boolean noResultsInScan = results == null || results.getResults() == null || results.getResults().isEmpty();
 		boolean noFilesInWorkspace = ResourcesPlugin.getWorkspace().getRoot().getProjects().length == 0;
 
 		if (noResultsInScan || noFilesInWorkspace) {

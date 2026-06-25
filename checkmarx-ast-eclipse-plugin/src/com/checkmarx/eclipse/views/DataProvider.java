@@ -113,10 +113,26 @@ public class DataProvider {
 	}
 	
 	/**
+	 * Fetch a single project directly by its ID using the project show command.
+	 * Returns null if the project cannot be retrieved.
+	 */
+	public Project getProjectById(String projectId) {
+		try {
+			CxWrapper cxWrapper = getWrapper();
+			if (cxWrapper != null && projectId != null && !projectId.isEmpty()) {
+				return cxWrapper.projectShow(UUID.fromString(projectId));
+			}
+		} catch (Exception e) {
+			CxLogger.error(String.format(PluginConstants.ERROR_GETTING_PROJECTS, e.getMessage()), e);
+		}
+		return null;
+	}
+
+	/**
 	 * Get One projects filtered by name
-	 * 
+	 *
 	 * @return
-	 * @throws Exception 
+	 * @throws Exception
 	 */
 	public List<Project> getProjects(String projectName) throws Exception {
 		List<Project> projectList = new ArrayList<Project>();
