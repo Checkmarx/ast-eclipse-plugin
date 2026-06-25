@@ -15,6 +15,11 @@ on:
         description: 'Jira ticket ID (e.g. AST-12345)'
         required: true
         type: string
+    secrets:
+      ECLIPSE_SITE_TOKEN:
+        required: true
+      PERSONAL_ACCESS_TOKEN:
+        required: true
   workflow_dispatch:
     inputs:
       tag:
