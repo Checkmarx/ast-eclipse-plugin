@@ -29,7 +29,9 @@ public class State {
 	}
 
 	public static State of(String name) {
-		return STATES.computeIfAbsent(name, State::new); // register custom states dynamically
+		State existing = STATES.get(name);
+		if (existing != null) return existing;
+		return new State(name); // constructor registers it in STATES
 	}
 
 	public static State getState(String name) {

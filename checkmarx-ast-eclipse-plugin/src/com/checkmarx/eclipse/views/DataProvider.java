@@ -332,6 +332,7 @@ public class DataProvider {
 	 * @return
 	 */
 	public List<DisplayModel> sortResults(){
+		if (currentResultsTransformed == null) return new ArrayList<>();
 		// Divide all the results by scanner type
 		Map<String, List<DisplayModel>> filteredResultsByScannerType = filterResultsByScannerType(currentResultsTransformed);
 		// filter based on filter states
