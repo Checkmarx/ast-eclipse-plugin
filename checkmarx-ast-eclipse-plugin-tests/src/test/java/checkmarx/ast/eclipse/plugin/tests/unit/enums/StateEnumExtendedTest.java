@@ -145,9 +145,9 @@ class StateEnumExtendedTest {
 		String state2Name = "CUSTOM2_" + System.nanoTime();
 		String state3Name = "CUSTOM3_" + System.nanoTime();
 
-		State state1 = State.of(state1Name);
-		State state2 = State.of(state2Name);
-		State state3 = State.of(state3Name);
+		State.of(state1Name);
+		State.of(state2Name);
+		State.of(state3Name);
 
 		Map<String, State> allStates = State.values();
 		assertTrue(allStates.containsKey(state1Name));
