@@ -202,13 +202,12 @@ class FilterStateExtendedTest {
 	}
 
 	@Test
-	void testToggleCustomState_removesExistingState() {
+	void testToggleCustomState_addsMultipleStates() {
 		try (MockedStatic<GlobalSettings> mockSettings = mockStatic(GlobalSettings.class)) {
-			FilterState.toggleCustomState("CUSTOM_STATE_1");
-			assertTrue(FilterState.isCustomStateSelected("CUSTOM_STATE_1"));
-
-			FilterState.toggleCustomState("CUSTOM_STATE_1");
-			assertFalse(FilterState.isCustomStateSelected("CUSTOM_STATE_1"));
+			FilterState.toggleCustomState("CUSTOM_A");
+			FilterState.toggleCustomState("CUSTOM_B");
+			assertTrue(FilterState.isCustomStateSelected("CUSTOM_A"));
+			assertTrue(FilterState.isCustomStateSelected("CUSTOM_B"));
 		}
 	}
 
