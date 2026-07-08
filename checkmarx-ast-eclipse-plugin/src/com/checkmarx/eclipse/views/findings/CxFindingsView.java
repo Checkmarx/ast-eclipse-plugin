@@ -474,12 +474,56 @@ public class CxFindingsView extends ViewPart {
      * Fix issue with AI Assist.
      */
     private void fixWithAIAssist(ScanIssue issue) {
+        System.out.println("[FINDINGS] ========================================");
         System.out.println("[FINDINGS] Triggering AI Assist for: " + issue.getTitle());
         System.out.println("[FINDINGS] - Issue Type: " + issue.getScanEngine());
         System.out.println("[FINDINGS] - Severity: " + issue.getSeverity());
         System.out.println("[FINDINGS] - Description: " + issue.getDescription());
-        // TODO: Implement actual AI assist integration
-        System.out.println("[FINDINGS] AI Assist would now generate a fix for this issue");
+        System.out.println("[FINDINGS] ========================================");
+
+        try {
+            // Build remediation prompt based on engine type
+            String prompt = com.checkmarx.eclipse.views.findings.integration.RemediationPromptBuilder
+                    .buildRemediationPrompt(issue);
+
+            if (prompt == null || prompt.isEmpty()) {
+                System.out.println("[FINDINGS] ERROR: Failed to build remediation prompt");
+                showErrorNotification("Failed to build prompt for this issue type");
+                return;
+            }
+
+            System.out.println("[FINDINGS] ✓ Remediation prompt built successfully");
+            System.out.println("[FINDINGS] Prompt length: " + prompt.length() + " characters");
+            System.out.println("[FINDINGS] \n" + prompt);
+
+            // Send to Copilot via integration
+            System.out.println("[FINDINGS] Sending prompt to Copilot...");
+            boolean success = com.checkmarx.eclipse.views.findings.integration.CopilotIntegration
+                    .sendPromptToCopilot(prompt);
+
+            if (success) {
+                System.out.println("[FINDINGS] ✓ Prompt sent to Copilot successfully");
+            } else {
+                System.out.println("[FINDINGS] ! Copilot not available, prompt in clipboard");
+            }
+
+        } catch (Exception e) {
+            System.out.println("[FINDINGS] ERROR: Exception in fixWithAIAssist: " + e.getMessage());
+            e.printStackTrace();
+            showErrorNotification("Error: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Show error notification to user
+     */
+    private void showErrorNotification(String message) {
+        org.eclipse.swt.widgets.MessageBox msgBox = new org.eclipse.swt.widgets.MessageBox(
+                treeViewer.getTree().getShell(),
+                org.eclipse.swt.SWT.ERROR);
+        msgBox.setMessage(message);
+        msgBox.setText("Checkmarx AI Assist");
+        msgBox.open();
     }
 
     /**

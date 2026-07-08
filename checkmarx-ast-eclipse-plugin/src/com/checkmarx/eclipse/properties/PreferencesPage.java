@@ -21,9 +21,11 @@ import org.eclipse.ui.IWorkbenchPreferencePage;
 
 import com.checkmarx.eclipse.Activator;
 import com.checkmarx.eclipse.runner.Authenticator;
+import com.checkmarx.eclipse.runner.TenantSettingsProvider;
 import com.checkmarx.eclipse.utils.CxLogger;
 import com.checkmarx.eclipse.utils.PluginConstants;
 import com.checkmarx.eclipse.utils.PluginUtils;
+import com.checkmarx.eclipse.views.ui.WelcomeDialog;
 import org.eclipse.swt.widgets.Link;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.browser.IWorkbenchBrowserSupport;
@@ -140,6 +142,22 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 					connectionLabel.setText(mapAuthResult(result));
 					getFieldEditorParent().layout();
 					connectionButton.setEnabled(true);
+
+					// Show welcome dialog on successful authentication
+					if (result != null && result.contains(PluginConstants.AUTH_SUCCESS_PATTERN)) {
+						// Fetch MCP enabled status from server asynchronously
+						CompletableFuture.supplyAsync(() -> {
+							try {
+								return TenantSettingsProvider.INSTANCE.isAiMcpServerEnabled(
+										apiKey_str, additionalParams_str);
+							} catch (Exception ex) {
+								CxLogger.error("Failed to fetch MCP status", ex);
+								return false;
+							}
+						}).thenAccept((mcpEnabled) -> Display.getDefault().syncExec(() -> {
+							showWelcomeDialog(mcpEnabled);
+						}));
+					}
 				}));
 			}
 		});
@@ -152,6 +170,17 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 			return PluginConstants.AUTH_SUCCESS_DISPLAY;
 		}
 		return result;
+	}
+
+	private void showWelcomeDialog(boolean mcpEnabled) {
+		try {
+			WelcomeDialog dlg = new WelcomeDialog(
+				Display.getDefault().getActiveShell(),
+				mcpEnabled);
+			dlg.open();
+		} catch (Exception ex) {
+			CxLogger.error("Failed to show welcome dialog", ex);
+		}
 	}
 
 	private FieldEditor space() {

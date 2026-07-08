@@ -10,6 +10,11 @@ import com.checkmarx.eclipse.utils.CxLogger;
 import com.checkmarx.eclipse.views.problems.CxProblemsServices;
 import com.checkmarx.eclipse.views.problems.hover.JavaEditorHoverListener;
 import com.checkmarx.eclipse.views.problems.commands.ProblemsViewFilterManager;
+import com.checkmarx.eclipse.views.ui.WelcomeDialog;
+import com.checkmarx.eclipse.properties.Preferences;
+import com.checkmarx.eclipse.runner.TenantSettingsProvider;
+import org.eclipse.swt.widgets.Display;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Plugin startup activity that runs when Eclipse starts.
@@ -69,6 +74,13 @@ public class PluginStartup implements IStartup {
 						System.err.println("[STARTUP] Could not initialize filter manager: " + e.getMessage());
 					}
 
+					// Show welcome dialog if user is authenticated
+					// Future: Add preference tracking to show only on first login
+					if (isAuthenticated()) {
+						// Commented out for now - can be enabled when preference tracking is added
+						// Display.getDefault().asyncExec(() -> showWelcomeDialog(window));
+					}
+
 					// Load mock problems for demonstration/testing
 					CxProblemsServices.publisher().publish();
 				}
@@ -77,6 +89,41 @@ public class PluginStartup implements IStartup {
 			} catch (Exception e) {
 				CxLogger.error("Error during plugin startup: " + e.getMessage(), e);
 			}
+		});
+	}
+
+	/**
+	 * Check if user is authenticated (has API key configured)
+	 */
+	private boolean isAuthenticated() {
+		String apiKey = Preferences.getApiKey();
+		return apiKey != null && !apiKey.trim().isEmpty();
+	}
+
+	/**
+	 * Show the welcome dialog to the user with MCP status fetched from server
+	 */
+	private void showWelcomeDialog(IWorkbenchWindow window) {
+		String apiKey = Preferences.getApiKey();
+		String additionalParams = Preferences.getAdditionalOptions();
+
+		// Fetch MCP status asynchronously
+		CompletableFuture.supplyAsync(() -> {
+			try {
+				return TenantSettingsProvider.INSTANCE.isAiMcpServerEnabled(apiKey, additionalParams);
+			} catch (Exception ex) {
+				CxLogger.error("Failed to fetch MCP status during startup", ex);
+				return false;
+			}
+		}).thenAccept((mcpEnabled) -> {
+			Display.getDefault().asyncExec(() -> {
+				try {
+					WelcomeDialog dlg = new WelcomeDialog(window.getShell(), mcpEnabled);
+					dlg.open();
+				} catch (Exception ex) {
+					CxLogger.error("Failed to show welcome dialog", ex);
+				}
+			});
 		});
 	}
 }
