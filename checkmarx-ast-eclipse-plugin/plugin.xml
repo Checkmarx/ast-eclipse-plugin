@@ -21,6 +21,24 @@
              name="Checkmarx One Scan"
              restorable="true">
        </view>
+       <view
+             category="com.checkmarx.eclipse"
+             class="com.checkmarx.eclipse.views.findings.CxFindingsView"
+             icon="icons/severity/critical_16.svg"
+             id="com.checkmarx.eclipse.views.findings.CxFindingsView"
+             inject="true"
+             name="Checkmarx Findings"
+             restorable="true">
+       </view>
+       <view
+             category="com.checkmarx.eclipse"
+             class="com.checkmarx.eclipse.views.problems.ignored.CxIgnoredProblemsView"
+             icon="icons/severity/low_16.svg"
+             id="com.checkmarx.eclipse.views.problems.ignored.CxIgnoredProblemsView"
+             inject="true"
+             name="Checkmarx Ignored Problems"
+             restorable="true">
+       </view>
        <category
              id="com.checkmarx.eclipse"
              name="Checkmarx">
@@ -36,11 +54,303 @@
                     relationship="right"
                     ratio="0.5">
             </view>
+            <view
+                    id="com.checkmarx.eclipse.views.findings.CxFindingsView"
+                    relative="org.eclipse.ui.views.ProblemView"
+                    relationship="stacked"
+                    ratio="0.5">
+            </view>
+            <view
+                    id="com.checkmarx.eclipse.views.problems.ignored.CxIgnoredProblemsView"
+                    relative="org.eclipse.ui.views.ProblemView"
+                    relationship="stacked"
+                    ratio="0.5">
+            </view>
         </perspectiveExtension>
     </extension>
 
     <extension point="org.eclipse.ui.startup">
         <startup class="com.checkmarx.eclipse.startup.PluginStartup"/>
     </extension>
+
+    <!-- Register custom marker type for Problems View -->
+    <extension
+            id="checkmarxProblemMarker"
+            point="org.eclipse.core.resources.markers"
+            name="Checkmarx Problem">
+        <super type="org.eclipse.core.resources.problemmarker"/>
+        <persistent value="false"/>
+        <attribute name="findingId"/>
+        <attribute name="ruleId"/>
+        <attribute name="severity"/>
+        <attribute name="status"/>
+    </extension>
+
+    <!-- Marker annotation specifications with custom icons for each severity -->
+    <extension point="org.eclipse.ui.markerAnnotationSpecifications">
+        <!-- CRITICAL Severity -->
+        <specification
+                annotationType="com.checkmarx.eclipse.plugin.checkmarxCriticalAnnotation"
+                label="Checkmarx Critical Problem"
+                markerType="com.checkmarx.eclipse.plugin.checkmarxProblemMarker"
+                markerSeverity="2"
+                textPreferenceKey="checkmarxCriticalIndication"
+                textPreferenceValue="true"
+                highlightPreferenceKey="checkmarxCriticalHighlight"
+                highlightPreferenceValue="true"
+                overviewRulerPreferenceKey="checkmarxCriticalOverviewRuler"
+                overviewRulerPreferenceValue="true"
+                verticalRulerPreferenceKey="checkmarxCriticalVerticalRuler"
+                verticalRulerPreferenceValue="true"
+                colorPreferenceKey="checkmarxCriticalColor"
+                colorPreferenceValue="255,0,0"
+                icon="icons/severity/critical_16.svg"
+                showInNextPrevDropdownToolbarAction="true">
+        </specification>
+
+        <!-- HIGH Severity -->
+        <specification
+                annotationType="com.checkmarx.eclipse.plugin.checkmarxHighAnnotation"
+                label="Checkmarx High Problem"
+                markerType="com.checkmarx.eclipse.plugin.checkmarxProblemMarker"
+                markerSeverity="2"
+                textPreferenceKey="checkmarxHighIndication"
+                textPreferenceValue="true"
+                highlightPreferenceKey="checkmarxHighHighlight"
+                highlightPreferenceValue="true"
+                overviewRulerPreferenceKey="checkmarxHighOverviewRuler"
+                overviewRulerPreferenceValue="true"
+                verticalRulerPreferenceKey="checkmarxHighVerticalRuler"
+                verticalRulerPreferenceValue="true"
+                colorPreferenceKey="checkmarxHighColor"
+                colorPreferenceValue="255,100,0"
+                icon="icons/severity/high_16.svg"
+                showInNextPrevDropdownToolbarAction="true">
+        </specification>
+
+        <!-- MEDIUM Severity -->
+        <specification
+                annotationType="com.checkmarx.eclipse.plugin.checkmarxMediumAnnotation"
+                label="Checkmarx Medium Problem"
+                markerType="com.checkmarx.eclipse.plugin.checkmarxProblemMarker"
+                markerSeverity="1"
+                textPreferenceKey="checkmarxMediumIndication"
+                textPreferenceValue="true"
+                highlightPreferenceKey="checkmarxMediumHighlight"
+                highlightPreferenceValue="true"
+                overviewRulerPreferenceKey="checkmarxMediumOverviewRuler"
+                overviewRulerPreferenceValue="true"
+                verticalRulerPreferenceKey="checkmarxMediumVerticalRuler"
+                verticalRulerPreferenceValue="true"
+                colorPreferenceKey="checkmarxMediumColor"
+                colorPreferenceValue="255,200,0"
+                icon="icons/severity/medium_16.svg"
+                showInNextPrevDropdownToolbarAction="true">
+        </specification>
+
+        <!-- LOW Severity -->
+        <specification
+                annotationType="com.checkmarx.eclipse.plugin.checkmarxLowAnnotation"
+                label="Checkmarx Low Problem"
+                markerType="com.checkmarx.eclipse.plugin.checkmarxProblemMarker"
+                markerSeverity="0"
+                textPreferenceKey="checkmarxLowIndication"
+                textPreferenceValue="true"
+                highlightPreferenceKey="checkmarxLowHighlight"
+                highlightPreferenceValue="true"
+                overviewRulerPreferenceKey="checkmarxLowOverviewRuler"
+                overviewRulerPreferenceValue="true"
+                verticalRulerPreferenceKey="checkmarxLowVerticalRuler"
+                verticalRulerPreferenceValue="true"
+                colorPreferenceKey="checkmarxLowColor"
+                colorPreferenceValue="0,200,0"
+                icon="icons/severity/low_16.svg"
+                showInNextPrevDropdownToolbarAction="true">
+        </specification>
+    </extension>
+
+    <!-- Command for publishing mock problems (for testing) -->
+    <extension point="org.eclipse.ui.commands">
+        <command
+                id="com.checkmarx.eclipse.problems.command.publishMock"
+                name="Publish Mock Checkmarx Problems"
+                description="Publish mock/dummy Checkmarx problems to the Problems View for testing">
+        </command>
+        <command
+                id="com.checkmarx.eclipse.problems.command.action1"
+                name="Ignore This Problem"
+                description="Ignore this problem and move it to the Ignored Problems window">
+        </command>
+
+        <!-- Severity filter commands for Problems View -->
+        <command
+                id="com.checkmarx.eclipse.problems.filter.critical"
+                name="Filter: CRITICAL"
+                description="Show only CRITICAL severity problems">
+            <commandParameter
+                    id="com.checkmarx.eclipse.severity"
+                    name="Severity"
+                    optional="false">
+            </commandParameter>
+        </command>
+        <command
+                id="com.checkmarx.eclipse.problems.filter.high"
+                name="Filter: HIGH"
+                description="Show only HIGH severity problems">
+            <commandParameter
+                    id="com.checkmarx.eclipse.severity"
+                    name="Severity"
+                    optional="false">
+            </commandParameter>
+        </command>
+        <command
+                id="com.checkmarx.eclipse.problems.filter.medium"
+                name="Filter: MEDIUM"
+                description="Show only MEDIUM severity problems">
+            <commandParameter
+                    id="com.checkmarx.eclipse.severity"
+                    name="Severity"
+                    optional="false">
+            </commandParameter>
+        </command>
+        <command
+                id="com.checkmarx.eclipse.problems.filter.low"
+                name="Filter: LOW"
+                description="Show only LOW severity problems">
+            <commandParameter
+                    id="com.checkmarx.eclipse.severity"
+                    name="Severity"
+                    optional="false">
+            </commandParameter>
+        </command>
+        <command
+                id="com.checkmarx.eclipse.problems.filter.all"
+                name="Show All Problems"
+                description="Clear severity filter and show all problems">
+            <commandParameter
+                    id="com.checkmarx.eclipse.severity"
+                    name="Severity"
+                    optional="false">
+            </commandParameter>
+        </command>
+    </extension>
+
+    <!-- Handlers for problems commands -->
+    <extension point="org.eclipse.ui.handlers">
+        <handler
+                commandId="com.checkmarx.eclipse.problems.command.publishMock"
+                class="com.checkmarx.eclipse.views.problems.commands.PublishMockProblemsHandler">
+        </handler>
+        <handler
+                commandId="com.checkmarx.eclipse.problems.command.action1"
+                class="com.checkmarx.eclipse.views.problems.commands.ProblemAction1Handler">
+        </handler>
+
+        <!-- Severity filter handlers -->
+        <handler
+                commandId="com.checkmarx.eclipse.problems.filter.critical"
+                class="com.checkmarx.eclipse.views.problems.commands.FilterBySeverityHandler">
+        </handler>
+        <handler
+                commandId="com.checkmarx.eclipse.problems.filter.high"
+                class="com.checkmarx.eclipse.views.problems.commands.FilterBySeverityHandler">
+        </handler>
+        <handler
+                commandId="com.checkmarx.eclipse.problems.filter.medium"
+                class="com.checkmarx.eclipse.views.problems.commands.FilterBySeverityHandler">
+        </handler>
+        <handler
+                commandId="com.checkmarx.eclipse.problems.filter.low"
+                class="com.checkmarx.eclipse.views.problems.commands.FilterBySeverityHandler">
+        </handler>
+        <handler
+                commandId="com.checkmarx.eclipse.problems.filter.all"
+                class="com.checkmarx.eclipse.views.problems.commands.FilterBySeverityHandler">
+        </handler>
+    </extension>
+
+    <!-- Marker resolution generator for Quick Fix support (Ctrl+1) -->
+    <extension point="org.eclipse.ui.markerResolutionGenerators">
+        <generator
+                class="com.checkmarx.eclipse.views.findings.resolution.CheckmarxMarkerResolutionGenerator"
+                markerType="com.checkmarx.eclipse.plugin.checkmarxProblemMarker">
+        </generator>
+    </extension>
+
+    <!-- Menu contribution for Ignore action in Problems View -->
+    <extension point="org.eclipse.ui.menus">
+        <menuContribution locationURI="menu:org.eclipse.ui.main.menu">
+            <menu id="cx.menu" label="Checkmarx">
+                <command
+                        commandId="com.checkmarx.eclipse.problems.command.publishMock"
+                        label="📋 Publish Test Problems"
+                        tooltip="Publish mock Checkmarx problems to Problems View (for testing hover)">
+                </command>
+            </menu>
+        </menuContribution>
+        <menuContribution
+                locationURI="popup:org.eclipse.ui.views.ProblemView">
+            <command
+                    commandId="com.checkmarx.eclipse.problems.command.action1"
+                    label="Ignore This Problem"
+                    tooltip="Mark as ignored and move to Ignored Problems window">
+            </command>
+        </menuContribution>
+
+        <!-- Toolbar contributions for Problems View severity filters -->
+        <menuContribution
+                locationURI="toolbar:org.eclipse.ui.views.ProblemView">
+            <!-- Filter Status Label showing "Showing X of Y | Active: [...]" -->
+            <control
+                    class="com.checkmarx.eclipse.views.problems.filter.FilterStatusLabelProvider"
+                    id="com.checkmarx.eclipse.filter.status.label">
+            </control>
+
+            <separator name="group.severity" visible="true"/>
+
+            <command
+                    commandId="com.checkmarx.eclipse.problems.filter.critical"
+                    label="🔴 CRITICAL"
+                    tooltip="Show only CRITICAL severity problems"
+                    icon="icons/severity/critical_16.svg">
+                <parameter name="com.checkmarx.eclipse.severity" value="CRITICAL"/>
+            </command>
+
+            <command
+                    commandId="com.checkmarx.eclipse.problems.filter.high"
+                    label="🟠 HIGH"
+                    tooltip="Show only HIGH severity problems"
+                    icon="icons/severity/high_16.svg">
+                <parameter name="com.checkmarx.eclipse.severity" value="HIGH"/>
+            </command>
+
+            <command
+                    commandId="com.checkmarx.eclipse.problems.filter.medium"
+                    label="🟡 MEDIUM"
+                    tooltip="Show only MEDIUM severity problems"
+                    icon="icons/severity/medium_16.svg">
+                <parameter name="com.checkmarx.eclipse.severity" value="MEDIUM"/>
+            </command>
+
+            <command
+                    commandId="com.checkmarx.eclipse.problems.filter.low"
+                    label="🟢 LOW"
+                    tooltip="Show only LOW severity problems"
+                    icon="icons/severity/low_16.svg">
+                <parameter name="com.checkmarx.eclipse.severity" value="LOW"/>
+            </command>
+
+            <separator name="group.filter" visible="true"/>
+
+            <command
+                    commandId="com.checkmarx.eclipse.problems.filter.all"
+                    label="Show All"
+                    tooltip="Clear severity filter and show all problems"
+                    icon="icons/severity/info_16.svg">
+                <parameter name="com.checkmarx.eclipse.severity" value="ALL"/>
+            </command>
+        </menuContribution>
+    </extension>
+
 
 </plugin>

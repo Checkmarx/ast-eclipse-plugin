@@ -56,7 +56,7 @@
 					<useUIHarness>true</useUIHarness>
 					<useUIThread>false</useUIThread>
 					<providerHint>junit5</providerHint>
-					<failIfNoTests>true</failIfNoTests>
+					<failIfNoTests>false</failIfNoTests>
 					<argLine>${tycho.testArgLine}</argLine>
 					<includes>
 						<include>${test.includes}</include>

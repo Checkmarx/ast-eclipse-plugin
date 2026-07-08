@@ -7,10 +7,24 @@ import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.PlatformUI;
 
 import com.checkmarx.eclipse.utils.CxLogger;
+import com.checkmarx.eclipse.views.problems.CxProblemsServices;
+import com.checkmarx.eclipse.views.problems.hover.JavaEditorHoverListener;
+import com.checkmarx.eclipse.views.problems.commands.ProblemsViewFilterManager;
 
+/**
+ * Plugin startup activity that runs when Eclipse starts.
+ *
+ * Responsibilities:
+ * - Open Checkmarx views (Scan, Findings, Ignored Problems)
+ * - Register the JavaEditorHoverListener to install hover handlers on editors
+ * - Install hovers on any already-open editors
+ * - Load mock problems for demonstration
+ */
 public class PluginStartup implements IStartup {
 
 	private static final String VIEW_ID = "com.checkmarx.eclipse.views.CheckmarxView";
+	private static final String FINDINGS_VIEW_ID = "com.checkmarx.eclipse.views.findings.CxFindingsView";
+	private static JavaEditorHoverListener hoverListener; // Keep strong reference to prevent GC
 
 	@Override
 	public void earlyStartup() {
@@ -19,12 +33,49 @@ public class PluginStartup implements IStartup {
 				IWorkbenchWindow window = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
 				if (window != null) {
 					IWorkbenchPage page = window.getActivePage();
+
+					// Show Checkmarx One view if not already visible
 					if (page != null && page.findView(VIEW_ID) == null) {
 						page.showView(VIEW_ID);
 					}
+
+					// Show Checkmarx Findings view if not already visible
+					if (page != null && page.findView(FINDINGS_VIEW_ID) == null) {
+						page.showView(FINDINGS_VIEW_ID);
+					}
+
+					// Register listener for hover installation on new/opened editors
+					hoverListener = new JavaEditorHoverListener();
+					window.getPartService().addPartListener(hoverListener);
+
+					// Install hover on any already-open editors
+					if (page != null) {
+						org.eclipse.ui.IEditorReference[] editors = page.getEditorReferences();
+						for (org.eclipse.ui.IEditorReference editorRef : editors) {
+							org.eclipse.ui.IEditorPart editor = editorRef.getEditor(false);
+							if (editor != null) {
+								hoverListener.installHoverOnEditor(editor);
+							}
+						}
+					}
+
+					// Initialize Problems View filter manager
+					System.out.println("[STARTUP] Initializing Problems View filter manager...");
+					try {
+						ProblemsViewFilterManager filterManager = ProblemsViewFilterManager.getInstance();
+						filterManager.register();
+						System.out.println("[STARTUP] ✓ Problems View filter manager initialized");
+					} catch (Exception e) {
+						System.err.println("[STARTUP] Could not initialize filter manager: " + e.getMessage());
+					}
+
+					// Load mock problems for demonstration/testing
+					CxProblemsServices.publisher().publish();
 				}
 			} catch (PartInitException e) {
-				CxLogger.error("Failed to open Checkmarx One view on startup: " + e.getMessage(), e);
+				CxLogger.error("Failed to open Checkmarx views on startup: " + e.getMessage(), e);
+			} catch (Exception e) {
+				CxLogger.error("Error during plugin startup: " + e.getMessage(), e);
 			}
 		});
 	}
