@@ -7,12 +7,15 @@ import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Tree;
+import org.eclipse.swt.widgets.TreeColumn;
 import org.eclipse.ui.part.ViewPart;
 import org.eclipse.jface.viewers.TreeViewer;
+import org.eclipse.jface.viewers.TreeViewerColumn;
 import org.eclipse.jface.viewers.DoubleClickEvent;
 import org.eclipse.jface.viewers.IDoubleClickListener;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
+import org.eclipse.jface.viewers.ColumnLabelProvider;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.PlatformUI;
@@ -22,12 +25,14 @@ import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.Image;
 import com.checkmarx.eclipse.views.findings.provider.FindingsContentProvider;
 import com.checkmarx.eclipse.views.findings.provider.FindingsLabelProvider;
 import com.checkmarx.eclipse.views.findings.model.ScanIssue;
 import com.checkmarx.eclipse.views.findings.model.ScanDetailWithPath;
 import com.checkmarx.eclipse.views.findings.model.Location;
 import com.checkmarx.eclipse.views.findings.model.ScanEngine;
+import com.checkmarx.eclipse.views.findings.model.FileNodeLabel;
 import com.checkmarx.eclipse.views.findings.actions.VulnerabilityFilterAction;
 import com.checkmarx.eclipse.views.findings.actions.VulnerabilityFilterState;
 import com.checkmarx.eclipse.views.problems.provider.MockProblemProvider;
@@ -1033,4 +1038,5 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
             }
         });
     }
+
 }

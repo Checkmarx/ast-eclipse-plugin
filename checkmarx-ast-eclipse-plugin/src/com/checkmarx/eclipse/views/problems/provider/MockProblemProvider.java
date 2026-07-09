@@ -72,6 +72,11 @@ public class MockProblemProvider implements IProblemProvider {
 				.message("SQL Injection: unsanitized input flows into SQL query")
 				.fileName(workspaceRoot + "PaymentGateway.java").line(8).column(30)
 				.severity(Severity.CRITICAL).build());
+		problems.add(new ScanProblem.Builder("f0000006")
+				.ruleId("SQL_Injection")
+				.message("SQL Injection: unsanitized input flows into SQL query")
+				.fileName(workspaceRoot + "package.json").line(8).column(30)
+				.severity(Severity.CRITICAL).build());
 
 		problems.add(new ScanProblem.Builder("f0000007")
 				.ruleId("SQL_Injection")
@@ -96,6 +101,16 @@ public class MockProblemProvider implements IProblemProvider {
 				.ruleId("Unhandled_Exception")
 				.message("IOException should be properly handled or declared in throws clause")
 				.fileName(workspaceRoot + "FileUploadHandler.java").line(11).column(21)
+				.severity(Severity.MEDIUM).build());
+		problems.add(new ScanProblem.Builder("f0000010")
+				.ruleId("Unhandled_Exception")
+				.message("IOException should be properly handled or declared in throws clause")
+				.fileName(workspaceRoot + "pom.xml").line(11).column(21)
+				.severity(Severity.MEDIUM).build());
+		problems.add(new ScanProblem.Builder("f0000010")
+				.ruleId("Unhandled_Exception")
+				.message("IOException should be properly handled or declared in throws clause")
+				.fileName(workspaceRoot + "pom.xml").line(11).column(21)
 				.severity(Severity.MEDIUM).build());
 
 		System.out.println("[PROBLEMS] ✓ Loaded " + problems.size() + " mock problems:");
