@@ -2,6 +2,10 @@ package com.checkmarx.eclipse.views.findings.provider;
 
 import org.eclipse.jface.viewers.ITreeContentProvider;
 import org.eclipse.jface.viewers.Viewer;
+import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.IEditorRegistry;
+import org.eclipse.jface.resource.ImageDescriptor;
+import org.eclipse.swt.graphics.Image;
 
 import com.checkmarx.eclipse.views.findings.model.FileNodeLabel;
 import com.checkmarx.eclipse.views.findings.model.ScanIssue;
@@ -27,13 +31,40 @@ public class FindingsContentProvider implements ITreeContentProvider {
             @SuppressWarnings("unchecked")
             Map<String, List<ScanIssue>> map = (Map<String, List<ScanIssue>>) inputElement;
             return map.entrySet().stream()
-                    .map(entry -> new FileNodeLabel(
-                            getFileName(entry.getKey()),
-                            entry.getKey(),
-                            entry.getValue()))
+                    .map(entry -> {
+                        String fileName = getFileName(entry.getKey());
+                        Image fileIcon = getFileIcon(fileName);
+                        return new FileNodeLabel(
+                                fileName,
+                                entry.getKey(),
+                                entry.getValue(),
+                                fileIcon);
+                    })
                     .toArray();
         }
         return new Object[0];
+    }
+
+    private Image getFileIcon(String fileName) {
+        if (fileName == null || fileName.isEmpty()) {
+            return null;
+        }
+
+        try {
+            IEditorRegistry registry = PlatformUI.getWorkbench().getEditorRegistry();
+            ImageDescriptor imageDescriptor = registry.getImageDescriptor(fileName);
+
+            if (imageDescriptor != null) {
+                Image image = imageDescriptor.createImage();
+                if (image != null) {
+                    return image;
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("[FINDINGS-CONTENT] Error getting file icon for: " + fileName + " - " + e.getMessage());
+        }
+
+        return null;
     }
 
     @Override

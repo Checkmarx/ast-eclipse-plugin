@@ -44,7 +44,17 @@ public class FindingsLabelProvider extends DelegatingStyledCellLabelProvider {
             @Override
             public Image getImage(Object element) {
                 if (element instanceof FileNodeLabel) {
-                    return null;
+                    FileNodeLabel fileNode = (FileNodeLabel) element;
+
+                    // Use file type icon if resolved at node creation time
+                    Image fileIcon = fileNode.getIcon();
+                    if (fileIcon != null) {
+                        return fileIcon;
+                    }
+
+                    // Fallback to severity icon (highest severity in file)
+                    String highestSeverity = getHighestSeverityInFile(fileNode);
+                    return IconRegistry.getIcon(highestSeverity, IconRegistry.Size.SMALL);
                 } else if (element instanceof ScanDetailWithPath) {
                     ScanDetailWithPath detailWithPath = (ScanDetailWithPath) element;
                     String severity = detailWithPath.getDetail().getSeverity();
@@ -68,6 +78,23 @@ public class FindingsLabelProvider extends DelegatingStyledCellLabelProvider {
             @Override
             public boolean isLabelProperty(Object element, String property) {
                 return false;
+            }
+
+            private String getHighestSeverityInFile(FileNodeLabel fileNode) {
+                if (fileNode.getProblemCount() == null || fileNode.getProblemCount().isEmpty()) {
+                    return "low";
+                }
+
+                // Priority order: critical > high > medium > low
+                if (fileNode.getProblemCount().containsKey("critical")) {
+                    return "critical";
+                } else if (fileNode.getProblemCount().containsKey("high")) {
+                    return "high";
+                } else if (fileNode.getProblemCount().containsKey("medium")) {
+                    return "medium";
+                } else {
+                    return "low";
+                }
             }
 
             private String formatIssueText(ScanIssue detail) {

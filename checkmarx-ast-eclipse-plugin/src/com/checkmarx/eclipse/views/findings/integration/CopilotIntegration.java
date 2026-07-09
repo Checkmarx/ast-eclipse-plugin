@@ -74,13 +74,6 @@ public class CopilotIntegration {
 
         if (copilotSuccess) {
             CxLogger.info(LOG_PREFIX + " ✓ Successfully sent prompt via Copilot command");
-            showNotification(
-                "✓ Prompt Sent to Copilot",
-                "The security fix prompt has been sent to Copilot Chat.\n\n" +
-                "Copilot will now generate AI-powered remediation suggestions.\n\n" +
-                "Check Copilot Chat window for the response.",
-                IStatus.INFO
-            );
             return true;
         }
 
@@ -124,8 +117,7 @@ public class CopilotIntegration {
         try {
             // Step 1: Try to execute Copilot open command with prompt
             CxLogger.info(LOG_PREFIX + " Attempting to execute Copilot open command with prompt...");
-            boolean commandExecuted = executeOpenCopilotCommand(prompt);
-
+            boolean commandExecuted = executeOpenCopilotCommand(prompt);            
             if (commandExecuted) {
                 CxLogger.info(LOG_PREFIX + " ✓ Copilot command executed successfully - prompt sent!");
                 return true; // Success - command handled it all
@@ -260,15 +252,21 @@ public class CopilotIntegration {
 
                     // Execute the command with parameters
                     try {
+                    	System.out.println("=== BEFORE EXECUTE ===");
                         command.executeWithChecks(new ExecutionEvent(
                                 command,
                                 parameters,
                                 null,
                                 null
                         ));
+                        
+                        System.out.println("=== AFTER EXECUTE ===");
+
 
                         CxLogger.info(LOG_PREFIX + " ✓ Successfully executed Copilot command with prompt");
                         success[0] = true;
+                        
+                        System.out.println("=== SUCCESS SET TRUE ===");
 
                     } catch (Exception e) {
                         CxLogger.warning(LOG_PREFIX + " Command execution failed: " + e.getMessage());
@@ -283,7 +281,7 @@ public class CopilotIntegration {
         } catch (Exception e) {
             CxLogger.error(LOG_PREFIX + " Error in executeOpenCopilotCommand: " + e.getMessage(), e);
         }
-
+        System.out.println("executeOpenCopilotCommand returning = " + success[0]);
         return success[0];
     }
 
