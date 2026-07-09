@@ -32,9 +32,9 @@
        </view>
        <view
              category="com.checkmarx.eclipse"
-             class="com.checkmarx.eclipse.views.problems.ignored.CxIgnoredProblemsView"
+             class="com.checkmarx.eclipse.views.findings.ignored.CxIgnoredProblemsView"
              icon="platform:/plugin/com.checkmarx.eclipse.plugin/icons/severity/low_16.svg"
-             id="com.checkmarx.eclipse.views.problems.ignored.CxIgnoredProblemsView"
+             id="com.checkmarx.eclipse.views.findings.ignored.CxIgnoredProblemsView"
              inject="true"
              name="Checkmarx Ignored Problems"
              restorable="true">
@@ -61,7 +61,7 @@
                     ratio="0.5">
             </view>
             <view
-                    id="com.checkmarx.eclipse.views.problems.ignored.CxIgnoredProblemsView"
+                    id="com.checkmarx.eclipse.views.findings.ignored.CxIgnoredProblemsView"
                     relative="org.eclipse.ui.views.ProblemView"
                     relationship="stacked"
                     ratio="0.5">

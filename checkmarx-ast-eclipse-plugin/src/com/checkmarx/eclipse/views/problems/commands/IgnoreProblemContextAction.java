@@ -5,7 +5,7 @@ import org.eclipse.jface.action.Action;
 import org.eclipse.ui.IWorkbenchPage;
 
 import com.checkmarx.eclipse.views.problems.CxProblemsServices;
-import com.checkmarx.eclipse.views.problems.ignored.IgnoredProblemsStore;
+import com.checkmarx.eclipse.views.findings.ignored.IgnoredProblemsStore;
 import com.checkmarx.eclipse.views.problems.marker.ProblemMarkerConstants;
 
 /**

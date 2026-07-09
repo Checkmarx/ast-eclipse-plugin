@@ -32,6 +32,9 @@ import com.checkmarx.eclipse.views.findings.actions.VulnerabilityFilterAction;
 import com.checkmarx.eclipse.views.findings.actions.VulnerabilityFilterState;
 import com.checkmarx.eclipse.views.problems.provider.MockProblemProvider;
 import com.checkmarx.eclipse.views.problems.model.ScanProblem;
+import com.checkmarx.eclipse.views.findings.ignored.IgnoredProblemsStore;
+import com.checkmarx.eclipse.views.findings.ignored.IgnoredProblemsStore.IgnoredProblemsListener;
+import com.checkmarx.eclipse.enums.Severity;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -44,12 +47,13 @@ import java.util.HashMap;
  * Manages a tree view of vulnerabilities with filtering and navigation capabilities.
  * Uses {@link TreeViewer} for flexible tree rendering with custom providers.
  */
-public class CxFindingsView extends ViewPart {
+public class CxFindingsView extends ViewPart implements IgnoredProblemsListener {
 
     public static final String ID = "com.checkmarx.eclipse.views.findings.CxFindingsView";
 
     private TreeViewer treeViewer;
     private Map<String, List<ScanIssue>> currentIssues = new HashMap<>();
+    private IgnoredProblemsStore ignoredStore;
 
     public CxFindingsView() {
         super();
@@ -62,6 +66,11 @@ public class CxFindingsView extends ViewPart {
         System.out.println("[FINDINGS] ========================================");
 
         try {
+            // Register with IgnoredProblemsStore to listen for restore events
+            ignoredStore = IgnoredProblemsStore.getInstance();
+            ignoredStore.addListener(this);
+            System.out.println("[FINDINGS] ✓ Registered with IgnoredProblemsStore");
+
             // Create main sash form for split view (findings + promotional panel)
             SashForm sashForm = new SashForm(parent, SWT.HORIZONTAL);
             sashForm.setLayout(new FillLayout());
@@ -527,25 +536,127 @@ public class CxFindingsView extends ViewPart {
     }
 
     /**
-     * Ignore this specific finding.
+     * Ignore this specific finding and remove from the Findings View.
+     * The finding is added to the IgnoredProblemsStore and appears in the Ignored Problems Window.
      */
     private void ignoreThisFinding(ScanIssue issue) {
+        System.out.println("[FINDINGS] ========================================");
         System.out.println("[FINDINGS] Ignoring finding: " + issue.getTitle());
         System.out.println("[FINDINGS] - Issue ID: " + issue.getScanIssueId());
         System.out.println("[FINDINGS] - Status changed to: IGNORED");
-        // TODO: Implement ignore logic (save to ignore file)
-        System.out.println("[FINDINGS] Finding added to ignore list");
+
+        try {
+            // Verify store is initialized
+            if (ignoredStore == null) {
+                System.err.println("[FINDINGS] ✗ ERROR: IgnoredProblemsStore is NULL!");
+                showErrorNotification("Error: IgnoredProblemsStore not initialized");
+                return;
+            }
+
+            System.out.println("[FINDINGS] ✓ IgnoredProblemsStore is initialized");
+
+            // Convert ScanIssue to ScanProblem for storage in IgnoredProblemsStore
+            ScanProblem problem = convertScanIssueToProblem(issue);
+            System.out.println("[FINDINGS] ✓ Converted ScanIssue to ScanProblem: " + problem.getId());
+
+            // Add to ignored store with full problem details for display in Ignored Problems View
+            ignoredStore.ignoreProblem(problem);
+            System.out.println("[FINDINGS] ✓ Added to IgnoredProblemsStore");
+
+            // Check if it was actually added
+            boolean isIgnored = ignoredStore.isIgnored(problem.getId());
+            System.out.println("[FINDINGS] ✓ Verification: isIgnored=" + isIgnored);
+            System.out.println("[FINDINGS] ✓ All ignored IDs: " + ignoredStore.getIgnoredProblemIds());
+
+            // Refresh the tree to remove the ignored finding
+            System.out.println("[FINDINGS] Calling refreshTreeWithFilter...");
+            refreshTreeWithFilter();
+            System.out.println("[FINDINGS] ✓ Findings tree refreshed - finding removed");
+
+            System.out.println("[FINDINGS] ========================================");
+        } catch (Exception e) {
+            System.err.println("[FINDINGS] ✗ Error ignoring finding: " + e.getMessage());
+            e.printStackTrace();
+            showErrorNotification("Failed to ignore finding: " + e.getMessage());
+        }
     }
 
     /**
-     * Ignore all findings of this type.
+     * Convert a ScanIssue to a ScanProblem for storage in IgnoredProblemsStore.
+     * This allows findings from the Findings View to appear in the Ignored Problems Window.
+     */
+    private ScanProblem convertScanIssueToProblem(ScanIssue issue) {
+        // Determine severity from issue severity string
+        Severity severity;
+        if (issue.getSeverity() != null) {
+            try {
+                severity = Severity.valueOf(issue.getSeverity().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                severity = Severity.MEDIUM; // Default fallback
+            }
+        } else {
+            severity = Severity.MEDIUM;
+        }
+
+        // Get first location for line number, default to 0
+        int lineNumber = 0;
+        if (issue.getLocations() != null && !issue.getLocations().isEmpty()) {
+            lineNumber = issue.getLocations().get(0).getLine();
+        }
+
+        // Build ScanProblem with issue data
+        return new ScanProblem.Builder(issue.getScanIssueId())
+                .message(issue.getTitle())
+                .fileName(issue.getFilePath() != null ? issue.getFilePath() : "Unknown")
+                .line(lineNumber)
+                .column(0)
+                .ruleId(issue.getRuleId() != null ? String.valueOf(issue.getRuleId()) : "0")
+                .severity(severity)
+                .status("IGNORED")
+                .build();
+    }
+
+    /**
+     * Ignore all findings of the same type/package.
+     * For OSS: ignores all findings with the same package version
+     * For CONTAINERS: ignores all findings with the same image tag
      */
     private void ignoreAllOfType(ScanIssue issue) {
+        System.out.println("[FINDINGS] ========================================");
         System.out.println("[FINDINGS] Ignoring all findings of type: " + issue.getTitle());
         System.out.println("[FINDINGS] - Package/Image: " + (issue.getPackageVersion() != null ? issue.getPackageVersion() : issue.getImageTag()));
         System.out.println("[FINDINGS] - Scan Engine: " + issue.getScanEngine());
-        // TODO: Implement ignore all logic
-        System.out.println("[FINDINGS] All findings of this type added to ignore list");
+
+        try {
+            int ignoredCount = 0;
+            String typeIdentifier = issue.getPackageVersion() != null ? issue.getPackageVersion() : issue.getImageTag();
+
+            // Iterate through all current issues and ignore matching ones
+            for (List<ScanIssue> issues : currentIssues.values()) {
+                for (ScanIssue currentIssue : issues) {
+                    // Match by same type/package/image
+                    if (currentIssue.getScanEngine() == issue.getScanEngine()) {
+                        String currentTypeIdentifier = currentIssue.getPackageVersion() != null ?
+                                currentIssue.getPackageVersion() : currentIssue.getImageTag();
+
+                        if (typeIdentifier != null && typeIdentifier.equals(currentTypeIdentifier)) {
+                            ScanProblem problem = convertScanIssueToProblem(currentIssue);
+                            ignoredStore.ignoreProblem(problem);
+                            ignoredCount++;
+                        }
+                    }
+                }
+            }
+
+            System.out.println("[FINDINGS] ✓ Ignored " + ignoredCount + " findings of this type");
+            refreshTreeWithFilter();
+            System.out.println("[FINDINGS] ✓ Findings tree refreshed");
+            System.out.println("[FINDINGS] ========================================");
+        } catch (Exception e) {
+            System.err.println("[FINDINGS] ✗ Error ignoring findings of type: " + e.getMessage());
+            e.printStackTrace();
+            showErrorNotification("Failed to ignore findings of this type: " + e.getMessage());
+        }
     }
 
     /**
@@ -808,34 +919,67 @@ public class CxFindingsView extends ViewPart {
     }
 
     private void refreshTreeWithFilter() {
-        System.out.println("[FINDINGS] Refreshing tree with active filters...");
+        System.out.println("[FINDINGS] ========== REFRESH TREE START ==========");
+        System.out.println("[FINDINGS] Refreshing tree with active filters and ignored problems...");
+        System.out.println("[FINDINGS] Current issues: " + currentIssues.size() + " files");
+
         // Apply active filters and refresh
         VulnerabilityFilterState filterState = VulnerabilityFilterState.getInstance();
         System.out.println("[FINDINGS] Active filters: " + filterState.getFilters());
+        System.out.println("[FINDINGS] Ignored IDs in store: " + ignoredStore.getIgnoredProblemIds());
 
         Map<String, List<ScanIssue>> filteredIssues = new HashMap<>();
-        int totalFiltered = 0;
+        int totalBefore = 0;
+        int totalAfter = 0;
 
-        currentIssues.forEach((filePath, issues) -> {
-            List<ScanIssue> filtered = issues.stream()
-                    .filter(issue -> {
-                        if (issue == null || issue.getSeverity() == null) {
-                            System.out.println("[FINDINGS] WARNING: Null issue or severity detected");
-                            return false;
-                        }
-                        return filterState.hasFilter(issue.getSeverity());
-                    })
-                    .toList();
+        for (String filePath : currentIssues.keySet()) {
+            List<ScanIssue> issues = currentIssues.get(filePath);
+            totalBefore += issues.size();
+
+            List<ScanIssue> filtered = new java.util.ArrayList<>();
+            for (ScanIssue issue : issues) {
+                String issueId = issue.getScanIssueId();
+                boolean isIgnored = ignoredStore.isIgnored(issueId);
+                boolean hasFilter = filterState.hasFilter(issue.getSeverity());
+
+                System.out.println("[FINDINGS] Issue: " + issue.getTitle() +
+                        " | ID: " + issueId +
+                        " | Ignored: " + isIgnored +
+                        " | HasFilter: " + hasFilter);
+
+                if (issue == null || issue.getSeverity() == null) {
+                    System.out.println("[FINDINGS] WARNING: Null issue or severity detected");
+                    continue;
+                }
+                // Filter by severity preference
+                if (!hasFilter) {
+                    System.out.println("[FINDINGS]   -> Filtered out by severity");
+                    continue;
+                }
+                // Also filter out ignored problems
+                if (isIgnored) {
+                    System.out.println("[FINDINGS]   -> Filtered out because IGNORED");
+                    continue;
+                }
+                System.out.println("[FINDINGS]   -> KEEPING");
+                filtered.add(issue);
+            }
+
             if (!filtered.isEmpty()) {
                 filteredIssues.put(filePath, filtered);
+                totalAfter += filtered.size();
             }
-        });
+        }
 
-        totalFiltered = filteredIssues.values().stream().mapToInt(List::size).sum();
-        System.out.println("[FINDINGS] Displaying " + totalFiltered + " issues across " + filteredIssues.size() + " files");
+        System.out.println("[FINDINGS] Total issues before filtering: " + totalBefore);
+        System.out.println("[FINDINGS] Total issues after filtering: " + totalAfter);
+        System.out.println("[FINDINGS] Filtered issues map: " + filteredIssues.size() + " files");
 
+        System.out.println("[FINDINGS] Setting tree input...");
         treeViewer.setInput(filteredIssues);
+        System.out.println("[FINDINGS] Expanding all nodes...");
         treeViewer.expandAll();
+        System.out.println("[FINDINGS] ========== REFRESH TREE END ==========");
     }
 
     /**
@@ -874,5 +1018,19 @@ public class CxFindingsView extends ViewPart {
 
     public TreeViewer getTreeViewer() {
         return treeViewer;
+    }
+
+    /**
+     * Listener implementation: called when ignored problems are restored or cleared.
+     * Refreshes the Findings View to show the restored findings again.
+     */
+    @Override
+    public void onIgnoredProblemsChanged() {
+        System.out.println("[FINDINGS] Ignored problems changed - refreshing findings tree");
+        treeViewer.getControl().getDisplay().asyncExec(() -> {
+            if (treeViewer != null && treeViewer.getControl() != null && !treeViewer.getControl().isDisposed()) {
+                refreshTreeWithFilter();
+            }
+        });
     }
 }

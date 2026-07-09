@@ -1,4 +1,4 @@
-package com.checkmarx.eclipse.views.problems.ignored;
+package com.checkmarx.eclipse.views.findings.ignored;
 
 import java.util.List;
 
@@ -15,16 +15,16 @@ import org.eclipse.ui.part.ViewPart;
 
 import com.checkmarx.eclipse.views.problems.CxProblemsServices;
 import com.checkmarx.eclipse.views.problems.model.ScanProblem;
-import com.checkmarx.eclipse.views.problems.ignored.IgnoredProblemsStore.IgnoredProblemsListener;
+import com.checkmarx.eclipse.views.findings.ignored.IgnoredProblemsStore.IgnoredProblemsListener;
 
 /**
- * Custom view for displaying ignored problems. Shows problems that have been
- * explicitly ignored from the native Problems View. Allows restoring problems
- * back to the active problems list.
+ * Custom view for displaying ignored problems/findings. Shows problems that have been
+ * explicitly ignored from the native Problems View and findings from the Findings View.
+ * Allows restoring problems/findings back to the active list.
  */
 public class CxIgnoredProblemsView extends ViewPart implements IgnoredProblemsListener {
 
-	public static final String ID = "com.checkmarx.eclipse.views.problems.ignored.CxIgnoredProblemsView";
+	public static final String ID = "com.checkmarx.eclipse.views.findings.ignored.CxIgnoredProblemsView";
 
 	private TreeViewer treeViewer;
 	private IgnoredProblemsStore ignoredStore;

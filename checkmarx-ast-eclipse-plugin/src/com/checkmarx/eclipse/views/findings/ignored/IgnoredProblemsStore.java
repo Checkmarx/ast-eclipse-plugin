@@ -1,4 +1,4 @@
-package com.checkmarx.eclipse.views.problems.ignored;
+package com.checkmarx.eclipse.views.findings.ignored;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -70,6 +70,7 @@ public class IgnoredProblemsStore {
 	public void restoreProblem(String problemId) {
 		if (problemId != null && ignoredProblemIds.remove(problemId)) {
 			System.out.println("[IGNORED-STORE] Removed from ignored: " + problemId);
+			ignoredProblemsCache.remove(problemId);
 			saveToPreferences();
 			notifyListeners();
 		}
@@ -146,6 +147,7 @@ public class IgnoredProblemsStore {
 	 */
 	public void clearAll() {
 		ignoredProblemIds.clear();
+		ignoredProblemsCache.clear();
 		saveToPreferences();
 		notifyListeners();
 		System.out.println("[IGNORED-STORE] Cleared all ignored problems");

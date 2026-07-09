@@ -6,7 +6,7 @@ import org.eclipse.core.resources.IMarker;
 import org.eclipse.swt.widgets.Shell;
 
 import com.checkmarx.eclipse.views.problems.CxProblemsServices;
-import com.checkmarx.eclipse.views.problems.ignored.IgnoredProblemsStore;
+import com.checkmarx.eclipse.views.findings.ignored.IgnoredProblemsStore;
 import com.checkmarx.eclipse.views.problems.marker.ProblemMarkerConstants;
 
 /**

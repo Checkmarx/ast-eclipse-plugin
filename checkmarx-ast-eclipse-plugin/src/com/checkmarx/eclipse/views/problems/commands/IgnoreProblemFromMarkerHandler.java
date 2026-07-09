@@ -9,7 +9,7 @@ import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.ui.handlers.HandlerUtil;
 
 import com.checkmarx.eclipse.views.problems.CxProblemsServices;
-import com.checkmarx.eclipse.views.problems.ignored.IgnoredProblemsStore;
+import com.checkmarx.eclipse.views.findings.ignored.IgnoredProblemsStore;
 import com.checkmarx.eclipse.views.problems.marker.ProblemMarkerConstants;
 
 /**

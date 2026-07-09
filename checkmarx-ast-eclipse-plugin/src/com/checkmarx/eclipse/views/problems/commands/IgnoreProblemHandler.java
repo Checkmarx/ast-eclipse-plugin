@@ -5,7 +5,7 @@ import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
 
 import com.checkmarx.eclipse.views.problems.CxProblemsServices;
-import com.checkmarx.eclipse.views.problems.ignored.IgnoredProblemsStore;
+import com.checkmarx.eclipse.views.findings.ignored.IgnoredProblemsStore;
 import com.checkmarx.eclipse.views.problems.model.ScanProblem;
 
 /**

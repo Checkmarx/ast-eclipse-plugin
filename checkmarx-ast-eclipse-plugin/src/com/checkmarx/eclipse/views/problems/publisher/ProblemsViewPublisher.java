@@ -13,8 +13,8 @@ import com.checkmarx.eclipse.utils.CxLogger;
 import com.checkmarx.eclipse.views.problems.marker.IMarkerManager;
 import com.checkmarx.eclipse.views.problems.model.ScanProblem;
 import com.checkmarx.eclipse.views.problems.provider.IProblemProvider;
-import com.checkmarx.eclipse.views.problems.ignored.IgnoredProblemsStore;
-import com.checkmarx.eclipse.views.problems.ignored.CxIgnoredProblemsView;
+import com.checkmarx.eclipse.views.findings.ignored.IgnoredProblemsStore;
+import com.checkmarx.eclipse.views.findings.ignored.CxIgnoredProblemsView;
 
 /**
  * Default {@link IProblemsPublisher}: wires a {@link IProblemProvider} (source
