@@ -10,6 +10,7 @@ import com.checkmarx.eclipse.utils.CxLogger;
 import com.checkmarx.eclipse.views.problems.CxProblemsServices;
 import com.checkmarx.eclipse.views.problems.hover.JavaEditorHoverListener;
 import com.checkmarx.eclipse.views.problems.commands.ProblemsViewFilterManager;
+import com.checkmarx.eclipse.views.findings.realtime.CheckmarxEditorListener;
 import com.checkmarx.eclipse.views.ui.WelcomeDialog;
 import com.checkmarx.eclipse.properties.Preferences;
 import com.checkmarx.eclipse.runner.TenantSettingsProvider;
@@ -22,7 +23,8 @@ import java.util.concurrent.CompletableFuture;
  * Responsibilities:
  * - Open Checkmarx views (Scan, Findings, Ignored Problems)
  * - Register the JavaEditorHoverListener to install hover handlers on editors
- * - Install hovers on any already-open editors
+ * - Register the CheckmarxEditorListener for real-time scanning with debounce
+ * - Install hovers/real-time scanning on any already-open editors
  * - Load mock problems for demonstration
  */
 public class PluginStartup implements IStartup {
@@ -30,6 +32,7 @@ public class PluginStartup implements IStartup {
 	private static final String VIEW_ID = "com.checkmarx.eclipse.views.CheckmarxView";
 	private static final String FINDINGS_VIEW_ID = "com.checkmarx.eclipse.views.findings.CxFindingsView";
 	private static JavaEditorHoverListener hoverListener; // Keep strong reference to prevent GC
+	private static CheckmarxEditorListener realtimeScanListener; // Keep strong reference to prevent GC
 
 	@Override
 	public void earlyStartup() {
@@ -53,13 +56,22 @@ public class PluginStartup implements IStartup {
 					hoverListener = new JavaEditorHoverListener();
 					window.getPartService().addPartListener(hoverListener);
 
-					// Install hover on any already-open editors
+					// Register listener for real-time scanning with 1-second debounce
+					// (Equivalent to JetBrains' LocalInspectionTool)
+					System.out.println("[STARTUP] Registering real-time scanning listener...");
+					realtimeScanListener = new CheckmarxEditorListener();
+					window.getPartService().addPartListener(realtimeScanListener);
+					System.out.println("[STARTUP] ✓ Real-time scanning listener registered");
+
+					// Install hover and real-time scanning on any already-open editors
 					if (page != null) {
 						org.eclipse.ui.IEditorReference[] editors = page.getEditorReferences();
 						for (org.eclipse.ui.IEditorReference editorRef : editors) {
 							org.eclipse.ui.IEditorPart editor = editorRef.getEditor(false);
 							if (editor != null) {
 								hoverListener.installHoverOnEditor(editor);
+								// Real-time scanning is also installed via the part listener
+								// (called automatically via partOpened/partActivated)
 							}
 						}
 					}

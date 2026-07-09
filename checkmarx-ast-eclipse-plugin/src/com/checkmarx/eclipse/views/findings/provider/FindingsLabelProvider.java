@@ -26,9 +26,8 @@ public class FindingsLabelProvider extends DelegatingStyledCellLabelProvider {
                     StyledString styledString = new StyledString(fileNode.getFileName());
 
                     if (fileNode.getProblemCount() != null && !fileNode.getProblemCount().isEmpty()) {
-                        fileNode.getProblemCount().forEach((severity, count) -> {
-                            styledString.append("  " + severity + ":" + count, StyledString.COUNTER_STYLER);
-                        });
+                        // Display severity icons with counts instead of text labels
+                        styledString.append(formatSeverityIconsWithCounts(fileNode), StyledString.COUNTER_STYLER);
                     }
                     return styledString;
                 } else if (element instanceof ScanDetailWithPath) {
@@ -126,6 +125,30 @@ public class FindingsLabelProvider extends DelegatingStyledCellLabelProvider {
                     return "  [Ln " + lineNumber + ", Col " + columnNumber + "]";
                 }
                 return "";
+            }
+
+            /**
+             * Format severity counts with visual icons instead of text labels.
+             * Displays: "🔴 4  🟠 3  🟡 2" instead of "critical:4 high:3 medium:2"
+             */
+            private String formatSeverityIconsWithCounts(FileNodeLabel fileNode) {
+                StringBuilder sb = new StringBuilder();
+
+                // Display in order: critical → high → medium → low
+                String[] severities = { "critical", "high", "medium", "low" };
+                String[] icons = { "🔴", "🟠", "🟡", "🟢" };
+
+                for (int i = 0; i < severities.length; i++) {
+                    Long count = fileNode.getProblemCount().get(severities[i]);
+                    if (count != null && count > 0) {
+                        if (sb.length() > 0) {
+                            sb.append("  "); // Spacing between icons
+                        }
+                        sb.append(icons[i]).append(" ").append(count);
+                    }
+                }
+
+                return sb.length() > 0 ? "  " + sb.toString() : "";
             }
         });
     }
