@@ -86,6 +86,87 @@
         <attribute name="status"/>
     </extension>
 
+    <!-- Annotation types for each severity level -->
+    <extension point="org.eclipse.ui.editors.annotationTypes">
+        <type
+            markerSeverity="2"
+            markerType="com.checkmarx.eclipse.plugin.checkmarxProblemMarker"
+            name="com.checkmarx.eclipse.annotation.critical"
+            super="org.eclipse.ui.workbench.texteditor.error">
+        </type>
+        <type
+            markerSeverity="2"
+            markerType="com.checkmarx.eclipse.plugin.checkmarxProblemMarker"
+            name="com.checkmarx.eclipse.annotation.high"
+            super="org.eclipse.ui.workbench.texteditor.error">
+        </type>
+        <type
+            markerSeverity="1"
+            markerType="com.checkmarx.eclipse.plugin.checkmarxProblemMarker"
+            name="com.checkmarx.eclipse.annotation.medium"
+            super="org.eclipse.ui.workbench.texteditor.warning">
+        </type>
+        <type
+            markerSeverity="0"
+            markerType="com.checkmarx.eclipse.plugin.checkmarxProblemMarker"
+            name="com.checkmarx.eclipse.annotation.low"
+            super="org.eclipse.ui.workbench.texteditor.info">
+        </type>
+    </extension>
+
+    <!-- Gutter icon specifications for each severity -->
+    <extension point="org.eclipse.ui.editors.markerAnnotationSpecification">
+        <specification
+            annotationType="com.checkmarx.eclipse.annotation.critical"
+            label="Checkmarx Critical"
+            icon="icons/severity-critical.png"
+            textPreferenceKey="cxAnnotationCriticalText"
+            textPreferenceValue="true"
+            textStylePreferenceValue="SQUIGGLES"
+            colorPreferenceKey="cxAnnotationCriticalColor"
+            colorPreferenceValue="255,0,0"
+            verticalRulerPreferenceKey="cxAnnotationCriticalVerticalRuler"
+            verticalRulerPreferenceValue="true">
+        </specification>
+        <specification
+            annotationType="com.checkmarx.eclipse.annotation.high"
+            label="Checkmarx High"
+            icon="platform:/plugin/com.checkmarx.eclipse.plugin/icons/severity-high.png"
+            textPreferenceKey="cxAnnotationHighText"
+            textPreferenceValue="true"
+            textStylePreferenceValue="SQUIGGLES"
+            colorPreferenceKey="cxAnnotationHighColor"
+            colorPreferenceValue="255,165,0"
+            verticalRulerPreferenceKey="cxAnnotationHighVerticalRuler"
+            verticalRulerPreferenceValue="true">
+        </specification>
+        <specification
+            annotationType="com.checkmarx.eclipse.annotation.medium"
+            label="Checkmarx Medium"
+            icon="platform:/plugin/com.checkmarx.eclipse.plugin/icons/severity-medium.png"
+            textPreferenceKey="cxAnnotationMediumText"
+            textPreferenceValue="true"
+            textStylePreferenceValue="SQUIGGLES"
+            colorPreferenceKey="cxAnnotationMediumColor"
+            colorPreferenceValue="255,255,0"
+            verticalRulerPreferenceKey="cxAnnotationMediumVerticalRuler"
+            verticalRulerPreferenceValue="true">
+        </specification>
+        <specification
+            annotationType="com.checkmarx.eclipse.annotation.low"
+            label="Checkmarx Low"
+            icon="platform:/plugin/com.checkmarx.eclipse.plugin/icons/severity-low.png"
+            textPreferenceKey="cxAnnotationLowText"
+            textPreferenceValue="true"
+            textStylePreferenceValue="SQUIGGLES"
+            colorPreferenceKey="cxAnnotationLowColor"
+            colorPreferenceValue="0,255,0"
+            verticalRulerPreferenceKey="cxAnnotationLowVerticalRuler"
+            verticalRulerPreferenceValue="true">
+        </specification>
+    </extension>
+
+
     <!-- Command for publishing mock problems (for testing) -->
     <extension point="org.eclipse.ui.commands">
         <command
