@@ -4,12 +4,16 @@ import org.eclipse.jface.text.IInformationControl;
 import org.eclipse.jface.text.IInformationControlCreator;
 import org.eclipse.jface.text.IRegion;
 import org.eclipse.jface.text.ITextHover;
+import org.eclipse.jface.text.ITextHoverExtension;
+import org.eclipse.jface.text.ITextHoverExtension2;
 import org.eclipse.jface.text.ITextViewer;
 import org.eclipse.jface.text.Region;
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.ui.IFileEditorInput;
+import org.eclipse.ui.IEditorPart;
+import org.eclipse.jdt.ui.text.java.hover.IJavaEditorTextHover;
 
 import com.checkmarx.eclipse.views.problems.marker.ProblemMarkerConstants;
 
@@ -18,90 +22,76 @@ import com.checkmarx.eclipse.views.problems.marker.ProblemMarkerConstants;
  *
  * Provides rich vulnerability details when hovering over underlined code regions.
  * This implementation:
+ * - Implements IJavaEditorTextHover (required for Java editor integration)
  * - Finds markers at the exact hover offset (precise character range checking)
  * - Returns the hover region bounded by marker CHAR_START/CHAR_END
  * - Handles multiple overlapping markers by selecting the innermost one
  * - Creates rich information controls displaying vulnerability details
  */
-public class CxTextHover implements ITextHover, IInformationControlCreator {
+public class CxTextHover implements IJavaEditorTextHover, ITextHover, ITextHoverExtension, ITextHoverExtension2 {
 
 	private ITextViewer textViewer;
 	private IMarker currentMarker;
+	private IEditorPart editor;
 
 	public CxTextHover() {
 		// Default constructor for Eclipse instantiation
 	}
 
 	@Override
+	public void setEditor(IEditorPart editor) {
+		this.editor = editor;
+	}
+
+	@Override
 	public String getHoverInfo(ITextViewer viewer, IRegion hoverRegion) {
-		// Return non-empty string to trigger information control creator.
-		// The actual content is rendered by createInformationControl().
-		return " ";
+		return null;
+	}
+
+	@Override
+	public Object getHoverInfo2(ITextViewer viewer, IRegion hoverRegion) {
+		System.out.println("[CX-HOVER] getHoverInfo2 called. Returning marker: " + currentMarker);
+		return this.currentMarker;
+	}
+
+	@Override
+	public IInformationControlCreator getHoverControlCreator() {
+		return new IInformationControlCreator() {
+			@Override
+			public IInformationControl createInformationControl(org.eclipse.swt.widgets.Shell parent) {
+				System.out.println("[CX-HOVER] Creating control inside Creator wrapper...");
+				if (currentMarker != null) {
+					return new CxSimpleHoverControl(parent, currentMarker);
+				}
+				return null;
+			}
+		};
 	}
 
 	@Override
 	public IRegion getHoverRegion(ITextViewer viewer, int offset) {
-		this.textViewer = viewer;
-		this.currentMarker = null;
-
+		System.out.println("[CX-HOVER] getHoverRegion called at offset: " + offset);
 		try {
-			System.out.println("[CX-HOVER] getHoverRegion: offset=" + offset);
+			// Step 1: Find marker containing this offset
 			IMarker marker = findMarkerContainingOffset(viewer, offset);
-
 			if (marker == null) {
-				System.out.println("[CX-HOVER] getHoverRegion: No marker found at offset " + offset);
+				System.out.println("[CX-HOVER] No marker found at offset " + offset);
 				return null;
 			}
 
-			if (!isCheckmarxMarker(marker)) {
-				System.out.println("[CX-HOVER] getHoverRegion: Marker found but NOT Checkmarx type");
-				return null;
-			}
-
-			System.out.println("[CX-HOVER] getHoverRegion: ✓ Found Checkmarx marker");
-			this.currentMarker = marker;
-
-			// Return region bounded by marker's CHAR_START/CHAR_END for precise hovering
+			// Step 2: Get the exact character range from the marker
 			Integer charStart = (Integer) marker.getAttribute(IMarker.CHAR_START);
 			Integer charEnd = (Integer) marker.getAttribute(IMarker.CHAR_END);
 
-			if (charStart != null && charEnd != null && charStart <= charEnd) {
-				System.out.println("[CX-HOVER] getHoverRegion: Returning region " + charStart + "-" + charEnd);
+			if (charStart != null && charEnd != null && charStart <= offset && offset < charEnd) {
+				this.currentMarker = marker; // Cache for getHoverInfo2()
+				System.out.println("[CX-HOVER] ✓ Returning region: " + charStart + "-" + charEnd);
 				return new Region(charStart, charEnd - charStart);
 			}
-
-			// Fallback: return minimal region at offset if char positions not available
-			System.out.println("[CX-HOVER] getHoverRegion: Using fallback region (missing char range)");
-			return new Region(offset, 1);
 		} catch (Exception e) {
-			System.err.println("[CX-HOVER] getHoverRegion: EXCEPTION - " + e.getClass().getSimpleName() + ": " + e.getMessage());
-			e.printStackTrace();
-			return null;
+			System.err.println("[CX-HOVER] Error in getHoverRegion: " + e.getMessage());
 		}
-	}
-
-	@Override
-	public IInformationControl createInformationControl(org.eclipse.swt.widgets.Shell parent) {
-		try {
-			if (currentMarker == null) {
-				System.out.println("[CX-HOVER] createInformationControl: currentMarker is NULL");
-				return null;
-			}
-
-			if (!isCheckmarxMarker(currentMarker)) {
-				System.out.println("[CX-HOVER] createInformationControl: marker is NOT Checkmarx type");
-				return null;
-			}
-
-			System.out.println("[CX-HOVER] createInformationControl: Creating CxSimpleHoverControl (robust SWT-based)...");
-			IInformationControl control = new CxSimpleHoverControl(parent, currentMarker);
-			System.out.println("[CX-HOVER] createInformationControl: ✓ Control created successfully");
-			return control;
-		} catch (Exception e) {
-			System.err.println("[CX-HOVER] createInformationControl: EXCEPTION - " + e.getClass().getSimpleName() + ": " + e.getMessage());
-			e.printStackTrace();
-			return null;
-		}
+		return null;
 	}
 
 	/**
@@ -128,9 +118,16 @@ public class CxTextHover implements ITextHover, IInformationControlCreator {
 
 			System.out.println("[CX-HOVER] findMarkerContainingOffset: Searching markers in file: " + file.getName());
 
-			// Find all Checkmarx markers in this file
+			// Try DEPTH_ZERO first (markers on file itself)
 			IMarker[] markers = file.findMarkers(ProblemMarkerConstants.MARKER_TYPE, true, IResource.DEPTH_ZERO);
-			System.out.println("[CX-HOVER] findMarkerContainingOffset: Found " + markers.length + " total markers");
+			System.out.println("[CX-HOVER] findMarkerContainingOffset: Found " + markers.length + " markers at DEPTH_ZERO");
+
+			// If no markers found, try DEPTH_INFINITE (markers on child resources)
+			if (markers.length == 0) {
+				System.out.println("[CX-HOVER] findMarkerContainingOffset: No markers at DEPTH_ZERO, trying DEPTH_INFINITE...");
+				markers = file.findMarkers(ProblemMarkerConstants.MARKER_TYPE, true, IResource.DEPTH_INFINITE);
+				System.out.println("[CX-HOVER] findMarkerContainingOffset: Found " + markers.length + " markers at DEPTH_INFINITE");
+			}
 
 			IMarker bestMarker = null;
 			int smallestRange = Integer.MAX_VALUE;
@@ -180,9 +177,8 @@ public class CxTextHover implements ITextHover, IInformationControlCreator {
 	 */
 	private IFile getFileFromActiveEditor() {
 		try {
-			org.eclipse.ui.IEditorPart editor = getActiveEditor();
-			if (editor != null) {
-				org.eclipse.ui.IEditorInput input = editor.getEditorInput();
+			if (this.editor != null) {
+				org.eclipse.ui.IEditorInput input = this.editor.getEditorInput();
 				if (input instanceof IFileEditorInput) {
 					return ((IFileEditorInput) input).getFile();
 				}

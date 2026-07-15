@@ -270,5 +270,14 @@
         </menuContribution>
     </extension>
 
+    <!-- Java Editor Text Hover - triggers when hovering over code with Checkmarx markers -->
+    <extension point="org.eclipse.jdt.ui.javaEditorTextHovers">
+        <hover
+            id="com.checkmarx.eclipse.hover.java"
+            label="Checkmarx Vulnerability Hover"
+            description="Displays Checkmarx vulnerability details"
+            class="com.checkmarx.eclipse.views.problems.hover.CxTextHover">
+        </hover>
+    </extension>
 
 </plugin>
