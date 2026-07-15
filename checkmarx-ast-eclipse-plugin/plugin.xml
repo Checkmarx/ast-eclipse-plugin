@@ -119,50 +119,54 @@
         <specification
             annotationType="com.checkmarx.eclipse.annotation.critical"
             label="Checkmarx Critical"
-            icon="icons/severity-critical.png"
+            icon="icons/severity/critical_16.svg"
             textPreferenceKey="cxAnnotationCriticalText"
             textPreferenceValue="true"
             textStylePreferenceValue="SQUIGGLES"
-            colorPreferenceKey="cxAnnotationCriticalColor"
-            colorPreferenceValue="255,0,0"
             verticalRulerPreferenceKey="cxAnnotationCriticalVerticalRuler"
-            verticalRulerPreferenceValue="true">
+            verticalRulerPreferenceValue="true"
+            overviewRulerPreferenceKey="cxAnnotationCriticalOverviewRuler"
+            overviewRulerPreferenceValue="true"
+            presentationLayer="7">
         </specification>
         <specification
             annotationType="com.checkmarx.eclipse.annotation.high"
             label="Checkmarx High"
-            icon="platform:/plugin/com.checkmarx.eclipse.plugin/icons/severity-high.png"
+            icon="icons/severity/high_16.svg"
             textPreferenceKey="cxAnnotationHighText"
             textPreferenceValue="true"
             textStylePreferenceValue="SQUIGGLES"
-            colorPreferenceKey="cxAnnotationHighColor"
-            colorPreferenceValue="255,165,0"
             verticalRulerPreferenceKey="cxAnnotationHighVerticalRuler"
-            verticalRulerPreferenceValue="true">
+            verticalRulerPreferenceValue="true"
+            overviewRulerPreferenceKey="cxAnnotationHighOverviewRuler"
+            overviewRulerPreferenceValue="true"
+            presentationLayer="6">
         </specification>
         <specification
             annotationType="com.checkmarx.eclipse.annotation.medium"
             label="Checkmarx Medium"
-            icon="platform:/plugin/com.checkmarx.eclipse.plugin/icons/severity-medium.png"
+            icon="icons/severity/medium_16.svg"
             textPreferenceKey="cxAnnotationMediumText"
             textPreferenceValue="true"
             textStylePreferenceValue="SQUIGGLES"
-            colorPreferenceKey="cxAnnotationMediumColor"
-            colorPreferenceValue="255,255,0"
             verticalRulerPreferenceKey="cxAnnotationMediumVerticalRuler"
-            verticalRulerPreferenceValue="true">
+            verticalRulerPreferenceValue="true"
+            overviewRulerPreferenceKey="cxAnnotationMediumOverviewRuler"
+            overviewRulerPreferenceValue="true"
+            presentationLayer="5">
         </specification>
         <specification
             annotationType="com.checkmarx.eclipse.annotation.low"
             label="Checkmarx Low"
-            icon="platform:/plugin/com.checkmarx.eclipse.plugin/icons/severity-low.png"
+            icon="icons/severity/low_16.svg"
             textPreferenceKey="cxAnnotationLowText"
             textPreferenceValue="true"
             textStylePreferenceValue="SQUIGGLES"
-            colorPreferenceKey="cxAnnotationLowColor"
-            colorPreferenceValue="0,255,0"
             verticalRulerPreferenceKey="cxAnnotationLowVerticalRuler"
-            verticalRulerPreferenceValue="true">
+            verticalRulerPreferenceValue="true"
+            overviewRulerPreferenceKey="cxAnnotationLowOverviewRuler"
+            overviewRulerPreferenceValue="true"
+            presentationLayer="4">
         </specification>
     </extension>
 
