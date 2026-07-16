@@ -23,18 +23,18 @@
        </view>
        <view
              category="com.checkmarx.eclipse"
-             class="com.checkmarx.eclipse.views.findings.CxFindingsView"
+             class="com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView"
              icon="platform:/plugin/com.checkmarx.eclipse.plugin/icons/severity/critical_16.svg"
-             id="com.checkmarx.eclipse.views.findings.CxFindingsView"
+             id="com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView"
              inject="true"
              name="Checkmarx Findings"
              restorable="true">
        </view>
        <view
              category="com.checkmarx.eclipse"
-             class="com.checkmarx.eclipse.views.findings.ignored.CxIgnoredProblemsView"
+             class="com.checkmarx.eclipse.devassist.ui.findings.ignored.CxIgnoredProblemsView"
              icon="platform:/plugin/com.checkmarx.eclipse.plugin/icons/severity/low_16.svg"
-             id="com.checkmarx.eclipse.views.findings.ignored.CxIgnoredProblemsView"
+             id="com.checkmarx.eclipse.devassist.ui.findings.ignored.CxIgnoredProblemsView"
              inject="true"
              name="Checkmarx Ignored Problems"
              restorable="true">
@@ -55,13 +55,13 @@
                     ratio="0.5">
             </view>
             <view
-                    id="com.checkmarx.eclipse.views.findings.CxFindingsView"
+                    id="com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView"
                     relative="org.eclipse.ui.views.ProblemView"
                     relationship="stacked"
                     ratio="0.5">
             </view>
             <view
-                    id="com.checkmarx.eclipse.views.findings.ignored.CxIgnoredProblemsView"
+                    id="com.checkmarx.eclipse.devassist.ui.findings.ignored.CxIgnoredProblemsView"
                     relative="org.eclipse.ui.views.ProblemView"
                     relationship="stacked"
                     ratio="0.5">
@@ -241,33 +241,33 @@
     <extension point="org.eclipse.ui.handlers">
         <handler
                 commandId="com.checkmarx.eclipse.problems.command.publishMock"
-                class="com.checkmarx.eclipse.views.problems.commands.PublishMockProblemsHandler">
+                class="com.checkmarx.eclipse.devassist.problems.commands.PublishMockProblemsHandler">
         </handler>
         <handler
                 commandId="com.checkmarx.eclipse.problems.command.action1"
-                class="com.checkmarx.eclipse.views.problems.commands.ProblemAction1Handler">
+                class="com.checkmarx.eclipse.devassist.problems.commands.ProblemAction1Handler">
         </handler>
 
         <!-- Severity filter handlers -->
         <handler
                 commandId="com.checkmarx.eclipse.problems.filter.critical"
-                class="com.checkmarx.eclipse.views.problems.commands.FilterBySeverityHandler">
+                class="com.checkmarx.eclipse.devassist.problems.commands.FilterBySeverityHandler">
         </handler>
         <handler
                 commandId="com.checkmarx.eclipse.problems.filter.high"
-                class="com.checkmarx.eclipse.views.problems.commands.FilterBySeverityHandler">
+                class="com.checkmarx.eclipse.devassist.problems.commands.FilterBySeverityHandler">
         </handler>
         <handler
                 commandId="com.checkmarx.eclipse.problems.filter.medium"
-                class="com.checkmarx.eclipse.views.problems.commands.FilterBySeverityHandler">
+                class="com.checkmarx.eclipse.devassist.problems.commands.FilterBySeverityHandler">
         </handler>
         <handler
                 commandId="com.checkmarx.eclipse.problems.filter.low"
-                class="com.checkmarx.eclipse.views.problems.commands.FilterBySeverityHandler">
+                class="com.checkmarx.eclipse.devassist.problems.commands.FilterBySeverityHandler">
         </handler>
         <handler
                 commandId="com.checkmarx.eclipse.problems.filter.all"
-                class="com.checkmarx.eclipse.views.problems.commands.FilterBySeverityHandler">
+                class="com.checkmarx.eclipse.devassist.problems.commands.FilterBySeverityHandler">
         </handler>
     </extension>
 
@@ -275,7 +275,7 @@
     <!-- Register for base marker type - all severity-specific types inherit from it -->
     <extension point="org.eclipse.ui.markerResolutionGenerators">
         <generator
-                class="com.checkmarx.eclipse.views.findings.resolution.CheckmarxMarkerResolutionGenerator"
+                class="com.checkmarx.eclipse.devassist.ui.findings.resolution.CheckmarxMarkerResolutionGenerator"
                 markerType="com.checkmarx.eclipse.plugin.checkmarxProblemMarker">
         </generator>
     </extension>
@@ -305,7 +305,7 @@
                 locationURI="toolbar:org.eclipse.ui.views.ProblemView">
             <!-- Filter Status Label showing "Showing X of Y | Active: [...]" -->
             <control
-                    class="com.checkmarx.eclipse.views.problems.filter.FilterStatusLabelProvider"
+                    class="com.checkmarx.eclipse.devassist.problems.filter.FilterStatusLabelProvider"
                     id="com.checkmarx.eclipse.filter.status.label">
             </control>
 
@@ -361,7 +361,7 @@
             id="com.checkmarx.eclipse.hover.java"
             label="Checkmarx Vulnerability Hover"
             description="Displays Checkmarx vulnerability details"
-            class="com.checkmarx.eclipse.views.problems.hover.CxTextHover">
+            class="com.checkmarx.eclipse.devassist.problems.hover.CxTextHover">
         </hover>
     </extension>
 
