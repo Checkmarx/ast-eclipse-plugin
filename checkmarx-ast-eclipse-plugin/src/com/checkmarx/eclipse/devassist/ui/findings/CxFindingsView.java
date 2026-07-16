@@ -54,7 +54,7 @@ import java.util.HashMap;
  */
 public class CxFindingsView extends ViewPart implements IgnoredProblemsListener {
 
-    public static final String ID = "com.checkmarx.eclipse.views.findings.CxFindingsView";
+    public static final String ID = "com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView";
 
     private TreeViewer treeViewer;
     private Map<String, List<ScanIssue>> currentIssues = new HashMap<>();
@@ -497,7 +497,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 
         try {
             // Build remediation prompt based on engine type
-            String prompt = com.checkmarx.eclipse.views.findings.integration.RemediationPromptBuilder
+            String prompt = com.checkmarx.eclipse.devassist.ui.findings.integration.RemediationPromptBuilder
                     .buildRemediationPrompt(issue);
 
             if (prompt == null || prompt.isEmpty()) {
@@ -512,7 +512,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 
             // Send to Copilot via integration
             System.out.println("[FINDINGS] Sending prompt to Copilot...");
-            boolean success = com.checkmarx.eclipse.views.findings.integration.CopilotIntegration
+            boolean success = com.checkmarx.eclipse.devassist.ui.findings.integration.CopilotIntegration
                     .sendPromptToCopilot(prompt);
 
             if (success) {

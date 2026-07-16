@@ -24,7 +24,7 @@ import com.checkmarx.eclipse.devassist.problems.ignored.IgnoredProblemsStore.Ign
  */
 public class CxIgnoredProblemsView extends ViewPart implements IgnoredProblemsListener {
 
-	public static final String ID = "com.checkmarx.eclipse.views.problems.ignored.CxIgnoredProblemsView";
+	public static final String ID = "com.checkmarx.eclipse.devassist.problems.ignored.CxIgnoredProblemsView";
 
 	private TreeViewer treeViewer;
 	private IgnoredProblemsStore ignoredStore;

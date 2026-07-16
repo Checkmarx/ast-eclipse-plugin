@@ -30,7 +30,7 @@ import java.util.concurrent.CompletableFuture;
 public class PluginStartup implements IStartup {
 
 	private static final String VIEW_ID = "com.checkmarx.eclipse.views.CheckmarxView";
-	private static final String FINDINGS_VIEW_ID = "com.checkmarx.eclipse.views.findings.CxFindingsView";
+	private static final String FINDINGS_VIEW_ID = "com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView";
 	private static JavaEditorHoverListener hoverListener; // Keep strong reference to prevent GC
 	private static CheckmarxEditorListener realtimeScanListener; // Keep strong reference to prevent GC
 
