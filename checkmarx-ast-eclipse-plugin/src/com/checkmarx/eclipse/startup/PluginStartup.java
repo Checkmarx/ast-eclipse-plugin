@@ -7,10 +7,10 @@ import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.PlatformUI;
 
 import com.checkmarx.eclipse.utils.CxLogger;
-import com.checkmarx.eclipse.views.problems.CxProblemsServices;
-import com.checkmarx.eclipse.views.problems.hover.JavaEditorHoverListener;
-import com.checkmarx.eclipse.views.problems.commands.ProblemsViewFilterManager;
-import com.checkmarx.eclipse.views.findings.realtime.CheckmarxEditorListener;
+import com.checkmarx.eclipse.devassist.problems.CxProblemsServices;
+import com.checkmarx.eclipse.devassist.problems.hover.JavaEditorHoverListener;
+import com.checkmarx.eclipse.devassist.problems.commands.ProblemsViewFilterManager;
+import com.checkmarx.eclipse.devassist.ui.findings.realtime.CheckmarxEditorListener;
 import com.checkmarx.eclipse.views.ui.WelcomeDialog;
 import com.checkmarx.eclipse.properties.Preferences;
 import com.checkmarx.eclipse.runner.TenantSettingsProvider;
