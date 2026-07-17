@@ -57,7 +57,7 @@ public class WelcomeDialog extends TitleAreaDialog {
 
 		// Log MCP status for debugging
 		String mcpStatus = mcpEnabled ? "ENABLED" : "DISABLED";
-		com.checkmarx.eclipse.utils.CxLogger.debug("[WELCOME] MCP status: " + mcpStatus);
+		com.checkmarx.eclipse.utils.CxLogger.info("[WELCOME] MCP status: " + mcpStatus);
 	}
 
 	@Override

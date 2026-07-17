@@ -44,23 +44,23 @@ public final class McpInstallService {
 			String additionalParams = Preferences.getAdditionalOptions();
 
 			if (apiKey == null || apiKey.isBlank()) {
-				CxLogger.debug(LOG_TAG + " Skipping MCP auto-install: user not authenticated (no API key)");
+				CxLogger.info(LOG_TAG + " Skipping MCP auto-install: user not authenticated (no API key)");
 				return;
 			}
 
-			CxLogger.debug(LOG_TAG + " User is authenticated, checking MCP server flag...");
+			CxLogger.info(LOG_TAG + " User is authenticated, checking MCP server flag...");
 
 			// Check if MCP is enabled for tenant
 			boolean aiMcpEnabled;
 			try {
 				aiMcpEnabled = TenantSettingsProvider.INSTANCE.isAiMcpServerEnabled(apiKey, additionalParams);
 			} catch (Exception e) {
-				CxLogger.warn(LOG_TAG + " Failed to check MCP server status, skipping: " + e.getMessage());
+				CxLogger.warning(LOG_TAG + " Failed to check MCP server status, skipping: " + e.getMessage());
 				return;
 			}
 
 			if (!aiMcpEnabled) {
-				CxLogger.debug(LOG_TAG + " Skipping MCP auto-install: AI MCP server disabled for tenant");
+				CxLogger.info(LOG_TAG + " Skipping MCP auto-install: AI MCP server disabled for tenant");
 				return;
 			}
 
@@ -83,19 +83,19 @@ public final class McpInstallService {
 	 */
 	public static CompletableFuture<Boolean> installSilentlyAsync(String credential) {
 		if (credential == null || credential.isBlank()) {
-			CxLogger.debug(LOG_TAG + " Cannot install: credential is null or empty");
+			CxLogger.info(LOG_TAG + " Cannot install: credential is null or empty");
 			return CompletableFuture.completedFuture(false);
 		}
 
 		return CompletableFuture.supplyAsync(() -> {
 			try {
-				CxLogger.debug(LOG_TAG + " Background thread started, installing MCP...");
+				CxLogger.info(LOG_TAG + " Background thread started, installing MCP...");
 				boolean changed = McpSettingsInjector.installForCopilot(credential);
 
 				if (changed) {
 					CxLogger.info(LOG_TAG + " ✓ MCP installation completed successfully (config modified)");
 				} else {
-					CxLogger.debug(LOG_TAG + " MCP installation completed (config unchanged)");
+					CxLogger.info(LOG_TAG + " MCP installation completed (config unchanged)");
 				}
 
 				return changed;
@@ -120,7 +120,7 @@ public final class McpInstallService {
 			if (removed) {
 				CxLogger.info(LOG_TAG + " ✓ MCP configuration uninstalled successfully");
 			} else {
-				CxLogger.debug(LOG_TAG + " No MCP configuration found to uninstall");
+				CxLogger.info(LOG_TAG + " No MCP configuration found to uninstall");
 			}
 
 			return removed;

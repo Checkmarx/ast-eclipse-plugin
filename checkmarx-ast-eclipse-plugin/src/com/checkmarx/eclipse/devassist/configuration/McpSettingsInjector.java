@@ -47,16 +47,16 @@ public final class McpSettingsInjector {
 		CxLogger.info(LOG_TAG + " Starting MCP installation for Copilot...");
 
 		if (token == null || token.isBlank()) {
-			CxLogger.warn(LOG_TAG + " Cannot install MCP: token is null or empty");
+			CxLogger.warning(LOG_TAG + " Cannot install MCP: token is null or empty");
 			return false;
 		}
 
 		try {
 			String issuer = tryExtractIssuer(token);
-			CxLogger.debug(LOG_TAG + " Token issuer extracted: " + (issuer != null ? issuer : "null (using fallback)"));
+			CxLogger.info(LOG_TAG + " Token issuer extracted: " + (issuer != null ? issuer : "null (using fallback)"));
 
 			String baseUrl = deriveBaseUrlFromIssuer(issuer);
-			CxLogger.debug(LOG_TAG + " Derived base URL: " + baseUrl);
+			CxLogger.info(LOG_TAG + " Derived base URL: " + baseUrl);
 
 			String mcpUrl = baseUrl + "/api/security-mcp/mcp";
 			CxLogger.info(LOG_TAG + " MCP URL: " + mcpUrl);
@@ -69,7 +69,7 @@ public final class McpSettingsInjector {
 			if (changed) {
 				CxLogger.info(LOG_TAG + " ✓ MCP configuration installed/updated successfully");
 			} else {
-				CxLogger.debug(LOG_TAG + " MCP configuration unchanged (already up-to-date)");
+				CxLogger.info(LOG_TAG + " MCP configuration unchanged (already up-to-date)");
 			}
 
 			return changed;
@@ -97,7 +97,7 @@ public final class McpSettingsInjector {
 			if (removed) {
 				CxLogger.info(LOG_TAG + " ✓ Checkmarx MCP entry removed successfully");
 			} else {
-				CxLogger.debug(LOG_TAG + " No Checkmarx MCP entry found to remove");
+				CxLogger.info(LOG_TAG + " No Checkmarx MCP entry found to remove");
 			}
 
 			return removed;
@@ -118,8 +118,8 @@ public final class McpSettingsInjector {
 		String os = System.getProperty("os.name").toLowerCase(Locale.ENGLISH);
 		String home = System.getProperty("user.home");
 
-		CxLogger.debug(LOG_TAG + " Resolving MCP config path for OS: " + os);
-		CxLogger.debug(LOG_TAG + " Using Eclipse-specific path (not JetBrains 'intellij' folder)");
+		CxLogger.info(LOG_TAG + " Resolving MCP config path for OS: " + os);
+		CxLogger.info(LOG_TAG + " Using Eclipse-specific path (not JetBrains 'intellij' folder)");
 
 		if (os.contains("win")) {
 			String localAppData = System.getenv("LOCALAPPDATA");
@@ -127,7 +127,7 @@ public final class McpSettingsInjector {
 				throw new IllegalStateException("%LOCALAPPDATA% environment variable not set on Windows");
 			}
 			Path path = Paths.get(localAppData, "github-copilot", "eclipse", "mcp.json");
-			CxLogger.debug(LOG_TAG + " Windows config path: " + path.toAbsolutePath());
+			CxLogger.info(LOG_TAG + " Windows config path: " + path.toAbsolutePath());
 			return path;
 		}
 
@@ -135,13 +135,13 @@ public final class McpSettingsInjector {
 		String xdgConfig = System.getenv("XDG_CONFIG_HOME");
 		if (xdgConfig != null && !xdgConfig.isBlank()) {
 			Path path = Paths.get(xdgConfig, "github-copilot", "eclipse", "mcp.json");
-			CxLogger.debug(LOG_TAG + " XDG_CONFIG_HOME path: " + path.toAbsolutePath());
+			CxLogger.info(LOG_TAG + " XDG_CONFIG_HOME path: " + path.toAbsolutePath());
 			return path;
 		}
 
 		// Fallback to ~/.config
 		Path path = Paths.get(home, ".config", "github-copilot", "eclipse", "mcp.json");
-		CxLogger.debug(LOG_TAG + " Fallback config path: " + path.toAbsolutePath());
+		CxLogger.info(LOG_TAG + " Fallback config path: " + path.toAbsolutePath());
 		return path;
 	}
 
@@ -151,7 +151,7 @@ public final class McpSettingsInjector {
 	 */
 	@SuppressWarnings("unchecked")
 	private static boolean mergeCheckmarxServer(Path configPath, String url, String token) throws Exception {
-		CxLogger.debug(LOG_TAG + " Reading existing MCP config...");
+		CxLogger.info(LOG_TAG + " Reading existing MCP config...");
 		Map<String, Object> root = readJson(configPath);
 
 		Map<String, Object> servers = (Map<String, Object>) root
@@ -172,14 +172,14 @@ public final class McpSettingsInjector {
 		Map<String, Object> existing = (Map<String, Object>) servers.get(mcpServerKey);
 
 		boolean changed = !Objects.equals(existing, serverEntry);
-		CxLogger.debug(LOG_TAG + " Config changed: " + changed);
+		CxLogger.info(LOG_TAG + " Config changed: " + changed);
 
 		if (!changed) {
-			CxLogger.debug(LOG_TAG + " Existing MCP entry matches new entry exactly");
+			CxLogger.info(LOG_TAG + " Existing MCP entry matches new entry exactly");
 			return false;
 		}
 
-		CxLogger.debug(LOG_TAG + " Updating MCP server entry in config");
+		CxLogger.info(LOG_TAG + " Updating MCP server entry in config");
 		servers.put(mcpServerKey, serverEntry);
 		root.put("servers", servers);
 
@@ -200,16 +200,16 @@ public final class McpSettingsInjector {
 	@SuppressWarnings("unchecked")
 	private static boolean removeCheckmarxServer(Path configPath) throws Exception {
 		if (!Files.exists(configPath)) {
-			CxLogger.debug(LOG_TAG + " Config file does not exist: " + configPath.toAbsolutePath());
+			CxLogger.info(LOG_TAG + " Config file does not exist: " + configPath.toAbsolutePath());
 			return false;
 		}
 
-		CxLogger.debug(LOG_TAG + " Reading MCP config for removal...");
+		CxLogger.info(LOG_TAG + " Reading MCP config for removal...");
 		Map<String, Object> root = readJson(configPath);
 		Object serversObj = root.get("servers");
 
 		if (!(serversObj instanceof Map)) {
-			CxLogger.debug(LOG_TAG + " 'servers' field not found or is not a map");
+			CxLogger.info(LOG_TAG + " 'servers' field not found or is not a map");
 			return false;
 		}
 
@@ -219,11 +219,11 @@ public final class McpSettingsInjector {
 		boolean removed = servers.remove(mcpServerKey) != null;
 
 		if (!removed) {
-			CxLogger.debug(LOG_TAG + " Checkmarx MCP entry not found in config");
+			CxLogger.info(LOG_TAG + " Checkmarx MCP entry not found in config");
 			return false;
 		}
 
-		CxLogger.debug(LOG_TAG + " Checkmarx MCP entry found and removed");
+		CxLogger.info(LOG_TAG + " Checkmarx MCP entry found and removed");
 		root.put("servers", servers);
 		Files.writeString(configPath,
 				MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root),
@@ -239,7 +239,7 @@ public final class McpSettingsInjector {
 	@SuppressWarnings("unchecked")
 	private static Map<String, Object> readJson(Path path) throws Exception {
 		if (!Files.exists(path)) {
-			CxLogger.debug(LOG_TAG + " Config file does not exist, creating new");
+			CxLogger.info(LOG_TAG + " Config file does not exist, creating new");
 			return emptyServersRoot();
 		}
 
@@ -248,13 +248,13 @@ public final class McpSettingsInjector {
 			Map<String, Object> map = MAPPER.readValue(content, new TypeReference<Map<String, Object>>() {
 			});
 			if (map == null || map.isEmpty()) {
-				CxLogger.debug(LOG_TAG + " Config file is empty or null, using empty root");
+				CxLogger.info(LOG_TAG + " Config file is empty or null, using empty root");
 				return emptyServersRoot();
 			}
-			CxLogger.debug(LOG_TAG + " ✓ Config file read successfully");
+			CxLogger.info(LOG_TAG + " ✓ Config file read successfully");
 			return map;
 		} catch (Exception e) {
-			CxLogger.warn(LOG_TAG + " Failed to read existing config, starting fresh: " + e.getMessage());
+			CxLogger.warning(LOG_TAG + " Failed to read existing config, starting fresh: " + e.getMessage());
 			return emptyServersRoot();
 		}
 	}
@@ -282,18 +282,18 @@ public final class McpSettingsInjector {
 	 */
 	private static String tryExtractIssuer(String rawToken) {
 		if (rawToken == null || rawToken.isBlank()) {
-			CxLogger.debug(LOG_TAG + " Token is null or empty");
+			CxLogger.info(LOG_TAG + " Token is null or empty");
 			return null;
 		}
 
 		try {
 			String[] parts = rawToken.split("\\.");
 			if (parts.length < 2) {
-				CxLogger.debug(LOG_TAG + " Token does not have expected JWT format (parts=" + parts.length + ")");
+				CxLogger.info(LOG_TAG + " Token does not have expected JWT format (parts=" + parts.length + ")");
 				return null;
 			}
 
-			CxLogger.debug(LOG_TAG + " Decoding JWT payload...");
+			CxLogger.info(LOG_TAG + " Decoding JWT payload...");
 			byte[] payload = Base64.getUrlDecoder().decode(parts[1]);
 			String json = new String(payload, StandardCharsets.UTF_8);
 
@@ -302,14 +302,14 @@ public final class McpSettingsInjector {
 			Object iss = map.get("iss");
 
 			if (iss != null) {
-				CxLogger.debug(LOG_TAG + " ✓ Issuer extracted: " + iss.toString());
+				CxLogger.info(LOG_TAG + " ✓ Issuer extracted: " + iss.toString());
 				return iss.toString();
 			}
 
-			CxLogger.debug(LOG_TAG + " No 'iss' claim found in JWT payload");
+			CxLogger.info(LOG_TAG + " No 'iss' claim found in JWT payload");
 			return null;
 		} catch (Exception e) {
-			CxLogger.warn(LOG_TAG + " Failed to parse JWT token: " + e.getMessage());
+			CxLogger.warning(LOG_TAG + " Failed to parse JWT token: " + e.getMessage());
 			return null;
 		}
 	}
@@ -320,12 +320,12 @@ public final class McpSettingsInjector {
 	 */
 	private static String deriveBaseUrlFromIssuer(String issuer) {
 		if (issuer == null || issuer.isBlank()) {
-			CxLogger.debug(LOG_TAG + " Issuer is null/empty, using fallback base URL");
+			CxLogger.info(LOG_TAG + " Issuer is null/empty, using fallback base URL");
 			return FALLBACK_BASE;
 		}
 
 		try {
-			CxLogger.debug(LOG_TAG + " Deriving base URL from issuer: " + issuer);
+			CxLogger.info(LOG_TAG + " Deriving base URL from issuer: " + issuer);
 			String host = URI.create(issuer).getHost();
 
 			if (host != null && host.contains("iam.checkmarx")) {
@@ -335,10 +335,10 @@ public final class McpSettingsInjector {
 				return baseUrl;
 			}
 
-			CxLogger.debug(LOG_TAG + " Host does not match iam.checkmarx pattern, using fallback");
+			CxLogger.info(LOG_TAG + " Host does not match iam.checkmarx pattern, using fallback");
 			return FALLBACK_BASE;
 		} catch (Exception e) {
-			CxLogger.warn(LOG_TAG + " Failed to derive base URL from issuer: " + e.getMessage());
+			CxLogger.warning(LOG_TAG + " Failed to derive base URL from issuer: " + e.getMessage());
 			return FALLBACK_BASE;
 		}
 	}

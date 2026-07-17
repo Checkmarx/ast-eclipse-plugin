@@ -41,11 +41,11 @@ public class PluginLifecycleHandler implements BundleListener {
 		}
 		// BundleEvent.UNRESOLVED = 2
 		else if (event.getType() == BundleEvent.UNRESOLVED) {
-			CxLogger.debug(LOG_TAG + " Plugin unresolved event (may indicate uninstall preparation)");
+			CxLogger.info(LOG_TAG + " Plugin unresolved event (may indicate uninstall preparation)");
 		}
 		// BundleEvent.STOPPING = 8
 		else if (event.getType() == BundleEvent.STOPPING) {
-			CxLogger.debug(LOG_TAG + " Plugin stopping event");
+			CxLogger.info(LOG_TAG + " Plugin stopping event");
 		}
 	}
 
@@ -76,18 +76,18 @@ public class PluginLifecycleHandler implements BundleListener {
 	 */
 	private void clearAuthSession() {
 		try {
-			CxLogger.debug(LOG_TAG + " Clearing authentication session...");
+			CxLogger.info(LOG_TAG + " Clearing authentication session...");
 
 			// Clear API key preference
 			Preferences.clearApiKey();
-			CxLogger.debug(LOG_TAG + " ✓ API key cleared");
+			CxLogger.info(LOG_TAG + " ✓ API key cleared");
 
 			// Note: In Eclipse, OAuth tokens are typically cleared separately
 			// through OS credential management or browser-based auth stores
 
 			CxLogger.info(LOG_TAG + " ✓ Authentication session cleared");
 		} catch (Exception e) {
-			CxLogger.warn(LOG_TAG + " Failed to clear auth session: " + e.getMessage());
+			CxLogger.warning(LOG_TAG + " Failed to clear auth session: " + e.getMessage());
 		}
 	}
 
@@ -100,17 +100,17 @@ public class PluginLifecycleHandler implements BundleListener {
 	 */
 	private void removeMcpConfiguration() {
 		try {
-			CxLogger.debug(LOG_TAG + " Removing MCP configuration...");
+			CxLogger.info(LOG_TAG + " Removing MCP configuration...");
 
 			boolean removed = McpInstallService.uninstall();
 
 			if (removed) {
 				CxLogger.info(LOG_TAG + " ✓ MCP configuration removed");
 			} else {
-				CxLogger.debug(LOG_TAG + " No MCP configuration found to remove");
+				CxLogger.info(LOG_TAG + " No MCP configuration found to remove");
 			}
 		} catch (Exception e) {
-			CxLogger.warn(LOG_TAG + " Failed to remove MCP configuration: " + e.getMessage());
+			CxLogger.warning(LOG_TAG + " Failed to remove MCP configuration: " + e.getMessage());
 		}
 	}
 }

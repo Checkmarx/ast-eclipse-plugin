@@ -99,7 +99,7 @@ public class PluginStartup implements IStartup {
 
 					// Attempt MCP installation if user is authenticated
 					// This happens asynchronously in the background
-					CxLogger.debug("[STARTUP] Triggering MCP auto-install...");
+					CxLogger.info("[STARTUP] Triggering MCP auto-install...");
 					McpInstallService.attemptAutoInstall();
 				}
 			} catch (PartInitException e) {
