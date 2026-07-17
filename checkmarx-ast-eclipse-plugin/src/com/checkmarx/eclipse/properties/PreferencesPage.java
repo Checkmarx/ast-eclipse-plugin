@@ -26,6 +26,7 @@ import com.checkmarx.eclipse.utils.CxLogger;
 import com.checkmarx.eclipse.utils.PluginConstants;
 import com.checkmarx.eclipse.utils.PluginUtils;
 import com.checkmarx.eclipse.views.ui.WelcomeDialog;
+import com.checkmarx.eclipse.devassist.configuration.McpInstallService;
 import org.eclipse.swt.widgets.Link;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.browser.IWorkbenchBrowserSupport;
@@ -145,6 +146,10 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 
 					// Show welcome dialog on successful authentication
 					if (result != null && result.contains(PluginConstants.AUTH_SUCCESS_PATTERN)) {
+						// Trigger MCP auto-installation after successful authentication
+						CxLogger.info("[PREFS] Authentication successful, triggering MCP auto-install...");
+						McpInstallService.attemptAutoInstall();
+
 						// Fetch MCP enabled status from server asynchronously
 						CompletableFuture.supplyAsync(() -> {
 							try {
