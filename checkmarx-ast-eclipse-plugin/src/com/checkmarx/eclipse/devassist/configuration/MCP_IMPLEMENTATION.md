@@ -9,9 +9,10 @@ This document describes the implementation of MCP (Model Context Protocol) injec
 **File:** `McpSettingsInjector.java`
 
 Responsible for low-level MCP configuration file operations:
-- **Location:** Platform-specific Copilot config directory
-  - Windows: `%LOCALAPPDATA%/github-copilot/intellij/mcp.json`
-  - macOS/Linux: `~/.config/github-copilot/intellij/mcp.json`
+- **Location:** Platform-specific Copilot config directory (Eclipse-specific)
+  - Windows: `%LOCALAPPDATA%/github-copilot/eclipse/mcp.json`
+  - macOS/Linux: `~/.config/github-copilot/eclipse/mcp.json`
+  - **Note:** Uses `eclipse` folder (not `intellij`) to avoid conflicts with JetBrains IDEs
 
 - **Operations:**
   - `installForCopilot(token)` - Adds/updates Checkmarx MCP server entry
@@ -117,7 +118,7 @@ McpSettingsInjector.installForCopilot(apiKey)
 [MCP-INJECTOR] Reading existing MCP config...
 [MCP-INJECTOR] Config changed: true
 [MCP-INJECTOR] Updating MCP server entry in config
-[MCP-INJECTOR] ✓ MCP config written to: /Users/user/.config/github-copilot/intellij/mcp.json
+[MCP-INJECTOR] ✓ MCP config written to: /Users/user/.config/github-copilot/eclipse/mcp.json
 [MCP-INJECTOR] ✓ MCP configuration installed/updated successfully
 [MCP-INSTALL] ✓ MCP installation completed successfully (config modified)
 ```
@@ -215,7 +216,12 @@ The `mcp.json` file structure (generated):
    - Eclipse: Uses Eclipse's `ScopedPreferenceStore`
    - Reason: Different preference systems
 
-4. **Origin Header:**
+4. **IDE-Specific Paths:**
+   - JetBrains: `~/.config/github-copilot/intellij/mcp.json`
+   - Eclipse: `~/.config/github-copilot/eclipse/mcp.json`
+   - Reason: Separate configs for each IDE to prevent conflicts
+
+5. **Origin Header:**
    - JetBrains: "jetbrains-agent"
    - Eclipse: "eclipse-plugin"
    - Reason: Different client identification

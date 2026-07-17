@@ -109,21 +109,24 @@ public final class McpSettingsInjector {
 
 	/**
 	 * Resolves the platform-specific Copilot MCP configuration file path.
-	 * Windows: %LOCALAPPDATA%/github-copilot/intellij/mcp.json
-	 * macOS/Linux: ~/.config/github-copilot/intellij/mcp.json
+	 *
+	 * Uses Eclipse-specific subdirectory to avoid conflicts with JetBrains IDEs:
+	 * Windows: %LOCALAPPDATA%/github-copilot/eclipse/mcp.json
+	 * macOS/Linux: ~/.config/github-copilot/eclipse/mcp.json
 	 */
 	private static Path resolveCopilotMcpConfigPath() {
 		String os = System.getProperty("os.name").toLowerCase(Locale.ENGLISH);
 		String home = System.getProperty("user.home");
 
 		CxLogger.debug(LOG_TAG + " Resolving MCP config path for OS: " + os);
+		CxLogger.debug(LOG_TAG + " Using Eclipse-specific path (not JetBrains 'intellij' folder)");
 
 		if (os.contains("win")) {
 			String localAppData = System.getenv("LOCALAPPDATA");
 			if (localAppData == null || localAppData.isBlank()) {
 				throw new IllegalStateException("%LOCALAPPDATA% environment variable not set on Windows");
 			}
-			Path path = Paths.get(localAppData, "github-copilot", "intellij", "mcp.json");
+			Path path = Paths.get(localAppData, "github-copilot", "eclipse", "mcp.json");
 			CxLogger.debug(LOG_TAG + " Windows config path: " + path.toAbsolutePath());
 			return path;
 		}
@@ -131,13 +134,13 @@ public final class McpSettingsInjector {
 		// macOS and Linux
 		String xdgConfig = System.getenv("XDG_CONFIG_HOME");
 		if (xdgConfig != null && !xdgConfig.isBlank()) {
-			Path path = Paths.get(xdgConfig, "github-copilot", "intellij", "mcp.json");
+			Path path = Paths.get(xdgConfig, "github-copilot", "eclipse", "mcp.json");
 			CxLogger.debug(LOG_TAG + " XDG_CONFIG_HOME path: " + path.toAbsolutePath());
 			return path;
 		}
 
 		// Fallback to ~/.config
-		Path path = Paths.get(home, ".config", "github-copilot", "intellij", "mcp.json");
+		Path path = Paths.get(home, ".config", "github-copilot", "eclipse", "mcp.json");
 		CxLogger.debug(LOG_TAG + " Fallback config path: " + path.toAbsolutePath());
 		return path;
 	}
