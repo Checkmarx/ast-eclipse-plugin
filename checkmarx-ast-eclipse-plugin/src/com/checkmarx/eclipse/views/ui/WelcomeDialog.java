@@ -54,6 +54,10 @@ public class WelcomeDialog extends TitleAreaDialog {
 		this.mcpEnabled = mcpEnabled;
 		this.settingsManager = settingsManager;
 		setShellStyle(getShellStyle() | SWT.RESIZE);
+
+		// Log MCP status for debugging
+		String mcpStatus = mcpEnabled ? "ENABLED" : "DISABLED";
+		com.checkmarx.eclipse.utils.CxLogger.debug("[WELCOME] MCP status: " + mcpStatus);
 	}
 
 	@Override

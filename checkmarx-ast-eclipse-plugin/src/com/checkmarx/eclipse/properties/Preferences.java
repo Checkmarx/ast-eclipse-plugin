@@ -35,5 +35,10 @@ public class Preferences {
 		IPreferenceStore prefStore = Activator.getDefault().getPreferenceStore();
 		prefStore.setValue(key, value);
 	}
-	
+
+	public static void clearApiKey() {
+		IPreferenceStore prefStore = Activator.getDefault().getPreferenceStore();
+		prefStore.setValue(API_KEY, "");
+	}
+
 }

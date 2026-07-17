@@ -11,6 +11,7 @@ import com.checkmarx.eclipse.devassist.problems.CxProblemsServices;
 import com.checkmarx.eclipse.devassist.problems.hover.JavaEditorHoverListener;
 import com.checkmarx.eclipse.devassist.problems.commands.ProblemsViewFilterManager;
 import com.checkmarx.eclipse.devassist.ui.findings.realtime.CheckmarxEditorListener;
+import com.checkmarx.eclipse.devassist.configuration.McpInstallService;
 import com.checkmarx.eclipse.views.ui.WelcomeDialog;
 import com.checkmarx.eclipse.properties.Preferences;
 import com.checkmarx.eclipse.runner.TenantSettingsProvider;
@@ -95,6 +96,11 @@ public class PluginStartup implements IStartup {
 
 					// Load mock problems for demonstration/testing
 					CxProblemsServices.publisher().publish();
+
+					// Attempt MCP installation if user is authenticated
+					// This happens asynchronously in the background
+					CxLogger.debug("[STARTUP] Triggering MCP auto-install...");
+					McpInstallService.attemptAutoInstall();
 				}
 			} catch (PartInitException e) {
 				CxLogger.error("Failed to open Checkmarx views on startup: " + e.getMessage(), e);
