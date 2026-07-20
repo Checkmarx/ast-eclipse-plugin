@@ -5,6 +5,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.eclipse.core.resources.IProject;
 
 import com.checkmarx.eclipse.utils.CxLogger;
+import com.checkmarx.eclipse.devassist.backend.scanner.ScannerService;
 
 /**
  * Manages the lifecycle of scanner services for a project.
@@ -115,24 +116,28 @@ public class ScannerRegistry {
 
 	/**
 	 * Create a scanner instance by type.
-	 * This is a factory method that will be filled in during Phase 2.
 	 *
 	 * @param type Scanner type
 	 * @return Scanner instance
 	 */
 	private Object createScannerInstance(ScannerType type) {
-		switch (type) {
-		case OSS:
-			// return new OssScannerService(project);
-		case SECRETS:
-			// return new SecretsScannerService(project);
-		case CONTAINERS:
-			// return new ContainerScannerService(project);
-		case IAC:
-			// return new IacScannerService(project);
-		case ASCA:
-			// return new AscaScannerService(project);
-		default:
+		try {
+			switch (type) {
+			case OSS:
+				return new com.checkmarx.eclipse.devassist.backend.scanner.OssScannerService(project);
+			case SECRETS:
+				return new com.checkmarx.eclipse.devassist.backend.scanner.SecretsScannerService(project);
+			case CONTAINERS:
+				return new com.checkmarx.eclipse.devassist.backend.scanner.ContainerScannerService(project);
+			case IAC:
+				return new com.checkmarx.eclipse.devassist.backend.scanner.IacScannerService(project);
+			case ASCA:
+				return new com.checkmarx.eclipse.devassist.backend.scanner.AscaScannerService(project);
+			default:
+				return null;
+			}
+		} catch (Exception e) {
+			CxLogger.error(LOG_TAG + " Error creating scanner " + type + ": " + e.getMessage(), e);
 			return null;
 		}
 	}
