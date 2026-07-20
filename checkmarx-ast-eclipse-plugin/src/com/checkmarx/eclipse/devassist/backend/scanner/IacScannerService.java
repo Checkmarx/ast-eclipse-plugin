@@ -114,32 +114,66 @@ public class IacScannerService extends BaseScannerService {
 	/**
 	 * Execute IaC scan on a configuration file.
 	 *
-	 * In a real implementation, this would:
-	 * 1. Parse the IaC file (YAML, JSON, HCL, etc.)
-	 * 2. Build resource topology
-	 * 3. Check against security policies
-	 * 4. Validate configuration against best practices
-	 * 5. Return misconfigurations
-	 *
-	 * For now, returns empty list (Phase 3 will integrate with CxWrapperFactory).
+	 * Generates realistic mock IaC misconfigurations for demonstration.
+	 * In production, this would call CxWrapperFactory to execute actual scan.
 	 *
 	 * @param filePath IaC configuration file to scan
-	 * @return Raw scanner results
+	 * @return Mock IaC misconfigurations
 	 * @throws Exception if scan fails
 	 */
 	@Override
 	protected Object executeNativeScanner(String filePath) throws Exception {
 		CxLogger.info(logTag + " Executing IaC scan on: " + filePath);
 
-		// TODO: Phase 3 - Call CxWrapperFactory to execute actual scan
-		// For now, return placeholder
-		return new ArrayList<Object>();
+		// Generate realistic mock IaC findings for demo
+		List<MockIacMisconfiguration> results = new ArrayList<>();
+
+		String lowerPath = filePath.toLowerCase();
+		String framework = detectFramework(filePath);
+
+		if (framework.equals("Terraform")) {
+			results.add(new MockIacMisconfiguration("AWS_S3_PUBLIC",
+				"S3 bucket publicly accessible",
+				"S3 bucket has public-read or public-read-write ACL", "CRITICAL",
+				8, "Set acl to private or use bucket policy"));
+
+			results.add(new MockIacMisconfiguration("AWS_SECURITY_GROUP_WIDE_OPEN",
+				"Security group allows unrestricted access",
+				"Security group allows 0.0.0.0/0 on sensitive ports",
+				"HIGH", 15,
+				"Restrict CIDR to known IP ranges"));
+
+			results.add(new MockIacMisconfiguration("AWS_RDS_NO_ENCRYPTION",
+				"RDS database not encrypted at rest",
+				"Database cluster storage is not encrypted", "HIGH", 22,
+				"Enable storage_encrypted = true"));
+		} else if (framework.equals("Kubernetes")) {
+			results.add(new MockIacMisconfiguration("K8S_POD_RUN_AS_ROOT",
+				"Pod runs with root privileges",
+				"securityContext.runAsNonRoot not set to true", "HIGH",
+				10,
+				"Set runAsNonRoot: true and runAsUser to non-zero"));
+
+			results.add(new MockIacMisconfiguration("K8S_NO_RESOURCE_LIMITS",
+				"No resource limits defined",
+				"Pod has no CPU or memory limits",
+				"MEDIUM", 18,
+				"Define limits for CPU and memory"));
+
+			results.add(new MockIacMisconfiguration("K8S_NODE_PORT_EXPOSED",
+				"Service exposed via NodePort",
+				"Service uses NodePort which exposes to all nodes",
+				"MEDIUM", 25,
+				"Use ClusterIP or Ingress instead"));
+		}
+
+		CxLogger.info(logTag + " ✓ Generated " + results.size() +
+			" mock IaC misconfigurations");
+		return results;
 	}
 
 	/**
 	 * Adapt IaC scan results to ScanIssue model.
-	 *
-	 * Converts IaC misconfigurations to standardized ScanIssue objects.
 	 *
 	 * @param rawResults Raw results from executeNativeScanner()
 	 * @return List of ScanIssue objects
@@ -148,24 +182,58 @@ public class IacScannerService extends BaseScannerService {
 	protected List<ScanIssue> adaptResults(Object rawResults) {
 		List<ScanIssue> issues = new ArrayList<>();
 
-		// TODO: Phase 3 - Parse raw results and create ScanIssue objects
-		// Example:
-		// for (IacMisconfiguration config : (List<IacMisconfiguration>) rawResults) {
-		//     ScanIssue issue = new ScanIssue();
-		//     issue.setScanIssueId(config.getId());
-		//     issue.setTitle(config.getRuleTitle());
-		//     issue.setSeverity(config.getSeverity());
-		//     issue.setDescription(config.getDescription());
-		//     issue.setProblematicLineNumber(config.getLineNumber());
-		//     issue.setRemediationAdvise(config.getRemediationAdvice());
-		//
-		//     // Add resource context
-		//     issue.setRuleId(config.getRuleId());
-		//
-		//     issues.add(issue);
-		// }
+		if (!(rawResults instanceof List)) {
+			return issues;
+		}
+
+		List<?> results = (List<?>) rawResults;
+		int id = 4000;
+
+		for (Object result : results) {
+			if (!(result instanceof MockIacMisconfiguration)) {
+				continue;
+			}
+
+			MockIacMisconfiguration config = (MockIacMisconfiguration) result;
+			ScanIssue issue = new ScanIssue();
+
+			issue.setScanIssueId("IAC-" + id++);
+			issue.setTitle(config.title);
+			issue.setDescription(config.description + " - " + config.details);
+			issue.setSeverity(config.severity);
+			issue.setProblematicLineNumber(config.line_number);
+			issue.setRemediationAdvise(config.remediation);
+			issue.setRuleId(Integer.parseInt(
+				config.title.replaceAll("[^0-9]", "0" + id).substring(0, 5)));
+			issue.setScanEngine(
+				com.checkmarx.eclipse.devassist.backend.scanner.ScannerService.ScannerType.IAC);
+
+			issues.add(issue);
+		}
 
 		return issues;
+	}
+
+	/**
+	 * Mock IaC misconfiguration data for demo.
+	 */
+	static class MockIacMisconfiguration {
+		String title;
+		String description;
+		String details;
+		String severity;
+		int line_number;
+		String remediation;
+
+		MockIacMisconfiguration(String title, String desc, String details,
+			String severity, int line, String remediation) {
+			this.title = title;
+			this.description = desc;
+			this.details = details;
+			this.severity = severity;
+			this.line_number = line;
+			this.remediation = remediation;
+		}
 	}
 
 	@Override

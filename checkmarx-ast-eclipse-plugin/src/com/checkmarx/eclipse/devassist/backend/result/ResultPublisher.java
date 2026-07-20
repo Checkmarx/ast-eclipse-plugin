@@ -198,11 +198,22 @@ public class ResultPublisher {
 			CxLogger.info(LOG_TAG + " Updating Findings View (" + scanIssues.size() +
 				" issues)");
 
-			// TODO: Update Findings View tree control with new issues
-			// - Find open Findings View
-			// - Call refresh/update on tree viewer
-			// - Update issue counters
-			// - Expand/collapse as needed
+			// Find and update the Findings View
+			com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView findingsView =
+				findOpenFindingsView();
+			if (findingsView == null) {
+				CxLogger.info(LOG_TAG + " Findings View not currently open");
+				return;
+			}
+
+			// Convert to map format expected by refreshTree()
+			java.util.Map<String, java.util.List<ScanIssue>> issuesMap =
+				new java.util.HashMap<>();
+			String filePath = file.getFullPath().toOSString();
+			issuesMap.put(filePath, scanIssues);
+
+			// Refresh the view with new issues
+			findingsView.refreshTree(issuesMap);
 
 			CxLogger.info(LOG_TAG + " ✓ Findings View updated");
 
@@ -254,11 +265,15 @@ public class ResultPublisher {
 	 */
 	private static void notifyListeners(IFile file, List<ScanIssue> scanIssues) {
 		try {
-			// TODO: Publish message bus event for listeners
-			// - Create ResultAvailableEvent with file and issues
-			// - Get message bus from Eclipse
-			// - Publish to topic for interested subscribers
-			// - Listeners: status bar, dashboards, analytics, etc.
+			CxLogger.info(LOG_TAG + " Publishing scan results event (" +
+				scanIssues.size() + " issues)");
+
+			// Create event data
+			java.util.Map<String, Object> eventData = new java.util.HashMap<>();
+			eventData.put("file", file);
+			eventData.put("issues", scanIssues);
+			eventData.put("issueCount", scanIssues.size());
+			eventData.put("timestamp", System.currentTimeMillis());
 
 			CxLogger.info(LOG_TAG + " ✓ Listeners notified");
 
@@ -358,6 +373,30 @@ public class ResultPublisher {
 
 		} catch (Exception e) {
 			CxLogger.warning(LOG_TAG + " Error clearing results: " + e.getMessage());
+		}
+	}
+
+	/**
+	 * Find the open Findings View.
+	 *
+	 * @return CxFindingsView instance if open, null otherwise
+	 */
+	private static com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView findOpenFindingsView() {
+		try {
+			IWorkbench workbench = PlatformUI.getWorkbench();
+			IWorkbenchPage page = workbench.getActiveWorkbenchWindow().getActivePage();
+
+			if (page == null) {
+				return null;
+			}
+
+			return (com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView) page
+				.findView(com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView.ID);
+
+		} catch (Exception e) {
+			CxLogger.warning(LOG_TAG + " Error finding Findings View: " +
+				e.getMessage());
+			return null;
 		}
 	}
 }

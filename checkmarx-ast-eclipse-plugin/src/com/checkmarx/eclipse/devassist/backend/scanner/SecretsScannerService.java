@@ -114,32 +114,62 @@ public class SecretsScannerService extends BaseScannerService {
 	/**
 	 * Execute secrets scan on a file.
 	 *
-	 * In a real implementation, this would:
-	 * 1. Read the file content
-	 * 2. Run regex patterns to detect secrets (API keys, passwords, tokens)
-	 * 3. Query Checkmarx secrets database
-	 * 4. Return detected secrets
-	 *
-	 * For now, returns empty list (Phase 3 will integrate with CxWrapperFactory).
+	 * Generates realistic mock secrets for demonstration.
+	 * In production, this would call CxWrapperFactory to execute actual scan.
 	 *
 	 * @param filePath File to scan
-	 * @return Raw scanner results
+	 * @return Mock secrets detected
 	 * @throws Exception if scan fails
 	 */
 	@Override
 	protected Object executeNativeScanner(String filePath) throws Exception {
 		CxLogger.info(logTag + " Executing secrets scan on: " + filePath);
 
-		// TODO: Phase 3 - Call CxWrapperFactory to execute actual scan
-		// For now, return placeholder
-		return new ArrayList<Object>();
+		// Generate realistic mock secrets for demo
+		List<MockSecret> results = new ArrayList<>();
+
+		String lowerPath = filePath.toLowerCase();
+
+		// Simulate finding secrets in application code
+		if (lowerPath.contains(".java") || lowerPath.contains(".py") ||
+			lowerPath.contains(".js")) {
+
+			results.add(new MockSecret("API_KEY found",
+				"AWS API Key (AKIA...) exposed in source code", "CRITICAL",
+				15, "aws_key_secret"));
+			results.add(new MockSecret("DATABASE_PASSWORD found",
+				"Database password hardcoded in connection string", "CRITICAL",
+				25, "password123"));
+			results.add(new MockSecret("GITHUB_TOKEN found",
+				"GitHub personal access token exposed", "CRITICAL", 35,
+				"ghp_1234567890..."));
+			results.add(new MockSecret("OAUTH_BEARER_TOKEN found",
+				"OAuth bearer token in environment configuration", "HIGH", 42,
+				"Bearer eyJhbGc..."));
+		}
+
+		// Simulate finding secrets in config files
+		if (lowerPath.contains(".yaml") || lowerPath.contains(".yml") ||
+			lowerPath.contains(".json") || lowerPath.contains(".conf")) {
+
+			results.add(new MockSecret("DATABASE_PASSWORD found",
+				"MySQL root password hardcoded in config", "CRITICAL", 10,
+				"root_password_123"));
+			results.add(new MockSecret("SLACK_TOKEN found",
+				"Slack webhook URL exposed in configuration", "HIGH", 20,
+				"https://hooks.slack.com/services/..."));
+			results.add(new MockSecret("SSH_PRIVATE_KEY found",
+				"SSH private key embedded in config file", "CRITICAL", 30,
+				"-----BEGIN RSA PRIVATE KEY-----"));
+		}
+
+		CxLogger.info(logTag + " ✓ Generated " + results.size() +
+			" mock secrets");
+		return results;
 	}
 
 	/**
 	 * Adapt secrets scan results to ScanIssue model.
-	 *
-	 * Converts detected secrets to standardized ScanIssue objects
-	 * with severity, remediation advice, etc.
 	 *
 	 * @param rawResults Raw results from executeNativeScanner()
 	 * @return List of ScanIssue objects
@@ -148,20 +178,56 @@ public class SecretsScannerService extends BaseScannerService {
 	protected List<ScanIssue> adaptResults(Object rawResults) {
 		List<ScanIssue> issues = new ArrayList<>();
 
-		// TODO: Phase 3 - Parse raw results and create ScanIssue objects
-		// Example:
-		// for (SecretFinding secret : (List<SecretFinding>) rawResults) {
-		//     ScanIssue issue = new ScanIssue();
-		//     issue.setScanIssueId(secret.getId());
-		//     issue.setTitle("Hardcoded " + secret.getType());
-		//     issue.setSeverity(secret.getType().equals("api_key") ? "CRITICAL" : "HIGH");
-		//     issue.setDescription(secret.getPattern().getDescription());
-		//     issue.setRemediationAdvise("Remove " + secret.getType() + " from source code");
-		//     issue.setProblematicLineNumber(secret.getLineNumber());
-		//     issues.add(issue);
-		// }
+		if (!(rawResults instanceof List)) {
+			return issues;
+		}
+
+		List<?> results = (List<?>) rawResults;
+		int id = 1000;
+
+		for (Object result : results) {
+			if (!(result instanceof MockSecret)) {
+				continue;
+			}
+
+			MockSecret secret = (MockSecret) result;
+			ScanIssue issue = new ScanIssue();
+
+			issue.setScanIssueId("SEC-" + id++);
+			issue.setTitle(secret.type);
+			issue.setDescription(secret.description);
+			issue.setSeverity(secret.severity);
+			issue.setProblematicLineNumber(secret.line_number);
+			issue.setRemediationAdvise("Remove " + secret.type +
+				" from source code and use environment variables instead");
+			issue.setSecretValue("***MASKED***");
+			issue.setScanEngine(
+				com.checkmarx.eclipse.devassist.backend.scanner.ScannerService.ScannerType.SECRETS);
+
+			issues.add(issue);
+		}
 
 		return issues;
+	}
+
+	/**
+	 * Mock secret data for demo.
+	 */
+	static class MockSecret {
+		String type;
+		String description;
+		String severity;
+		int line_number;
+		String value;
+
+		MockSecret(String type, String desc, String severity, int line,
+			String value) {
+			this.type = type;
+			this.description = desc;
+			this.severity = severity;
+			this.line_number = line;
+			this.value = value;
+		}
 	}
 
 	@Override
