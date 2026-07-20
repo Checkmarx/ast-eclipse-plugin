@@ -21,6 +21,7 @@ import org.eclipse.ui.texteditor.ITextEditor;
 import com.checkmarx.eclipse.devassist.backend.DevAssistScanStateHolder;
 import com.checkmarx.eclipse.devassist.backend.ProblemHolderService;
 import com.checkmarx.eclipse.devassist.backend.ScannerRegistry;
+import com.checkmarx.eclipse.devassist.backend.result.ResultPublisher;
 import com.checkmarx.eclipse.devassist.backend.scanner.ScanManager;
 import com.checkmarx.eclipse.devassist.ui.findings.model.ScanIssue;
 import com.checkmarx.eclipse.utils.CxLogger;
@@ -281,10 +282,10 @@ public class FileEditorListener implements IPartListener2, IDocumentListener {
 				CxLogger.info(LOG_TAG + " ✓ Scan complete, found " + issues.size() +
 					" issues: " + filePath);
 
-				// TODO: Phase 4 - Update UI with findings
-				// - Update Problems View markers
-				// - Render gutter icons in editor
-				// - Update Findings View
+				// Phase 4 - Publish results to all UI components
+				if (!issues.isEmpty()) {
+					ResultPublisher.publishResults(file, issues);
+				}
 
 			} catch (Exception e) {
 				CxLogger.error(LOG_TAG + " Scan failed: " + e.getMessage(), e);
