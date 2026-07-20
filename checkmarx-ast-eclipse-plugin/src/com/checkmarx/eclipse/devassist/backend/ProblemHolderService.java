@@ -25,6 +25,10 @@ public class ProblemHolderService {
 
 	private static final String LOG_TAG = "[PROBLEM-HOLDER]";
 
+	// Session property key for storing service in project
+	public static final String SERVICE_KEY = ProblemHolderService.class.getName() +
+		".INSTANCE";
+
 	private final ConcurrentHashMap<String, List<ScanIssue>> fileToScanIssues =
 		new ConcurrentHashMap<>();
 	private final ConcurrentHashMap<String, List<ScanProblem>> fileToScanProblems =

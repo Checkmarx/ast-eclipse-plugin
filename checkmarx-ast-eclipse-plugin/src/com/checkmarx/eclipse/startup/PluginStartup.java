@@ -12,6 +12,8 @@ import com.checkmarx.eclipse.devassist.problems.hover.JavaEditorHoverListener;
 import com.checkmarx.eclipse.devassist.problems.commands.ProblemsViewFilterManager;
 import com.checkmarx.eclipse.devassist.ui.findings.realtime.CheckmarxEditorListener;
 import com.checkmarx.eclipse.devassist.configuration.McpInstallService;
+import com.checkmarx.eclipse.devassist.backend.GlobalScannerController;
+import com.checkmarx.eclipse.devassist.backend.listener.ProjectLifecycleListener;
 import com.checkmarx.eclipse.views.ui.WelcomeDialog;
 import com.checkmarx.eclipse.properties.Preferences;
 import com.checkmarx.eclipse.runner.TenantSettingsProvider;
@@ -34,6 +36,7 @@ public class PluginStartup implements IStartup {
 	private static final String FINDINGS_VIEW_ID = "com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView";
 	private static JavaEditorHoverListener hoverListener; // Keep strong reference to prevent GC
 	private static CheckmarxEditorListener realtimeScanListener; // Keep strong reference to prevent GC
+	private static ProjectLifecycleListener projectListener; // Keep strong reference to prevent GC
 
 	@Override
 	public void earlyStartup() {
@@ -101,6 +104,11 @@ public class PluginStartup implements IStartup {
 					// This happens asynchronously in the background
 					CxLogger.info("[STARTUP] Triggering MCP auto-install...");
 					McpInstallService.attemptAutoInstall();
+
+					// Initialize backend scanner infrastructure (Phase 3)
+					CxLogger.info("[STARTUP] Initializing backend scanner infrastructure...");
+					initializeBackendScanners();
+					CxLogger.info("[STARTUP] ✓ Backend scanner infrastructure initialized");
 				}
 			} catch (PartInitException e) {
 				CxLogger.error("Failed to open Checkmarx views on startup: " + e.getMessage(), e);
@@ -143,5 +151,32 @@ public class PluginStartup implements IStartup {
 				}
 			});
 		});
+	}
+
+	/**
+	 * Initialize backend scanner infrastructure.
+	 *
+	 * Creates and registers:
+	 * - GlobalScannerController (application-level singleton)
+	 * - ProjectLifecycleListener (project open/close listener)
+	 *
+	 * This enables real-time scanning on file modifications.
+	 */
+	private void initializeBackendScanners() {
+		try {
+			// Initialize global scanner controller
+			GlobalScannerController controller = GlobalScannerController.getInstance();
+			CxLogger.info("[STARTUP] ✓ GlobalScannerController initialized");
+			CxLogger.info(controller.getStateReport());
+
+			// Register project lifecycle listener
+			projectListener = new ProjectLifecycleListener();
+			projectListener.register();
+			CxLogger.info("[STARTUP] ✓ ProjectLifecycleListener registered");
+
+		} catch (Exception e) {
+			CxLogger.error("[STARTUP] Error initializing backend scanners: " +
+				e.getMessage(), e);
+		}
 	}
 }
