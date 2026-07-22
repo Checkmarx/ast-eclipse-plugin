@@ -7,10 +7,8 @@ import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.PlatformUI;
 
 import com.checkmarx.eclipse.utils.CxLogger;
-import com.checkmarx.eclipse.devassist.problems.CxProblemsServices;
-import com.checkmarx.eclipse.devassist.problems.hover.JavaEditorHoverListener;
-import com.checkmarx.eclipse.devassist.problems.commands.ProblemsViewFilterManager;
 import com.checkmarx.eclipse.devassist.ui.findings.realtime.CheckmarxEditorListener;
+import com.checkmarx.eclipse.devassist.ui.findings.realtime.FindingsEditorHoverListener;
 import com.checkmarx.eclipse.devassist.configuration.McpInstallService;
 import com.checkmarx.eclipse.devassist.backend.GlobalScannerController;
 import com.checkmarx.eclipse.devassist.backend.listener.ProjectLifecycleListener;
@@ -34,7 +32,7 @@ public class PluginStartup implements IStartup {
 
 	private static final String VIEW_ID = "com.checkmarx.eclipse.views.CheckmarxView";
 	private static final String FINDINGS_VIEW_ID = "com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView";
-	private static JavaEditorHoverListener hoverListener; // Keep strong reference to prevent GC
+	private static FindingsEditorHoverListener hoverListener; // Keep strong reference to prevent GC
 	private static CheckmarxEditorListener realtimeScanListener; // Keep strong reference to prevent GC
 	private static ProjectLifecycleListener projectListener; // Keep strong reference to prevent GC
 
@@ -56,9 +54,11 @@ public class PluginStartup implements IStartup {
 						page.showView(FINDINGS_VIEW_ID);
 					}
 
-					// Register listener for hover installation on new/opened editors
-					hoverListener = new JavaEditorHoverListener();
+					// Register listener for custom hover on findings annotations
+					System.out.println("[STARTUP] Registering findings hover listener...");
+					hoverListener = new FindingsEditorHoverListener();
 					window.getPartService().addPartListener(hoverListener);
+					System.out.println("[STARTUP] ✓ Findings hover listener registered");
 
 					// Register listener for real-time scanning with 1-second debounce
 					// (Equivalent to JetBrains' LocalInspectionTool)
@@ -67,29 +67,6 @@ public class PluginStartup implements IStartup {
 					window.getPartService().addPartListener(realtimeScanListener);
 					System.out.println("[STARTUP] ✓ Real-time scanning listener registered");
 
-					// Install hover and real-time scanning on any already-open editors
-					if (page != null) {
-						org.eclipse.ui.IEditorReference[] editors = page.getEditorReferences();
-						for (org.eclipse.ui.IEditorReference editorRef : editors) {
-							org.eclipse.ui.IEditorPart editor = editorRef.getEditor(false);
-							if (editor != null) {
-								hoverListener.installHoverOnEditor(editor);
-								// Real-time scanning is also installed via the part listener
-								// (called automatically via partOpened/partActivated)
-							}
-						}
-					}
-
-					// Initialize Problems View filter manager
-					System.out.println("[STARTUP] Initializing Problems View filter manager...");
-					try {
-						ProblemsViewFilterManager filterManager = ProblemsViewFilterManager.getInstance();
-						filterManager.register();
-						System.out.println("[STARTUP] ✓ Problems View filter manager initialized");
-					} catch (Exception e) {
-						System.err.println("[STARTUP] Could not initialize filter manager: " + e.getMessage());
-					}
-
 					// Show welcome dialog if user is authenticated
 					// Future: Add preference tracking to show only on first login
 					if (isAuthenticated()) {
@@ -97,8 +74,8 @@ public class PluginStartup implements IStartup {
 						// Display.getDefault().asyncExec(() -> showWelcomeDialog(window));
 					}
 
-					// Load mock problems for demonstration/testing
-					CxProblemsServices.publisher().publish();
+					// REMOVED: Problems View integration disabled
+					// CxProblemsServices.publisher().publish();  // ← No longer publishing to Problems View
 
 					// Attempt MCP installation if user is authenticated
 					// This happens asynchronously in the background

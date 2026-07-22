@@ -12,7 +12,7 @@ import org.eclipse.core.runtime.preferences.ConfigurationScope;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 import org.osgi.service.prefs.BackingStoreException;
 
-import com.checkmarx.eclipse.devassist.problems.model.ScanProblem;
+import com.checkmarx.eclipse.devassist.ui.findings.model.ScanIssue;
 
 /**
  * Persistent storage for ignored problems. Uses Eclipse preferences to store
@@ -26,7 +26,7 @@ public class IgnoredProblemsStore {
 
 	private static final IgnoredProblemsStore INSTANCE = new IgnoredProblemsStore();
 	private final Set<String> ignoredProblemIds = Collections.synchronizedSet(new HashSet<>());
-	private final Map<String, ScanProblem> ignoredProblemsCache = Collections.synchronizedMap(new HashMap<>());
+	private final Map<String, ScanIssue> ignoredProblemsCache = Collections.synchronizedMap(new HashMap<>());
 	private final List<IgnoredProblemsListener> listeners = Collections.synchronizedList(new ArrayList<>());
 
 	private IgnoredProblemsStore() {
@@ -49,18 +49,18 @@ public class IgnoredProblemsStore {
 	}
 
 	/**
-	 * Add a problem to the ignored list with full problem details.
+	 * Add a finding to the ignored list with full finding details.
 	 * This allows findings from the Findings View to be properly displayed in the Ignored Problems View.
 	 */
-	public void ignoreProblem(ScanProblem problem) {
-		if (problem != null && problem.getId() != null) {
-			System.out.println("[IGNORED-STORE] ignoreProblem(ScanProblem) called with ID: " + problem.getId());
-			ignoreProblem(problem.getId());
-			// Cache the full problem details for later retrieval
-			ignoredProblemsCache.put(problem.getId(), problem);
-			System.out.println("[IGNORED-STORE] ✓ Cached problem details. Cache size: " + ignoredProblemsCache.size());
+	public void ignoreProblem(ScanIssue issue) {
+		if (issue != null && issue.getScanIssueId() != null) {
+			System.out.println("[IGNORED-STORE] ignoreProblem(ScanIssue) called with ID: " + issue.getScanIssueId());
+			ignoreProblem(issue.getScanIssueId());
+			// Cache the full issue details for later retrieval
+			ignoredProblemsCache.put(issue.getScanIssueId(), issue);
+			System.out.println("[IGNORED-STORE] ✓ Cached issue details. Cache size: " + ignoredProblemsCache.size());
 		} else {
-			System.out.println("[IGNORED-STORE] ✗ ERROR: problem is null or ID is null!");
+			System.out.println("[IGNORED-STORE] ✗ ERROR: issue is null or ID is null!");
 		}
 	}
 
@@ -91,50 +91,50 @@ public class IgnoredProblemsStore {
 	}
 
 	/**
-	 * Filter a list of problems, returning only non-ignored ones.
+	 * Filter a list of issues, returning only non-ignored ones.
 	 */
-	public List<ScanProblem> filterActiveProblems(List<ScanProblem> problems) {
-		List<ScanProblem> active = new ArrayList<>();
-		for (ScanProblem problem : problems) {
-			if (!isIgnored(problem.getId())) {
-				active.add(problem);
+	public List<ScanIssue> filterActiveProblems(List<ScanIssue> issues) {
+		List<ScanIssue> active = new ArrayList<>();
+		for (ScanIssue issue : issues) {
+			if (!isIgnored(issue.getScanIssueId())) {
+				active.add(issue);
 			}
 		}
 		return active;
 	}
 
 	/**
-	 * Get only ignored problems from a list.
+	 * Get only ignored issues from a list.
 	 */
-	public List<ScanProblem> getIgnoredProblems(List<ScanProblem> allProblems) {
-		List<ScanProblem> ignored = new ArrayList<>();
-		for (ScanProblem problem : allProblems) {
-			if (isIgnored(problem.getId())) {
-				ignored.add(problem);
+	public List<ScanIssue> getIgnoredProblems(List<ScanIssue> allIssues) {
+		List<ScanIssue> ignored = new ArrayList<>();
+		for (ScanIssue issue : allIssues) {
+			if (isIgnored(issue.getScanIssueId())) {
+				ignored.add(issue);
 			}
 		}
 		return ignored;
 	}
 
 	/**
-	 * Get all ignored problems including cached findings from the Findings View.
-	 * Combines problems from the provided list with cached problem details.
+	 * Get all ignored issues including cached findings from the Findings View.
+	 * Combines issues from the provided list with cached issue details.
 	 */
-	public List<ScanProblem> getAllIgnoredProblems(List<ScanProblem> allProblems) {
-		List<ScanProblem> result = new ArrayList<>();
+	public List<ScanIssue> getAllIgnoredProblems(List<ScanIssue> allIssues) {
+		List<ScanIssue> result = new ArrayList<>();
 
-		// First add ignored problems from the provided list
-		if (allProblems != null) {
-			for (ScanProblem problem : allProblems) {
-				if (isIgnored(problem.getId())) {
-					result.add(problem);
+		// First add ignored issues from the provided list
+		if (allIssues != null) {
+			for (ScanIssue issue : allIssues) {
+				if (isIgnored(issue.getScanIssueId())) {
+					result.add(issue);
 				}
 			}
 		}
 
-		// Then add any cached problems not yet in the result (e.g., findings from Findings View)
-		for (Map.Entry<String, ScanProblem> entry : ignoredProblemsCache.entrySet()) {
-			if (isIgnored(entry.getKey()) && !result.stream().anyMatch(p -> p.getId().equals(entry.getKey()))) {
+		// Then add any cached issues not yet in the result (e.g., findings from Findings View)
+		for (Map.Entry<String, ScanIssue> entry : ignoredProblemsCache.entrySet()) {
+			if (isIgnored(entry.getKey()) && !result.stream().anyMatch(i -> i.getScanIssueId().equals(entry.getKey()))) {
 				result.add(entry.getValue());
 			}
 		}

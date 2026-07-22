@@ -1,10 +1,13 @@
 package com.checkmarx.eclipse.devassist.backend.scanner;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.core.resources.IProject;
 
+import com.checkmarx.eclipse.devassist.ui.findings.model.Location;
+import com.checkmarx.eclipse.devassist.ui.findings.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.ui.findings.model.ScanIssue;
 import com.checkmarx.eclipse.utils.CxLogger;
 
@@ -81,58 +84,96 @@ public class OssScannerService extends BaseScannerService {
 	}
 
 	/**
-	 * Execute OSS scan on a manifest file.
+	 * Execute OSS scan using real Checkmarx server API via reflection.
 	 *
-	 * Generates realistic mock OSS vulnerabilities for demonstration.
-	 * In production, this would call CxWrapperFactory to execute actual scan.
+	 * Uses reflection to call CxWrapperFactory at runtime (available in classpath
+	 * even though not available at compile-time due to Tycho limitations).
 	 *
 	 * @param filePath Manifest file to scan
-	 * @return Mock OSS vulnerabilities
+	 * @return Real OssRealtimeResults from Checkmarx server, or null if API unavailable
 	 * @throws Exception if scan fails
 	 */
 	@Override
 	protected Object executeNativeScanner(String filePath) throws Exception {
+		System.out.println(logTag + " [OSS-SCAN] ╔════════════════════════════════════════════╗");
+		System.out.println(logTag + " [OSS-SCAN] ║ OSS SCANNER: EXECUTING SCAN                 ║");
+		System.out.println(logTag + " [OSS-SCAN] ╚════════════════════════════════════════════╝");
+		System.out.println(logTag + " [OSS-SCAN] File: " + filePath);
 		CxLogger.info(logTag + " Executing OSS scan on: " + filePath);
 
-		// Generate realistic mock OSS findings for demo
-		List<MockOssVulnerability> results = new ArrayList<>();
+		try {
+			System.out.println(logTag + " [OSS-SCAN] Calling real OSS API via reflection...");
+			CxLogger.info(logTag + " Calling real OSS API via reflection (using original file path)...");
 
-		String fileName = new java.io.File(filePath).getName().toLowerCase();
+			// Call real Checkmarx API with ORIGINAL file path (not temp file)
+			// Some APIs (like OSS) require the original manifest file, not a copy
+			Object result = callOssApiViaReflection(filePath);
+			if (result == null) {
+				System.out.println(logTag + " [OSS-SCAN] ✗ OSS API returned NULL!");
+				CxLogger.warning(logTag + " OSS API returned null");
+				return null;
+			}
 
-		if (fileName.contains("package")) {
-			// npm packages
-			results.add(new MockOssVulnerability("log4j-core:2.14.1",
-				"Apache Log4j2 RCE Vulnerability", "CRITICAL", "CVE-2021-44228",
-				"2.17.0", "Upgrade to 2.17.0 or later"));
-			results.add(new MockOssVulnerability("express:4.16.1",
-				"Express DoS vulnerability", "HIGH", "CVE-2022-1111",
-				"4.18.0", "Upgrade express to version 4.18.0 or later"));
-		} else if (fileName.contains("pom")) {
-			// Maven packages
-			results.add(new MockOssVulnerability("commons-collections:3.2.1",
-				"Apache Commons Collections serialization RCE", "CRITICAL",
-				"CVE-2015-6420", "3.2.2", "Upgrade to 3.2.2 or 4.0"));
-			results.add(new MockOssVulnerability(
-				"org.springframework:spring-core:4.3.19",
-				"Spring Core RCE via ClassPathXmlApplicationContext", "HIGH",
-				"CVE-2016-6652", "4.3.21", "Upgrade to 4.3.21 or 5.0.8"));
-		} else if (fileName.contains("requirements")) {
-			// Python packages
-			results.add(new MockOssVulnerability("Django:1.11.0",
-				"Django SQL Injection in lookup", "HIGH", "CVE-2021-35042",
-				"1.11.29", "Upgrade Django to 1.11.29 or later"));
-			results.add(new MockOssVulnerability("requests:2.6.0",
-				"HTTPS requests with SSL verification bypass", "CRITICAL",
-				"CVE-2014-1829", "2.18.0", "Upgrade requests to 2.18.0 or later"));
+			System.out.println(logTag + " [OSS-SCAN] ✓ Got results from server (type: " + result.getClass().getSimpleName() + ")");
+			CxLogger.info(logTag + " ✓ Got REAL results from server");
+			System.out.println(logTag + " [OSS-SCAN] ════════════════════════════════════════════");
+			return result;
+
+		} catch (Exception e) {
+			System.err.println(logTag + " [OSS-SCAN] ✗ ERROR: " + e.getMessage());
+			e.printStackTrace();
+			CxLogger.error(logTag + " Error: " + e.getMessage(), e);
+			throw e;
 		}
-
-		CxLogger.info(logTag + " ✓ Generated " + results.size() +
-			" mock OSS vulnerabilities");
-		return results;
 	}
 
 	/**
+	 * Call OSS scan via reflection on CxWrapper from ast-cli-java-wrapper JAR.
+	 * Works around Tycho's compile-time dependency issues.
+	 *
+	 * Method signature: ossRealtimeScan(String filePath, String ignorePath)
+	 */
+	private Object callOssApiViaReflection(String filePath) {
+		try {
+			// Load CxWrapper class
+			Class<?> wrapperClass = Class.forName("com.checkmarx.ast.wrapper.CxWrapper");
+			Class<?> configClass = Class.forName("com.checkmarx.ast.wrapper.CxConfig");
+			Class<?> configBuilderClass = Class.forName("com.checkmarx.ast.wrapper.CxConfig$CxConfigBuilder");
+
+			// Build CxConfig: CxConfig.builder().agentName("Eclipse").build()
+			Method builderMethod = configClass.getMethod("builder");
+			Object configBuilder = builderMethod.invoke(null);
+
+			Method agentMethod = configBuilderClass.getMethod("agentName", String.class);
+			agentMethod.invoke(configBuilder, "Eclipse");
+
+			Method buildMethod = configBuilderClass.getMethod("build");
+			Object config = buildMethod.invoke(configBuilder);
+
+			// Create CxWrapper: new CxWrapper(config)
+			Object wrapper = wrapperClass.getConstructor(configClass).newInstance(config);
+
+			// Call ossRealtimeScan(filePath, ignorePath)
+			Method scanMethod = wrapperClass.getMethod("ossRealtimeScan", String.class, String.class);
+			Object scanResult = scanMethod.invoke(wrapper, filePath, "");
+
+			CxLogger.info(logTag + " ✓ Called real OSS API successfully");
+			return scanResult;
+
+		} catch (ClassNotFoundException e) {
+			CxLogger.warning(logTag + " CxWrapper not available in classpath: " + e.getMessage());
+			return null;
+		} catch (Exception e) {
+			CxLogger.error(logTag + " Reflection error calling OSS API: " + e.getMessage(), e);
+			return null;
+		}
+	}
+
+
+	/**
 	 * Adapt OSS scan results to ScanIssue model.
+	 *
+	 * Handles both real OssRealtimeResults from API and legacy mock data.
 	 *
 	 * @param rawResults Raw results from executeNativeScanner()
 	 * @return List of ScanIssue objects
@@ -141,6 +182,16 @@ public class OssScannerService extends BaseScannerService {
 	protected List<ScanIssue> adaptResults(Object rawResults) {
 		List<ScanIssue> issues = new ArrayList<>();
 
+		if (rawResults == null) {
+			return issues;
+		}
+
+		// Try to adapt as real OssRealtimeResults first
+		if (isRealOssResult(rawResults)) {
+			return adaptRealOssResult(rawResults);
+		}
+
+		// Fall back to mock data if available
 		if (!(rawResults instanceof List)) {
 			return issues;
 		}
@@ -166,13 +217,138 @@ public class OssScannerService extends BaseScannerService {
 			issue.setRemediationAdvise("Update to version " + vuln.fixed_version +
 				" or later");
 			issue.setProblematicLineNumber(1);
-			issue.setScanEngine(
-				com.checkmarx.eclipse.devassist.backend.scanner.ScannerService.ScannerType.OSS);
+			issue.setScanEngine(ScanEngine.OSS);
 
 			issues.add(issue);
 		}
 
 		return issues;
+	}
+
+	private boolean isRealOssResult(Object obj) {
+		return obj != null && obj.getClass().getSimpleName().equals("OssRealtimeResults");
+	}
+
+	private List<ScanIssue> adaptRealOssResult(Object ossResult) {
+		List<ScanIssue> issues = new ArrayList<>();
+		try {
+			System.out.println(logTag + " [OSS-ADAPT] ╔════════════════════════════════════════════╗");
+			System.out.println(logTag + " [OSS-ADAPT] ║ ADAPTING OSS RESULTS                       ║");
+			System.out.println(logTag + " [OSS-ADAPT] ╚════════════════════════════════════════════╝");
+			System.out.println(logTag + " [OSS-ADAPT] Result type: " + ossResult.getClass().getName());
+			System.out.println(logTag + " [OSS-ADAPT] Available methods on result object:");
+			for (java.lang.reflect.Method m : ossResult.getClass().getMethods()) {
+				if (!m.getName().startsWith("java")) {
+					System.out.println(logTag + " [OSS-ADAPT]   - " + m.getName() + "() returns " + m.getReturnType().getSimpleName());
+				}
+			}
+
+			// Try to get the results list from OssRealtimeResults
+			Method getPackagesMethod = ossResult.getClass().getMethod("getPackages");
+			List<?> packages = (List<?>) getPackagesMethod.invoke(ossResult);
+
+			if (packages == null || packages.isEmpty()) {
+				System.out.println(logTag + " [OSS-ADAPT] ✗ No packages found in OSS result!");
+				return issues;
+			}
+
+			System.out.println(logTag + " [OSS-ADAPT] ✓ Found " + packages.size() + " packages with vulnerabilities");
+
+			int id = 1;
+			for (Object pkg : packages) {
+				try {
+					System.out.println(logTag + " [OSS-ADAPT] [PACKAGE " + id + "] Adapting package...");
+
+					// Dump available methods on first package
+					if (id == 1) {
+						System.out.println(logTag + " [OSS-ADAPT] [PACKAGE 1] Available methods on package object:");
+						for (Method m : pkg.getClass().getMethods()) {
+							if (!m.getName().startsWith("java")) {
+								System.out.println(logTag + " [OSS-ADAPT] [PACKAGE 1]   - " + m.getName() + "() returns " + m.getReturnType().getSimpleName());
+							}
+						}
+					}
+
+					ScanIssue issue = new ScanIssue();
+
+					// Extract package properties using reflection - try different method names
+					String packageName = getOssProperty(pkg, "getPackageName", String.class);
+					if (packageName == null) {
+						packageName = getOssProperty(pkg, "getName", String.class);
+					}
+
+					String version = getOssProperty(pkg, "getVersion", String.class);
+					if (version == null) {
+						version = getOssProperty(pkg, "getCurrentVersion", String.class);
+					}
+
+					String severity = getOssProperty(pkg, "getSeverity", String.class);
+					if (severity == null) {
+						severity = getOssProperty(pkg, "getHighestSeverity", String.class);
+					}
+
+					String cve = getOssProperty(pkg, "getCVE", String.class);
+					if (cve == null) {
+						cve = getOssProperty(pkg, "getCves", String.class);
+					}
+
+					String fixedVersion = getOssProperty(pkg, "getFixedVersions", String.class);
+					if (fixedVersion == null) {
+						fixedVersion = getOssProperty(pkg, "getRecommendedVersion", String.class);
+					}
+
+					String description = getOssProperty(pkg, "getDescription", String.class);
+
+					System.out.println(logTag + "     Package: " + packageName + " v" + version + " (severity: " + severity + ")");
+
+					issue.setScanIssueId("OSS-" + id);
+					issue.setTitle(packageName + ": Vulnerable Package Detected");
+					issue.setDescription(description != null ? description : "Vulnerable version detected");
+					issue.setSeverity(severity != null ? severity : "MEDIUM");
+					issue.setPackageVersion(version);
+					issue.setPackageManager(detectPackageManager(packageName));
+					issue.setCve(cve);
+					issue.setRemediationAdvise("Update to version " + (fixedVersion != null ? fixedVersion : "latest"));
+					issue.setProblematicLineNumber(1);
+					issue.setScanEngine(ScanEngine.OSS);
+
+					Location location = new Location();
+					location.setLine(1);
+					location.setStartIndex(0);
+					location.setEndIndex(0);
+					issue.getLocations().add(location);
+
+					issues.add(issue);
+					id++;
+
+					System.out.println(logTag + " [OSS-ADAPT] [PACKAGE " + id + "] ✓ Added issue: " + packageName);
+
+				} catch (Exception e) {
+					System.err.println(logTag + " [OSS-ADAPT] [PACKAGE " + id + "] ✗ Error adapting OSS package: " + e.getMessage());
+					e.printStackTrace();
+				}
+			}
+
+			System.out.println(logTag + " [OSS-ADAPT] ════════════════════════════════════════════");
+			System.out.println(logTag + " [OSS-ADAPT] ✓ Adapted " + issues.size() + " real OSS issues from server");
+			System.out.println(logTag + " [OSS-ADAPT] ════════════════════════════════════════════");
+
+		} catch (Exception e) {
+			System.err.println(logTag + " [OSS-ADAPT] ✗ Error adapting real OSS result: " + e.getMessage());
+			e.printStackTrace();
+		}
+		return issues;
+	}
+
+	@SuppressWarnings("unchecked")
+	private <T> T getOssProperty(Object pkg, String methodName, Class<T> returnType) {
+		try {
+			Method method = pkg.getClass().getMethod(methodName);
+			return (T) method.invoke(pkg);
+		} catch (Exception e) {
+			CxLogger.warning(logTag + " Could not get property " + methodName + ": " + e.getMessage());
+			return null;
+		}
 	}
 
 	/**
@@ -183,6 +359,7 @@ public class OssScannerService extends BaseScannerService {
 		String title;
 		String severity;
 		String cve;
+		String vulnerable_version;
 		String fixed_version;
 		String remediation;
 
@@ -192,8 +369,17 @@ public class OssScannerService extends BaseScannerService {
 			this.title = title;
 			this.severity = severity;
 			this.cve = cve;
+			this.vulnerable_version = extractVersion(pkg);
 			this.fixed_version = fixed;
 			this.remediation = remediation;
+		}
+
+		private static String extractVersion(String pkg) {
+			int colonIdx = pkg.lastIndexOf(':');
+			if (colonIdx > 0 && colonIdx < pkg.length() - 1) {
+				return pkg.substring(colonIdx + 1);
+			}
+			return "unknown";
 		}
 	}
 

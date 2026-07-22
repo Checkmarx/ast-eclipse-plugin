@@ -21,6 +21,7 @@ import com.checkmarx.eclipse.devassist.ui.findings.model.ScanIssue;
  */
 public class FindingsEditorOverlay {
 
+    // These match the annotation types defined in plugin.xml
     private static final String ANNOTATION_TYPE_CRITICAL = "com.checkmarx.eclipse.findings.critical";
     private static final String ANNOTATION_TYPE_HIGH = "com.checkmarx.eclipse.findings.high";
     private static final String ANNOTATION_TYPE_MEDIUM = "com.checkmarx.eclipse.findings.medium";

@@ -7,8 +7,8 @@ import org.eclipse.jface.viewers.StyledString.Styler;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.TextStyle;
 
-import com.checkmarx.eclipse.devassist.problems.model.ScanProblem;
-import com.checkmarx.eclipse.devassist.problems.icon.IconRegistry;
+import com.checkmarx.eclipse.devassist.ui.findings.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.ui.findings.icons.IconRegistry;
 
 /**
  * Label provider for ignored problems tree view. Renders severity icons and
@@ -20,10 +20,12 @@ public class IgnoredProblemsLabelProvider extends DelegatingStyledCellLabelProvi
 		super(new IStyledLabelProvider() {
 			@Override
 			public StyledString getStyledText(Object element) {
-				if (element instanceof ScanProblem) {
-					ScanProblem problem = (ScanProblem) element;
-					String text = "[" + problem.getSeverity().name() + "] " + problem.getMessage() +
-							" (Line " + problem.getLine() + ")";
+				if (element instanceof ScanIssue) {
+					ScanIssue issue = (ScanIssue) element;
+					String lineNum = issue.getLocations() != null && !issue.getLocations().isEmpty()
+						? String.valueOf(issue.getLocations().get(0).getLine()) : "?";
+					String text = "[" + issue.getSeverity().toUpperCase() + "] " + issue.getTitle() +
+							" (Line " + lineNum + ")";
 					StyledString styledText = new StyledString(text);
 					// Strikethrough style for ignored problems
 					Styler strikethrough = new Styler() {
@@ -42,11 +44,11 @@ public class IgnoredProblemsLabelProvider extends DelegatingStyledCellLabelProvi
 
 			@Override
 			public Image getImage(Object element) {
-				if (element instanceof ScanProblem) {
-					ScanProblem problem = (ScanProblem) element;
-					if (problem.getSeverity() != null) {
+				if (element instanceof ScanIssue) {
+					ScanIssue issue = (ScanIssue) element;
+					if (issue.getSeverity() != null) {
 						try {
-							return IconRegistry.getInstance().getIcon(problem.getSeverity().name(), 16);
+							return IconRegistry.getIcon(issue.getSeverity(), IconRegistry.Size.SMALL);
 						} catch (Exception e) {
 							return null;
 						}

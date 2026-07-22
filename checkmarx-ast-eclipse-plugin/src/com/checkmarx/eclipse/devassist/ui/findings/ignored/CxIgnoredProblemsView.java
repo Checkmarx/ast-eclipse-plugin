@@ -13,8 +13,7 @@ import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.ui.part.ViewPart;
 
-import com.checkmarx.eclipse.devassist.problems.CxProblemsServices;
-import com.checkmarx.eclipse.devassist.problems.model.ScanProblem;
+import com.checkmarx.eclipse.devassist.ui.findings.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.ui.findings.ignored.IgnoredProblemsStore.IgnoredProblemsListener;
 
 /**
@@ -28,7 +27,7 @@ public class CxIgnoredProblemsView extends ViewPart implements IgnoredProblemsLi
 
 	private TreeViewer treeViewer;
 	private IgnoredProblemsStore ignoredStore;
-	private List<ScanProblem> allProblems;
+	private List<ScanIssue> allIssues;
 
 	@Override
 	public void createPartControl(Composite parent) {
@@ -54,9 +53,9 @@ public class CxIgnoredProblemsView extends ViewPart implements IgnoredProblemsLi
 			ISelection selection = event.getSelection();
 			if (selection instanceof IStructuredSelection) {
 				Object selected = ((IStructuredSelection) selection).getFirstElement();
-				if (selected instanceof ScanProblem) {
-					ScanProblem problem = (ScanProblem) selected;
-					navigateToIgnoredProblem(problem);
+				if (selected instanceof ScanIssue) {
+					ScanIssue issue = (ScanIssue) selected;
+					navigateToIgnoredIssue(issue);
 				}
 			}
 		});
@@ -73,10 +72,9 @@ public class CxIgnoredProblemsView extends ViewPart implements IgnoredProblemsLi
 				System.out.println("[IGNORED-VIEW] Restoring all ignored problems...");
 				ignoredStore.clearAll();
 				refreshView();
-				CxProblemsServices.publisher().publish();
 			}
 		};
-		restoreAllAction.setToolTipText("Restore all ignored problems to active problems");
+		restoreAllAction.setToolTipText("Restore all ignored problems to active findings");
 		toolbarManager.add(restoreAllAction);
 
 		Action clearAllAction = new Action("Clear Ignored List") {
@@ -96,15 +94,14 @@ public class CxIgnoredProblemsView extends ViewPart implements IgnoredProblemsLi
 		treeViewer.getTree().setMenu(contextMenu);
 
 		MenuItem restoreItem = new MenuItem(contextMenu, SWT.PUSH);
-		restoreItem.setText("Restore This Problem");
+		restoreItem.setText("Restore This Finding");
 		restoreItem.addListener(SWT.Selection, event -> {
 			IStructuredSelection selection = (IStructuredSelection) treeViewer.getSelection();
-			if (selection.getFirstElement() instanceof ScanProblem) {
-				ScanProblem problem = (ScanProblem) selection.getFirstElement();
-				System.out.println("[IGNORED-VIEW] Restoring problem: " + problem.getId());
-				ignoredStore.restoreProblem(problem.getId());
+			if (selection.getFirstElement() instanceof ScanIssue) {
+				ScanIssue issue = (ScanIssue) selection.getFirstElement();
+				System.out.println("[IGNORED-VIEW] Restoring finding: " + issue.getScanIssueId());
+				ignoredStore.restoreProblem(issue.getScanIssueId());
 				refreshView();
-				CxProblemsServices.publisher().publish();
 			}
 		});
 
@@ -114,9 +111,9 @@ public class CxIgnoredProblemsView extends ViewPart implements IgnoredProblemsLi
 		navigateItem.setText("Go to Line");
 		navigateItem.addListener(SWT.Selection, event -> {
 			IStructuredSelection selection = (IStructuredSelection) treeViewer.getSelection();
-			if (selection.getFirstElement() instanceof ScanProblem) {
-				ScanProblem problem = (ScanProblem) selection.getFirstElement();
-				navigateToIgnoredProblem(problem);
+			if (selection.getFirstElement() instanceof ScanIssue) {
+				ScanIssue issue = (ScanIssue) selection.getFirstElement();
+				navigateToIgnoredIssue(issue);
 			}
 		});
 
@@ -126,24 +123,26 @@ public class CxIgnoredProblemsView extends ViewPart implements IgnoredProblemsLi
 		deleteItem.setText("Delete from Ignore List");
 		deleteItem.addListener(SWT.Selection, event -> {
 			IStructuredSelection selection = (IStructuredSelection) treeViewer.getSelection();
-			if (selection.getFirstElement() instanceof ScanProblem) {
-				ScanProblem problem = (ScanProblem) selection.getFirstElement();
-				System.out.println("[IGNORED-VIEW] Permanently removing from ignore list: " + problem.getId());
-				ignoredStore.restoreProblem(problem.getId());
+			if (selection.getFirstElement() instanceof ScanIssue) {
+				ScanIssue issue = (ScanIssue) selection.getFirstElement();
+				System.out.println("[IGNORED-VIEW] Permanently removing from ignore list: " + issue.getScanIssueId());
+				ignoredStore.restoreProblem(issue.getScanIssueId());
 				refreshView();
 			}
 		});
 	}
 
-	private void navigateToIgnoredProblem(ScanProblem problem) {
-		if (problem != null && problem.getFileName() != null) {
-			System.out.println("[IGNORED-VIEW] Navigating to: " + problem.getFileName() + " line " + problem.getLine());
+	private void navigateToIgnoredIssue(ScanIssue issue) {
+		if (issue != null && issue.getFilePath() != null) {
+			int lineNumber = (issue.getLocations() != null && !issue.getLocations().isEmpty())
+				? issue.getLocations().get(0).getLine() : 0;
+			System.out.println("[IGNORED-VIEW] Navigating to: " + issue.getFilePath() + " line " + lineNumber);
 			org.eclipse.swt.widgets.Display.getDefault().asyncExec(() -> {
 				try {
 					org.eclipse.core.resources.IWorkspaceRoot root = org.eclipse.core.resources.ResourcesPlugin
 							.getWorkspace().getRoot();
 					// Find file in workspace by simple name
-					String simpleName = new org.eclipse.core.runtime.Path(problem.getFileName()).lastSegment();
+					String simpleName = new org.eclipse.core.runtime.Path(issue.getFilePath()).lastSegment();
 					final org.eclipse.core.resources.IFile[] found = new org.eclipse.core.resources.IFile[1];
 
 					root.accept(proxy -> {
@@ -161,9 +160,9 @@ public class CxIgnoredProblemsView extends ViewPart implements IgnoredProblemsLi
 						if (window != null) {
 							org.eclipse.ui.IWorkbenchPage page = window.getActivePage();
 							if (page != null) {
-								// Position cursor at the problem line using temporary marker
-								if (problem.getLine() > 0) {
-									positionCursorAtLineWithMarker(page, found[0], problem.getLine());
+								// Position cursor at the issue line using temporary marker
+								if (lineNumber > 0) {
+									positionCursorAtLineWithMarker(page, found[0], lineNumber);
 								} else {
 									// No line info, just open the file
 									org.eclipse.ui.ide.IDE.openEditor(page, found[0], true);
@@ -231,13 +230,13 @@ public class CxIgnoredProblemsView extends ViewPart implements IgnoredProblemsLi
 	private void refreshView() {
 		if (treeViewer != null && !treeViewer.getTree().isDisposed()) {
 			try {
-				// Get all ignored problems including cached findings from the Findings View
-				List<ScanProblem> ignoredProblems = ignoredStore.getAllIgnoredProblems(allProblems);
+				// Get all ignored issues including cached findings from the Findings View
+				List<ScanIssue> ignoredIssues = ignoredStore.getAllIgnoredProblems(allIssues);
 
-				System.out.println("[IGNORED-VIEW] Displaying " + ignoredProblems.size() +
-						" ignored problems (Problems View: " + (allProblems != null ? allProblems.size() : 0) + ")");
+				System.out.println("[IGNORED-VIEW] Displaying " + ignoredIssues.size() +
+						" ignored findings (Total known: " + (allIssues != null ? allIssues.size() : 0) + ")");
 
-				treeViewer.setInput(ignoredProblems);
+				treeViewer.setInput(ignoredIssues);
 				treeViewer.expandAll();
 			} catch (Exception e) {
 				System.err.println("[IGNORED-VIEW] Error refreshing view: " + e.getMessage());
@@ -247,10 +246,10 @@ public class CxIgnoredProblemsView extends ViewPart implements IgnoredProblemsLi
 	}
 
 	/**
-	 * Update the view with all problems (used by ProblemsViewPublisher).
+	 * Update the view with all issues.
 	 */
-	public void updateProblems(List<ScanProblem> problems) {
-		this.allProblems = problems;
+	public void updateIssues(List<ScanIssue> issues) {
+		this.allIssues = issues;
 		refreshView();
 	}
 

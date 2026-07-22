@@ -107,6 +107,10 @@ public class FindingsLabelProvider extends DelegatingStyledCellLabelProvider {
             Map<String, Long> counts = fileNode.getProblemCount();
 
             if (counts != null && !counts.isEmpty()) {
+            	// CRITICAL FIX: Reset clipping so SWT allows drawing outside the text area
+                org.eclipse.swt.graphics.Rectangle oldClipping = event.gc.getClipping();
+                event.gc.setClipping((org.eclipse.swt.graphics.Rectangle) null);
+                try {
                 // Determine exactly where the file label ends horizontally
                 Point textSize = event.gc.textExtent(fileNode.getFileName());
                 
@@ -147,7 +151,11 @@ public class FindingsLabelProvider extends DelegatingStyledCellLabelProvider {
                         }
                     }
                 }
+            } finally {
+                // Restore original clipping area
+                event.gc.setClipping(oldClipping);
             }
         }
     }
+}
 }

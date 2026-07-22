@@ -112,22 +112,60 @@ public abstract class BaseScannerService implements ScannerService {
 	@Override
 	public List<ScanIssue> scan(String filePath) throws Exception {
 		if (filePath == null || filePath.isEmpty()) {
+			System.out.println(logTag + " ✗ BLOCKED: Null or empty file path");
 			return List.of();
 		}
 
-		CxLogger.info(logTag + " Starting scan on: " + filePath);
+		String displayName = getDisplayName();
+		if (displayName.length() > 40) displayName = displayName.substring(0, 40);
+		String paddedName = String.format("%-40s", displayName);
+		System.out.println(logTag + " ╔════════════════════════════════════════════╗");
+		System.out.println(logTag + " ║ " + paddedName + " ║");
+		System.out.println(logTag + " ╚════════════════════════════════════════════╝");
+		System.out.println(logTag + " File: " + filePath);
 
 		try {
 			// Execute native scanner and get raw results
+			System.out.println(logTag + " [STEP 1/3] Calling native scanner...");
 			Object rawResults = executeNativeScanner(filePath);
 
+			if (rawResults == null) {
+				System.out.println(logTag + " ⚠️  Native scanner returned NULL results");
+			} else {
+				System.out.println(logTag + " ✓ Raw results received: " + rawResults.getClass().getSimpleName());
+			}
+
 			// Adapt raw results to standard ScanIssue model
+			System.out.println(logTag + " [STEP 2/3] Adapting results...");
 			List<ScanIssue> issues = adaptResults(rawResults);
 
-			CxLogger.info(logTag + " ✓ Scan complete, found " + issues.size() + " issues");
+			// **CRITICAL FIX: Set original file path on all issues for proper navigation**
+			// Results may contain temp file paths, but we need original workspace paths
+			System.out.println(logTag + " [STEP 3/3] Setting original file path for navigation...");
+			for (ScanIssue issue : issues) {
+				if (issue.getFilePath() == null || issue.getFilePath().contains("_") &&
+					(issue.getFilePath().contains("/temp") || issue.getFilePath().contains("\\temp"))) {
+					// This is a temp file path, replace with original
+					issue.setFilePath(filePath);
+					System.out.println(logTag + "   ✓ Set file path for issue: " + issue.getTitle());
+				}
+			}
+
+			System.out.println(logTag + " ✓ SCAN COMPLETE");
+			System.out.println(logTag + "   Found " + issues.size() + " issues");
+			for (ScanIssue issue : issues) {
+				System.out.println(logTag + "   - " + issue.getTitle() + " (file: " + issue.getFilePath() + ")");
+			}
+
 			return issues;
 
 		} catch (Exception e) {
+			System.err.println(logTag + " ✗ ERROR during scan: " + e.getMessage());
+			e.printStackTrace();
+			System.err.println(logTag + " Stack trace:");
+			for (StackTraceElement elem : e.getStackTrace()) {
+				System.err.println(logTag + "   at " + elem);
+			}
 			CxLogger.warning(logTag + " Scan failed: " + e.getMessage());
 			throw e;
 		}

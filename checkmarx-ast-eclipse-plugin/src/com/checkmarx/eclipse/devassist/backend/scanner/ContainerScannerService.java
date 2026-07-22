@@ -1,10 +1,17 @@
 package com.checkmarx.eclipse.devassist.backend.scanner;
 
+import java.io.IOException;
+import java.lang.reflect.Method;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.core.resources.IProject;
 
+import com.checkmarx.eclipse.devassist.ui.findings.model.Location;
+import com.checkmarx.eclipse.devassist.ui.findings.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.ui.findings.model.ScanIssue;
 import com.checkmarx.eclipse.utils.CxLogger;
 
@@ -66,67 +73,124 @@ public class ContainerScannerService extends BaseScannerService {
 	}
 
 	/**
-	 * Execute container scan on a Dockerfile or docker-compose file.
-	 *
-	 * Generates realistic mock container vulnerabilities for demonstration.
-	 * In production, this would call CxWrapperFactory to execute actual scan.
+	 * Execute container scan using real Checkmarx server API via reflection.
 	 *
 	 * @param filePath Container file to scan
-	 * @return Mock container vulnerabilities
+	 * @return Real container scan results from Checkmarx server
 	 * @throws Exception if scan fails
 	 */
 	@Override
 	protected Object executeNativeScanner(String filePath) throws Exception {
 		CxLogger.info(logTag + " Executing container scan on: " + filePath);
 
-		// Generate realistic mock container findings for demo
-		List<MockContainerVulnerability> results = new ArrayList<>();
+		String tempFilePath = null;
+		try {
+			// Read actual file content
+			String fileContent = readFileContent(filePath);
+			if (fileContent == null) {
+				CxLogger.warning(logTag + " Could not read file: " + filePath);
+				return null;
+			}
 
-		String lowerPath = filePath.toLowerCase();
+			// Create temp file for container scanner
+			tempFilePath = createTempFile(filePath, fileContent);
+			if (tempFilePath == null) {
+				CxLogger.warning(logTag + " Failed to create temp file");
+				return null;
+			}
 
-		if (lowerPath.contains("dockerfile")) {
-			// Base image vulnerability
-			results.add(new MockContainerVulnerability(
-				"Vulnerable base image: ubuntu:18.04",
-				"Base image contains known vulnerabilities",
-				"CRITICAL", "Use ubuntu:22.04 LTS"));
+			CxLogger.info(logTag + " Calling real Containers API via reflection...");
 
-			// Configuration issues
-			results.add(new MockContainerVulnerability(
-				"Container running as root",
-				"Container process runs with root privileges",
-				"HIGH", "Add USER directive to run as non-root"));
+			// Call real Checkmarx API via reflection
+			Object result = callContainersApiViaReflection(tempFilePath);
+			if (result == null) {
+				CxLogger.warning(logTag + " Containers API returned null");
+				return null;
+			}
 
-			results.add(new MockContainerVulnerability(
-				"No health check defined",
-				"Container has no healthcheck instruction",
-				"MEDIUM", "Add HEALTHCHECK instruction"));
+			CxLogger.info(logTag + " ✓ Got REAL results from server");
+			return result;
 
-			// Vulnerable OS packages
-			results.add(new MockContainerVulnerability(
-				"OpenSSL 1.0.2 - CVE-2021-23839",
-				"Vulnerable OpenSSL version in base image", "HIGH",
-				"Update base image to patched version"));
-		} else if (lowerPath.contains("docker-compose")) {
-			// Service configuration issues
-			results.add(new MockContainerVulnerability(
-				"Privileged mode enabled",
-				"Service running with --privileged flag",
-				"CRITICAL", "Remove privileged flag if not needed"));
-
-			results.add(new MockContainerVulnerability(
-				"Port exposed to all interfaces",
-				"Port 5432 exposed to 0.0.0.0", "HIGH",
-				"Restrict to localhost or specific IP"));
+		} catch (Exception e) {
+			CxLogger.error(logTag + " Error: " + e.getMessage(), e);
+			throw e;
+		} finally {
+			if (tempFilePath != null) {
+				deleteTempFile(tempFilePath);
+			}
 		}
+	}
 
-		CxLogger.info(logTag + " ✓ Generated " + results.size() +
-			" mock container vulnerabilities");
-		return results;
+	/**
+	 * Call Containers scan via reflection on CxWrapper.
+	 */
+	private Object callContainersApiViaReflection(String filePath) {
+		try {
+			Class<?> wrapperClass = Class.forName("com.checkmarx.ast.wrapper.CxWrapper");
+			Class<?> configClass = Class.forName("com.checkmarx.ast.wrapper.CxConfig");
+			Class<?> configBuilderClass = Class.forName("com.checkmarx.ast.wrapper.CxConfig$CxConfigBuilder");
+
+			Method builderMethod = configClass.getMethod("builder");
+			Object configBuilder = builderMethod.invoke(null);
+
+			Method agentMethod = configBuilderClass.getMethod("agentName", String.class);
+			agentMethod.invoke(configBuilder, "Eclipse");
+
+			Method buildMethod = configBuilderClass.getMethod("build");
+			Object config = buildMethod.invoke(configBuilder);
+
+			Object wrapper = wrapperClass.getConstructor(configClass).newInstance(config);
+
+			// Call containersRealtimeScan(filePath, imageName)
+			Method scanMethod = wrapperClass.getMethod("containersRealtimeScan", String.class, String.class);
+			Object scanResult = scanMethod.invoke(wrapper, filePath, "");
+
+			CxLogger.info(logTag + " ✓ Called real Containers API successfully");
+			return scanResult;
+
+		} catch (ClassNotFoundException e) {
+			CxLogger.warning(logTag + " CxWrapper not available in classpath: " + e.getMessage());
+			return null;
+		} catch (Exception e) {
+			CxLogger.error(logTag + " Reflection error calling Containers API: " + e.getMessage(), e);
+			return null;
+		}
+	}
+
+	private String readFileContent(String filePath) {
+		try {
+			return new String(Files.readAllBytes(Paths.get(filePath)));
+		} catch (IOException e) {
+			CxLogger.warning(logTag + " Failed to read file: " + e.getMessage());
+			return null;
+		}
+	}
+
+	private String createTempFile(String originalPath, String fileContent) {
+		try {
+			Path tempDir = Paths.get(System.getProperty("java.io.tmpdir"));
+			String fileName = Paths.get(originalPath).getFileName().toString();
+			Path tempFilePath = tempDir.resolve("containers_" + System.nanoTime() + "_" + fileName);
+			Files.write(tempFilePath, fileContent.getBytes());
+			return tempFilePath.toAbsolutePath().toString();
+		} catch (IOException e) {
+			CxLogger.warning(logTag + " Failed to create temp file: " + e.getMessage());
+			return null;
+		}
+	}
+
+	private void deleteTempFile(String tempFilePath) {
+		try {
+			Files.deleteIfExists(Paths.get(tempFilePath));
+		} catch (IOException e) {
+			CxLogger.warning(logTag + " Failed to delete temp file: " + e.getMessage());
+		}
 	}
 
 	/**
 	 * Adapt container scan results to ScanIssue model.
+	 *
+	 * Handles both real results from API and legacy mock data.
 	 *
 	 * @param rawResults Raw results from executeNativeScanner()
 	 * @return List of ScanIssue objects
@@ -135,6 +199,16 @@ public class ContainerScannerService extends BaseScannerService {
 	protected List<ScanIssue> adaptResults(Object rawResults) {
 		List<ScanIssue> issues = new ArrayList<>();
 
+		if (rawResults == null) {
+			return issues;
+		}
+
+		// Try to adapt as real container result first
+		if (isRealContainerResult(rawResults)) {
+			return adaptRealContainerResult(rawResults);
+		}
+
+		// Fall back to mock data
 		if (!(rawResults instanceof List)) {
 			return issues;
 		}
@@ -157,13 +231,113 @@ public class ContainerScannerService extends BaseScannerService {
 			issue.setRemediationAdvise(vuln.remediation);
 			issue.setImageTag("latest");
 			issue.setProblematicLineNumber(1);
-			issue.setScanEngine(
-				com.checkmarx.eclipse.devassist.backend.scanner.ScannerService.ScannerType.CONTAINERS);
+			issue.setScanEngine(ScanEngine.CONTAINERS);
 
 			issues.add(issue);
 		}
 
 		return issues;
+	}
+
+	private boolean isRealContainerResult(Object obj) {
+		return obj != null && (obj.getClass().getSimpleName().equals("ContainersScanResults") ||
+			obj.getClass().getSimpleName().equals("ContainerRealtimeResults"));
+	}
+
+	private List<ScanIssue> adaptRealContainerResult(Object containerResult) {
+		List<ScanIssue> issues = new ArrayList<>();
+		try {
+			System.out.println(logTag + " adaptRealContainerResult: result type = " + containerResult.getClass().getName());
+			System.out.println(logTag + " Available methods:");
+			for (Method m : containerResult.getClass().getMethods()) {
+				if (!m.getName().startsWith("java")) {
+					System.out.println(logTag + "   - " + m.getName() + "() returns " + m.getReturnType().getSimpleName());
+				}
+			}
+
+			// Try to get vulnerabilities/layers/images from result
+			Method getImagesMethod = null;
+			try {
+				getImagesMethod = containerResult.getClass().getMethod("getImages");
+			} catch (Exception e) {
+				try {
+					getImagesMethod = containerResult.getClass().getMethod("getLayers");
+				} catch (Exception e2) {
+					try {
+						getImagesMethod = containerResult.getClass().getMethod("getFindings");
+					} catch (Exception e3) {
+						CxLogger.warning(logTag + " Could not find get method in container result");
+						return issues;
+					}
+				}
+			}
+
+			Object containerData = getImagesMethod.invoke(containerResult);
+			if (containerData == null) {
+				System.out.println(logTag + " No data found in container result");
+				return issues;
+			}
+
+			if (containerData instanceof List) {
+				List<?> items = (List<?>) containerData;
+				System.out.println(logTag + " Found " + items.size() + " items");
+
+				int id = 3000;
+				for (Object item : items) {
+					try {
+						ScanIssue issue = new ScanIssue();
+						String title = getContainerProperty(item, "getImageName", String.class);
+						if (title == null) {
+							title = getContainerProperty(item, "getTitle", String.class);
+						}
+						if (title == null) {
+							title = "Container Vulnerability";
+						}
+
+						String severity = getContainerProperty(item, "getSeverity", String.class);
+						String description = getContainerProperty(item, "getDescription", String.class);
+
+						issue.setScanIssueId("CONTAINER-" + id);
+						issue.setTitle(title);
+						issue.setDescription(description != null ? description : "Container vulnerability detected");
+						issue.setSeverity(severity != null ? severity : "MEDIUM");
+						issue.setImageTag("latest");
+						issue.setProblematicLineNumber(1);
+						issue.setScanEngine(ScanEngine.CONTAINERS);
+
+						Location location = new Location();
+						location.setLine(1);
+						location.setStartIndex(0);
+						location.setEndIndex(0);
+						issue.getLocations().add(location);
+
+						issues.add(issue);
+						id++;
+
+					} catch (Exception e) {
+						System.err.println(logTag + "   ✗ Error adapting item: " + e.getMessage());
+					}
+				}
+			}
+
+			System.out.println(logTag + " ✓ Adapted " + issues.size() + " real container issues from server");
+
+		} catch (Exception e) {
+			System.err.println(logTag + " Error adapting real container result: " + e.getMessage());
+			e.printStackTrace();
+		}
+		return issues;
+	}
+
+	@SuppressWarnings("unchecked")
+	private <T> T getContainerProperty(Object item, String methodName, Class<T> returnType) {
+		try {
+			Method method = item.getClass().getMethod(methodName);
+			return (T) method.invoke(item);
+		} catch (Exception e) {
+			CxLogger.warning(logTag + " Could not get property " + methodName + ": " + e.getMessage());
+			return null;
+		}
 	}
 
 	/**

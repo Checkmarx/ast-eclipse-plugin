@@ -73,202 +73,77 @@
         <startup class="com.checkmarx.eclipse.startup.PluginStartup"/>
     </extension>
 
-    <!-- Register custom marker type for Problems View -->
-    <extension
-            id="checkmarxProblemMarker"
-            point="org.eclipse.core.resources.markers"
-            name="Checkmarx Problem">
-        <super type="org.eclipse.core.resources.problemmarker"/>
-        <persistent value="false"/>
-        <attribute name="findingId"/>
-        <attribute name="ruleId"/>
-        <attribute name="severity"/>
-        <attribute name="status"/>
-    </extension>
-
-    <!-- Annotation types for each severity level -->
+    <!-- Annotation types for custom Findings Window editor decorations (gutter icons + underlines) -->
     <extension point="org.eclipse.ui.editors.annotationTypes">
         <type
-            markerSeverity="2"
-            markerType="com.checkmarx.eclipse.plugin.checkmarxProblemMarker"
-            name="com.checkmarx.eclipse.annotation.critical"
+            name="com.checkmarx.eclipse.findings.critical"
             super="org.eclipse.ui.workbench.texteditor.error">
         </type>
         <type
-            markerSeverity="2"
-            markerType="com.checkmarx.eclipse.plugin.checkmarxProblemMarker"
-            name="com.checkmarx.eclipse.annotation.high"
+            name="com.checkmarx.eclipse.findings.high"
             super="org.eclipse.ui.workbench.texteditor.error">
         </type>
         <type
-            markerSeverity="1"
-            markerType="com.checkmarx.eclipse.plugin.checkmarxProblemMarker"
-            name="com.checkmarx.eclipse.annotation.medium"
+            name="com.checkmarx.eclipse.findings.medium"
             super="org.eclipse.ui.workbench.texteditor.warning">
         </type>
         <type
-            markerSeverity="0"
-            markerType="com.checkmarx.eclipse.plugin.checkmarxProblemMarker"
-            name="com.checkmarx.eclipse.annotation.low"
+            name="com.checkmarx.eclipse.findings.low"
             super="org.eclipse.ui.workbench.texteditor.info">
         </type>
     </extension>
 
-    <!-- Gutter icon specifications for each severity -->
+    <!-- Gutter icon + squiggly underline specifications for Findings annotations -->
     <extension point="org.eclipse.ui.editors.markerAnnotationSpecification">
         <specification
-            annotationType="com.checkmarx.eclipse.annotation.critical"
-            label="Checkmarx Critical"
+            annotationType="com.checkmarx.eclipse.findings.critical"
+            label="Checkmarx Critical Finding"
             icon="icons/severity/critical_16.svg"
-            textPreferenceKey="cxAnnotationCriticalText"
-            textPreferenceValue="true"
             textStylePreferenceValue="SQUIGGLES"
-            verticalRulerPreferenceKey="cxAnnotationCriticalVerticalRuler"
             verticalRulerPreferenceValue="true"
-            overviewRulerPreferenceKey="cxAnnotationCriticalOverviewRuler"
             overviewRulerPreferenceValue="true"
             presentationLayer="7">
         </specification>
         <specification
-            annotationType="com.checkmarx.eclipse.annotation.high"
-            label="Checkmarx High"
+            annotationType="com.checkmarx.eclipse.findings.high"
+            label="Checkmarx High Finding"
             icon="icons/severity/high_16.svg"
-            textPreferenceKey="cxAnnotationHighText"
-            textPreferenceValue="true"
             textStylePreferenceValue="SQUIGGLES"
-            verticalRulerPreferenceKey="cxAnnotationHighVerticalRuler"
             verticalRulerPreferenceValue="true"
-            overviewRulerPreferenceKey="cxAnnotationHighOverviewRuler"
             overviewRulerPreferenceValue="true"
             presentationLayer="6">
         </specification>
         <specification
-            annotationType="com.checkmarx.eclipse.annotation.medium"
-            label="Checkmarx Medium"
+            annotationType="com.checkmarx.eclipse.findings.medium"
+            label="Checkmarx Medium Finding"
             icon="icons/severity/medium_16.svg"
-            textPreferenceKey="cxAnnotationMediumText"
-            textPreferenceValue="true"
             textStylePreferenceValue="SQUIGGLES"
-            verticalRulerPreferenceKey="cxAnnotationMediumVerticalRuler"
             verticalRulerPreferenceValue="true"
-            overviewRulerPreferenceKey="cxAnnotationMediumOverviewRuler"
             overviewRulerPreferenceValue="true"
             presentationLayer="5">
         </specification>
         <specification
-            annotationType="com.checkmarx.eclipse.annotation.low"
-            label="Checkmarx Low"
+            annotationType="com.checkmarx.eclipse.findings.low"
+            label="Checkmarx Low Finding"
             icon="icons/severity/low_16.svg"
-            textPreferenceKey="cxAnnotationLowText"
-            textPreferenceValue="true"
             textStylePreferenceValue="SQUIGGLES"
-            verticalRulerPreferenceKey="cxAnnotationLowVerticalRuler"
             verticalRulerPreferenceValue="true"
-            overviewRulerPreferenceKey="cxAnnotationLowOverviewRuler"
             overviewRulerPreferenceValue="true"
             presentationLayer="4">
         </specification>
     </extension>
 
+    <!-- Removed: All Problems View customizations (markers, commands, handlers, menus, toolbars) -->
+    <!-- The custom Findings Window and editor decorations are now the sole UI for Checkmarx findings -->
 
-    <!-- Command for publishing mock problems (for testing) -->
-    <extension point="org.eclipse.ui.commands">
-        <command
-                id="com.checkmarx.eclipse.problems.command.publishMock"
-                name="Publish Mock Checkmarx Problems"
-                description="Publish mock/dummy Checkmarx problems to the Problems View for testing">
-        </command>
-        <command
-                id="com.checkmarx.eclipse.problems.command.action1"
-                name="Ignore This Problem"
-                description="Ignore this problem and move it to the Ignored Problems window">
-        </command>
-
-        <!-- Severity filter commands for Problems View -->
-        <command
-                id="com.checkmarx.eclipse.problems.filter.critical"
-                name="Filter: CRITICAL"
-                description="Show only CRITICAL severity problems">
-            <commandParameter
-                    id="com.checkmarx.eclipse.severity"
-                    name="Severity"
-                    optional="false">
-            </commandParameter>
-        </command>
-        <command
-                id="com.checkmarx.eclipse.problems.filter.high"
-                name="Filter: HIGH"
-                description="Show only HIGH severity problems">
-            <commandParameter
-                    id="com.checkmarx.eclipse.severity"
-                    name="Severity"
-                    optional="false">
-            </commandParameter>
-        </command>
-        <command
-                id="com.checkmarx.eclipse.problems.filter.medium"
-                name="Filter: MEDIUM"
-                description="Show only MEDIUM severity problems">
-            <commandParameter
-                    id="com.checkmarx.eclipse.severity"
-                    name="Severity"
-                    optional="false">
-            </commandParameter>
-        </command>
-        <command
-                id="com.checkmarx.eclipse.problems.filter.low"
-                name="Filter: LOW"
-                description="Show only LOW severity problems">
-            <commandParameter
-                    id="com.checkmarx.eclipse.severity"
-                    name="Severity"
-                    optional="false">
-            </commandParameter>
-        </command>
-        <command
-                id="com.checkmarx.eclipse.problems.filter.all"
-                name="Show All Problems"
-                description="Clear severity filter and show all problems">
-            <commandParameter
-                    id="com.checkmarx.eclipse.severity"
-                    name="Severity"
-                    optional="false">
-            </commandParameter>
-        </command>
-    </extension>
-
-    <!-- Handlers for problems commands -->
-    <extension point="org.eclipse.ui.handlers">
-        <handler
-                commandId="com.checkmarx.eclipse.problems.command.publishMock"
-                class="com.checkmarx.eclipse.devassist.problems.commands.PublishMockProblemsHandler">
-        </handler>
-        <handler
-                commandId="com.checkmarx.eclipse.problems.command.action1"
-                class="com.checkmarx.eclipse.devassist.problems.commands.ProblemAction1Handler">
-        </handler>
-
-        <!-- Severity filter handlers -->
-        <handler
-                commandId="com.checkmarx.eclipse.problems.filter.critical"
-                class="com.checkmarx.eclipse.devassist.problems.commands.FilterBySeverityHandler">
-        </handler>
-        <handler
-                commandId="com.checkmarx.eclipse.problems.filter.high"
-                class="com.checkmarx.eclipse.devassist.problems.commands.FilterBySeverityHandler">
-        </handler>
-        <handler
-                commandId="com.checkmarx.eclipse.problems.filter.medium"
-                class="com.checkmarx.eclipse.devassist.problems.commands.FilterBySeverityHandler">
-        </handler>
-        <handler
-                commandId="com.checkmarx.eclipse.problems.filter.low"
-                class="com.checkmarx.eclipse.devassist.problems.commands.FilterBySeverityHandler">
-        </handler>
-        <handler
-                commandId="com.checkmarx.eclipse.problems.filter.all"
-                class="com.checkmarx.eclipse.devassist.problems.commands.FilterBySeverityHandler">
-        </handler>
+    <!-- Java Editor Text Hover for Checkmarx Findings annotations -->
+    <extension point="org.eclipse.jdt.ui.javaEditorTextHovers">
+        <hover
+            id="com.checkmarx.eclipse.hover.java"
+            label="Checkmarx Findings Hover"
+            description="Displays Checkmarx vulnerability details in custom popup"
+            class="com.checkmarx.eclipse.devassist.ui.findings.editor.CxFindingsHover">
+        </hover>
     </extension>
 
     <!-- Marker resolution generator for Quick Fix support (Ctrl+1) -->
@@ -280,89 +155,7 @@
         </generator>
     </extension>
 
-    <!-- Menu contribution for Ignore action in Problems View -->
-    <extension point="org.eclipse.ui.menus">
-        <menuContribution locationURI="menu:org.eclipse.ui.main.menu">
-            <menu id="cx.menu" label="Checkmarx">
-                <command
-                        commandId="com.checkmarx.eclipse.problems.command.publishMock"
-                        label="📋 Publish Test Problems"
-                        tooltip="Publish mock Checkmarx problems to Problems View (for testing hover)">
-                </command>
-            </menu>
-        </menuContribution>
-        <menuContribution
-                locationURI="popup:org.eclipse.ui.views.ProblemView">
-            <command
-                    commandId="com.checkmarx.eclipse.problems.command.action1"
-                    label="Ignore This Problem"
-                    tooltip="Mark as ignored and move to Ignored Problems window">
-            </command>
-        </menuContribution>
+    <!-- Problems View toolbar removed - native Eclipse only -->
 
-        <!-- Toolbar contributions for Problems View severity filters -->
-        <menuContribution
-                locationURI="toolbar:org.eclipse.ui.views.ProblemView">
-            <!-- Filter Status Label showing "Showing X of Y | Active: [...]" -->
-            <control
-                    class="com.checkmarx.eclipse.devassist.problems.filter.FilterStatusLabelProvider"
-                    id="com.checkmarx.eclipse.filter.status.label">
-            </control>
-
-            <separator name="group.severity" visible="true"/>
-
-            <command
-                    commandId="com.checkmarx.eclipse.problems.filter.critical"
-                    label="🔴 CRITICAL"
-                    tooltip="Show only CRITICAL severity problems"
-                    icon="platform:/plugin/com.checkmarx.eclipse.plugin/icons/severity/critical_16.svg">
-                <parameter name="com.checkmarx.eclipse.severity" value="CRITICAL"/>
-            </command>
-
-            <command
-                    commandId="com.checkmarx.eclipse.problems.filter.high"
-                    label="🟠 HIGH"
-                    tooltip="Show only HIGH severity problems"
-                    icon="platform:/plugin/com.checkmarx.eclipse.plugin/icons/severity/high_16.svg">
-                <parameter name="com.checkmarx.eclipse.severity" value="HIGH"/>
-            </command>
-
-            <command
-                    commandId="com.checkmarx.eclipse.problems.filter.medium"
-                    label="🟡 MEDIUM"
-                    tooltip="Show only MEDIUM severity problems"
-                    icon="platform:/plugin/com.checkmarx.eclipse.plugin/icons/severity/medium_16.svg">
-                <parameter name="com.checkmarx.eclipse.severity" value="MEDIUM"/>
-            </command>
-
-            <command
-                    commandId="com.checkmarx.eclipse.problems.filter.low"
-                    label="🟢 LOW"
-                    tooltip="Show only LOW severity problems"
-                    icon="platform:/plugin/com.checkmarx.eclipse.plugin/icons/severity/low_16.svg">
-                <parameter name="com.checkmarx.eclipse.severity" value="LOW"/>
-            </command>
-
-            <separator name="group.filter" visible="true"/>
-
-            <command
-                    commandId="com.checkmarx.eclipse.problems.filter.all"
-                    label="Show All"
-                    tooltip="Clear severity filter and show all problems"
-                    icon="platform:/plugin/com.checkmarx.eclipse.plugin/icons/severity/info_16.svg">
-                <parameter name="com.checkmarx.eclipse.severity" value="ALL"/>
-            </command>
-        </menuContribution>
-    </extension>
-
-    <!-- Java Editor Text Hover - triggers when hovering over code with Checkmarx markers -->
-    <extension point="org.eclipse.jdt.ui.javaEditorTextHovers">
-        <hover
-            id="com.checkmarx.eclipse.hover.java"
-            label="Checkmarx Vulnerability Hover"
-            description="Displays Checkmarx vulnerability details"
-            class="com.checkmarx.eclipse.devassist.problems.hover.CxTextHover">
-        </hover>
-    </extension>
 
 </plugin>

@@ -7,31 +7,30 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.eclipse.e4.core.services.events.IEventBroker;
+
 import com.checkmarx.eclipse.devassist.ui.findings.model.ScanIssue;
-import com.checkmarx.eclipse.devassist.problems.model.ScanProblem;
 import com.checkmarx.eclipse.utils.CxLogger;
+import com.checkmarx.eclipse.utils.PluginUtils;
 
 /**
- * In-memory cache for scan results, keyed by file path.
- *
- * Stores:
- * - ScanIssue: Rich model with locations, vulnerabilities, metadata
- * - ScanProblem: UI-agnostic representation for Problems View markers
+ * In-memory cache for scan results (ScanIssue), keyed by file path.
  *
  * Thread-safe via ConcurrentHashMap. Used to avoid redundant scans
  * and to enable result restoration when files are reopened.
+ *
+ * Mirrors JetBrains ProblemHolderService pattern with Eclipse IEventBroker for notifications.
  */
 public class ProblemHolderService {
 
 	private static final String LOG_TAG = "[PROBLEM-HOLDER]";
+	public static final String ISSUES_UPDATED_TOPIC = "com/checkmarx/issues/updated";
 
 	// Session property key for storing service in project
 	public static final String SERVICE_KEY = ProblemHolderService.class.getName() +
 		".INSTANCE";
 
 	private final ConcurrentHashMap<String, List<ScanIssue>> fileToScanIssues =
-		new ConcurrentHashMap<>();
-	private final ConcurrentHashMap<String, List<ScanProblem>> fileToScanProblems =
 		new ConcurrentHashMap<>();
 
 	/**
@@ -44,9 +43,9 @@ public class ProblemHolderService {
 		if (filePath == null || issues == null) {
 			return;
 		}
-
 		fileToScanIssues.put(filePath, new ArrayList<>(issues));
-		CxLogger.info(LOG_TAG + " Cached " + issues.size() + " issues for: " + filePath);
+		// **KEY: Notify all listeners of the update (JetBrains pattern)**
+		publishIssuesUpdated();
 	}
 
 	/**
@@ -70,15 +69,17 @@ public class ProblemHolderService {
 	 * @return Map of file path → issues
 	 */
 	public Map<String, List<ScanIssue>> getAllScanIssues() {
+
 		Map<String, List<ScanIssue>> result = new HashMap<>();
 		for (Map.Entry<String, List<ScanIssue>> entry : fileToScanIssues.entrySet()) {
 			result.put(entry.getKey(), new ArrayList<>(entry.getValue()));
 		}
+		int totalIssues = result.values().stream().mapToInt(List::size).sum();
 		return result;
 	}
 
 	/**
-	 * Merge new issues with existing cached issues for a file.
+	 * Merge new issues with existing issues for a file.
 	 * Deduplicates by issue ID.
 	 *
 	 * @param filePath Absolute file path
@@ -104,6 +105,9 @@ public class ProblemHolderService {
 
 		fileToScanIssues.put(filePath, new ArrayList<>(merged.values()));
 		CxLogger.info(LOG_TAG + " Merged " + newIssues.size() + " issues for: " + filePath);
+
+		// **KEY: Notify listeners when cache is modified**
+		publishIssuesUpdated();
 	}
 
 	/**
@@ -117,37 +121,7 @@ public class ProblemHolderService {
 		}
 
 		fileToScanIssues.remove(filePath);
-		fileToScanProblems.remove(filePath);
 		CxLogger.info(LOG_TAG + " Cleared cache for: " + filePath);
-	}
-
-	/**
-	 * Cache problem descriptors (for Problems View) for a file.
-	 *
-	 * @param filePath Absolute file path
-	 * @param problems Problem descriptors
-	 */
-	public void addScanProblems(String filePath, List<ScanProblem> problems) {
-		if (filePath == null || problems == null) {
-			return;
-		}
-
-		fileToScanProblems.put(filePath, new ArrayList<>(problems));
-	}
-
-	/**
-	 * Get cached problems for a file.
-	 *
-	 * @param filePath Absolute file path
-	 * @return Cached problems or empty list
-	 */
-	public List<ScanProblem> getScanProblemsByFile(String filePath) {
-		if (filePath == null) {
-			return Collections.emptyList();
-		}
-
-		List<ScanProblem> cached = fileToScanProblems.get(filePath);
-		return cached != null ? new ArrayList<>(cached) : Collections.emptyList();
 	}
 
 	/**
@@ -155,7 +129,6 @@ public class ProblemHolderService {
 	 */
 	public void clearAll() {
 		fileToScanIssues.clear();
-		fileToScanProblems.clear();
 		CxLogger.info(LOG_TAG + " All caches cleared");
 	}
 
@@ -170,5 +143,27 @@ public class ProblemHolderService {
 			.mapToInt(List::size)
 			.sum();
 		return "Files: " + fileCount + ", Total Issues: " + totalIssues;
+	}
+
+	/**
+	 * Publish issues update via Eclipse IEventBroker.
+	 * Subscribers listen on ISSUES_UPDATED_TOPIC using @UIEventTopic annotation.
+	 *
+	 * @see com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView
+	 */
+	private void publishIssuesUpdated() {
+		try {
+			IEventBroker eventBroker = PluginUtils.getEventBroker();
+			if (eventBroker != null) {
+				Map<String, List<ScanIssue>> allIssues = getAllScanIssues();
+				System.out.println(LOG_TAG + " [EVENT-BROKER] Publishing issues update: " + allIssues.size() + " files");
+				eventBroker.post(ISSUES_UPDATED_TOPIC, allIssues);
+			} else {
+				System.err.println(LOG_TAG + " [EVENT-BROKER] ✗ EventBroker not available");
+			}
+		} catch (Exception e) {
+			System.err.println(LOG_TAG + " [EVENT-BROKER] Error publishing event: " + e.getMessage());
+			e.printStackTrace();
+		}
 	}
 }

@@ -3,7 +3,7 @@ package com.checkmarx.eclipse.devassist.ui.findings.ignored;
 import org.eclipse.jface.viewers.ITreeContentProvider;
 import org.eclipse.jface.viewers.Viewer;
 
-import com.checkmarx.eclipse.devassist.problems.model.ScanProblem;
+import com.checkmarx.eclipse.devassist.ui.findings.model.ScanIssue;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -11,44 +11,44 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Content provider for ignored problems tree view. Organizes problems by file.
+ * Content provider for ignored problems tree view. Organizes issues by file.
  */
 public class IgnoredProblemsContentProvider implements ITreeContentProvider {
 
-	private Map<String, List<ScanProblem>> fileToProblems = new HashMap<>();
+	private Map<String, List<ScanIssue>> fileToIssues = new HashMap<>();
 
 	@Override
 	public void inputChanged(Viewer viewer, Object oldInput, Object newInput) {
-		fileToProblems.clear();
+		fileToIssues.clear();
 		if (newInput instanceof List<?>) {
 			@SuppressWarnings("unchecked")
-			List<ScanProblem> problems = (List<ScanProblem>) newInput;
-			for (ScanProblem problem : problems) {
-				String fileName = extractFileName(problem.getFileName());
-				fileToProblems.computeIfAbsent(fileName, k -> new ArrayList<>()).add(problem);
+			List<ScanIssue> issues = (List<ScanIssue>) newInput;
+			for (ScanIssue issue : issues) {
+				String fileName = extractFileName(issue.getFilePath());
+				fileToIssues.computeIfAbsent(fileName, k -> new ArrayList<>()).add(issue);
 			}
 		}
 	}
 
 	@Override
 	public Object[] getElements(Object inputElement) {
-		return fileToProblems.keySet().toArray();
+		return fileToIssues.keySet().toArray();
 	}
 
 	@Override
 	public Object[] getChildren(Object parentElement) {
 		if (parentElement instanceof String) {
-			List<ScanProblem> problems = fileToProblems.get(parentElement);
-			return problems != null ? problems.toArray() : new Object[0];
+			List<ScanIssue> issues = fileToIssues.get(parentElement);
+			return issues != null ? issues.toArray() : new Object[0];
 		}
 		return new Object[0];
 	}
 
 	@Override
 	public Object getParent(Object element) {
-		if (element instanceof ScanProblem) {
-			ScanProblem problem = (ScanProblem) element;
-			return extractFileName(problem.getFileName());
+		if (element instanceof ScanIssue) {
+			ScanIssue issue = (ScanIssue) element;
+			return extractFileName(issue.getFilePath());
 		}
 		return null;
 	}
@@ -56,8 +56,8 @@ public class IgnoredProblemsContentProvider implements ITreeContentProvider {
 	@Override
 	public boolean hasChildren(Object element) {
 		if (element instanceof String) {
-			List<ScanProblem> problems = fileToProblems.get(element);
-			return problems != null && !problems.isEmpty();
+			List<ScanIssue> issues = fileToIssues.get(element);
+			return issues != null && !issues.isEmpty();
 		}
 		return false;
 	}
@@ -72,6 +72,6 @@ public class IgnoredProblemsContentProvider implements ITreeContentProvider {
 
 	@Override
 	public void dispose() {
-		fileToProblems.clear();
+		fileToIssues.clear();
 	}
 }

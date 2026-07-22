@@ -1,10 +1,16 @@
 package com.checkmarx.eclipse.devassist.backend.scanner;
 
+import java.io.IOException;
+import java.lang.reflect.Method;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.core.resources.IProject;
 
+import com.checkmarx.eclipse.devassist.ui.findings.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.ui.findings.model.ScanIssue;
 import com.checkmarx.eclipse.utils.CxLogger;
 
@@ -112,64 +118,133 @@ public class SecretsScannerService extends BaseScannerService {
 	}
 
 	/**
-	 * Execute secrets scan on a file.
+	 * Execute secrets scan using real Checkmarx server API via reflection.
 	 *
-	 * Generates realistic mock secrets for demonstration.
-	 * In production, this would call CxWrapperFactory to execute actual scan.
+	 * Uses reflection to call CxWrapperFactory at runtime.
 	 *
 	 * @param filePath File to scan
-	 * @return Mock secrets detected
+	 * @return Real SecretsRealtimeResults from Checkmarx server, or null if API unavailable
 	 * @throws Exception if scan fails
 	 */
 	@Override
 	protected Object executeNativeScanner(String filePath) throws Exception {
 		CxLogger.info(logTag + " Executing secrets scan on: " + filePath);
 
-		// Generate realistic mock secrets for demo
-		List<MockSecret> results = new ArrayList<>();
+		String tempFilePath = null;
+		try {
+			// Read actual file content
+			String fileContent = readFileContent(filePath);
+			if (fileContent == null) {
+				CxLogger.warning(logTag + " Could not read file: " + filePath);
+				return null;
+			}
 
-		String lowerPath = filePath.toLowerCase();
+			// Create temp file for secrets scanner
+			tempFilePath = createTempFile(filePath, fileContent);
+			if (tempFilePath == null) {
+				CxLogger.warning(logTag + " Failed to create temp file");
+				return null;
+			}
 
-		// Simulate finding secrets in application code
-		if (lowerPath.contains(".java") || lowerPath.contains(".py") ||
-			lowerPath.contains(".js")) {
+			CxLogger.info(logTag + " Calling real Secrets API via reflection...");
 
-			results.add(new MockSecret("API_KEY found",
-				"AWS API Key (AKIA...) exposed in source code", "CRITICAL",
-				15, "aws_key_secret"));
-			results.add(new MockSecret("DATABASE_PASSWORD found",
-				"Database password hardcoded in connection string", "CRITICAL",
-				25, "password123"));
-			results.add(new MockSecret("GITHUB_TOKEN found",
-				"GitHub personal access token exposed", "CRITICAL", 35,
-				"ghp_1234567890..."));
-			results.add(new MockSecret("OAUTH_BEARER_TOKEN found",
-				"OAuth bearer token in environment configuration", "HIGH", 42,
-				"Bearer eyJhbGc..."));
+			// Call real Checkmarx API via reflection
+			Object result = callSecretsApiViaReflection(tempFilePath);
+			if (result == null) {
+				CxLogger.warning(logTag + " Secrets API returned null");
+				return null;
+			}
+
+			CxLogger.info(logTag + " ✓ Got REAL results from server");
+			return result;
+
+		} catch (Exception e) {
+			CxLogger.error(logTag + " Error: " + e.getMessage(), e);
+			throw e;
+		} finally {
+			if (tempFilePath != null) {
+				deleteTempFile(tempFilePath);
+			}
 		}
+	}
 
-		// Simulate finding secrets in config files
-		if (lowerPath.contains(".yaml") || lowerPath.contains(".yml") ||
-			lowerPath.contains(".json") || lowerPath.contains(".conf")) {
+	/**
+	 * Call Secrets scan via reflection on CxWrapper from ast-cli-java-wrapper JAR.
+	 * Works around Tycho's compile-time dependency issues.
+	 *
+	 * Method signature: secretsRealtimeScan(String filePath, String ignorePath)
+	 */
+	private Object callSecretsApiViaReflection(String filePath) {
+		try {
+			// Load CxWrapper class (the actual wrapper in the JAR, not CxWrapperFactory)
+			Class<?> wrapperClass = Class.forName("com.checkmarx.ast.wrapper.CxWrapper");
+			Class<?> configClass = Class.forName("com.checkmarx.ast.wrapper.CxConfig");
+			Class<?> configBuilderClass = Class.forName("com.checkmarx.ast.wrapper.CxConfig$CxConfigBuilder");
 
-			results.add(new MockSecret("DATABASE_PASSWORD found",
-				"MySQL root password hardcoded in config", "CRITICAL", 10,
-				"root_password_123"));
-			results.add(new MockSecret("SLACK_TOKEN found",
-				"Slack webhook URL exposed in configuration", "HIGH", 20,
-				"https://hooks.slack.com/services/..."));
-			results.add(new MockSecret("SSH_PRIVATE_KEY found",
-				"SSH private key embedded in config file", "CRITICAL", 30,
-				"-----BEGIN RSA PRIVATE KEY-----"));
+			// Build CxConfig: CxConfig.builder().agentName("Eclipse").build()
+			Method builderMethod = configClass.getMethod("builder");
+			Object configBuilder = builderMethod.invoke(null);
+
+			Method agentMethod = configBuilderClass.getMethod("agentName", String.class);
+			agentMethod.invoke(configBuilder, "Eclipse");
+
+			Method buildMethod = configBuilderClass.getMethod("build");
+			Object config = buildMethod.invoke(configBuilder);
+
+			// Create CxWrapper: new CxWrapper(config)
+			Object wrapper = wrapperClass.getConstructor(configClass).newInstance(config);
+
+			// Call secretsRealtimeScan(filePath, ignorePath)
+			// Note: Method is secretsRealtimeScan (lowercase s), not ScanSecretsRealtime
+			Method scanMethod = wrapperClass.getMethod("secretsRealtimeScan", String.class, String.class);
+			Object scanResult = scanMethod.invoke(wrapper, filePath, "");
+
+			CxLogger.info(logTag + " ✓ Called real Secrets API successfully");
+			return scanResult;
+
+		} catch (ClassNotFoundException e) {
+			CxLogger.warning(logTag + " CxWrapper not available in classpath: " + e.getMessage());
+			return null;
+		} catch (Exception e) {
+			CxLogger.error(logTag + " Reflection error calling Secrets API: " + e.getMessage(), e);
+			return null;
 		}
+	}
 
-		CxLogger.info(logTag + " ✓ Generated " + results.size() +
-			" mock secrets");
-		return results;
+	private String readFileContent(String filePath) {
+		try {
+			return new String(Files.readAllBytes(Paths.get(filePath)));
+		} catch (IOException e) {
+			CxLogger.warning(logTag + " Failed to read file: " + e.getMessage());
+			return null;
+		}
+	}
+
+	private String createTempFile(String originalPath, String fileContent) {
+		try {
+			Path tempDir = Paths.get(System.getProperty("java.io.tmpdir"));
+			String fileName = Paths.get(originalPath).getFileName().toString();
+			Path tempFilePath = tempDir.resolve("secrets_" + System.nanoTime() + "_" + fileName);
+			Files.write(tempFilePath, fileContent.getBytes());
+			return tempFilePath.toAbsolutePath().toString();
+		} catch (IOException e) {
+			CxLogger.warning(logTag + " Failed to create temp file: " + e.getMessage());
+			return null;
+		}
+	}
+
+	private void deleteTempFile(String tempFilePath) {
+		try {
+			Files.deleteIfExists(Paths.get(tempFilePath));
+		} catch (IOException e) {
+			CxLogger.warning(logTag + " Failed to delete temp file: " + e.getMessage());
+		}
 	}
 
 	/**
 	 * Adapt secrets scan results to ScanIssue model.
+	 *
+	 * Handles both real SecretsRealtimeResults from API and legacy mock data.
 	 *
 	 * @param rawResults Raw results from executeNativeScanner()
 	 * @return List of ScanIssue objects
@@ -178,6 +253,16 @@ public class SecretsScannerService extends BaseScannerService {
 	protected List<ScanIssue> adaptResults(Object rawResults) {
 		List<ScanIssue> issues = new ArrayList<>();
 
+		if (rawResults == null) {
+			return issues;
+		}
+
+		// Try to adapt as real SecretsRealtimeResults first
+		if (isRealSecretsResult(rawResults)) {
+			return adaptRealSecretsResult(rawResults);
+		}
+
+		// Fall back to mock data if available
 		if (!(rawResults instanceof List)) {
 			return issues;
 		}
@@ -193,7 +278,7 @@ public class SecretsScannerService extends BaseScannerService {
 			MockSecret secret = (MockSecret) result;
 			ScanIssue issue = new ScanIssue();
 
-			issue.setScanIssueId("SEC-" + id++);
+			issue.setScanIssueId("SEC-" + id);
 			issue.setTitle(secret.type);
 			issue.setDescription(secret.description);
 			issue.setSeverity(secret.severity);
@@ -201,13 +286,148 @@ public class SecretsScannerService extends BaseScannerService {
 			issue.setRemediationAdvise("Remove " + secret.type +
 				" from source code and use environment variables instead");
 			issue.setSecretValue("***MASKED***");
-			issue.setScanEngine(
-				com.checkmarx.eclipse.devassist.backend.scanner.ScannerService.ScannerType.SECRETS);
+			issue.setScanEngine(ScanEngine.SECRETS);
+			id++;
 
 			issues.add(issue);
 		}
 
 		return issues;
+	}
+
+	private boolean isRealSecretsResult(Object obj) {
+		return obj != null && obj.getClass().getSimpleName().equals("SecretsRealtimeResults");
+	}
+
+	private List<ScanIssue> adaptRealSecretsResult(Object secretsResult) {
+		List<ScanIssue> issues = new ArrayList<>();
+		try {
+			CxLogger.info(logTag + " ╔═══════════════════════════════════════════════════════╗");
+			CxLogger.info(logTag + " ║ SECRETS SCANNER - ADAPTING REAL API RESULTS          ║");
+			CxLogger.info(logTag + " ╚═══════════════════════════════════════════════════════╝");
+
+			Method getSecrets = secretsResult.getClass().getMethod("getSecrets");
+			List<?> secrets = (List<?>) getSecrets.invoke(secretsResult);
+
+			if (secrets == null || secrets.isEmpty()) {
+				CxLogger.info(logTag + " ℹ No secrets found in real result");
+				return issues;
+			}
+
+			CxLogger.info(logTag + " Found " + secrets.size() + " secrets from API");
+
+			int id = 1000;
+			for (Object secret : secrets) {
+				try {
+					ScanIssue issue = new ScanIssue();
+
+					String title = getSecretProperty(secret, "getTitle", String.class);
+					String description = getSecretProperty(secret, "getDescription", String.class);
+
+					CxLogger.info(logTag + " ─────────────────────────────────────────────────────");
+					CxLogger.info(logTag + " Secret #" + id + ":");
+					CxLogger.info(logTag + "   Title: " + title);
+					CxLogger.info(logTag + "   Description: " + description);
+
+					issue.setScanIssueId("SEC-" + id);
+					issue.setTitle(title);
+					issue.setDescription(description);
+					issue.setSeverity(mapSecretSeverity(title));
+					issue.setRemediationAdvise("Remove " + title +
+						" from source code and use environment variables or secure vaults instead");
+					issue.setSecretValue("***MASKED***");
+					issue.setScanEngine(ScanEngine.SECRETS);
+
+					// Extract precise location data from RealtimeLocation objects
+					List<?> locations = getSecretProperty(secret, "getLocations", List.class);
+					CxLogger.info(logTag + "   Locations: " + (locations != null ? locations.size() : 0) + " location(s)");
+
+					if (locations != null && !locations.isEmpty()) {
+						int locIndex = 0;
+						for (Object locObj : locations) {
+							try {
+								Integer line = getLocationProperty(locObj, "getLine", Integer.class);
+								Integer startIndex = getLocationProperty(locObj, "getStartIndex", Integer.class);
+								Integer endIndex = getLocationProperty(locObj, "getEndIndex", Integer.class);
+
+								CxLogger.info(logTag + "     Location " + locIndex + ":");
+								CxLogger.info(logTag + "       Line: " + line);
+								CxLogger.info(logTag + "       CharStart (absolute): " + startIndex);
+								CxLogger.info(logTag + "       CharEnd (absolute): " + endIndex);
+								CxLogger.info(logTag + "       Range length: " + (endIndex - startIndex) + " chars");
+
+								com.checkmarx.eclipse.devassist.ui.findings.model.Location location =
+									new com.checkmarx.eclipse.devassist.ui.findings.model.Location(
+										line != null ? line : 0,
+										startIndex != null ? startIndex : 0,
+										endIndex != null ? endIndex : 0
+									);
+								issue.getLocations().add(location);
+
+								CxLogger.info(logTag + "       ✓ Location added to ScanIssue");
+								locIndex++;
+
+							} catch (Exception e) {
+								CxLogger.warning(logTag + "       ✗ Error extracting location: " + e.getMessage());
+							}
+						}
+					} else {
+						CxLogger.warning(logTag + "   ⚠ No locations found for secret!");
+					}
+
+					issues.add(issue);
+					CxLogger.info(logTag + " ✓ Secret #" + id + " complete");
+					id++;
+
+				} catch (Exception e) {
+					CxLogger.warning(logTag + " Error adapting secret: " + e.getMessage());
+					e.printStackTrace();
+				}
+			}
+
+			CxLogger.info(logTag + " ═══════════════════════════════════════════════════════");
+			CxLogger.info(logTag + " ✓ TOTAL: Adapted " + issues.size() + " real secrets from server");
+			CxLogger.info(logTag + " ═══════════════════════════════════════════════════════");
+
+		} catch (Exception e) {
+			CxLogger.error(logTag + " Error adapting real secrets result: " + e.getMessage(), e);
+		}
+		return issues;
+	}
+
+	@SuppressWarnings("unchecked")
+	private <T> T getSecretProperty(Object secret, String methodName, Class<T> returnType) {
+		try {
+			Method method = secret.getClass().getMethod(methodName);
+			return (T) method.invoke(secret);
+		} catch (Exception e) {
+			CxLogger.warning(logTag + " Could not get property " + methodName + ": " + e.getMessage());
+			return null;
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	private <T> T getLocationProperty(Object location, String methodName, Class<T> returnType) {
+		try {
+			Method method = location.getClass().getMethod(methodName);
+			return (T) method.invoke(location);
+		} catch (Exception e) {
+			CxLogger.warning(logTag + " Could not get location property " + methodName + ": " + e.getMessage());
+			return null;
+		}
+	}
+
+	private String mapSecretSeverity(String secretType) {
+		if (secretType == null) return "MEDIUM";
+		String lower = secretType.toLowerCase();
+		if (lower.contains("private") || lower.contains("password") ||
+			lower.contains("api_key") || lower.contains("token")) {
+			return "CRITICAL";
+		}
+		if (lower.contains("bearer") || lower.contains("webhook")) {
+			return "HIGH";
+		}
+		return "MEDIUM";
 	}
 
 	/**

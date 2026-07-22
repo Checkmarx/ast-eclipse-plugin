@@ -5,7 +5,7 @@ import java.util.List;
 
 import com.checkmarx.eclipse.devassist.backend.GlobalScannerController;
 import com.checkmarx.eclipse.devassist.backend.ScannerRegistry;
-import com.checkmarx.eclipse.devassist.backend.scanner.ScannerService.ScannerType;
+import com.checkmarx.eclipse.devassist.backend.ScannerRegistry.ScannerType;
 import com.checkmarx.eclipse.utils.CxLogger;
 
 /**

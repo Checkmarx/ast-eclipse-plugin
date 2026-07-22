@@ -1,10 +1,17 @@
 package com.checkmarx.eclipse.devassist.backend.scanner;
 
+import java.io.IOException;
+import java.lang.reflect.Method;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.core.resources.IProject;
 
+import com.checkmarx.eclipse.devassist.ui.findings.model.Location;
+import com.checkmarx.eclipse.devassist.ui.findings.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.ui.findings.model.ScanIssue;
 import com.checkmarx.eclipse.utils.CxLogger;
 
@@ -112,68 +119,124 @@ public class IacScannerService extends BaseScannerService {
 	}
 
 	/**
-	 * Execute IaC scan on a configuration file.
-	 *
-	 * Generates realistic mock IaC misconfigurations for demonstration.
-	 * In production, this would call CxWrapperFactory to execute actual scan.
+	 * Execute IaC scan using real Checkmarx server API via reflection.
 	 *
 	 * @param filePath IaC configuration file to scan
-	 * @return Mock IaC misconfigurations
+	 * @return Real IaC scan results from Checkmarx server
 	 * @throws Exception if scan fails
 	 */
 	@Override
 	protected Object executeNativeScanner(String filePath) throws Exception {
 		CxLogger.info(logTag + " Executing IaC scan on: " + filePath);
 
-		// Generate realistic mock IaC findings for demo
-		List<MockIacMisconfiguration> results = new ArrayList<>();
+		String tempFilePath = null;
+		try {
+			// Read actual file content
+			String fileContent = readFileContent(filePath);
+			if (fileContent == null) {
+				CxLogger.warning(logTag + " Could not read file: " + filePath);
+				return null;
+			}
 
-		String lowerPath = filePath.toLowerCase();
-		String framework = detectFramework(filePath);
+			// Create temp file for IaC scanner
+			tempFilePath = createTempFile(filePath, fileContent);
+			if (tempFilePath == null) {
+				CxLogger.warning(logTag + " Failed to create temp file");
+				return null;
+			}
 
-		if (framework.equals("Terraform")) {
-			results.add(new MockIacMisconfiguration("AWS_S3_PUBLIC",
-				"S3 bucket publicly accessible",
-				"S3 bucket has public-read or public-read-write ACL", "CRITICAL",
-				8, "Set acl to private or use bucket policy"));
+			CxLogger.info(logTag + " Calling real IaC API via reflection...");
 
-			results.add(new MockIacMisconfiguration("AWS_SECURITY_GROUP_WIDE_OPEN",
-				"Security group allows unrestricted access",
-				"Security group allows 0.0.0.0/0 on sensitive ports",
-				"HIGH", 15,
-				"Restrict CIDR to known IP ranges"));
+			// Call real Checkmarx API via reflection
+			Object result = callIacApiViaReflection(tempFilePath);
+			if (result == null) {
+				CxLogger.warning(logTag + " IaC API returned null");
+				return null;
+			}
 
-			results.add(new MockIacMisconfiguration("AWS_RDS_NO_ENCRYPTION",
-				"RDS database not encrypted at rest",
-				"Database cluster storage is not encrypted", "HIGH", 22,
-				"Enable storage_encrypted = true"));
-		} else if (framework.equals("Kubernetes")) {
-			results.add(new MockIacMisconfiguration("K8S_POD_RUN_AS_ROOT",
-				"Pod runs with root privileges",
-				"securityContext.runAsNonRoot not set to true", "HIGH",
-				10,
-				"Set runAsNonRoot: true and runAsUser to non-zero"));
+			CxLogger.info(logTag + " ✓ Got REAL results from server");
+			return result;
 
-			results.add(new MockIacMisconfiguration("K8S_NO_RESOURCE_LIMITS",
-				"No resource limits defined",
-				"Pod has no CPU or memory limits",
-				"MEDIUM", 18,
-				"Define limits for CPU and memory"));
-
-			results.add(new MockIacMisconfiguration("K8S_NODE_PORT_EXPOSED",
-				"Service exposed via NodePort",
-				"Service uses NodePort which exposes to all nodes",
-				"MEDIUM", 25,
-				"Use ClusterIP or Ingress instead"));
+		} catch (Exception e) {
+			CxLogger.error(logTag + " Error: " + e.getMessage(), e);
+			throw e;
+		} finally {
+			if (tempFilePath != null) {
+				deleteTempFile(tempFilePath);
+			}
 		}
+	}
 
-		CxLogger.info(logTag + " ✓ Generated " + results.size() +
-			" mock IaC misconfigurations");
-		return results;
+	/**
+	 * Call IaC scan via reflection on CxWrapper.
+	 */
+	private Object callIacApiViaReflection(String filePath) {
+		try {
+			Class<?> wrapperClass = Class.forName("com.checkmarx.ast.wrapper.CxWrapper");
+			Class<?> configClass = Class.forName("com.checkmarx.ast.wrapper.CxConfig");
+			Class<?> configBuilderClass = Class.forName("com.checkmarx.ast.wrapper.CxConfig$CxConfigBuilder");
+
+			Method builderMethod = configClass.getMethod("builder");
+			Object configBuilder = builderMethod.invoke(null);
+
+			Method agentMethod = configBuilderClass.getMethod("agentName", String.class);
+			agentMethod.invoke(configBuilder, "Eclipse");
+
+			Method buildMethod = configBuilderClass.getMethod("build");
+			Object config = buildMethod.invoke(configBuilder);
+
+			Object wrapper = wrapperClass.getConstructor(configClass).newInstance(config);
+
+			// Call iacRealtimeScan(filePath)
+			Method scanMethod = wrapperClass.getMethod("iacRealtimeScan", String.class);
+			Object scanResult = scanMethod.invoke(wrapper, filePath);
+
+			CxLogger.info(logTag + " ✓ Called real IaC API successfully");
+			return scanResult;
+
+		} catch (ClassNotFoundException e) {
+			CxLogger.warning(logTag + " CxWrapper not available in classpath: " + e.getMessage());
+			return null;
+		} catch (Exception e) {
+			CxLogger.error(logTag + " Reflection error calling IaC API: " + e.getMessage(), e);
+			return null;
+		}
+	}
+
+	private String readFileContent(String filePath) {
+		try {
+			return new String(Files.readAllBytes(Paths.get(filePath)));
+		} catch (IOException e) {
+			CxLogger.warning(logTag + " Failed to read file: " + e.getMessage());
+			return null;
+		}
+	}
+
+	private String createTempFile(String originalPath, String fileContent) {
+		try {
+			Path tempDir = Paths.get(System.getProperty("java.io.tmpdir"));
+			String fileName = Paths.get(originalPath).getFileName().toString();
+			Path tempFilePath = tempDir.resolve("iac_" + System.nanoTime() + "_" + fileName);
+			Files.write(tempFilePath, fileContent.getBytes());
+			return tempFilePath.toAbsolutePath().toString();
+		} catch (IOException e) {
+			CxLogger.warning(logTag + " Failed to create temp file: " + e.getMessage());
+			return null;
+		}
+	}
+
+	private void deleteTempFile(String tempFilePath) {
+		try {
+			Files.deleteIfExists(Paths.get(tempFilePath));
+		} catch (IOException e) {
+			CxLogger.warning(logTag + " Failed to delete temp file: " + e.getMessage());
+		}
 	}
 
 	/**
 	 * Adapt IaC scan results to ScanIssue model.
+	 *
+	 * Handles both real results from API and legacy mock data.
 	 *
 	 * @param rawResults Raw results from executeNativeScanner()
 	 * @return List of ScanIssue objects
@@ -182,6 +245,16 @@ public class IacScannerService extends BaseScannerService {
 	protected List<ScanIssue> adaptResults(Object rawResults) {
 		List<ScanIssue> issues = new ArrayList<>();
 
+		if (rawResults == null) {
+			return issues;
+		}
+
+		// Try to adapt as real IaC result first
+		if (isRealIacResult(rawResults)) {
+			return adaptRealIacResult(rawResults);
+		}
+
+		// Fall back to mock data
 		if (!(rawResults instanceof List)) {
 			return issues;
 		}
@@ -205,13 +278,116 @@ public class IacScannerService extends BaseScannerService {
 			issue.setRemediationAdvise(config.remediation);
 			issue.setRuleId(Integer.parseInt(
 				config.title.replaceAll("[^0-9]", "0" + id).substring(0, 5)));
-			issue.setScanEngine(
-				com.checkmarx.eclipse.devassist.backend.scanner.ScannerService.ScannerType.IAC);
+			issue.setScanEngine(ScanEngine.IAC);
 
 			issues.add(issue);
 		}
 
 		return issues;
+	}
+
+	private boolean isRealIacResult(Object obj) {
+		return obj != null && (obj.getClass().getSimpleName().equals("IacRealtimeResults") ||
+			obj.getClass().getSimpleName().equals("IacScanResults"));
+	}
+
+	private List<ScanIssue> adaptRealIacResult(Object iacResult) {
+		List<ScanIssue> issues = new ArrayList<>();
+		try {
+			System.out.println(logTag + " adaptRealIacResult: result type = " + iacResult.getClass().getName());
+			System.out.println(logTag + " Available methods:");
+			for (Method m : iacResult.getClass().getMethods()) {
+				if (!m.getName().startsWith("java")) {
+					System.out.println(logTag + "   - " + m.getName() + "() returns " + m.getReturnType().getSimpleName());
+				}
+			}
+
+			// Try to get misconfigurations from result
+			Method getMisconfig = null;
+			try {
+				getMisconfig = iacResult.getClass().getMethod("getMisconfigurations");
+			} catch (Exception e) {
+				try {
+					getMisconfig = iacResult.getClass().getMethod("getFindings");
+				} catch (Exception e2) {
+					try {
+						getMisconfig = iacResult.getClass().getMethod("getResults");
+					} catch (Exception e3) {
+						CxLogger.warning(logTag + " Could not find get method in IaC result");
+						return issues;
+					}
+				}
+			}
+
+			Object iacData = getMisconfig.invoke(iacResult);
+			if (iacData == null) {
+				System.out.println(logTag + " No misconfigurations found in IaC result");
+				return issues;
+			}
+
+			if (iacData instanceof List) {
+				List<?> misconfigs = (List<?>) iacData;
+				System.out.println(logTag + " Found " + misconfigs.size() + " misconfigurations");
+
+				int id = 4000;
+				for (Object misconfig : misconfigs) {
+					try {
+						ScanIssue issue = new ScanIssue();
+
+						String title = getIacProperty(misconfig, "getTitle", String.class);
+						if (title == null) {
+							title = getIacProperty(misconfig, "getRuleName", String.class);
+						}
+						if (title == null) {
+							title = "IaC Misconfiguration";
+						}
+
+						String severity = getIacProperty(misconfig, "getSeverity", String.class);
+						String description = getIacProperty(misconfig, "getDescription", String.class);
+						Integer lineNumber = getIacProperty(misconfig, "getLine", Integer.class);
+						String remediation = getIacProperty(misconfig, "getRemediationAdvice", String.class);
+
+						issue.setScanIssueId("IAC-" + id);
+						issue.setTitle(title);
+						issue.setDescription(description != null ? description : "Infrastructure misconfiguration detected");
+						issue.setSeverity(severity != null ? severity : "MEDIUM");
+						issue.setProblematicLineNumber(lineNumber != null ? lineNumber : 1);
+						issue.setRemediationAdvise(remediation);
+						issue.setScanEngine(ScanEngine.IAC);
+
+						Location location = new Location();
+						location.setLine(lineNumber != null ? lineNumber : 1);
+						location.setStartIndex(0);
+						location.setEndIndex(0);
+						issue.getLocations().add(location);
+
+						issues.add(issue);
+						id++;
+
+					} catch (Exception e) {
+						System.err.println(logTag + "   ✗ Error adapting IaC misconfiguration: " + e.getMessage());
+					}
+				}
+			}
+
+			System.out.println(logTag + " ✓ Adapted " + issues.size() + " real IaC issues from server");
+
+		} catch (Exception e) {
+			System.err.println(logTag + " Error adapting real IaC result: " + e.getMessage());
+			e.printStackTrace();
+		}
+		return issues;
+	}
+
+	@SuppressWarnings("unchecked")
+	private <T> T getIacProperty(Object misconfig, String methodName, Class<T> returnType) {
+		try {
+			Method method = misconfig.getClass().getMethod(methodName);
+			return (T) method.invoke(misconfig);
+		} catch (Exception e) {
+			CxLogger.warning(logTag + " Could not get property " + methodName + ": " + e.getMessage());
+			return null;
+		}
 	}
 
 	/**

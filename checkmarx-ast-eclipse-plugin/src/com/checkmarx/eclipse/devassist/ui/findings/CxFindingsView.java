@@ -7,44 +7,36 @@ import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Tree;
-import org.eclipse.swt.widgets.TreeColumn;
 import org.eclipse.ui.part.ViewPart;
 import org.eclipse.jface.viewers.TreeViewer;
-import org.eclipse.jface.viewers.TreeViewerColumn;
-import org.eclipse.jface.viewers.DoubleClickEvent;
-import org.eclipse.jface.viewers.IDoubleClickListener;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
-import org.eclipse.jface.viewers.ColumnLabelProvider;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.ide.IDE;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
+import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.QualifiedName;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
-import org.eclipse.swt.graphics.Image;
 import com.checkmarx.eclipse.devassist.ui.findings.provider.FindingsContentProvider;
 import com.checkmarx.eclipse.devassist.ui.findings.provider.FindingsLabelProvider;
 import com.checkmarx.eclipse.devassist.ui.findings.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.ui.findings.model.ScanDetailWithPath;
 import com.checkmarx.eclipse.devassist.ui.findings.model.Location;
 import com.checkmarx.eclipse.devassist.ui.findings.model.ScanEngine;
-import com.checkmarx.eclipse.devassist.ui.findings.model.FileNodeLabel;
+import com.checkmarx.eclipse.devassist.backend.ProblemHolderService;
 import com.checkmarx.eclipse.devassist.ui.findings.actions.VulnerabilityFilterAction;
 import com.checkmarx.eclipse.devassist.ui.findings.actions.VulnerabilityFilterState;
-import com.checkmarx.eclipse.devassist.problems.provider.MockProblemProvider;
-import com.checkmarx.eclipse.devassist.problems.model.ScanProblem;
 import com.checkmarx.eclipse.devassist.ui.findings.ignored.IgnoredProblemsStore;
 import com.checkmarx.eclipse.devassist.ui.findings.ignored.IgnoredProblemsStore.IgnoredProblemsListener;
-import com.checkmarx.eclipse.enums.Severity;
-
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+
 
 /**
  * Custom Findings View for displaying Checkmarx scan results.
@@ -55,6 +47,7 @@ import java.util.HashMap;
 public class CxFindingsView extends ViewPart implements IgnoredProblemsListener {
 
     public static final String ID = "com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView";
+    private org.osgi.service.event.EventHandler eventHandler;
 
     private TreeViewer treeViewer;
     private Map<String, List<ScanIssue>> currentIssues = new HashMap<>();
@@ -64,316 +57,144 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
         super();
     }
 
+    
+    /**
+     * Subscribes to ProblemHolderService updates via Eclipse IEventBroker.
+     */
+    private void subscribeToEventBroker() {
+        try {
+            org.eclipse.e4.core.services.events.IEventBroker eventBroker = 
+                getSite().getService(org.eclipse.e4.core.services.events.IEventBroker.class);
+
+            if (eventBroker == null) {
+                eventBroker = org.eclipse.ui.PlatformUI.getWorkbench().getService(
+                    org.eclipse.e4.core.services.events.IEventBroker.class);
+            }
+
+            if (eventBroker != null) {
+                // Save handler reference so we can unsubscribe later in dispose()
+                eventHandler = event -> {
+                    Object data = event.getProperty(org.eclipse.e4.core.services.events.IEventBroker.DATA);
+                    
+                    if (data instanceof Map<?, ?>) {
+                        @SuppressWarnings("unchecked")
+                        Map<String, List<ScanIssue>> newIssues = (Map<String, List<ScanIssue>>) data;
+                        
+                        System.out.println("[FINDINGS] [EVENT-RECEIVED] Received updated scan issues from IEventBroker");
+
+                        // UI elements MUST be updated on the SWT Display Thread
+                        org.eclipse.swt.widgets.Display.getDefault().asyncExec(() -> {
+                            if (treeViewer != null && !treeViewer.getControl().isDisposed()) {
+                                this.currentIssues = newIssues;
+                                refreshTreeWithFilter();
+                            }
+                        });
+                    }
+                };
+
+                eventBroker.subscribe(com.checkmarx.eclipse.devassist.backend.ProblemHolderService.ISSUES_UPDATED_TOPIC, eventHandler);
+                System.out.println("[FINDINGS] [INIT-STEP 3/5] ✓ Registered IEventBroker subscriber on topic: " 
+                    + com.checkmarx.eclipse.devassist.backend.ProblemHolderService.ISSUES_UPDATED_TOPIC);
+            } else {
+                System.err.println("[FINDINGS] [INIT-STEP 3/5] ✗ IEventBroker service unavailable");
+            }
+        } catch (Exception e) {
+            System.err.println("[FINDINGS] ✗ Error subscribing to IEventBroker: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void dispose() {
+        System.out.println("[FINDINGS] Disposing CxFindingsView...");
+
+        // 1. Unsubscribe from IEventBroker to prevent memory leaks
+        if (eventHandler != null) {
+            try {
+                org.eclipse.e4.core.services.events.IEventBroker eventBroker = 
+                    org.eclipse.ui.PlatformUI.getWorkbench().getService(
+                        org.eclipse.e4.core.services.events.IEventBroker.class);
+                        
+                if (eventBroker != null) {
+                    eventBroker.unsubscribe(eventHandler);
+                    System.out.println("[FINDINGS] ✓ Unsubscribed from IEventBroker");
+                }
+            } catch (Exception e) {
+                System.err.println("[FINDINGS] Error unsubscribing from IEventBroker: " + e.getMessage());
+            }
+        }
+
+        // 2. Unsubscribe from IgnoredProblemsStore
+        if (ignoredStore != null) {
+            // If your IgnoredProblemsStore supports removing listeners, call it here:
+            // ignoredStore.removeListener(this);
+        }
+
+        super.dispose();
+    }
+    
     @Override
     public void createPartControl(Composite parent) {
-        System.out.println("[FINDINGS] ========================================");
-        System.out.println("[FINDINGS] Creating Checkmarx Findings View...");
-        System.out.println("[FINDINGS] ========================================");
-
         try {
-            // Register with IgnoredProblemsStore to listen for restore events
+            // STEP 1 & 2: Try to load cached results if ProblemHolderService exists
+            System.out.println("[FINDINGS] [INIT-STEP 1/5] Getting workspace projects...");
+            IProject[] projects = ResourcesPlugin.getWorkspace().getRoot().getProjects();
+
+            if (projects.length > 0 && projects[0].isOpen()) {
+                IProject project = projects[0];
+                System.out.println("[FINDINGS] [INIT-STEP 1/5] ✓ Found project: " + project.getName());
+
+                ProblemHolderService problemHolder = (ProblemHolderService) project.getSessionProperty(
+                        new QualifiedName("com.checkmarx.eclipse.plugin", "problem-holder"));
+
+                if (problemHolder != null) {
+                    Map<String, List<ScanIssue>> existingIssues = problemHolder.getAllScanIssues();
+                    if (existingIssues != null && !existingIssues.isEmpty()) {
+                        System.out.println("[FINDINGS] [INIT-STEP 2/5] ✓ Found " + existingIssues.size() + " cached issue files");
+                        this.currentIssues = existingIssues;
+                    }
+                } else {
+                    System.out.println("[FINDINGS] [INIT-STEP 2/5] No cache found on startup. Waiting for IEventBroker events...");
+                }
+            }
+
+            // STEP 3: ALWAYS subscribe to IEventBroker regardless of cache state (THE FIX)
+            System.out.println("[FINDINGS] [INIT-STEP 3/5] Subscribing to EventBroker...");
+            subscribeToEventBroker();
+
+            // STEP 4: Setup UI and Ignored Store
+            System.out.println("[FINDINGS] [INIT-STEP 4/5] Creating UI components...");
             ignoredStore = IgnoredProblemsStore.getInstance();
             ignoredStore.addListener(this);
-            System.out.println("[FINDINGS] ✓ Registered with IgnoredProblemsStore");
 
-            // Create main sash form for split view (findings + promotional panel)
             SashForm sashForm = new SashForm(parent, SWT.HORIZONTAL);
             sashForm.setLayout(new FillLayout());
-            System.out.println("[FINDINGS] Sash form created");
 
-            // Create findings tree
             Composite treeComposite = new Composite(sashForm, SWT.NONE);
             treeComposite.setLayout(new FillLayout());
 
             treeViewer = new TreeViewer(treeComposite, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER);
             treeViewer.setContentProvider(new FindingsContentProvider());
             treeViewer.setLabelProvider(new FindingsLabelProvider());
-            System.out.println("[FINDINGS] Tree viewer configured");
 
-            // Create promotional panel (right side)
             Composite promotionalComposite = new Composite(sashForm, SWT.NONE);
             promotionalComposite.setLayout(new FillLayout());
-            // TODO: Add promotional panel content
 
             sashForm.setWeights(new int[] { 70, 30 });
-            System.out.println("[FINDINGS] UI layout configured (70/30 split)");
 
-            // Setup toolbar
             setupToolbar();
-
-            // Setup tree listeners
             setupTreeListeners();
 
-            // Load dummy data for testing
-            loadDummyProblems();
+            // STEP 5: Display cached results if any existed at startup
+            System.out.println("[FINDINGS] [INIT-STEP 5/5] Initializing tree view...");
+            if (!currentIssues.isEmpty()) {
+                refreshTreeWithFilter();
+            }
 
-            System.out.println("[FINDINGS] View created successfully!");
         } catch (Exception e) {
-            System.out.println("[FINDINGS] ERROR during view creation: " + e.getMessage());
+            System.err.println("[FINDINGS] ✗ ERROR during view creation: " + e.getMessage());
             e.printStackTrace();
         }
-    }
-
-    /**
-     * Load mock problems for testing the UI.
-     */
-    private void loadDummyProblems() {
-        System.out.println("[FINDINGS] Loading mock problems from MockProblemProvider...");
-        Map<String, List<ScanIssue>> mockIssues = new HashMap<>();
-
-        try {
-            // Load mock problems from MockProblemProvider
-            MockProblemProvider mockProvider = new MockProblemProvider();
-            List<ScanProblem> mockProblems = mockProvider.getProblems();
-            System.out.println("[FINDINGS] ✓ Loaded " + mockProblems.size() + " mock problems");
-
-            // Group problems by file path
-            Map<String, List<ScanIssue>> groupedIssues = new HashMap<>();
-            for (ScanProblem problem : mockProblems) {
-                ScanIssue issue = convertScanProblemToScanIssue(problem);
-                String filePath = problem.getFileName();
-                groupedIssues.computeIfAbsent(filePath, k -> new ArrayList<>()).add(issue);
-            }
-
-            mockIssues.putAll(groupedIssues);
-            System.out.println("[FINDINGS] ✓ Converted to " + mockIssues.size() + " file groups");
-        } catch (Exception e) {
-            System.out.println("[FINDINGS] Warning: Could not load mock problems from MockProblemProvider: " + e.getMessage());
-            System.out.println("[FINDINGS] Falling back to inline dummy problems...");
-            loadInlineDummyProblems(mockIssues);
-            return;
-        }
-
-        // Refresh the tree with mock data
-        refreshTree(mockIssues);
-    }
-
-    /**
-     * Fallback: Load inline dummy problems if MockProblemProvider fails.
-     */
-    private void loadInlineDummyProblems(Map<String, List<ScanIssue>> dummyIssues) {
-        System.out.println("[FINDINGS] Loading inline dummy problems...");
-
-        // Try to find real files in workspace, fallback to dummy paths
-        String[] javaFiles = findJavaFilesInWorkspace();
-        System.out.println("[FINDINGS] Found " + javaFiles.length + " Java files in workspace");
-
-        if (javaFiles.length > 0) {
-            // Use real files from workspace
-            System.out.println("[FINDINGS] ✓ Using real workspace files for dummy problems");
-
-            // File 1: First Java file
-            List<ScanIssue> issues1 = new ArrayList<>();
-            issues1.add(createDummyIssue("SQL Injection Vulnerability", "critical", "SQL injection detected in query builder", ScanEngine.ASCA, 5));
-            issues1.add(createDummyIssue("Hardcoded Password", "high", "Database password hardcoded in source", ScanEngine.SECRETS, 10));
-            dummyIssues.put(javaFiles[0], issues1);
-
-            // File 2: Second Java file if available
-            if (javaFiles.length > 1) {
-                List<ScanIssue> issues2 = new ArrayList<>();
-                issues2.add(createDummyIssue("XSS Vulnerability", "high", "Unescaped user input in HTML output", ScanEngine.ASCA, 15));
-                issues2.add(createDummyIssue("log4j-core", "critical", "Apache Log4j vulnerable to RCE", ScanEngine.OSS, 20, "2.14.1", "2.17.0"));
-                dummyIssues.put(javaFiles[1], issues2);
-            }
-        } else {
-            // Use dummy paths
-            System.out.println("No workspace files found. Using dummy paths (navigation won't work)");
-
-            List<ScanIssue> mainJavaIssues = new ArrayList<>();
-            mainJavaIssues.add(createDummyIssue("SQL Injection Vulnerability", "critical", "SQL injection detected in query builder", ScanEngine.ASCA, 1));
-            mainJavaIssues.add(createDummyIssue("Hardcoded Password", "high", "Database password hardcoded in source", ScanEngine.SECRETS, 2));
-            mainJavaIssues.add(createDummyIssue("Missing Input Validation", "high", "User input not validated before use", ScanEngine.ASCA, 3));
-            dummyIssues.put("C:\\Project\\MyApp\\src\\Main.java", mainJavaIssues);
-
-            List<ScanIssue> utilsJavaIssues = new ArrayList<>();
-            utilsJavaIssues.add(createDummyIssue("XSS Vulnerability", "high", "Unescaped user input in HTML output", ScanEngine.ASCA, 4));
-            utilsJavaIssues.add(createDummyIssue("log4j-core", "critical", "Apache Log4j vulnerable to RCE", ScanEngine.OSS, 5, "2.14.1", "2.17.0"));
-            utilsJavaIssues.add(createDummyIssue("API Key Exposed", "malicious", "AWS API key exposed in repository", ScanEngine.SECRETS, 6));
-            dummyIssues.put("C:\\Project\\MyApp\\src\\Utils.java", utilsJavaIssues);
-
-            List<ScanIssue> configIssues = new ArrayList<>();
-            configIssues.add(createDummyIssue("Insecure Configuration", "medium", "Database credentials stored in plain text", ScanEngine.IAC, 7));
-            configIssues.add(createDummyIssue("Missing TLS Configuration", "high", "TLS not enforced for external connections", ScanEngine.IAC, 8));
-            dummyIssues.put("C:\\Project\\MyApp\\config\\application.yaml", configIssues);
-
-            List<ScanIssue> dockerIssues = new ArrayList<>();
-            dockerIssues.add(createDummyIssue("nginx:latest", "medium", "Base image uses latest tag instead of specific version", ScanEngine.CONTAINERS, 9));
-            dockerIssues.add(createDummyIssue("openssl", "high", "OpenSSL library has known vulnerabilities", ScanEngine.CONTAINERS, 10, null, "1.1.1w"));
-            dummyIssues.put("C:\\Project\\MyApp\\Dockerfile", dockerIssues);
-        }
-
-        // Refresh the tree with dummy data
-        refreshTree(dummyIssues);
-    }
-
-    /**
-     * Find Java files in the workspace for real problem injection.
-     */
-    private String[] findJavaFilesInWorkspace() {
-        List<String> javaFiles = new ArrayList<>();
-        try {
-            org.eclipse.core.resources.IProject[] projects = ResourcesPlugin.getWorkspace().getRoot().getProjects();
-            for (org.eclipse.core.resources.IProject project : projects) {
-                if (project.isOpen()) {
-                    findJavaFilesRecursive(project, javaFiles, 5); // Limit to first 5 files
-                    if (javaFiles.size() >= 2) break;
-                }
-            }
-        } catch (Exception e) {
-            System.out.println("Error finding workspace files: " + e.getMessage());
-        }
-        return javaFiles.toArray(new String[0]);
-    }
-
-    /**
-     * Recursively find Java files in a resource.
-     */
-    private void findJavaFilesRecursive(org.eclipse.core.resources.IResource resource, List<String> javaFiles, int limit) throws Exception {
-        if (javaFiles.size() >= limit) return;
-
-        if (resource instanceof org.eclipse.core.resources.IFile) {
-            org.eclipse.core.resources.IFile file = (org.eclipse.core.resources.IFile) resource;
-            if ("java".equals(file.getFileExtension())) {
-                javaFiles.add(file.getLocation().toOSString());
-            }
-        } else if (resource instanceof org.eclipse.core.resources.IFolder) {
-            org.eclipse.core.resources.IFolder folder = (org.eclipse.core.resources.IFolder) resource;
-            for (org.eclipse.core.resources.IResource child : folder.members()) {
-                findJavaFilesRecursive(child, javaFiles, limit);
-            }
-        }
-    }
-
-    /**
-     * Create a dummy scan issue for testing.
-     */
-    private ScanIssue createDummyIssue(String title, String severity, String description, ScanEngine engine, int lineNumber) {
-        return createDummyIssue(title, severity, description, engine, lineNumber, null, null);
-    }
-
-    /**
-     * Create a dummy scan issue with package/version info.
-     */
-    private ScanIssue createDummyIssue(String title, String severity, String description, ScanEngine engine, int lineNumber, String version, String fixedVersion) {
-        ScanIssue issue = new ScanIssue();
-        issue.setScanIssueId("dummy-" + System.nanoTime());
-        issue.setTitle(title != null ? title : "Unknown Issue");
-        issue.setSeverity(severity != null ? severity : "medium");
-        issue.setDescription(description != null ? description : "No description available");
-        issue.setScanEngine(engine != null ? engine : ScanEngine.ASCA);
-        issue.setRemediationAdvise("Review and fix this security issue. Use input validation and parameterized queries.");
-
-        // Set engine-specific properties
-        if (engine == ScanEngine.OSS) {
-            issue.setPackageVersion(version);
-            issue.setPackageManager("maven");
-            issue.setCve("CVE-2021-44228");
-        } else if (engine == ScanEngine.CONTAINERS) {
-            issue.setImageTag(version);
-        } else if (engine == ScanEngine.SECRETS) {
-            issue.setSecretValue("****KEY****");
-        }
-
-        // Add location info
-        Location location = new Location(lineNumber, 0, 50);
-        issue.setLocations(new ArrayList<>());
-        issue.getLocations().add(location);
-
-        return issue;
-    }
-
-    /**
-     * Convert a ScanProblem (from Problems package) to a ScanIssue (for Findings window).
-     */
-    private ScanIssue convertScanProblemToScanIssue(ScanProblem problem) {
-        ScanIssue issue = new ScanIssue();
-        issue.setScanIssueId(problem.getId());
-        issue.setTitle(problem.getMessage());
-        issue.setDescription(problem.getMessage()); // Use message as description for mock data
-        issue.setRuleId(Integer.parseInt(problem.getRuleId().replaceAll("[^0-9]", "0")));
-
-        // Convert Severity enum to String
-        String severity = problem.getSeverity() != null ? problem.getSeverity().toString().toLowerCase() : "medium";
-        issue.setSeverity(severity);
-
-        // Set default engine and other properties
-        issue.setScanEngine(ScanEngine.ASCA);
-        issue.setRemediationAdvise("Review this finding and apply appropriate remediation.");
-
-        // Resolve file path with fallback
-        String resolvedPath = resolveFilePath(problem.getFileName());
-        issue.setFilePath(resolvedPath);
-
-        // Add location information
-        Location location = new Location(problem.getLine(), problem.getColumn(), problem.getColumn() + 50);
-        issue.setLocations(new ArrayList<>());
-        issue.getLocations().add(location);
-
-        return issue;
-    }
-
-    /**
-     * Resolve file path - try to find file in workspace if hardcoded path doesn't exist.
-     */
-    private String resolveFilePath(String originalPath) {
-        if (originalPath == null) {
-            return null;
-        }
-
-        // Check if file exists at original path
-        IFile file = ResourcesPlugin.getWorkspace().getRoot().getFileForLocation(
-                new org.eclipse.core.runtime.Path(originalPath));
-        if (file != null && file.exists()) {
-            System.out.println("[FINDINGS] ✓ Found file at original path: " + originalPath);
-            return originalPath;
-        }
-
-        // Try to find file by name in workspace
-        String fileName = new java.io.File(originalPath).getName();
-        System.out.println("[FINDINGS] Original path not found, searching for: " + fileName);
-
-        try {
-            org.eclipse.core.resources.IProject[] projects = ResourcesPlugin.getWorkspace().getRoot().getProjects();
-            for (org.eclipse.core.resources.IProject project : projects) {
-                if (project.isOpen()) {
-                    String foundPath = findFileInProject(project, fileName);
-                    if (foundPath != null) {
-                        System.out.println("[FINDINGS] ✓ Found file in workspace: " + foundPath);
-                        return foundPath;
-                    }
-                }
-            }
-        } catch (Exception e) {
-            System.out.println("[FINDINGS] Error searching workspace: " + e.getMessage());
-        }
-
-        System.out.println("[FINDINGS] ✗ Could not resolve file: " + fileName);
-        return originalPath; // Return original as fallback
-    }
-
-    /**
-     * Recursively find file in project by name.
-     */
-    private String findFileInProject(org.eclipse.core.resources.IResource resource, String targetFileName) {
-        try {
-            if (resource instanceof org.eclipse.core.resources.IFile) {
-                org.eclipse.core.resources.IFile file = (org.eclipse.core.resources.IFile) resource;
-                if (file.getName().equals(targetFileName)) {
-                    return file.getLocation().toOSString();
-                }
-            } else if (resource instanceof org.eclipse.core.resources.IFolder) {
-                org.eclipse.core.resources.IFolder folder = (org.eclipse.core.resources.IFolder) resource;
-                for (org.eclipse.core.resources.IResource child : folder.members()) {
-                    String result = findFileInProject(child, targetFileName);
-                    if (result != null) {
-                        return result;
-                    }
-                }
-            }
-        } catch (Exception e) {
-            // Continue searching
-        }
-        return null;
     }
 
     private void setupToolbar() {
@@ -488,13 +309,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
      * Fix issue with AI Assist.
      */
     private void fixWithAIAssist(ScanIssue issue) {
-        System.out.println("[FINDINGS] ========================================");
-        System.out.println("[FINDINGS] Triggering AI Assist for: " + issue.getTitle());
-        System.out.println("[FINDINGS] - Issue Type: " + issue.getScanEngine());
-        System.out.println("[FINDINGS] - Severity: " + issue.getSeverity());
-        System.out.println("[FINDINGS] - Description: " + issue.getDescription());
-        System.out.println("[FINDINGS] ========================================");
-
+       
         try {
             // Build remediation prompt based on engine type
             String prompt = com.checkmarx.eclipse.devassist.ui.findings.integration.RemediationPromptBuilder
@@ -505,10 +320,6 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
                 showErrorNotification("Failed to build prompt for this issue type");
                 return;
             }
-
-            System.out.println("[FINDINGS] ✓ Remediation prompt built successfully");
-            System.out.println("[FINDINGS] Prompt length: " + prompt.length() + " characters");
-            System.out.println("[FINDINGS] \n" + prompt);
 
             // Send to Copilot via integration
             System.out.println("[FINDINGS] Sending prompt to Copilot...");
@@ -545,10 +356,6 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
      * The finding is added to the IgnoredProblemsStore and appears in the Ignored Problems Window.
      */
     private void ignoreThisFinding(ScanIssue issue) {
-        System.out.println("[FINDINGS] ========================================");
-        System.out.println("[FINDINGS] Ignoring finding: " + issue.getTitle());
-        System.out.println("[FINDINGS] - Issue ID: " + issue.getScanIssueId());
-        System.out.println("[FINDINGS] - Status changed to: IGNORED");
 
         try {
             // Verify store is initialized
@@ -560,18 +367,12 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 
             System.out.println("[FINDINGS] ✓ IgnoredProblemsStore is initialized");
 
-            // Convert ScanIssue to ScanProblem for storage in IgnoredProblemsStore
-            ScanProblem problem = convertScanIssueToProblem(issue);
-            System.out.println("[FINDINGS] ✓ Converted ScanIssue to ScanProblem: " + problem.getId());
-
-            // Add to ignored store with full problem details for display in Ignored Problems View
-            ignoredStore.ignoreProblem(problem);
-            System.out.println("[FINDINGS] ✓ Added to IgnoredProblemsStore");
+            // Add to ignored store with full finding details for display in Ignored Problems View
+            ignoredStore.ignoreProblem(issue);
+            System.out.println("[FINDINGS] ✓ Added to IgnoredProblemsStore: " + issue.getScanIssueId());
 
             // Check if it was actually added
-            boolean isIgnored = ignoredStore.isIgnored(problem.getId());
-            System.out.println("[FINDINGS] ✓ Verification: isIgnored=" + isIgnored);
-            System.out.println("[FINDINGS] ✓ All ignored IDs: " + ignoredStore.getIgnoredProblemIds());
+            boolean isIgnored = ignoredStore.isIgnored(issue.getScanIssueId());
 
             // Refresh the tree to remove the ignored finding
             System.out.println("[FINDINGS] Calling refreshTreeWithFilter...");
@@ -587,51 +388,12 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
     }
 
     /**
-     * Convert a ScanIssue to a ScanProblem for storage in IgnoredProblemsStore.
-     * This allows findings from the Findings View to appear in the Ignored Problems Window.
-     */
-    private ScanProblem convertScanIssueToProblem(ScanIssue issue) {
-        // Determine severity from issue severity string
-        Severity severity;
-        if (issue.getSeverity() != null) {
-            try {
-                severity = Severity.valueOf(issue.getSeverity().toUpperCase());
-            } catch (IllegalArgumentException e) {
-                severity = Severity.MEDIUM; // Default fallback
-            }
-        } else {
-            severity = Severity.MEDIUM;
-        }
-
-        // Get first location for line number, default to 0
-        int lineNumber = 0;
-        if (issue.getLocations() != null && !issue.getLocations().isEmpty()) {
-            lineNumber = issue.getLocations().get(0).getLine();
-        }
-
-        // Build ScanProblem with issue data
-        return new ScanProblem.Builder(issue.getScanIssueId())
-                .message(issue.getTitle())
-                .fileName(issue.getFilePath() != null ? issue.getFilePath() : "Unknown")
-                .line(lineNumber)
-                .column(0)
-                .ruleId(issue.getRuleId() != null ? String.valueOf(issue.getRuleId()) : "0")
-                .severity(severity)
-                .status("IGNORED")
-                .build();
-    }
-
-    /**
      * Ignore all findings of the same type/package.
      * For OSS: ignores all findings with the same package version
      * For CONTAINERS: ignores all findings with the same image tag
      */
     private void ignoreAllOfType(ScanIssue issue) {
-        System.out.println("[FINDINGS] ========================================");
-        System.out.println("[FINDINGS] Ignoring all findings of type: " + issue.getTitle());
-        System.out.println("[FINDINGS] - Package/Image: " + (issue.getPackageVersion() != null ? issue.getPackageVersion() : issue.getImageTag()));
-        System.out.println("[FINDINGS] - Scan Engine: " + issue.getScanEngine());
-
+        
         try {
             int ignoredCount = 0;
             String typeIdentifier = issue.getPackageVersion() != null ? issue.getPackageVersion() : issue.getImageTag();
@@ -645,8 +407,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
                                 currentIssue.getPackageVersion() : currentIssue.getImageTag();
 
                         if (typeIdentifier != null && typeIdentifier.equals(currentTypeIdentifier)) {
-                            ScanProblem problem = convertScanIssueToProblem(currentIssue);
-                            ignoredStore.ignoreProblem(problem);
+                            ignoredStore.ignoreProblem(currentIssue);
                             ignoredCount++;
                         }
                     }
@@ -931,7 +692,8 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
         // Apply active filters and refresh
         VulnerabilityFilterState filterState = VulnerabilityFilterState.getInstance();
         System.out.println("[FINDINGS] Active filters: " + filterState.getFilters());
-        System.out.println("[FINDINGS] Ignored IDs in store: " + ignoredStore.getIgnoredProblemIds());
+        System.out.println("[FINDINGS] Ignored IDs in store: " + 
+                (ignoredStore != null ? ignoredStore.getIgnoredProblemIds() : "[]"));
 
         Map<String, List<ScanIssue>> filteredIssues = new HashMap<>();
         int totalBefore = 0;
@@ -939,12 +701,20 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 
         for (String filePath : currentIssues.keySet()) {
             List<ScanIssue> issues = currentIssues.get(filePath);
-            totalBefore += issues.size();
+            if (issues == null) continue;
 
+            totalBefore += issues.size();
             List<ScanIssue> filtered = new java.util.ArrayList<>();
+
             for (ScanIssue issue : issues) {
+                // ✅ Safe null guard FIRST before calling any methods on issue
+                if (issue == null || issue.getSeverity() == null) {
+                    System.out.println("[FINDINGS] WARNING: Null issue or severity detected");
+                    continue;
+                }
+
                 String issueId = issue.getScanIssueId();
-                boolean isIgnored = ignoredStore.isIgnored(issueId);
+                boolean isIgnored = ignoredStore != null && ignoredStore.isIgnored(issueId);
                 boolean hasFilter = filterState.hasFilter(issue.getSeverity());
 
                 System.out.println("[FINDINGS] Issue: " + issue.getTitle() +
@@ -952,20 +722,17 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
                         " | Ignored: " + isIgnored +
                         " | HasFilter: " + hasFilter);
 
-                if (issue == null || issue.getSeverity() == null) {
-                    System.out.println("[FINDINGS] WARNING: Null issue or severity detected");
-                    continue;
-                }
                 // Filter by severity preference
                 if (!hasFilter) {
                     System.out.println("[FINDINGS]   -> Filtered out by severity");
                     continue;
                 }
-                // Also filter out ignored problems
+                // Filter out ignored problems
                 if (isIgnored) {
                     System.out.println("[FINDINGS]   -> Filtered out because IGNORED");
                     continue;
                 }
+
                 System.out.println("[FINDINGS]   -> KEEPING");
                 filtered.add(issue);
             }
@@ -980,44 +747,72 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
         System.out.println("[FINDINGS] Total issues after filtering: " + totalAfter);
         System.out.println("[FINDINGS] Filtered issues map: " + filteredIssues.size() + " files");
 
-        System.out.println("[FINDINGS] Setting tree input...");
-        treeViewer.setInput(filteredIssues);
-        System.out.println("[FINDINGS] Expanding all nodes...");
-        treeViewer.expandAll();
+        // ✅ Verify treeViewer control before manipulating UI
+        if (treeViewer != null && treeViewer.getControl() != null && !treeViewer.getControl().isDisposed()) {
+            System.out.println("[FINDINGS] Setting tree input...");
+            treeViewer.setInput(filteredIssues);
+            System.out.println("[FINDINGS] Expanding all nodes...");
+            treeViewer.expandAll();
+        }
+
         System.out.println("[FINDINGS] ========== REFRESH TREE END ==========");
     }
 
     /**
-     * Refresh the tree with new issues.
+     * Refresh the tree with new issues. Safely dispatches to the SWT UI Thread.
      *
      * @param issues Map of file paths to list of scan issues
      */
     public void refreshTree(Map<String, List<ScanIssue>> issues) {
-        System.out.println("[FINDINGS] Refreshing tree with new issues");
-        System.out.println("[FINDINGS] - Files: " + issues.size());
-        int totalIssues = issues.values().stream().mapToInt(List::size).sum();
-        System.out.println("[FINDINGS] - Total Issues: " + totalIssues);
+        if (issues == null) return;
+
+        System.out.println("[FINDINGS] ╔════════════════════════════════════════════╗");
+        System.out.println("[FINDINGS] ║ FINDINGS VIEW: REFRESH TREE                  ║");
+        System.out.println("[FINDINGS] ╚════════════════════════════════════════════╝");
+        System.out.println("[FINDINGS] Input: " + issues.size() + " files");
+        int totalIssues = issues.values().stream().filter(java.util.Objects::nonNull).mapToInt(List::size).sum();
+        System.out.println("[FINDINGS] Total Issues: " + totalIssues);
 
         // Log issues by severity
-        java.util.Map<String, Long> severityCounts = new java.util.HashMap<>();
-        issues.values().forEach(issueList ->
-            issueList.forEach(issue -> {
-                String severity = issue.getSeverity().toLowerCase();
-                severityCounts.put(severity, severityCounts.getOrDefault(severity, 0L) + 1);
-            })
-        );
+        Map<String, Long> severityCounts = new HashMap<>();
+        issues.values().forEach(issueList -> {
+            if (issueList != null) {
+                issueList.forEach(issue -> {
+                    if (issue != null && issue.getSeverity() != null) {
+                        String severity = issue.getSeverity().toLowerCase();
+                        severityCounts.put(severity, severityCounts.getOrDefault(severity, 0L) + 1);
+                    }
+                });
+            }
+        });
+
+        System.out.println("[FINDINGS] Severity breakdown:");
         severityCounts.forEach((severity, count) ->
-            System.out.println("[FINDINGS]   " + severity + ": " + count)
+            System.out.println("[FINDINGS]   - " + severity + ": " + count)
         );
 
+        for (String filePath : issues.keySet()) {
+            List<ScanIssue> fileIssues = issues.get(filePath);
+            System.out.println("[FINDINGS] File: " + filePath + " → " + (fileIssues != null ? fileIssues.size() : 0) + " issues");
+        }
+
+        System.out.println("[FINDINGS] Setting currentIssues and dispatching UI update...");
         this.currentIssues = issues;
-        refreshTreeWithFilter();
+
+        // ✅ Thread-safe dispatching for background updates
+        org.eclipse.swt.widgets.Display.getDefault().asyncExec(() -> {
+            if (treeViewer != null && treeViewer.getControl() != null && !treeViewer.getControl().isDisposed()) {
+                refreshTreeWithFilter();
+            }
+        });
+
+        System.out.println("[FINDINGS] ════════════════════════════════════════════");
     }
 
     @Override
     public void setFocus() {
-        if (treeViewer != null && treeViewer.getTree() != null) {
-            treeViewer.getTree().setFocus();
+        if (treeViewer != null && treeViewer.getControl() != null && !treeViewer.getControl().isDisposed()) {
+            treeViewer.getControl().setFocus();
         }
     }
 
@@ -1027,16 +822,14 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 
     /**
      * Listener implementation: called when ignored problems are restored or cleared.
-     * Refreshes the Findings View to show the restored findings again.
      */
     @Override
     public void onIgnoredProblemsChanged() {
         System.out.println("[FINDINGS] Ignored problems changed - refreshing findings tree");
-        treeViewer.getControl().getDisplay().asyncExec(() -> {
-            if (treeViewer != null && treeViewer.getControl() != null && !treeViewer.getControl().isDisposed()) {
-                refreshTreeWithFilter();
-            }
-        });
+        if (treeViewer != null && treeViewer.getControl() != null && !treeViewer.getControl().isDisposed()) {
+            treeViewer.getControl().getDisplay().asyncExec(this::refreshTreeWithFilter);
+        }
     }
+
 
 }

@@ -28,7 +28,6 @@ public class CheckmarxDocumentListener implements IDocumentListener {
 	public CheckmarxDocumentListener(String fileName, RealTimeScanJob scanJob) {
 		this.fileName = fileName;
 		this.scanJob = scanJob;
-		System.out.println("[REALTIME] ✓ Document listener created for: " + fileName);
 	}
 
 	/**
@@ -55,16 +54,11 @@ public class CheckmarxDocumentListener implements IDocumentListener {
 			int offset = event.getOffset();
 			int length = event.getLength();
 
-			System.out.println("[REALTIME] Document changed: " + fileName +
-					" [offset=" + offset + ", length=" + length +
-					", newText=" + (changedText.isEmpty() ? "<deletion>" : "'" + changedText + "'") + "]");
-
 			// Reschedule the debounced scan job
 			// This cancels the previous job (if still scheduled) and starts a new 1-second timer
 			scanJob.reschedule(1000); // 1000ms = 1 second debounce
 
 		} catch (Exception e) {
-			System.err.println("[REALTIME] Error in document listener: " + e.getMessage());
 			e.printStackTrace();
 		}
 	}
@@ -74,7 +68,6 @@ public class CheckmarxDocumentListener implements IDocumentListener {
 	 * Call this when the editor is closed.
 	 */
 	public void dispose() {
-		System.out.println("[REALTIME] ✓ Document listener disposed for: " + fileName);
 		if (scanJob != null) {
 			scanJob.cancel();
 		}

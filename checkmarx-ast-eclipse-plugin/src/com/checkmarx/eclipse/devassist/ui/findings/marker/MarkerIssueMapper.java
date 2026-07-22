@@ -6,8 +6,6 @@ import com.checkmarx.eclipse.enums.Severity;
 import com.checkmarx.eclipse.devassist.ui.findings.model.Location;
 import com.checkmarx.eclipse.devassist.ui.findings.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.ui.findings.model.ScanIssue;
-import com.checkmarx.eclipse.devassist.problems.marker.ProblemMarkerConstants;
-import com.checkmarx.eclipse.devassist.problems.model.ScanProblem;
 
 /**
  * Maps between ScanIssue objects and IMarker attributes.
@@ -148,44 +146,6 @@ public class MarkerIssueMapper {
 
         } catch (Exception e) {
             System.out.println("[MARKER-MAPPER] Error populating marker: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-
-    /**
-     * Populate marker attributes from a ScanProblem (used by Problems View).
-     * Called when creating markers from problems.
-     *
-     * @param marker the IMarker to populate
-     * @param problem the ScanProblem containing data to serialize
-     */
-    public static void populateMarkerFromProblem(IMarker marker, ScanProblem problem) {
-        try {
-            if (problem.getId() != null && !problem.getId().isEmpty()) {
-                marker.setAttribute(ProblemMarkerConstants.ATTR_FINDING_ID, problem.getId());
-            }
-
-            if (problem.getMessage() != null && !problem.getMessage().isEmpty()) {
-                marker.setAttribute(IMarker.MESSAGE, problem.getMessage());
-            }
-
-            if (problem.getRuleId() != null && !problem.getRuleId().isEmpty()) {
-                marker.setAttribute(ProblemMarkerConstants.ATTR_RULE_ID, problem.getRuleId());
-            }
-
-            if (problem.getSeverity() != null) {
-                marker.setAttribute(ProblemMarkerConstants.ATTR_SEVERITY, problem.getSeverity().name());
-                marker.setAttribute(IMarker.SEVERITY, toEclipseSeverity(problem.getSeverity()));
-            }
-
-            if (problem.getStatus() != null && !problem.getStatus().isEmpty()) {
-                marker.setAttribute(ProblemMarkerConstants.ATTR_STATUS, problem.getStatus());
-            }
-
-            System.out.println("[MARKER-MAPPER] Populated marker from problem: " + problem.getMessage());
-
-        } catch (Exception e) {
-            System.out.println("[MARKER-MAPPER] Error populating marker from problem: " + e.getMessage());
             e.printStackTrace();
         }
     }

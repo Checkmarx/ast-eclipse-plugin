@@ -30,18 +30,46 @@ public class FindingsContentProvider implements ITreeContentProvider {
         if (inputElement instanceof Map) {
             @SuppressWarnings("unchecked")
             Map<String, List<ScanIssue>> map = (Map<String, List<ScanIssue>>) inputElement;
-            return map.entrySet().stream()
+
+            System.out.println("[FINDINGS-CONTENT] ========================================");
+            System.out.println("[FINDINGS-CONTENT] Creating FileNodeLabel elements...");
+            System.out.println("[FINDINGS-CONTENT] Input files: " + map.size());
+
+            Object[] elements = map.entrySet().stream()
                     .map(entry -> {
                         String fileName = getFileName(entry.getKey());
                         Image fileIcon = getFileIcon(fileName);
+                        List<ScanIssue> issues = entry.getValue();
+
+                        System.out.println("[FINDINGS-CONTENT] File: " + fileName);
+                        System.out.println("[FINDINGS-CONTENT]   Path: " + entry.getKey());
+                        System.out.println("[FINDINGS-CONTENT]   Issues: " + issues.size());
+
+                        // Calculate and log severity counts
+                        java.util.Map<String, Long> counts = new java.util.HashMap<>();
+                        for (ScanIssue issue : issues) {
+                            String severity = issue.getSeverity();
+                            counts.put(severity, counts.getOrDefault(severity, 0L) + 1);
+                        }
+                        counts.forEach((sev, cnt) ->
+                            System.out.println("[FINDINGS-CONTENT]     " + sev + ": " + cnt)
+                        );
+
                         return new FileNodeLabel(
                                 fileName,
                                 entry.getKey(),
-                                entry.getValue(),
+                                issues,
                                 fileIcon);
                     })
                     .toArray();
+
+            System.out.println("[FINDINGS-CONTENT] ✓ Created " + elements.length + " FileNodeLabel elements");
+            System.out.println("[FINDINGS-CONTENT] ========================================");
+            return elements;
         }
+
+        System.out.println("[FINDINGS-CONTENT] ✗ Input is not a Map, type: " +
+            (inputElement != null ? inputElement.getClass().getSimpleName() : "null"));
         return new Object[0];
     }
 
