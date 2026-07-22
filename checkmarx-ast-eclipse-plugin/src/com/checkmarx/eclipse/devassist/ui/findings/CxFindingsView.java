@@ -28,6 +28,7 @@ import com.checkmarx.eclipse.devassist.ui.findings.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.ui.findings.model.ScanDetailWithPath;
 import com.checkmarx.eclipse.devassist.ui.findings.model.Location;
 import com.checkmarx.eclipse.devassist.ui.findings.model.ScanEngine;
+import com.checkmarx.eclipse.devassist.ui.findings.marker.MarkerIssueMapper;
 import com.checkmarx.eclipse.devassist.backend.ProblemHolderService;
 import com.checkmarx.eclipse.devassist.ui.findings.actions.VulnerabilityFilterAction;
 import com.checkmarx.eclipse.devassist.ui.findings.actions.VulnerabilityFilterState;
@@ -485,7 +486,11 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
             // Scroll to line and highlight
             scrollToLine(editor, lineNumber);
 
-            // Use marker-based navigation instead of custom hover
+            // **FIX: Create marker BEFORE trying to navigate to it (works for ALL languages)**
+            createMarkerForIssue(file, issue);
+            System.out.println("[FINDINGS] ✓ Created marker for issue");
+
+            // Use marker-based navigation (now that marker exists)
             highlightViaMarker(editor, file, issue);
 
             System.out.println("[FINDINGS] ✓ Navigation complete - marker underline active");
@@ -586,6 +591,80 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
         return null;
     }
 
+    /**
+     * Create a marker for a ScanIssue.
+     *
+     * **CRITICAL FIX**: Markers were never being created, only searched for.
+     * This method creates markers on-demand when user navigates to an issue.
+     *
+     * **Works for ALL file types**: Java, Python, C++, JavaScript, YAML, XML, etc.
+     * Uses Eclipse's universal IMarker API (not language-specific).
+     *
+     * Marker attributes are populated using MarkerIssueMapper to store
+     * all ScanIssue data in marker attributes for later retrieval.
+     *
+     * @param file File to create marker in
+     * @param issue ScanIssue to create marker for
+     */
+    private void createMarkerForIssue(IFile file, ScanIssue issue) {
+        if (file == null || issue == null || issue.getLocations() == null || issue.getLocations().isEmpty()) {
+            System.out.println("[FINDINGS] [MARKER-CREATE] ✗ Missing file, issue, or locations");
+            return;
+        }
+
+        try {
+            System.out.println("[FINDINGS] [MARKER-CREATE] ╔═══════════════════════════════════════╗");
+            System.out.println("[FINDINGS] [MARKER-CREATE] ║ Creating marker for ScanIssue        ║");
+            System.out.println("[FINDINGS] [MARKER-CREATE] ╚═══════════════════════════════════════╝");
+            System.out.println("[FINDINGS] [MARKER-CREATE] File: " + file.getFullPath());
+            System.out.println("[FINDINGS] [MARKER-CREATE] Issue: " + issue.getTitle());
+            System.out.println("[FINDINGS] [MARKER-CREATE] Engine: " + issue.getScanEngine());
+            System.out.println("[FINDINGS] [MARKER-CREATE] Line: " + issue.getLocations().get(0).getLine());
+
+            // Step 1: Check if marker already exists for this issue
+            IMarker existingMarker = findMarkerForIssue(file, issue);
+            if (existingMarker != null && existingMarker.exists()) {
+                System.out.println("[FINDINGS] [MARKER-CREATE] ✓ Marker already exists, skipping creation");
+                return;
+            }
+
+            // Step 2: Create new marker using Eclipse's universal IMarker API
+            // **KEY**: Uses IMarker.PROBLEM which works for ALL file types
+            // - NOT language-specific (works for Java, Python, C++, JS, YAML, etc.)
+            // - Marker appears in Eclipse's Problems View
+            // - Can be navigated with IDE.gotoMarker()
+            IMarker newMarker = file.createMarker("com.checkmarx.eclipse.plugin.checkmarxProblemMarker");
+            System.out.println("[FINDINGS] [MARKER-CREATE] ✓ Marker created");
+
+            // Step 3: Populate marker attributes using MarkerIssueMapper
+            // This stores all ScanIssue data in marker for later retrieval
+            com.checkmarx.eclipse.devassist.ui.findings.marker.MarkerIssueMapper.populateMarker(newMarker, issue);
+            System.out.println("[FINDINGS] [MARKER-CREATE] ✓ Marker populated with issue data");
+
+            // Step 4: Verify marker creation
+            if (newMarker.exists()) {
+                String markerMsg = newMarker.getAttribute(org.eclipse.core.resources.IMarker.MESSAGE, "");
+                int markerLine = newMarker.getAttribute(org.eclipse.core.resources.IMarker.LINE_NUMBER, -1);
+                int markerSeverity = newMarker.getAttribute(org.eclipse.core.resources.IMarker.SEVERITY, -1);
+
+                System.out.println("[FINDINGS] [MARKER-CREATE] ✓ Marker verified:");
+                System.out.println("[FINDINGS] [MARKER-CREATE]   ID: " + newMarker.getId());
+                System.out.println("[FINDINGS] [MARKER-CREATE]   Message: " + markerMsg);
+                System.out.println("[FINDINGS] [MARKER-CREATE]   Line: " + markerLine);
+                System.out.println("[FINDINGS] [MARKER-CREATE]   Severity: " + markerSeverity);
+                System.out.println("[FINDINGS] [MARKER-CREATE] ═════════════════════════════════════════");
+            } else {
+                System.out.println("[FINDINGS] [MARKER-CREATE] ✗ Failed to create marker!");
+            }
+
+        } catch (org.eclipse.core.runtime.CoreException e) {
+            System.err.println("[FINDINGS] [MARKER-CREATE] ✗ CoreException creating marker: " + e.getMessage());
+            e.printStackTrace();
+        } catch (Exception e) {
+            System.err.println("[FINDINGS] [MARKER-CREATE] ✗ Error creating marker: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
 
     private void showContextMenu(MouseEvent e) {
         ISelection selection = treeViewer.getSelection();

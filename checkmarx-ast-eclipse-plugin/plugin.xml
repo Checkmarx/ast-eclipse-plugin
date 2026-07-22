@@ -136,7 +136,15 @@
     <!-- Removed: All Problems View customizations (markers, commands, handlers, menus, toolbars) -->
     <!-- The custom Findings Window and editor decorations are now the sole UI for Checkmarx findings -->
 
-    <!-- Java Editor Text Hover for Checkmarx Findings annotations -->
+    <!--
+    DISABLED: Java Editor Text Hover for Checkmarx Findings annotations
+
+    Reason: Using marker-based system (highlightViaMarker) uniformly for ALL languages
+    - Both Java and Python files use Eclipse's native marker hover (yellow)
+    - Consistent behavior across file types
+    - No language-specific code paths
+    -->
+    <!--
     <extension point="org.eclipse.jdt.ui.javaEditorTextHovers">
         <hover
             id="com.checkmarx.eclipse.hover.java"
@@ -145,6 +153,17 @@
             class="com.checkmarx.eclipse.devassist.ui.findings.editor.CxFindingsHover">
         </hover>
     </extension>
+    -->
+    
+    <!-- Universal hover for all languages (Java, Python, C++, etc) -->
+	<extension point="org.eclipse.ui.editors.textHovers">
+	    <hover
+	        id="com.checkmarx.eclipse.hover.universal"
+	        label="Checkmarx Findings Hover"
+	        description="Displays Checkmarx vulnerability details"
+	        class="com.checkmarx.eclipse.devassist.ui.findings.editor.CxFindingsHover">
+	    </hover>
+	</extension>
 
     <!-- Marker resolution generator for Quick Fix support (Ctrl+1) -->
     <!-- Register for base marker type - all severity-specific types inherit from it -->
