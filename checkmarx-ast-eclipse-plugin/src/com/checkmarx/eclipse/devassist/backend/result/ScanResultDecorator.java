@@ -46,30 +46,52 @@ public class ScanResultDecorator {
 	 * @param scanIssues Issues to visualize
 	 */
 	public static void decorateEditor(IFile file, List<ScanIssue> scanIssues) {
-		if (file == null || scanIssues == null || scanIssues.isEmpty()) {
+		System.out.println("[SCAN-DECORATOR-ENTRY] decorateEditor called with " +
+			(scanIssues != null ? scanIssues.size() : "null") + " issues");
+
+		if (file == null) {
+			System.out.println("[SCAN-DECORATOR-ENTRY] ✗ File is NULL - returning");
+			return;
+		}
+		if (scanIssues == null) {
+			System.out.println("[SCAN-DECORATOR-ENTRY] ✗ ScanIssues is NULL - returning");
+			return;
+		}
+		if (scanIssues.isEmpty()) {
+			System.out.println("[SCAN-DECORATOR-ENTRY] ✗ ScanIssues is EMPTY - returning");
 			return;
 		}
 
-		String filePath = file.getFullPath().toOSString();
+		// **FIX: Use getLocation() (absolute path) for consistency with RealTimeScanJob and ResultPublisher**
+		// This ensures fileAnnotations map keys match the same path format used throughout the codebase
+		String filePath = file.getLocation().toOSString();
+		System.out.println("[SCAN-DECORATOR-ENTRY] File path: " + filePath);
 
 		try {
 			// Find open editor for this file
+			System.out.println("[SCAN-DECORATOR-ENTRY] [STEP 1/3] Finding open editor...");
 			ITextEditor editor = findOpenEditor(file);
 			if (editor == null) {
+				System.out.println("[SCAN-DECORATOR-ENTRY] ✗ [STEP 1/3] No open editor for: " + filePath);
 				CxLogger.info(LOG_TAG + " ✗ No open editor for: " + filePath);
 				return;
 			}
+			System.out.println("[SCAN-DECORATOR-ENTRY] ✓ [STEP 1/3] Found editor: " + editor.getClass().getSimpleName());
 
 			// Get annotation model from editor
+			System.out.println("[SCAN-DECORATOR-ENTRY] [STEP 2/3] Getting annotation model...");
 			IAnnotationModel annotationModel = editor.getDocumentProvider()
 				.getAnnotationModel(editor.getEditorInput());
 
 			if (annotationModel == null) {
+				System.out.println("[SCAN-DECORATOR-ENTRY] ✗ [STEP 2/3] Annotation model is NULL");
 				CxLogger.warning(LOG_TAG + " ✗ No annotation model available");
 				return;
 			}
+			System.out.println("[SCAN-DECORATOR-ENTRY] ✓ [STEP 2/3] Got annotation model");
 
 			// Remove previous annotations for this file
+			System.out.println("[SCAN-DECORATOR-ENTRY] [STEP 3/3] Processing " + scanIssues.size() + " issues...");
 			clearAnnotations(filePath, annotationModel);
 
 			// Add new annotations for each issue
@@ -78,34 +100,42 @@ public class ScanResultDecorator {
 			for (ScanIssue issue : scanIssues) {
 				try {
 					FindingsAnnotation annotation = createAnnotation(editor, issue);
-					annotation.addButton(filePath, null);
 					if (annotation != null) {
+						annotation.addButton(filePath, null);
 						annotations.add(annotation);
-
-						org.eclipse.jface.text.Position pos = calculateRange(editor, issue);
 
 						CxLogger.info(LOG_TAG + " ─────────────────────────────────────────────────");
 						CxLogger.info(LOG_TAG + " Issue: " + issue.getTitle());
 						CxLogger.info(LOG_TAG + "   Engine: " + issue.getScanEngine());
 						CxLogger.info(LOG_TAG + "   Severity: " + issue.getSeverity());
-						CxLogger.info(LOG_TAG + "   Locations: " + issue.getLocations().size());
 
-						if (!issue.getLocations().isEmpty()) {
-							com.checkmarx.eclipse.devassist.ui.findings.model.Location loc = issue.getLocations().get(0);
-							CxLogger.info(LOG_TAG + "   Location[0]:");
-							CxLogger.info(LOG_TAG + "     Line: " + loc.getLine());
-							CxLogger.info(LOG_TAG + "     StartIndex (abs): " + loc.getStartIndex());
-							CxLogger.info(LOG_TAG + "     EndIndex (abs): " + loc.getEndIndex());
+						// **OSS-SPECIFIC LOGIC: Only decorate the first line (used for redirection)**
+						// For OSS issues, decorate only the first location's line to keep it simple
+						org.eclipse.jface.text.Position pos = null;
+
+						if (issue.getScanEngine() != null &&
+						    issue.getScanEngine().name().equalsIgnoreCase("OSS")) {
+							// OSS: Decorate only the first line where package is declared
+							pos = decorateOssFirstLineOnly(editor, issue);
+						} else {
+							// Other engines: Use standard range calculation
+							pos = calculateRange(editor, issue);
 						}
 
-						CxLogger.info(LOG_TAG + "   Calculated Position for Editor:");
-						CxLogger.info(LOG_TAG + "     Offset: " + pos.getOffset());
-						CxLogger.info(LOG_TAG + "     Length: " + pos.getLength());
-						CxLogger.info(LOG_TAG + "     Range: [" + pos.getOffset() + "-" + (pos.getOffset() + pos.getLength()) + "]");
+						if (pos != null && pos.getLength() > 0) {
+							CxLogger.info(LOG_TAG + "   Calculated Position for Editor:");
+							CxLogger.info(LOG_TAG + "     Offset: " + pos.getOffset());
+							CxLogger.info(LOG_TAG + "     Length: " + pos.getLength());
+							CxLogger.info(LOG_TAG + "     Range: [" + pos.getOffset() + "-" + (pos.getOffset() + pos.getLength()) + "]");
 
-						// Add annotation to model for display
-						annotationModel.addAnnotation(annotation, pos);
-						CxLogger.info(LOG_TAG + "   ✓ Annotation added to model");
+							// Add annotation to model for display
+							annotationModel.addAnnotation(annotation, pos);
+							CxLogger.info(LOG_TAG + "   ✓ Annotation added to model");
+						} else {
+							CxLogger.warning(LOG_TAG + "   ✗ FAILED: Invalid position (offset=" +
+								(pos != null ? pos.getOffset() : "null") + ", length=" +
+								(pos != null ? pos.getLength() : "null") + ")");
+						}
 					}
 				} catch (Exception e) {
 					CxLogger.warning(LOG_TAG + " Error creating annotation: " +
@@ -185,6 +215,95 @@ public class ScanResultDecorator {
 		}
 
 		return "com.checkmarx.eclipse.findings.low";
+	}
+
+	/**
+	 * Decorate only the first line for OSS issues (package declaration line).
+	 *
+	 * For OSS vulnerabilities, the Location has the exact character range,
+	 * but it may span the entire dependency block. We simplify by decorating
+	 * only the first line where the package is declared.
+	 *
+	 * @param editor Text editor
+	 * @param issue OSS issue
+	 * @return Position covering the entire first line, or null if unable to determine
+	 */
+	private static org.eclipse.jface.text.Position decorateOssFirstLineOnly(
+		ITextEditor editor, ScanIssue issue) {
+
+		try {
+			org.eclipse.jface.text.IDocument document =
+				editor.getDocumentProvider().getDocument(editor.getEditorInput());
+
+			if (document == null) {
+				CxLogger.warning(LOG_TAG + "   [OSS] Document is null!");
+				return null;
+			}
+
+			// Get the line number from first location
+			if (issue.getLocations() == null || issue.getLocations().isEmpty()) {
+				CxLogger.warning(LOG_TAG + "   [OSS] No locations found!");
+				return null;
+			}
+
+			com.checkmarx.eclipse.devassist.ui.findings.model.Location location =
+				issue.getLocations().get(0);
+			int lineNumber = location.getLine() - 1;  // Convert to 0-based
+
+			int docLength = document.getLength();
+			int lineCount = document.getNumberOfLines();
+
+			// Bounds check
+			if (lineNumber < 0 || lineNumber >= lineCount) {
+				CxLogger.warning(LOG_TAG + "   [OSS] Line " + (lineNumber + 1) +
+					" out of bounds (doc has " + lineCount + " lines)");
+				return null;
+			}
+
+			// Get the entire line information
+			org.eclipse.jface.text.IRegion lineInfo = document.getLineInformation(lineNumber);
+			int lineOffset = lineInfo.getOffset();
+			int lineLength = lineInfo.getLength();
+
+			// For OSS, decorate the entire line (excluding trailing newline)
+			// This ensures the gutter icon and underline appear on the whole line
+			int decorationLength = lineLength;
+			if (decorationLength == 0) {
+				decorationLength = 1;  // Minimum 1 char
+			}
+
+			CxLogger.info(LOG_TAG + "   [OSS] Line " + (lineNumber + 1) +
+				" (offset=" + lineOffset + ", length=" + decorationLength + ")");
+
+			// Bounds check final position
+			if (lineOffset < 0 || lineOffset > docLength) {
+				CxLogger.warning(LOG_TAG + "   [OSS] Line offset " + lineOffset +
+					" out of bounds (doc length=" + docLength + ")");
+				return null;
+			}
+
+			if (lineOffset + decorationLength > docLength) {
+				CxLogger.warning(LOG_TAG + "   [OSS] Adjusted length from " +
+					decorationLength + " to " + (docLength - lineOffset));
+				decorationLength = docLength - lineOffset;
+			}
+
+			if (decorationLength <= 0) {
+				CxLogger.warning(LOG_TAG + "   [OSS] Invalid decoration length: " + decorationLength);
+				return null;
+			}
+
+			CxLogger.info(LOG_TAG + "   [OSS] ✓ Decorating first line: [" + lineOffset +
+				"-" + (lineOffset + decorationLength) + "] = " + decorationLength + " chars");
+
+			return new org.eclipse.jface.text.Position(lineOffset, decorationLength);
+
+		} catch (Exception e) {
+			CxLogger.warning(LOG_TAG + "   [OSS] Error decorating first line: " +
+				e.getMessage());
+			e.printStackTrace();
+			return null;
+		}
 	}
 
 	/**
@@ -432,7 +551,9 @@ public class ScanResultDecorator {
 	 */
 	public static void clearDecorations(IFile file) {
 		try {
-			String filePath = file.getFullPath().toOSString();
+			// **FIX: Use getLocation() (absolute path) for consistency with decorateEditor()**
+			// Ensures fileAnnotations map lookups use the same path format
+			String filePath = file.getLocation().toOSString();
 			CxLogger.info(LOG_TAG + " Clearing decorations for: " + filePath);
 
 			ITextEditor editor = findOpenEditor(file);

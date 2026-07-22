@@ -81,7 +81,10 @@ public class ResultPublisher {
 			// 4. CxFindingsView listener receives callback with getAllIssues()
 			// 5. Listener calls refreshTree(allCachedResults)
 			// 6. Tree shows merged results (no duplicates, no stale issues)
-			String filePath = file.getFullPath().toOSString();
+			// **FIX: Use getLocation() (absolute path) to match cache key format used in RealTimeScanJob**
+			// ProblemHolderService cache is keyed with absolute paths from RealTimeScanJob.scanFile()
+			// Must use same path format for cache lookups or removal will fail → causing duplicates
+			String filePath = file.getLocation().toOSString();
 
 			org.eclipse.core.resources.IProject project = file.getProject();
 			if (project != null) {

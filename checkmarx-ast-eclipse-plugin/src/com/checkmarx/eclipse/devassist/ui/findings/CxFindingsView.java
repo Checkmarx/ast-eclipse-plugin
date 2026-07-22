@@ -473,6 +473,11 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
             IEditorPart editor = IDE.openEditor(page, file);
             System.out.println("✓ Opened file in editor: " + filePath);
 
+            // **CRITICAL FIX: Navigation-based opens don't trigger IPartListener2 events**
+            // Directly set up real-time scanning and apply cached decorations
+            // Pass the editor to avoid re-searching for it (which fails on MavenPomEditor)
+            setupRealtimeScanningForFile(file, editor);
+
             // 2. Ensure marker exists and explicitly set LINE_NUMBER
             createMarkerForIssue(file, issue);
 
@@ -485,6 +490,283 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
         } catch (Exception e) {
             System.out.println("✗ Error navigating to file: " + e.getMessage());
             e.printStackTrace();
+        }
+    }
+
+    /**
+     * Set up real-time scanning and apply cached decorations for a file.
+     * Called when file is opened via navigation to ensure we don't miss IPartListener2 events.
+     */
+    private void setupRealtimeScanningForFile(org.eclipse.core.resources.IFile file, IEditorPart editor) {
+        if (file == null || editor == null) {
+            System.out.println("[REALTIME-SETUP] ✗ File or editor is null");
+            return;
+        }
+
+        System.out.println("[REALTIME-SETUP] [STEP 1/5] Starting setup for: " + file.getName());
+        System.out.println("[REALTIME-SETUP] [STEP 1/5] Editor type: " + editor.getClass().getSimpleName());
+
+        try {
+            // Extract document for real-time scanning
+            org.eclipse.jface.text.IDocument document = null;
+            String filePath = file.getLocation().toOSString();
+            String fileName = file.getName();
+
+            System.out.println("[REALTIME-SETUP] [STEP 2/5] Extracting document from editor...");
+
+            // Try method 1: Direct ITextEditor instance check
+            if (editor instanceof org.eclipse.ui.texteditor.ITextEditor) {
+                System.out.println("[REALTIME-SETUP] [STEP 2/5] Editor is ITextEditor (direct)");
+                org.eclipse.ui.texteditor.ITextEditor textEditor = (org.eclipse.ui.texteditor.ITextEditor) editor;
+                document = textEditor.getDocumentProvider().getDocument(textEditor.getEditorInput());
+            }
+
+            // Try method 2: Adapter pattern
+            if (document == null) {
+                System.out.println("[REALTIME-SETUP] [STEP 2/5] Trying adapter pattern...");
+                org.eclipse.ui.texteditor.ITextEditor textEditor = editor.getAdapter(org.eclipse.ui.texteditor.ITextEditor.class);
+                if (textEditor != null) {
+                    System.out.println("[REALTIME-SETUP] [STEP 2/5] Got ITextEditor via adapter");
+                    document = textEditor.getDocumentProvider().getDocument(textEditor.getEditorInput());
+                }
+            }
+
+            if (document == null) {
+                System.out.println("[REALTIME-SETUP] ✗ [STEP 2/5] FAILED: Could not extract document from editor type: " + editor.getClass().getName());
+                return;
+            }
+
+            System.out.println("[REALTIME-SETUP] ✓ [STEP 2/5] Document extracted successfully");
+
+            System.out.println("[REALTIME-SETUP] [STEP 3/5] Creating RealTimeScanJob for: " + fileName);
+
+            // Create a scan job for this file
+            com.checkmarx.eclipse.devassist.ui.findings.realtime.RealTimeScanJob scanJob =
+                new com.checkmarx.eclipse.devassist.ui.findings.realtime.RealTimeScanJob(file, fileName);
+
+            System.out.println("[REALTIME-SETUP] ✓ [STEP 3/5] RealTimeScanJob created");
+
+            System.out.println("[REALTIME-SETUP] [STEP 4/5] Creating and registering document listener...");
+
+            // Create a document listener that reschedules the job on every keystroke
+            com.checkmarx.eclipse.devassist.ui.findings.realtime.CheckmarxDocumentListener docListener =
+                new com.checkmarx.eclipse.devassist.ui.findings.realtime.CheckmarxDocumentListener(fileName, scanJob);
+
+            // Register the document listener
+            document.addDocumentListener(docListener);
+            System.out.println("[REALTIME-SETUP] ✓ [STEP 4/5] Document listener registered - edits will now trigger scans");
+
+            System.out.println("[REALTIME-SETUP] [STEP 5/5] Applying cached decorations...");
+
+            // Apply cached decorations if findings exist for this file
+            // Pass the editor directly to avoid search issues with MavenPomEditor
+            applyCachedDecorationsForFile(file, document, editor);
+
+            System.out.println("[REALTIME-SETUP] ✓ [STEP 5/5] Setup complete for: " + fileName);
+
+        } catch (Exception e) {
+            System.err.println("[REALTIME-SETUP] ✗ EXCEPTION during setup: " + e.getMessage());
+            System.err.println("[REALTIME-SETUP] Exception type: " + e.getClass().getName());
+            System.err.println("[REALTIME-SETUP] Stack trace:");
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Apply cached decorations (gutter icons, underlines) when editor is opened via navigation.
+     * Uses the provided editor directly instead of searching for it.
+     */
+    private void applyCachedDecorationsForFile(org.eclipse.core.resources.IFile file,
+                                               org.eclipse.jface.text.IDocument document,
+                                               org.eclipse.ui.IEditorPart editor) {
+        if (file == null || document == null || editor == null) {
+            return;
+        }
+
+        try {
+            String filePath = file.getLocation().toOSString();
+            org.eclipse.core.resources.IProject project = file.getProject();
+
+            if (project == null) {
+                return;
+            }
+
+            // Get cached findings for this file
+            ProblemHolderService problemHolder =
+                (ProblemHolderService) project.getSessionProperty(
+                    new org.eclipse.core.runtime.QualifiedName("com.checkmarx.eclipse.plugin", "problem-holder"));
+
+            if (problemHolder == null) {
+                return;
+            }
+
+            java.util.List<ScanIssue> cachedIssues = problemHolder.getScanIssuesByFile(filePath);
+
+            if (cachedIssues == null || cachedIssues.isEmpty()) {
+                System.out.println("[REALTIME-SETUP] No cached findings for: " + file.getName());
+                return;
+            }
+
+            // Apply decorations directly using the provided editor
+            System.out.println("[REALTIME-SETUP] ✓ Applying " + cachedIssues.size() + " cached decorations for: " + file.getName());
+            applyDecorationsDirectly(editor, file, cachedIssues);
+
+        } catch (Exception e) {
+            System.err.println("[REALTIME-SETUP] Error applying cached decorations: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Apply decorations directly to the provided editor without searching for it.
+     * This avoids issues with MavenPomEditor not being found by IFile comparison.
+     */
+    private void applyDecorationsDirectly(org.eclipse.ui.IEditorPart editor,
+                                         org.eclipse.core.resources.IFile file,
+                                         java.util.List<ScanIssue> scanIssues) {
+        if (editor == null || file == null || scanIssues == null || scanIssues.isEmpty()) {
+            return;
+        }
+
+        try {
+            // Get the text editor
+            org.eclipse.ui.texteditor.ITextEditor textEditor =
+                editor.getAdapter(org.eclipse.ui.texteditor.ITextEditor.class);
+
+            if (textEditor == null) {
+                System.out.println("[REALTIME-SETUP-DIRECT] ✗ Cannot adapt editor to ITextEditor");
+                return;
+            }
+
+            // Get document provider and input
+            org.eclipse.ui.texteditor.IDocumentProvider docProvider = textEditor.getDocumentProvider();
+            if (docProvider == null) {
+                System.out.println("[REALTIME-SETUP-DIRECT] ✗ No document provider for editor");
+                return;
+            }
+
+            // Get annotation model from the document provider (proper way for all editor types)
+            org.eclipse.jface.text.source.IAnnotationModel annotationModel =
+                docProvider.getAnnotationModel(textEditor.getEditorInput());
+
+            if (annotationModel == null) {
+                System.out.println("[REALTIME-SETUP-DIRECT] ✗ No annotation model from provider");
+                return;
+            }
+
+            System.out.println("[REALTIME-SETUP-DIRECT] ✓ Got annotation model, applying " + scanIssues.size() + " decorations");
+
+            // Get document from provider
+            org.eclipse.jface.text.IDocument document = docProvider.getDocument(textEditor.getEditorInput());
+
+            if (document == null) {
+                System.out.println("[REALTIME-SETUP-DIRECT] ✗ Cannot get document from provider");
+                return;
+            }
+
+            // Apply each issue's decoration using OSS-specific logic
+            java.util.List<org.eclipse.jface.text.source.Annotation> annotations =
+                new java.util.ArrayList<>();
+
+            for (ScanIssue issue : scanIssues) {
+                try {
+                    // Create annotation
+                    com.checkmarx.eclipse.devassist.ui.findings.editor.FindingsAnnotation annotation =
+                        createAnnotationForIssue(issue);
+
+                    if (annotation == null) {
+                        continue;
+                    }
+
+                    // Calculate position (OSS = first line only)
+                    org.eclipse.jface.text.Position pos = calculatePositionForIssue(document, issue);
+
+                    if (pos != null && pos.getLength() > 0) {
+                        annotationModel.addAnnotation(annotation, pos);
+                        annotations.add(annotation);
+                        System.out.println("[REALTIME-SETUP-DIRECT] ✓ Added annotation for: " + issue.getTitle());
+                    }
+                } catch (Exception e) {
+                    System.err.println("[REALTIME-SETUP-DIRECT] Error decorating issue: " + e.getMessage());
+                }
+            }
+
+            System.out.println("[REALTIME-SETUP-DIRECT] ✓ Applied " + annotations.size() + " decorations successfully");
+
+        } catch (Exception e) {
+            System.err.println("[REALTIME-SETUP-DIRECT] ✗ Error applying decorations directly: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Create annotation for an issue.
+     */
+    private com.checkmarx.eclipse.devassist.ui.findings.editor.FindingsAnnotation createAnnotationForIssue(ScanIssue issue) {
+        try {
+            String annotationType = mapSeverityToAnnotationType(issue.getSeverity());
+            return new com.checkmarx.eclipse.devassist.ui.findings.editor.FindingsAnnotation(
+                annotationType,
+                issue.getTitle(),
+                issue.getDescription()
+            );
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Map severity to annotation type.
+     */
+    private String mapSeverityToAnnotationType(String severity) {
+        if (severity == null) {
+            return "com.checkmarx.eclipse.findings.low";
+        }
+        String upper = severity.toUpperCase();
+        if (upper.contains("CRITICAL") || upper.contains("ERROR")) {
+            return "com.checkmarx.eclipse.findings.critical";
+        }
+        if (upper.contains("HIGH")) {
+            return "com.checkmarx.eclipse.findings.high";
+        }
+        if (upper.contains("MEDIUM")) {
+            return "com.checkmarx.eclipse.findings.medium";
+        }
+        if (upper.contains("LOW") || upper.contains("INFO")) {
+            return "com.checkmarx.eclipse.findings.low";
+        }
+        return "com.checkmarx.eclipse.findings.low";
+    }
+
+    /**
+     * Calculate position for an issue (OSS = first line only).
+     */
+    private org.eclipse.jface.text.Position calculatePositionForIssue(org.eclipse.jface.text.IDocument document, ScanIssue issue) {
+        try {
+            if (issue.getLocations() == null || issue.getLocations().isEmpty()) {
+                return null;
+            }
+
+            com.checkmarx.eclipse.devassist.ui.findings.model.Location location = issue.getLocations().get(0);
+            int lineNumber = location.getLine() - 1;  // 0-based
+
+            int lineCount = document.getNumberOfLines();
+            if (lineNumber < 0 || lineNumber >= lineCount) {
+                return null;
+            }
+
+            org.eclipse.jface.text.IRegion lineInfo = document.getLineInformation(lineNumber);
+            int offset = lineInfo.getOffset();
+            int length = lineInfo.getLength();
+
+            if (length == 0) {
+                length = 1;
+            }
+
+            return new org.eclipse.jface.text.Position(offset, length);
+
+        } catch (Exception e) {
+            return null;
         }
     }
 

@@ -174,8 +174,10 @@ public class OssScannerService extends BaseScannerService {
 	 * Adapt OSS scan results to ScanIssue model.
 	 *
 	 * Handles both real OssRealtimeResults from API and legacy mock data.
+	 * Follows JetBrains pattern: one ScanIssue per package with multiple Vulnerability objects.
 	 *
 	 * @param rawResults Raw results from executeNativeScanner()
+	 * @param filePath Original file path being scanned (for stable ID generation)
 	 * @return List of ScanIssue objects
 	 */
 	@Override
@@ -188,7 +190,7 @@ public class OssScannerService extends BaseScannerService {
 
 		// Try to adapt as real OssRealtimeResults first
 		if (isRealOssResult(rawResults)) {
-			return adaptRealOssResult(rawResults);
+			return adaptRealOssResult(rawResults, filePath);
 		}
 
 		// Fall back to mock data if available
@@ -197,7 +199,6 @@ public class OssScannerService extends BaseScannerService {
 		}
 
 		List<?> results = (List<?>) rawResults;
-		int id = 1;
 
 		for (Object result : results) {
 			if (!(result instanceof MockOssVulnerability)) {
@@ -207,17 +208,50 @@ public class OssScannerService extends BaseScannerService {
 			MockOssVulnerability vuln = (MockOssVulnerability) result;
 			ScanIssue issue = new ScanIssue();
 
-			issue.setScanIssueId("OSS-" + id++);
-			issue.setTitle(vuln.package_name + ": " + vuln.title);
+			// Get line number from location data (fallback to 1 if not available)
+			int lineNumber = 1;
+
+			// JetBrains pattern: generate stable ID using line, package info, and filename
+			String actualFileName = "Unknown";
+			if (filePath != null && !filePath.isEmpty()) {
+				actualFileName = new java.io.File(filePath).getName();
+			}
+
+			String packageManager = detectPackageManager(vuln.package_name);
+			String scanIssueId = com.checkmarx.eclipse.devassist.backend.DevAssistUtils.generateUniqueId(
+				lineNumber,
+				packageManager + vuln.package_name,
+				vuln.vulnerable_version
+			);
+
+			issue.setScanIssueId(scanIssueId);
+			issue.setTitle(vuln.package_name);
 			issue.setDescription(vuln.title);
 			issue.setSeverity(vuln.severity.toUpperCase());
 			issue.setPackageVersion(vuln.vulnerable_version);
-			issue.setPackageManager(detectPackageManager(vuln.package_name));
+			issue.setPackageManager(packageManager);
 			issue.setCve(vuln.cve);
-			issue.setRemediationAdvise("Update to version " + vuln.fixed_version +
-				" or later");
-			issue.setProblematicLineNumber(1);
+			issue.setRemediationAdvise("Update to version " + vuln.fixed_version + " or later");
+			issue.setProblematicLineNumber(lineNumber);
 			issue.setScanEngine(ScanEngine.OSS);
+
+			// Add location for decoration (gutter icons, underlines)
+			// For mock data, mark the first line with a reasonable range for underline
+			Location mockLocation = new Location();
+			mockLocation.setLine(lineNumber);
+			mockLocation.setStartIndex(0);
+			mockLocation.setEndIndex(100);  // Decorator will use this to underline up to 100 chars
+			issue.getLocations().add(mockLocation);
+
+			// JetBrains pattern: create Vulnerability object for each CVE/issue
+			com.checkmarx.eclipse.devassist.ui.findings.model.Vulnerability vulnerability =
+				new com.checkmarx.eclipse.devassist.ui.findings.model.Vulnerability();
+			vulnerability.setVulnerabilityId(scanIssueId);
+			vulnerability.setTitle(vuln.title);
+			vulnerability.setDescription(vuln.title);
+			vulnerability.setSeverity(vuln.severity.toUpperCase());
+			vulnerability.setCve(vuln.cve);
+			issue.getVulnerabilities().add(vulnerability);
 
 			issues.add(issue);
 		}
@@ -229,19 +263,13 @@ public class OssScannerService extends BaseScannerService {
 		return obj != null && obj.getClass().getSimpleName().equals("OssRealtimeResults");
 	}
 
-	private List<ScanIssue> adaptRealOssResult(Object ossResult) {
+	private List<ScanIssue> adaptRealOssResult(Object ossResult, String filePath) {
 		List<ScanIssue> issues = new ArrayList<>();
 		try {
 			System.out.println(logTag + " [OSS-ADAPT] ╔════════════════════════════════════════════╗");
 			System.out.println(logTag + " [OSS-ADAPT] ║ ADAPTING OSS RESULTS                       ║");
 			System.out.println(logTag + " [OSS-ADAPT] ╚════════════════════════════════════════════╝");
 			System.out.println(logTag + " [OSS-ADAPT] Result type: " + ossResult.getClass().getName());
-			System.out.println(logTag + " [OSS-ADAPT] Available methods on result object:");
-			for (java.lang.reflect.Method m : ossResult.getClass().getMethods()) {
-				if (!m.getName().startsWith("java")) {
-					System.out.println(logTag + " [OSS-ADAPT]   - " + m.getName() + "() returns " + m.getReturnType().getSimpleName());
-				}
-			}
 
 			// Try to get the results list from OssRealtimeResults
 			Method getPackagesMethod = ossResult.getClass().getMethod("getPackages");
@@ -254,20 +282,17 @@ public class OssScannerService extends BaseScannerService {
 
 			System.out.println(logTag + " [OSS-ADAPT] ✓ Found " + packages.size() + " packages with vulnerabilities");
 
-			int id = 1;
+			// Extract actual filename from filePath (not temp file name)
+			String actualFileName = "Unknown";
+			if (filePath != null && !filePath.isEmpty()) {
+				actualFileName = new java.io.File(filePath).getName();
+			}
+
+			int packageCount = 0;
 			for (Object pkg : packages) {
 				try {
-					System.out.println(logTag + " [OSS-ADAPT] [PACKAGE " + id + "] Adapting package...");
-
-					// Dump available methods on first package
-					if (id == 1) {
-						System.out.println(logTag + " [OSS-ADAPT] [PACKAGE 1] Available methods on package object:");
-						for (Method m : pkg.getClass().getMethods()) {
-							if (!m.getName().startsWith("java")) {
-								System.out.println(logTag + " [OSS-ADAPT] [PACKAGE 1]   - " + m.getName() + "() returns " + m.getReturnType().getSimpleName());
-							}
-						}
-					}
+					packageCount++;
+					System.out.println(logTag + " [OSS-ADAPT] [PACKAGE " + packageCount + "] Adapting package...");
 
 					ScanIssue issue = new ScanIssue();
 
@@ -287,45 +312,125 @@ public class OssScannerService extends BaseScannerService {
 						severity = getOssProperty(pkg, "getHighestSeverity", String.class);
 					}
 
-					String cve = getOssProperty(pkg, "getCVE", String.class);
-					if (cve == null) {
-						cve = getOssProperty(pkg, "getCves", String.class);
+					String description = getOssProperty(pkg, "getDescription", String.class);
+					String packageManager = detectPackageManager(packageName);
+
+					// JetBrains pattern: generate stable ID using line, package info, and version
+					// Line number is always 1 for manifest files (no specific line for OSS)
+					String scanIssueId = com.checkmarx.eclipse.devassist.backend.DevAssistUtils.generateUniqueId(
+						1,
+						packageManager + packageName,
+						version
+					);
+
+					issue.setScanIssueId(scanIssueId);
+					issue.setTitle(packageName);
+					issue.setDescription(description != null ? description : "Vulnerable version detected");
+					issue.setSeverity(severity != null ? severity : "MEDIUM");
+					issue.setPackageVersion(version);
+					issue.setPackageManager(packageManager);
+					issue.setProblematicLineNumber(1);
+					issue.setScanEngine(ScanEngine.OSS);
+
+					// **JetBrains Pattern: Extract locations from API response for proper decoration**
+					// OssRealtimeResults provides RealtimeLocation objects with actual start/end indices
+					// This allows the decorator to draw underlines and gutter icons correctly
+					List<?> locationsFromApi = getOssProperty(pkg, "getLocations", List.class);
+					if (locationsFromApi != null && !locationsFromApi.isEmpty()) {
+						for (Object locObj : locationsFromApi) {
+							try {
+								Integer locLine = getOssProperty(locObj, "getLine", Integer.class);
+								Integer locStart = getOssProperty(locObj, "getStartIndex", Integer.class);
+								Integer locEnd = getOssProperty(locObj, "getEndIndex", Integer.class);
+
+								// OSS API returns 0-based line numbers, convert to 1-based
+								int lineNum = (locLine != null ? locLine : 0) + 1;
+
+								Location location = new Location();
+								location.setLine(lineNum);
+								location.setStartIndex(locStart != null ? locStart : 0);
+								location.setEndIndex(locEnd != null ? locEnd : 0);
+								issue.getLocations().add(location);
+
+								CxLogger.info(logTag + " Added location from API: line=" + lineNum +
+									", start=" + location.getStartIndex() + ", end=" + location.getEndIndex());
+
+							} catch (Exception e) {
+								CxLogger.warning(logTag + " Error extracting location: " + e.getMessage());
+							}
+						}
 					}
 
+					// Fallback: if no locations from API, create a default location for the first line
+					if (issue.getLocations().isEmpty()) {
+						Location location = new Location();
+						location.setLine(1);
+						location.setStartIndex(0);
+						// For manifest files without specific location data, mark the entire first line
+						location.setEndIndex(100);  // Decorator will use this for underline range
+						issue.getLocations().add(location);
+						CxLogger.info(logTag + " Using fallback location for package: " + packageName);
+					}
+
+					// JetBrains pattern: create Vulnerability objects for each CVE/vulnerability in package
+					List<?> vulnerabilities = getOssProperty(pkg, "getVulnerabilities", List.class);
+					if (vulnerabilities != null && !vulnerabilities.isEmpty()) {
+						for (Object vulnObj : vulnerabilities) {
+							try {
+								String vulnCve = getOssProperty(vulnObj, "getCve", String.class);
+								String vulnDescription = getOssProperty(vulnObj, "getDescription", String.class);
+								String vulnSeverity = getOssProperty(vulnObj, "getSeverity", String.class);
+								String fixVersion = getOssProperty(vulnObj, "getFixVersion", String.class);
+
+								com.checkmarx.eclipse.devassist.ui.findings.model.Vulnerability vulnerability =
+									new com.checkmarx.eclipse.devassist.ui.findings.model.Vulnerability();
+								vulnerability.setVulnerabilityId(scanIssueId);
+								vulnerability.setTitle(vulnCve != null ? vulnCve : "OSS Vulnerability");
+								vulnerability.setDescription(vulnDescription);
+								vulnerability.setSeverity(vulnSeverity != null ? vulnSeverity : "MEDIUM");
+								vulnerability.setCve(vulnCve);
+								issue.getVulnerabilities().add(vulnerability);
+
+								CxLogger.info(logTag + " Added vulnerability: " + vulnCve);
+
+							} catch (Exception e) {
+								CxLogger.warning(logTag + " Error adapting OSS vulnerability: " + e.getMessage());
+							}
+						}
+					}
+
+					// If no vulnerabilities found, create a default one
+					if (issue.getVulnerabilities().isEmpty()) {
+						com.checkmarx.eclipse.devassist.ui.findings.model.Vulnerability vulnerability =
+							new com.checkmarx.eclipse.devassist.ui.findings.model.Vulnerability();
+						vulnerability.setVulnerabilityId(scanIssueId);
+						vulnerability.setTitle("Vulnerable Package");
+						vulnerability.setDescription(description);
+						vulnerability.setSeverity(severity);
+						issue.getVulnerabilities().add(vulnerability);
+					}
+
+					// Set CVE from first vulnerability if available
+					if (!issue.getVulnerabilities().isEmpty()) {
+						issue.setCve(issue.getVulnerabilities().get(0).getCve());
+					}
+
+					// Set remediation advice
 					String fixedVersion = getOssProperty(pkg, "getFixedVersions", String.class);
 					if (fixedVersion == null) {
 						fixedVersion = getOssProperty(pkg, "getRecommendedVersion", String.class);
 					}
-
-					String description = getOssProperty(pkg, "getDescription", String.class);
-
-					System.out.println(logTag + "     Package: " + packageName + " v" + version + " (severity: " + severity + ")");
-
-					issue.setScanIssueId("OSS-" + id);
-					issue.setTitle(packageName + ": Vulnerable Package Detected");
-					issue.setDescription(description != null ? description : "Vulnerable version detected");
-					issue.setSeverity(severity != null ? severity : "MEDIUM");
-					issue.setPackageVersion(version);
-					issue.setPackageManager(detectPackageManager(packageName));
-					issue.setCve(cve);
 					issue.setRemediationAdvise("Update to version " + (fixedVersion != null ? fixedVersion : "latest"));
-					issue.setProblematicLineNumber(1);
-					issue.setScanEngine(ScanEngine.OSS);
-
-					Location location = new Location();
-					location.setLine(1);
-					location.setStartIndex(0);
-					location.setEndIndex(0);
-					issue.getLocations().add(location);
 
 					issues.add(issue);
-					id++;
 
-					System.out.println(logTag + " [OSS-ADAPT] [PACKAGE " + id + "] ✓ Added issue: " + packageName);
+					System.out.println(logTag + " [OSS-ADAPT] [PACKAGE " + packageCount + "] ✓ Added issue: " + packageName +
+						" with " + issue.getVulnerabilities().size() + " vulnerabilities");
 
 				} catch (Exception e) {
-					System.err.println(logTag + " [OSS-ADAPT] [PACKAGE " + id + "] ✗ Error adapting OSS package: " + e.getMessage());
+					System.err.println(logTag + " [OSS-ADAPT] [PACKAGE " + packageCount + "] ✗ Error adapting OSS package: " + e.getMessage());
 					e.printStackTrace();
+					CxLogger.error(logTag + " Error adapting OSS package: " + e.getMessage(), e);
 				}
 			}
 
@@ -336,6 +441,7 @@ public class OssScannerService extends BaseScannerService {
 		} catch (Exception e) {
 			System.err.println(logTag + " [OSS-ADAPT] ✗ Error adapting real OSS result: " + e.getMessage());
 			e.printStackTrace();
+			CxLogger.error(logTag + " Error adapting real OSS result: " + e.getMessage(), e);
 		}
 		return issues;
 	}

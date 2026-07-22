@@ -160,6 +160,11 @@ public class CheckmarxEditorListener implements IPartListener2 {
 
 			System.out.println("[REALTIME] ✓ Document listener registered for: " + fileName);
 
+			// **CRITICAL FIX: Apply cached decorations if findings exist for this file**
+			// JetBrains pattern: when editor opens, apply cached decorations immediately
+			// This fixes the issue where decorations don't appear if editor wasn't open during scan
+			applyCachedDecorationsForFile(file, document);
+
 		} catch (Exception e) {
 			System.err.println("[REALTIME] ✗ Error registering document listener: " + e.getMessage());
 			e.printStackTrace();
@@ -254,6 +259,56 @@ public class CheckmarxEditorListener implements IPartListener2 {
 			// Ignore exceptions; file extraction is optional
 		}
 		return null;
+	}
+
+	/**
+	 * Apply cached decorations (gutter icons, underlines) when editor opens.
+	 *
+	 * JetBrains pattern: when an editor opens, check if there are cached findings
+	 * and apply decorations immediately. This ensures decorations appear even if
+	 * the editor wasn't open when the scan completed.
+	 *
+	 * @param file the Eclipse IFile being opened
+	 * @param document the document for the file
+	 */
+	private void applyCachedDecorationsForFile(org.eclipse.core.resources.IFile file, IDocument document) {
+		if (file == null || document == null) {
+			return;
+		}
+
+		try {
+			String filePath = file.getLocation().toOSString();
+			org.eclipse.core.resources.IProject project = file.getProject();
+
+			if (project == null) {
+				return;
+			}
+
+			// Get cached findings for this file
+			com.checkmarx.eclipse.devassist.backend.ProblemHolderService problemHolder =
+				(com.checkmarx.eclipse.devassist.backend.ProblemHolderService) project.getSessionProperty(
+					new org.eclipse.core.runtime.QualifiedName("com.checkmarx.eclipse.plugin", "problem-holder"));
+
+			if (problemHolder == null) {
+				return;
+			}
+
+			java.util.List<com.checkmarx.eclipse.devassist.ui.findings.model.ScanIssue> cachedIssues =
+				problemHolder.getScanIssuesByFile(filePath);
+
+			if (cachedIssues == null || cachedIssues.isEmpty()) {
+				System.out.println("[REALTIME] No cached findings for: " + file.getName());
+				return;
+			}
+
+			// Apply decorations for cached findings
+			System.out.println("[REALTIME] ✓ Applying " + cachedIssues.size() + " cached decorations for: " + file.getName());
+			com.checkmarx.eclipse.devassist.backend.result.ScanResultDecorator.decorateEditor(file, cachedIssues);
+
+		} catch (Exception e) {
+			System.err.println("[REALTIME] Error applying cached decorations: " + e.getMessage());
+			e.printStackTrace();
+		}
 	}
 
 	// Implement other IPartListener2 methods (not used for real-time scanning)
