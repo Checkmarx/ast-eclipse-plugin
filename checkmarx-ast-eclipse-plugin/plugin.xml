@@ -167,13 +167,30 @@
 
     <!-- Marker resolution generator for Quick Fix support (Ctrl+1) -->
     <!-- Register for base marker type - all severity-specific types inherit from it -->
-    <extension point="org.eclipse.ui.markerResolutionGenerators">
-        <generator
-                class="com.checkmarx.eclipse.devassist.ui.findings.resolution.CheckmarxMarkerResolutionGenerator"
-                markerType="com.checkmarx.eclipse.plugin.checkmarxProblemMarker">
-        </generator>
-    </extension>
-
+    <extension point="org.eclipse.ui.ide.markerResolution">
+    <markerResolutionGenerator
+        class="com.checkmarx.eclipse.devassist.ui.findings.resolution.CheckmarxMarkerResolutionGenerator"
+        markerType="com.checkmarx.eclipse.plugin.checkmarxProblemMarker">
+    </markerResolutionGenerator>
+</extension>
+    <!-- Declare custom marker type -->
+<extension point="org.eclipse.core.resources.markers" id="checkmarxProblemMarker">
+    <super type="org.eclipse.core.resources.problemmarker"/>
+    <persistent value="true"/>
+</extension>
+<extension point="org.eclipse.ui.editors.markerAnnotationSpecification">
+    <specification
+        annotationType="com.checkmarx.eclipse.findings.critical"
+        markerType="com.checkmarx.eclipse.plugin.checkmarxProblemMarker"
+        label="Checkmarx Critical Finding"
+        icon="icons/severity/critical_16.svg"
+        textStylePreferenceValue="SQUIGGLES"
+        verticalRulerPreferenceValue="true"
+        overviewRulerPreferenceValue="true"
+        presentationLayer="7">
+    </specification>
+    <!-- Repeat markerType="com.checkmarx.eclipse.plugin.checkmarxProblemMarker" for High, Medium, Low -->
+</extension>
     <!-- Problems View toolbar removed - native Eclipse only -->
 
 

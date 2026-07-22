@@ -52,11 +52,6 @@ public class ScanResultDecorator {
 
 		String filePath = file.getFullPath().toOSString();
 
-		CxLogger.info(LOG_TAG + " ╔══════════════════════════════════════════════════╗");
-		CxLogger.info(LOG_TAG + " ║ DECORATOR: Processing " + scanIssues.size() + " issues for editor    ║");
-		CxLogger.info(LOG_TAG + " ╚══════════════════════════════════════════════════╝");
-		CxLogger.info(LOG_TAG + " File: " + filePath);
-
 		try {
 			// Find open editor for this file
 			ITextEditor editor = findOpenEditor(file);
@@ -83,6 +78,7 @@ public class ScanResultDecorator {
 			for (ScanIssue issue : scanIssues) {
 				try {
 					FindingsAnnotation annotation = createAnnotation(editor, issue);
+					annotation.addButton(filePath, null);
 					if (annotation != null) {
 						annotations.add(annotation);
 
@@ -145,7 +141,6 @@ public class ScanResultDecorator {
 	 */
 	private static FindingsAnnotation createAnnotation(ITextEditor editor,
 		ScanIssue issue) {
-
 		try {
 			// Map severity to annotation type
 			String annotationType = mapSeverityToAnnotationType(issue.getSeverity());
@@ -156,16 +151,14 @@ public class ScanResultDecorator {
 				issue.getTitle(),
 				issue.getDescription()
 			);
-
-			CxLogger.info(LOG_TAG + " ✓ Created annotation for: " + issue.getTitle());
 			return annotation;
-
 		} catch (Exception e) {
 			CxLogger.warning(LOG_TAG + " Error creating annotation: " +
 				e.getMessage());
 			return null;
 		}
 	}
+
 
 	/**
 	 * Map severity level to custom Findings annotation type.
@@ -177,7 +170,6 @@ public class ScanResultDecorator {
 		if (severity == null) {
 			return "com.checkmarx.eclipse.findings.low";
 		}
-
 		String upper = severity.toUpperCase();
 		if (upper.contains("CRITICAL") || upper.contains("ERROR")) {
 			return "com.checkmarx.eclipse.findings.critical";

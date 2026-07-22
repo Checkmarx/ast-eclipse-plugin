@@ -162,20 +162,20 @@ public class CxFindingsHoverControl extends AbstractInformationControl {
 	 * Create message/title section
 	 */
 	private void createMessageSection() {
-		Label messageLabel = new Label(mainComposite, SWT.WRAP);
-		messageLabel.setText(annotation.getTitle() != null ? annotation.getTitle() : "Security Issue Detected");
-		messageLabel.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-		messageLabel.setForeground(Display.getCurrent().getSystemColor(SWT.COLOR_BLACK));
+	    Label messageLabel = new Label(mainComposite, SWT.WRAP);
+	    messageLabel.setText(annotation.getTitle());
+	    messageLabel.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+	    messageLabel.setForeground(Display.getCurrent().getSystemColor(SWT.COLOR_BLACK));
 
-		// Description if available
-		if (annotation.getDescription() != null && !annotation.getDescription().isEmpty()) {
-			Label descriptionLabel = new Label(mainComposite, SWT.WRAP);
-			descriptionLabel.setText(annotation.getDescription());
-			GridData descData = new GridData(SWT.FILL, SWT.FILL, true, true);
-			descData.widthHint = 300;
-			descriptionLabel.setLayoutData(descData);
-			descriptionLabel.setForeground(Display.getCurrent().getSystemColor(SWT.COLOR_DARK_GRAY));
-		}
+	    // ✓ Use Browser for HTML descriptions (with buttons)
+	    if (annotation.getDescription() != null && !annotation.getDescription().isEmpty()) {
+	        org.eclipse.swt.browser.Browser browser = new org.eclipse.swt.browser.Browser(mainComposite, SWT.NONE);
+	        browser.setText(annotation.getDescription());  // ← Now renders HTML properly
+	        GridData browserData = new GridData(SWT.FILL, SWT.FILL, true, true);
+	        browserData.widthHint = 400;
+	        browserData.heightHint = 120;
+	        browser.setLayoutData(browserData);
+	    }
 	}
 
 	/**

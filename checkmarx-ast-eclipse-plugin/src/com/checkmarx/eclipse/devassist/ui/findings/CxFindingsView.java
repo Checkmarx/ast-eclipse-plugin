@@ -12,6 +12,7 @@ import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.action.IToolBarManager;
+import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.ide.IDE;
@@ -19,6 +20,7 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.QualifiedName;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
@@ -458,42 +460,27 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
         try {
             System.out.println("[FINDINGS] Attempting to navigate to: " + filePath + " at line " + lineNumber);
 
-            // Try to find file in workspace
             IFile file = ResourcesPlugin.getWorkspace().getRoot().getFileForLocation(
                     new org.eclipse.core.runtime.Path(filePath));
 
             if (file == null || !file.exists()) {
                 System.out.println("✗ File not found in workspace: " + filePath);
-                System.out.println("  Checking workspace structure...");
-                // List available projects for debugging
-                org.eclipse.core.resources.IProject[] projects = ResourcesPlugin.getWorkspace().getRoot().getProjects();
-                System.out.println("  Available projects: " + projects.length);
-                for (org.eclipse.core.resources.IProject p : projects) {
-                    if (p.isOpen()) {
-                        System.out.println("    - " + p.getName());
-                    }
-                }
                 return;
             }
 
-            // Open file in editor
+            // 1. Open file in active workbench page
             IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
-            org.eclipse.ui.IEditorPart editor = IDE.openEditor(page, file);
-            System.out.println("EDITOR = " + editor);
-            System.out.println("EDITOR CLASS = " + editor.getClass().getName());
-            System.out.println("✓ Opened file: " + filePath);
+            IEditorPart editor = IDE.openEditor(page, file);
+            System.out.println("✓ Opened file in editor: " + filePath);
 
-            // Scroll to line and highlight
-            scrollToLine(editor, lineNumber);
-
-            // **FIX: Create marker BEFORE trying to navigate to it (works for ALL languages)**
+            // 2. Ensure marker exists and explicitly set LINE_NUMBER
             createMarkerForIssue(file, issue);
-            System.out.println("[FINDINGS] ✓ Created marker for issue");
 
-            // Use marker-based navigation (now that marker exists)
-            highlightViaMarker(editor, file, issue);
-
-            System.out.println("[FINDINGS] ✓ Navigation complete - marker underline active");
+            // 3. Navigate using standard ITextEditor adapter (or fall back to marker navigation)
+            boolean scrolledSuccessfully = scrollToLine(editor, lineNumber);
+            if (!scrolledSuccessfully) {
+                highlightViaMarker(editor, file, issue);
+            }
 
         } catch (Exception e) {
             System.out.println("✗ Error navigating to file: " + e.getMessage());
@@ -502,34 +489,69 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
     }
 
     /**
-     * Scroll editor to specific line number.
-     * Note: Requires TextEditor which may not be available in all Eclipse configurations.
+     * Scroll editor to specific line number using native Eclipse ITextEditor adapter.
      */
-    private void scrollToLine(org.eclipse.ui.IEditorPart editor, int lineNumber) {
+    private boolean scrollToLine(IEditorPart editor, int lineNumber) {
+        if (editor == null || lineNumber <= 0) return false;
+
         try {
-            // Try using reflection to call selectAndReveal if available
-            if (editor != null && lineNumber > 0) {
-                java.lang.reflect.Method method = editor.getClass().getMethod("selectAndReveal", int.class, int.class);
-                org.eclipse.jface.text.IDocument document = null;
+            // Use Eclipse's standard adapter pattern instead of reflection
+            org.eclipse.ui.texteditor.ITextEditor textEditor = editor.getAdapter(org.eclipse.ui.texteditor.ITextEditor.class);
+            if (textEditor == null && editor instanceof org.eclipse.ui.texteditor.ITextEditor) {
+                textEditor = (org.eclipse.ui.texteditor.ITextEditor) editor;
+            }
 
-                // Try to get document through getDocumentProvider
-                try {
-                    java.lang.reflect.Method getDocProvider = editor.getClass().getMethod("getDocumentProvider");
-                    Object docProvider = getDocProvider.invoke(editor);
-                    java.lang.reflect.Method getDoc = docProvider.getClass().getMethod("getDocument", Object.class);
-                    document = (org.eclipse.jface.text.IDocument) getDoc.invoke(docProvider, editor.getEditorInput());
-                } catch (Exception e) {
-                    // Document not available
-                }
-
-                if (document != null && lineNumber <= document.getNumberOfLines()) {
-                    int lineOffset = document.getLineOffset(lineNumber - 1);
-                    method.invoke(editor, lineOffset, 0);
-                    System.out.println("[FINDINGS] ✓ Scrolled to line " + lineNumber);
+            if (textEditor != null) {
+                org.eclipse.ui.texteditor.IDocumentProvider provider = textEditor.getDocumentProvider();
+                if (provider != null) {
+                    org.eclipse.jface.text.IDocument document = provider.getDocument(textEditor.getEditorInput());
+                    if (document != null && lineNumber <= document.getNumberOfLines()) {
+                        // Line numbers in IDocument are 0-indexed
+                        int lineOffset = document.getLineOffset(lineNumber - 1);
+                        textEditor.selectAndReveal(lineOffset, 0);
+                        System.out.println("[FINDINGS] ✓ Successfully scrolled to line " + lineNumber);
+                        return true;
+                    }
                 }
             }
         } catch (Exception e) {
-            System.out.println("[FINDINGS] Line scrolling not available in this editor: " + e.getMessage());
+            System.out.println("[FINDINGS] Line scrolling via adapter failed: " + e.getMessage());
+        }
+        return false;
+    }
+
+    /**
+     * Ensures IMarker.LINE_NUMBER is explicitly set as a 1-based Integer attribute.
+     */
+    private void createMarkerForIssue(IFile file, ScanIssue issue) {
+        if (file == null || issue == null || issue.getLocations() == null || issue.getLocations().isEmpty()) {
+            return;
+        }
+
+        try {
+            IMarker existingMarker = findMarkerForIssue(file, issue);
+            if (existingMarker != null && existingMarker.exists()) {
+                return;
+            }
+
+            // 1. Create the marker using the declared ID
+            IMarker newMarker = file.createMarker("com.checkmarx.eclipse.plugin.checkmarxProblemMarker");
+
+            // 2. Set Standard Core Eclipse Attributes (CRITICAL for Quick Fix matching)
+            int lineNumber = issue.getLocations().get(0).getLine();
+            newMarker.setAttribute(IMarker.LINE_NUMBER, lineNumber > 0 ? lineNumber : 1);
+            newMarker.setAttribute(IMarker.MESSAGE, issue.getTitle() != null ? issue.getTitle() : "Checkmarx Finding");
+            newMarker.setAttribute(IMarker.SEVERITY, IMarker.SEVERITY_WARNING);
+            newMarker.setAttribute(IMarker.USER_EDITABLE, false);
+
+            // 3. Populate custom attributes
+            com.checkmarx.eclipse.devassist.ui.findings.marker.MarkerIssueMapper.populateMarker(newMarker, issue);
+
+            System.out.println("[FINDINGS] ✓ Created marker with LINE_NUMBER=" + lineNumber + " and MESSAGE=" + issue.getTitle());
+
+        } catch (org.eclipse.core.runtime.CoreException e) {
+            System.err.println("[FINDINGS] Error creating marker: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
@@ -606,65 +628,65 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
      * @param file File to create marker in
      * @param issue ScanIssue to create marker for
      */
-    private void createMarkerForIssue(IFile file, ScanIssue issue) {
-        if (file == null || issue == null || issue.getLocations() == null || issue.getLocations().isEmpty()) {
-            System.out.println("[FINDINGS] [MARKER-CREATE] ✗ Missing file, issue, or locations");
-            return;
-        }
-
-        try {
-            System.out.println("[FINDINGS] [MARKER-CREATE] ╔═══════════════════════════════════════╗");
-            System.out.println("[FINDINGS] [MARKER-CREATE] ║ Creating marker for ScanIssue        ║");
-            System.out.println("[FINDINGS] [MARKER-CREATE] ╚═══════════════════════════════════════╝");
-            System.out.println("[FINDINGS] [MARKER-CREATE] File: " + file.getFullPath());
-            System.out.println("[FINDINGS] [MARKER-CREATE] Issue: " + issue.getTitle());
-            System.out.println("[FINDINGS] [MARKER-CREATE] Engine: " + issue.getScanEngine());
-            System.out.println("[FINDINGS] [MARKER-CREATE] Line: " + issue.getLocations().get(0).getLine());
-
-            // Step 1: Check if marker already exists for this issue
-            IMarker existingMarker = findMarkerForIssue(file, issue);
-            if (existingMarker != null && existingMarker.exists()) {
-                System.out.println("[FINDINGS] [MARKER-CREATE] ✓ Marker already exists, skipping creation");
-                return;
-            }
-
-            // Step 2: Create new marker using Eclipse's universal IMarker API
-            // **KEY**: Uses IMarker.PROBLEM which works for ALL file types
-            // - NOT language-specific (works for Java, Python, C++, JS, YAML, etc.)
-            // - Marker appears in Eclipse's Problems View
-            // - Can be navigated with IDE.gotoMarker()
-            IMarker newMarker = file.createMarker("com.checkmarx.eclipse.plugin.checkmarxProblemMarker");
-            System.out.println("[FINDINGS] [MARKER-CREATE] ✓ Marker created");
-
-            // Step 3: Populate marker attributes using MarkerIssueMapper
-            // This stores all ScanIssue data in marker for later retrieval
-            com.checkmarx.eclipse.devassist.ui.findings.marker.MarkerIssueMapper.populateMarker(newMarker, issue);
-            System.out.println("[FINDINGS] [MARKER-CREATE] ✓ Marker populated with issue data");
-
-            // Step 4: Verify marker creation
-            if (newMarker.exists()) {
-                String markerMsg = newMarker.getAttribute(org.eclipse.core.resources.IMarker.MESSAGE, "");
-                int markerLine = newMarker.getAttribute(org.eclipse.core.resources.IMarker.LINE_NUMBER, -1);
-                int markerSeverity = newMarker.getAttribute(org.eclipse.core.resources.IMarker.SEVERITY, -1);
-
-                System.out.println("[FINDINGS] [MARKER-CREATE] ✓ Marker verified:");
-                System.out.println("[FINDINGS] [MARKER-CREATE]   ID: " + newMarker.getId());
-                System.out.println("[FINDINGS] [MARKER-CREATE]   Message: " + markerMsg);
-                System.out.println("[FINDINGS] [MARKER-CREATE]   Line: " + markerLine);
-                System.out.println("[FINDINGS] [MARKER-CREATE]   Severity: " + markerSeverity);
-                System.out.println("[FINDINGS] [MARKER-CREATE] ═════════════════════════════════════════");
-            } else {
-                System.out.println("[FINDINGS] [MARKER-CREATE] ✗ Failed to create marker!");
-            }
-
-        } catch (org.eclipse.core.runtime.CoreException e) {
-            System.err.println("[FINDINGS] [MARKER-CREATE] ✗ CoreException creating marker: " + e.getMessage());
-            e.printStackTrace();
-        } catch (Exception e) {
-            System.err.println("[FINDINGS] [MARKER-CREATE] ✗ Error creating marker: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
+//    private void createMarkerForIssue(IFile file, ScanIssue issue) {
+//        if (file == null || issue == null || issue.getLocations() == null || issue.getLocations().isEmpty()) {
+//            System.out.println("[FINDINGS] [MARKER-CREATE] ✗ Missing file, issue, or locations");
+//            return;
+//        }
+//
+//        try {
+//            System.out.println("[FINDINGS] [MARKER-CREATE] ╔═══════════════════════════════════════╗");
+//            System.out.println("[FINDINGS] [MARKER-CREATE] ║ Creating marker for ScanIssue        ║");
+//            System.out.println("[FINDINGS] [MARKER-CREATE] ╚═══════════════════════════════════════╝");
+//            System.out.println("[FINDINGS] [MARKER-CREATE] File: " + file.getFullPath());
+//            System.out.println("[FINDINGS] [MARKER-CREATE] Issue: " + issue.getTitle());
+//            System.out.println("[FINDINGS] [MARKER-CREATE] Engine: " + issue.getScanEngine());
+//            System.out.println("[FINDINGS] [MARKER-CREATE] Line: " + issue.getLocations().get(0).getLine());
+//
+//            // Step 1: Check if marker already exists for this issue
+//            IMarker existingMarker = findMarkerForIssue(file, issue);
+//            if (existingMarker != null && existingMarker.exists()) {
+//                System.out.println("[FINDINGS] [MARKER-CREATE] ✓ Marker already exists, skipping creation");
+//                return;
+//            }
+//
+//            // Step 2: Create new marker using Eclipse's universal IMarker API
+//            // **KEY**: Uses IMarker.PROBLEM which works for ALL file types
+//            // - NOT language-specific (works for Java, Python, C++, JS, YAML, etc.)
+//            // - Marker appears in Eclipse's Problems View
+//            // - Can be navigated with IDE.gotoMarker()
+//            IMarker newMarker = file.createMarker("com.checkmarx.eclipse.plugin.checkmarxProblemMarker");
+//            System.out.println("[FINDINGS] [MARKER-CREATE] ✓ Marker created");
+//
+//            // Step 3: Populate marker attributes using MarkerIssueMapper
+//            // This stores all ScanIssue data in marker for later retrieval
+//            com.checkmarx.eclipse.devassist.ui.findings.marker.MarkerIssueMapper.populateMarker(newMarker, issue);
+//            System.out.println("[FINDINGS] [MARKER-CREATE] ✓ Marker populated with issue data");
+//
+//            // Step 4: Verify marker creation
+//            if (newMarker.exists()) {
+//                String markerMsg = newMarker.getAttribute(org.eclipse.core.resources.IMarker.MESSAGE, "");
+//                int markerLine = newMarker.getAttribute(org.eclipse.core.resources.IMarker.LINE_NUMBER, -1);
+//                int markerSeverity = newMarker.getAttribute(org.eclipse.core.resources.IMarker.SEVERITY, -1);
+//
+//                System.out.println("[FINDINGS] [MARKER-CREATE] ✓ Marker verified:");
+//                System.out.println("[FINDINGS] [MARKER-CREATE]   ID: " + newMarker.getId());
+//                System.out.println("[FINDINGS] [MARKER-CREATE]   Message: " + markerMsg);
+//                System.out.println("[FINDINGS] [MARKER-CREATE]   Line: " + markerLine);
+//                System.out.println("[FINDINGS] [MARKER-CREATE]   Severity: " + markerSeverity);
+//                System.out.println("[FINDINGS] [MARKER-CREATE] ═════════════════════════════════════════");
+//            } else {
+//                System.out.println("[FINDINGS] [MARKER-CREATE] ✗ Failed to create marker!");
+//            }
+//
+//        } catch (org.eclipse.core.runtime.CoreException e) {
+//            System.err.println("[FINDINGS] [MARKER-CREATE] ✗ CoreException creating marker: " + e.getMessage());
+//            e.printStackTrace();
+//        } catch (Exception e) {
+//            System.err.println("[FINDINGS] [MARKER-CREATE] ✗ Error creating marker: " + e.getMessage());
+//            e.printStackTrace();
+//        }
+//    }
 
     private void showContextMenu(MouseEvent e) {
         ISelection selection = treeViewer.getSelection();
