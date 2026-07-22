@@ -73,13 +73,14 @@ public class ResultPublisher {
 				return;
 			}
 
-			// **CRITICAL FIX: Store results in cache!**
+			// **JetBrains Pattern: Remove old engine results → Then merge new results**
 			// This triggers the message bus pattern:
-			// 1. mergeScanIssues() stores in cache
-			// 2. notifyListenersOfUpdate() publishes to all listeners
-			// 3. CxFindingsView listener receives callback with getAllIssues()
-			// 4. Listener calls refreshTree(allCachedResults)
-			// 5. Tree shows all merged results
+			// 1. removeScanIssuesByFileAndScanner() removes old results for THIS engine
+			// 2. mergeScanIssues() stores new results in cache
+			// 3. notifyListenersOfUpdate() publishes to all listeners
+			// 4. CxFindingsView listener receives callback with getAllIssues()
+			// 5. Listener calls refreshTree(allCachedResults)
+			// 6. Tree shows merged results (no duplicates, no stale issues)
 			String filePath = file.getFullPath().toOSString();
 
 			org.eclipse.core.resources.IProject project = file.getProject();
@@ -89,7 +90,21 @@ public class ResultPublisher {
 						new org.eclipse.core.runtime.QualifiedName("com.checkmarx.eclipse.plugin", "problem-holder"));
 
 				if (problemHolder != null) {
-					problemHolder.mergeScanIssues(filePath, scanIssues);					
+					// Get engine type from scan issues (all issues from same scan have same engine)
+					String engineType = scanIssues.isEmpty() ? null :
+						scanIssues.get(0).getScanEngine() != null ?
+						scanIssues.get(0).getScanEngine().name() : null;
+
+					// Step 1: Remove old results from THIS scanner engine
+					if (engineType != null) {
+						problemHolder.removeScanIssuesByFileAndScanner(engineType, filePath);
+						System.out.println(LOG_TAG + " [REMOVE] Removed old " + engineType + " issues for: " + filePath);
+					}
+
+					// Step 2: Add new results from THIS scanner engine
+					problemHolder.mergeScanIssues(filePath, scanIssues);
+					System.out.println(LOG_TAG + " [MERGE] Merged " + scanIssues.size() + " new issues from " +
+						(engineType != null ? engineType : "UNKNOWN") + " for: " + filePath);
 				} else {
 					System.out.println(LOG_TAG + " [VIEW-UPDATE] ⚠ ProblemHolderService not initialized - results not cached");
 				}

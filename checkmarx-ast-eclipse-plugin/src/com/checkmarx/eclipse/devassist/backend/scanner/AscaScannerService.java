@@ -226,10 +226,11 @@ public class AscaScannerService extends BaseScannerService {
 	 * Handles both real ScanResult from API and legacy mock data.
 	 *
 	 * @param rawResults Raw results from executeNativeScanner() - can be ScanResult or List<MockAscaVulnerability>
+	 * @param filePath Original file path being scanned (for stable ID generation)
 	 * @return List of ScanIssue objects
 	 */
 	@Override
-	protected List<ScanIssue> adaptResults(Object rawResults) {
+	protected List<ScanIssue> adaptResults(Object rawResults, String filePath) {
 		List<ScanIssue> issues = new ArrayList<>();
 
 		if (rawResults == null) {
@@ -238,7 +239,7 @@ public class AscaScannerService extends BaseScannerService {
 
 		// Try to adapt as real ScanResult first
 		if (isRealScanResult(rawResults)) {
-			return adaptRealScanResult(rawResults);
+			return adaptRealScanResult(rawResults, filePath);
 		}
 
 		// Fall back to mock data if available
@@ -283,87 +284,94 @@ public class AscaScannerService extends BaseScannerService {
 		return obj != null && obj.getClass().getSimpleName().equals("ScanResult");
 	}
 
-	private List<ScanIssue> adaptRealScanResult(Object scanResult) {
+	private List<ScanIssue> adaptRealScanResult(Object scanResult, String filePath) {
 		List<ScanIssue> issues = new ArrayList<>();
 		try {
-			System.out.println(logTag + " adaptRealScanResult: scanResult type = " + scanResult.getClass().getName());
-			System.out.println(logTag + " Available methods:");
-			for (java.lang.reflect.Method m : scanResult.getClass().getMethods()) {
-				if (!m.getName().startsWith("java")) {
-					System.out.println(logTag + "   - " + m.getName() + "() returns " + m.getReturnType().getSimpleName());
-				}
-			}
+			CxLogger.info(logTag + " adaptRealScanResult: scanResult type = " + scanResult.getClass().getName());
 
 			Method getScanDetails = scanResult.getClass().getMethod("getScanDetails");
 			List<?> scanDetails = (List<?>) getScanDetails.invoke(scanResult);
 
 			if (scanDetails == null || scanDetails.isEmpty()) {
-				System.out.println(logTag + " No scan details in real result");
+				CxLogger.info(logTag + " No scan details in real result");
 				return issues;
 			}
 
-			System.out.println(logTag + " Found " + scanDetails.size() + " scan details");
+			CxLogger.info(logTag + " Found " + scanDetails.size() + " scan details - grouping by line");
 
-			int id = 2000;
+			// **Extract REAL filename from filePath (not scanner's internal filename)**
+			// Scanner may use temp names like "asca_123456789_HelloClass.java"
+			// but we need the actual file name for stable ID generation
+			String actualFileName = "Unknown";
+			if (filePath != null && !filePath.isEmpty()) {
+				actualFileName = new java.io.File(filePath).getName();
+			}
+
+			// **JetBrains Pattern: Group scan details by line number**
+			java.util.Map<Integer, java.util.List<Object>> groupedByLine = new java.util.HashMap<>();
+
 			for (Object detail : scanDetails) {
+				Integer lineNumber = getDetailProperty(detail, "getLine", Integer.class);
+				int line = lineNumber != null ? lineNumber : 0;
+
+				groupedByLine.computeIfAbsent(line, k -> new ArrayList<>()).add(detail);
+			}
+
+			CxLogger.info(logTag + " Grouped " + scanDetails.size() + " details into " + groupedByLine.size() + " line groups");
+
+			// **Create ONE ScanIssue per line group**
+			for (java.util.List<Object> detailsOnLine : groupedByLine.values()) {
+				if (detailsOnLine.isEmpty()) {
+					continue;
+				}
+
 				try {
-					System.out.println(logTag + "   Adapting detail " + id + "...");
+					// Create base ScanIssue from first (highest severity) detail on this line
+					Object firstDetail = detailsOnLine.get(0);
+					String ruleName = getDetailProperty(firstDetail, "getRuleName", String.class);
+					String description = getDetailProperty(firstDetail, "getDescription", String.class);
+					String severity = getDetailProperty(firstDetail, "getSeverity", String.class);
+					Integer lineNumber = getDetailProperty(firstDetail, "getLine", Integer.class);
+					Integer ruleID = getDetailProperty(firstDetail, "getRuleID", Integer.class);
+					String remediationAdvise = getDetailProperty(firstDetail, "getRemediationAdvise", String.class);
+					Integer columnLength = getDetailProperty(firstDetail, "getLength", Integer.class);
 
 					ScanIssue issue = new ScanIssue();
 
-					// Extract properties using correct method names from ScanDetail
-					String ruleName = getDetailProperty(detail, "getRuleName", String.class);
-					String description = getDetailProperty(detail, "getDescription", String.class);
-					String severity = getDetailProperty(detail, "getSeverity", String.class);
-					Integer lineNumber = getDetailProperty(detail, "getLine", Integer.class);
-					Integer ruleID = getDetailProperty(detail, "getRuleID", Integer.class);
-					String remediationAdvise = getDetailProperty(detail, "getRemediationAdvise", String.class);
-					Integer columnLength = getDetailProperty(detail, "getLength", Integer.class);
-					String fileName = getDetailProperty(detail, "getFileName", String.class);
+					// **Generate content-based ID using ACTUAL filename (JetBrains pattern)**
+					// Use actualFileName (extracted from filePath) instead of scanner's internal filename
+					// This ensures IDs remain stable across re-scans
+					String scanIssueId = com.checkmarx.eclipse.devassist.backend.DevAssistUtils.generateUniqueId(
+						lineNumber != null ? lineNumber : 0,
+						(ruleID != null ? ruleID : 0) + (ruleName != null ? ruleName : ""),
+						actualFileName
+					);
 
-					System.out.println(logTag + "     Rule: " + ruleName + " (severity: " + severity + ") at line " + lineNumber);
-
-					issue.setScanIssueId("ASCA-" + id);
-					issue.setTitle(ruleName != null ? ruleName : "Unknown ASCA Issue");
+					issue.setScanIssueId(scanIssueId);
 					issue.setDescription(description);
 					issue.setSeverity(severity != null ? severity : "MEDIUM");
-					issue.setRuleId(ruleID != null ? ruleID : id);
+					issue.setRuleId(ruleID != null ? ruleID : 0);
 					issue.setProblematicLineNumber(lineNumber != null ? lineNumber : 0);
 					issue.setRemediationAdvise(remediationAdvise);
-					// NOTE: Don't set filePath here - it will be set to the original file path by BaseScannerService
-					// issue.setFilePath(fileName);  // This may be a temp file path, so skip it
 					issue.setScanEngine(ScanEngine.ASCA);
 
-					// Extract precise location data from RealtimeLocation objects (similar to Secrets scanner)
-					List<?> locations = getDetailProperty(detail, "getLocations", List.class);
-					CxLogger.info(logTag + "     Locations available: " + (locations != null ? locations.size() : 0));
+					// Extract location from first detail
+					List<?> locations = getDetailProperty(firstDetail, "getLocations", List.class);
 
 					if (locations != null && !locations.isEmpty()) {
-						int locIdx = 0;
-						for (Object locObj : locations) {
-							try {
-								Integer locLine = getLocationProperty(locObj, "getLine", Integer.class);
-								Integer locStart = getLocationProperty(locObj, "getStartIndex", Integer.class);
-								Integer locEnd = getLocationProperty(locObj, "getEndIndex", Integer.class);
+						Object locObj = locations.get(0);
+						Integer locLine = getLocationProperty(locObj, "getLine", Integer.class);
+						Integer locStart = getLocationProperty(locObj, "getStartIndex", Integer.class);
+						Integer locEnd = getLocationProperty(locObj, "getEndIndex", Integer.class);
 
-								CxLogger.info(logTag + "       Location " + locIdx + ": line=" + locLine +
-									" [" + locStart + "-" + locEnd + "] (" + (locEnd - locStart) + " chars)");
-
-								Location location = new Location(
-									locLine != null ? locLine : (lineNumber != null ? lineNumber : 0),
-									locStart != null ? locStart : 0,
-									locEnd != null ? locEnd : (columnLength != null ? columnLength : 50)
-								);
-								issue.getLocations().add(location);
-								locIdx++;
-
-							} catch (Exception e) {
-								CxLogger.warning(logTag + "       Error extracting location: " + e.getMessage());
-							}
-						}
+						Location location = new Location(
+							locLine != null ? locLine : (lineNumber != null ? lineNumber : 0),
+							locStart != null ? locStart : 0,
+							locEnd != null ? locEnd : (columnLength != null ? columnLength : 50)
+						);
+						issue.getLocations().add(location);
 					} else {
 						// Fallback: Use line-based positioning
-						CxLogger.warning(logTag + "     ⚠ No locations from API, using fallback");
 						Location location = new Location();
 						location.setLine(lineNumber != null ? lineNumber : 0);
 						location.setStartIndex(0);
@@ -371,22 +379,66 @@ public class AscaScannerService extends BaseScannerService {
 						issue.getLocations().add(location);
 					}
 
-					issues.add(issue);
-					id++;
+					// **Add ALL vulnerabilities on this line to the SAME ScanIssue**
+					for (int i = 0; i < detailsOnLine.size(); i++) {
+						Object detail = detailsOnLine.get(i);
 
-					System.out.println(logTag + "     ✓ Added issue: " + ruleName);
+						String vulnRuleName = getDetailProperty(detail, "getRuleName", String.class);
+						String vulnDescription = getDetailProperty(detail, "getDescription", String.class);
+						String vulnSeverity = getDetailProperty(detail, "getSeverity", String.class);
+						Integer vulnRuleID = getDetailProperty(detail, "getRuleID", Integer.class);
+						String vulnRemediationAdvise = getDetailProperty(detail, "getRemediationAdvise", String.class);
+
+						// Create Vulnerability object
+						com.checkmarx.eclipse.devassist.ui.findings.model.Vulnerability vulnerability =
+							new com.checkmarx.eclipse.devassist.ui.findings.model.Vulnerability();
+
+						// First vulnerability gets scanIssueId, others get unique IDs
+						String vulnerabilityId;
+						if (i == 0) {
+							vulnerabilityId = scanIssueId;
+						} else {
+							// Use actualFileName for stable ID generation
+							vulnerabilityId = com.checkmarx.eclipse.devassist.backend.DevAssistUtils.generateUniqueId(
+								lineNumber != null ? lineNumber : 0,
+								(vulnRuleID != null ? vulnRuleID : 0) + (vulnRuleName != null ? vulnRuleName : ""),
+								actualFileName
+							);
+						}
+
+						vulnerability.setVulnerabilityId(vulnerabilityId);
+						vulnerability.setTitle(vulnRuleName != null ? vulnRuleName : "Unknown ASCA Issue");
+						vulnerability.setDescription(vulnDescription);
+						vulnerability.setSeverity(vulnSeverity != null ? vulnSeverity : "MEDIUM");
+						vulnerability.setCve(vulnRuleName);
+
+						issue.getVulnerabilities().add(vulnerability);
+
+						CxLogger.info(logTag + " Added vulnerability: " + vulnRuleName + " (id: " + vulnerabilityId + ")");
+					}
+
+					// **Update title based on vulnerability count (JetBrains pattern)**
+					if (issue.getVulnerabilities().size() == 1) {
+						issue.setTitle(issue.getVulnerabilities().get(0).getTitle());
+					} else if (issue.getVulnerabilities().size() > 1) {
+						issue.setTitle(issue.getVulnerabilities().size() + " ASCA issues");
+					} else {
+						issue.setTitle(ruleName != null ? ruleName : "Unknown ASCA Issue");
+					}
+
+					issues.add(issue);
+					CxLogger.info(logTag + " ✓ Created grouped ScanIssue on line " + lineNumber +
+						" with " + issue.getVulnerabilities().size() + " vulnerabilities, ID=" + scanIssueId);
 
 				} catch (Exception e) {
-					System.err.println(logTag + "   ✗ Error adapting ASCA detail: " + e.getMessage());
-					e.printStackTrace();
+					CxLogger.error(logTag + " Error adapting ASCA group: " + e.getMessage(), e);
 				}
 			}
 
-			System.out.println(logTag + " ✓ Adapted " + issues.size() + " real ASCA issues from server");
+			CxLogger.info(logTag + " ✓ Adapted " + issues.size() + " grouped ASCA issues from " + scanDetails.size() + " details");
 
 		} catch (Exception e) {
-			System.err.println(logTag + " Error adapting real scan result: " + e.getMessage());
-			e.printStackTrace();
+			CxLogger.error(logTag + " Error adapting real scan result: " + e.getMessage(), e);
 		}
 		return issues;
 	}

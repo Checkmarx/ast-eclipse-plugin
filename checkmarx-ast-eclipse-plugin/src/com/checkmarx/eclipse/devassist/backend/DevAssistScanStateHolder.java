@@ -106,7 +106,11 @@ public class DevAssistScanStateHolder {
 	/**
 	 * Compute a state hash for a file based on:
 	 * - File system last modified time
-	 * - Document modification timestamp
+	 * - Document modification timestamp (if open in editor with unsaved changes)
+	 *
+	 * When a file is edited in Eclipse but not saved to disk, the file system
+	 * timestamp doesn't change. This method detects unsaved changes by checking
+	 * if the editor's dirty flag is set, and includes that in the hash.
 	 *
 	 * @param filePath File to hash
 	 * @return Composite state hash
@@ -116,9 +120,46 @@ public class DevAssistScanStateHolder {
 			java.nio.file.Path path = java.nio.file.Paths.get(filePath);
 			long fileModified = java.nio.file.Files.getLastModifiedTime(path).toMillis();
 
-			// Simple composite hash: file modification time
-			// (In a real implementation, would also include document modification time
-			// if the file is open in editor)
+			// Check if file is open in editor with unsaved changes
+			// If dirty (unsaved), include a dynamic component to detect changes
+			boolean hasUnsavedChanges = false;
+			try {
+				org.eclipse.ui.IWorkbench workbench = org.eclipse.ui.PlatformUI.getWorkbench();
+				if (workbench != null && !workbench.isClosing()) {
+					for (org.eclipse.ui.IWorkbenchWindow window : workbench.getWorkbenchWindows()) {
+						for (org.eclipse.ui.IWorkbenchPage page : window.getPages()) {
+							for (org.eclipse.ui.IEditorReference ref : page.getEditorReferences()) {
+								org.eclipse.ui.IEditorPart editor = ref.getEditor(false);
+								if (editor != null && editor.isDirty()) {
+									// Check if this editor is for our file
+									try {
+										String editorPath = editor.getEditorInput().getAdapter(org.eclipse.core.resources.IFile.class)
+											.getLocation().toOSString();
+										if (editorPath.equals(filePath)) {
+											hasUnsavedChanges = true;
+											break;
+										}
+									} catch (Exception e2) {
+										// Skip if we can't get editor path
+									}
+								}
+							}
+							if (hasUnsavedChanges) break;
+						}
+						if (hasUnsavedChanges) break;
+					}
+				}
+			} catch (Exception e) {
+				// If workbench check fails, just use file timestamp
+				hasUnsavedChanges = false;
+			}
+
+			// If file has unsaved changes, use current time to force re-scan
+			// This ensures edits are detected even if not yet saved to disk
+			if (hasUnsavedChanges) {
+				return System.nanoTime();  // Force different hash on every check while dirty
+			}
+
 			return fileModified;
 		} catch (Exception e) {
 			CxLogger.warning(LOG_TAG + " Error computing state hash: " + e.getMessage());

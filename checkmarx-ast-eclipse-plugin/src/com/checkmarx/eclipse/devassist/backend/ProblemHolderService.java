@@ -125,6 +125,38 @@ public class ProblemHolderService {
 	}
 
 	/**
+	 * Remove cached scan issues for a specific scanner type and file.
+	 * Mirrors JetBrains DevAssistScanScheduler.cacheScanResults() pattern.
+	 *
+	 * When a partial re-scan is performed (e.g., only ASCA is rescanned),
+	 * this method removes the old results for THAT scanner type before
+	 * merging the new results.
+	 *
+	 * @param scannerType Name of the scanner engine (e.g., "ASCA", "OSS", "IaC")
+	 * @param filePath Absolute file path
+	 */
+	public void removeScanIssuesByFileAndScanner(String scannerType, String filePath) {
+		if (filePath == null || scannerType == null) {
+			return;
+		}
+
+		List<ScanIssue> existing = fileToScanIssues.getOrDefault(filePath, new ArrayList<>());
+		List<ScanIssue> filtered = new ArrayList<>();
+
+		// Keep only issues from OTHER scanners
+		for (ScanIssue issue : existing) {
+			if (issue.getScanEngine() != null &&
+				!issue.getScanEngine().name().equals(scannerType)) {
+				filtered.add(issue);
+			}
+		}
+
+		fileToScanIssues.put(filePath, filtered);
+		CxLogger.info(LOG_TAG + " Removed " + scannerType + " issues for: " + filePath +
+			" (kept " + filtered.size() + " issues from other scanners)");
+	}
+
+	/**
 	 * Clear all caches (on project close).
 	 */
 	public void clearAll() {

@@ -242,7 +242,7 @@ public class IacScannerService extends BaseScannerService {
 	 * @return List of ScanIssue objects
 	 */
 	@Override
-	protected List<ScanIssue> adaptResults(Object rawResults) {
+	protected List<ScanIssue> adaptResults(Object rawResults, String filePath) {
 		List<ScanIssue> issues = new ArrayList<>();
 
 		if (rawResults == null) {

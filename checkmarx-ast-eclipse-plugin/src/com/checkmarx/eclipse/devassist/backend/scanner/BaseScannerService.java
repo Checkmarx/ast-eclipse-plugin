@@ -137,7 +137,7 @@ public abstract class BaseScannerService implements ScannerService {
 
 			// Adapt raw results to standard ScanIssue model
 			System.out.println(logTag + " [STEP 2/3] Adapting results...");
-			List<ScanIssue> issues = adaptResults(rawResults);
+			List<ScanIssue> issues = adaptResults(rawResults, filePath);
 
 			// **CRITICAL FIX: Set original file path on all issues for proper navigation**
 			// Results may contain temp file paths, but we need original workspace paths
@@ -186,9 +186,10 @@ public abstract class BaseScannerService implements ScannerService {
 	 * Converts raw scanner output to standard ScanIssue model.
 	 *
 	 * @param rawResults Raw results from executeNativeScanner()
+	 * @param filePath Original file path being scanned (for stable ID generation)
 	 * @return Standardized ScanIssue list
 	 */
-	protected abstract List<ScanIssue> adaptResults(Object rawResults);
+	protected abstract List<ScanIssue> adaptResults(Object rawResults, String filePath);
 
 	/**
 	 * Get the project this scanner belongs to.
