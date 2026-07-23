@@ -2,6 +2,7 @@
 <classpath>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER">
 		<attributes>
+			<attribute name="module" value="true"/>
 			<attribute name="maven.pomderived" value="true"/>
 		</attributes>
 	</classpathentry>
@@ -16,6 +17,8 @@
 	<classpathentry exported="true" kind="lib" path="lib/jackson-databind-2.21.1.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/org.eclipse.mylyn.commons.ui_4.9.0.v20251121-0615.jar"/>
 	<classpathentry exported="true" kind="lib" path="lib/org-eclipse-mylyn-commons-core.jar"/>
+	<classpathentry kind="lib" path="lib/jackson-core-2.21.4.jar"/>
+	<classpathentry kind="lib" path="lib/jackson-databind-2.21.4.jar"/>
 	<classpathentry kind="src" output="bin" path="src">
 		<attributes>
 			<attribute name="optional" value="true"/>
