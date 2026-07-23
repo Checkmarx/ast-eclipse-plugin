@@ -521,13 +521,22 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
                 document = textEditor.getDocumentProvider().getDocument(textEditor.getEditorInput());
             }
 
-            // Try method 2: Adapter pattern
+            // Try method 2: ITextEditor Adapter pattern (for MavenPomEditor, etc.)
             if (document == null) {
-                System.out.println("[REALTIME-SETUP] [STEP 2/5] Trying adapter pattern...");
+                System.out.println("[REALTIME-SETUP] [STEP 2/5] Trying ITextEditor adapter pattern...");
                 org.eclipse.ui.texteditor.ITextEditor textEditor = editor.getAdapter(org.eclipse.ui.texteditor.ITextEditor.class);
                 if (textEditor != null) {
                     System.out.println("[REALTIME-SETUP] [STEP 2/5] Got ITextEditor via adapter");
                     document = textEditor.getDocumentProvider().getDocument(textEditor.getEditorInput());
+                }
+            }
+
+            // Try method 3: Direct IDocument adapter (some editors provide this directly)
+            if (document == null) {
+                System.out.println("[REALTIME-SETUP] [STEP 2/5] Trying direct IDocument adapter...");
+                document = editor.getAdapter(org.eclipse.jface.text.IDocument.class);
+                if (document != null) {
+                    System.out.println("[REALTIME-SETUP] [STEP 2/5] Got IDocument directly via adapter");
                 }
             }
 
@@ -717,12 +726,16 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 
     /**
      * Map severity to annotation type.
+     * Handles all 8 severity levels including OK, UNKNOWN, and IGNORED.
      */
     private String mapSeverityToAnnotationType(String severity) {
         if (severity == null) {
-            return "com.checkmarx.eclipse.findings.low";
+            return "com.checkmarx.eclipse.findings.unknown";
         }
         String upper = severity.toUpperCase();
+        if (upper.contains("MALICIOUS")) {
+            return "com.checkmarx.eclipse.findings.malicious";
+        }
         if (upper.contains("CRITICAL") || upper.contains("ERROR")) {
             return "com.checkmarx.eclipse.findings.critical";
         }
@@ -735,7 +748,16 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
         if (upper.contains("LOW") || upper.contains("INFO")) {
             return "com.checkmarx.eclipse.findings.low";
         }
-        return "com.checkmarx.eclipse.findings.low";
+        if (upper.contains("UNKNOWN")) {
+            return "com.checkmarx.eclipse.findings.unknown";
+        }
+        if (upper.contains("OK")) {
+            return "com.checkmarx.eclipse.findings.ok";
+        }
+        if (upper.contains("IGNORED")) {
+            return "com.checkmarx.eclipse.findings.ignored";
+        }
+        return "com.checkmarx.eclipse.findings.unknown";
     }
 
     /**
@@ -1099,12 +1121,19 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
                 String issueId = issue.getScanIssueId();
                 boolean isIgnored = ignoredStore != null && ignoredStore.isIgnored(issueId);
                 boolean hasFilter = filterState.hasFilter(issue.getSeverity());
+                boolean isProblem = com.checkmarx.eclipse.devassist.backend.DevAssistUtils.isProblem(issue.getSeverity());
 
                 System.out.println("[FINDINGS] Issue: " + issue.getTitle() +
                         " | ID: " + issueId +
                         " | Ignored: " + isIgnored +
-                        " | HasFilter: " + hasFilter);
+                        " | HasFilter: " + hasFilter +
+                        " | IsProblem: " + isProblem);
 
+                // Filter by OK/UNKNOWN/IGNORED severity (Phase 3)
+                if (!isProblem) {
+                    System.out.println("[FINDINGS]   -> Filtered out because severity is OK/UNKNOWN/IGNORED");
+                    continue;
+                }
                 // Filter by severity preference
                 if (!hasFilter) {
                     System.out.println("[FINDINGS]   -> Filtered out by severity");

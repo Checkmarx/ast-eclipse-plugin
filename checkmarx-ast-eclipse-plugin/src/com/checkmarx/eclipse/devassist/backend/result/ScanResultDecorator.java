@@ -172,8 +172,17 @@ public class ScanResultDecorator {
 	private static FindingsAnnotation createAnnotation(ITextEditor editor,
 		ScanIssue issue) {
 		try {
+			// Get severity from issue
+			String severity = issue.getSeverity();
+
+			// DEBUG: Log the actual severity value
+			CxLogger.info(LOG_TAG + " [DEBUG] Issue: " + issue.getTitle() +
+				" | Severity from issue: " + (severity != null ? severity : "NULL"));
+
 			// Map severity to annotation type
-			String annotationType = mapSeverityToAnnotationType(issue.getSeverity());
+			String annotationType = mapSeverityToAnnotationType(severity);
+
+			CxLogger.info(LOG_TAG + " [DEBUG] Mapped to annotation type: " + annotationType);
 
 			// Create annotation with issue details
 			FindingsAnnotation annotation = new FindingsAnnotation(
@@ -192,15 +201,19 @@ public class ScanResultDecorator {
 
 	/**
 	 * Map severity level to custom Findings annotation type.
+	 * Handles all 8 severity levels including OK, UNKNOWN, and IGNORED.
 	 *
-	 * @param severity Severity string (CRITICAL, HIGH, MEDIUM, LOW, INFO)
+	 * @param severity Severity string (MALICIOUS, CRITICAL, HIGH, MEDIUM, LOW, UNKNOWN, OK, IGNORED)
 	 * @return Annotation type constant (com.checkmarx.eclipse.findings.{severity})
 	 */
 	private static String mapSeverityToAnnotationType(String severity) {
 		if (severity == null) {
-			return "com.checkmarx.eclipse.findings.low";
+			return "com.checkmarx.eclipse.findings.unknown";
 		}
 		String upper = severity.toUpperCase();
+		if (upper.contains("MALICIOUS")) {
+			return "com.checkmarx.eclipse.findings.malicious";
+		}
 		if (upper.contains("CRITICAL") || upper.contains("ERROR")) {
 			return "com.checkmarx.eclipse.findings.critical";
 		}
@@ -213,8 +226,17 @@ public class ScanResultDecorator {
 		if (upper.contains("LOW") || upper.contains("INFO")) {
 			return "com.checkmarx.eclipse.findings.low";
 		}
+		if (upper.contains("UNKNOWN")) {
+			return "com.checkmarx.eclipse.findings.unknown";
+		}
+		if (upper.contains("OK")) {
+			return "com.checkmarx.eclipse.findings.ok";
+		}
+		if (upper.contains("IGNORED")) {
+			return "com.checkmarx.eclipse.findings.ignored";
+		}
 
-		return "com.checkmarx.eclipse.findings.low";
+		return "com.checkmarx.eclipse.findings.unknown";
 	}
 
 	/**
@@ -520,13 +542,20 @@ public class ScanResultDecorator {
 
 			var editors = page.getEditors();
 			for (var editor : editors) {
-				if (editor instanceof ITextEditor) {
-					Object input = editor.getEditorInput();
-					if (input instanceof org.eclipse.ui.IFileEditorInput) {
-						IFile editorFile = ((org.eclipse.ui.IFileEditorInput) input)
-							.getFile();
-						if (editorFile.equals(file)) {
+				Object input = editor.getEditorInput();
+				if (input instanceof org.eclipse.ui.IFileEditorInput) {
+					IFile editorFile = ((org.eclipse.ui.IFileEditorInput) input)
+						.getFile();
+					if (editorFile.equals(file)) {
+						// Try method 1: Direct ITextEditor instance
+						if (editor instanceof ITextEditor) {
 							return (ITextEditor) editor;
+						}
+
+						// Try method 2: ITextEditor adapter (for MavenPomEditor, etc.)
+						ITextEditor textEditor = editor.getAdapter(ITextEditor.class);
+						if (textEditor != null) {
+							return textEditor;
 						}
 					}
 				}

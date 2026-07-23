@@ -349,7 +349,8 @@ public class AscaScannerService extends BaseScannerService {
 
 					issue.setScanIssueId(scanIssueId);
 					issue.setDescription(description);
-					issue.setSeverity(severity != null ? severity : "MEDIUM");
+					String normalizedSeverity = com.checkmarx.eclipse.devassist.backend.DevAssistUtils.normalizeSeverity(severity != null ? severity : "Medium");
+					issue.setSeverity(normalizedSeverity);
 					issue.setRuleId(ruleID != null ? ruleID : 0);
 					issue.setProblematicLineNumber(lineNumber != null ? lineNumber : 0);
 					issue.setRemediationAdvise(remediationAdvise);
@@ -409,7 +410,8 @@ public class AscaScannerService extends BaseScannerService {
 						vulnerability.setVulnerabilityId(vulnerabilityId);
 						vulnerability.setTitle(vulnRuleName != null ? vulnRuleName : "Unknown ASCA Issue");
 						vulnerability.setDescription(vulnDescription);
-						vulnerability.setSeverity(vulnSeverity != null ? vulnSeverity : "MEDIUM");
+						String normalizedVulnSeverity = com.checkmarx.eclipse.devassist.backend.DevAssistUtils.normalizeSeverity(vulnSeverity != null ? vulnSeverity : "Medium");
+						vulnerability.setSeverity(normalizedVulnSeverity);
 						vulnerability.setCve(vulnRuleName);
 
 						issue.getVulnerabilities().add(vulnerability);

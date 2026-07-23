@@ -6,7 +6,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.core.resources.IProject;
 
@@ -66,6 +69,11 @@ public class IacScannerService extends BaseScannerService {
 	/**
 	 * Check if file is an IaC configuration file.
 	 *
+	 * Uses relaxed detection to match JetBrains pattern:
+	 * - Accepts all .tf, .hcl, .template files
+	 * - Accepts all .yaml, .yml, .json files (widely used for IaC)
+	 * - Excludes only known non-IaC files (manifests, build configs)
+	 *
 	 * @param filePath File path to check
 	 * @return true if file is an IaC file
 	 */
@@ -78,40 +86,24 @@ public class IacScannerService extends BaseScannerService {
 		String lowerPath = filePath.toLowerCase();
 		String fileName = new java.io.File(filePath).getName().toLowerCase();
 
-		// Check for Terraform files
-		if (lowerPath.endsWith(".tf") || lowerPath.endsWith(".tfvars")) {
+		// Exclude known non-IaC files
+		if (fileName.equals("package.json") || fileName.equals("pom.xml") ||
+			fileName.equals("go.mod") || fileName.equals("requirements.txt") ||
+			fileName.equals("gemfile") || fileName.equals("cargo.toml") ||
+			fileName.equals("pipfile") || fileName.equals("build.gradle") ||
+			fileName.equals("settings.gradle")) {
+			return false;
+		}
+
+		// Accept IaC-specific extensions
+		if (lowerPath.endsWith(".tf") || lowerPath.endsWith(".tfvars") ||
+			lowerPath.endsWith(".hcl") || lowerPath.endsWith(".template")) {
 			return true;
 		}
 
-		// Check for CloudFormation templates
-		if (lowerPath.endsWith(".template") || fileName.contains("cloudformation")) {
-			return true;
-		}
-
-		// Check for Kubernetes manifests
-		if ((lowerPath.endsWith(".yaml") || lowerPath.endsWith(".yml")) &&
-			(lowerPath.contains("kubernetes") || lowerPath.contains("k8s") ||
-			 fileName.contains("deployment") || fileName.contains("service") ||
-			 fileName.contains("config") || fileName.contains("ingress") ||
-			 fileName.contains("pod"))) {
-			return true;
-		}
-
-		// Check for Ansible playbooks
-		if ((lowerPath.endsWith(".yaml") || lowerPath.endsWith(".yml")) &&
-			(lowerPath.contains("ansible") || fileName.contains("playbook"))) {
-			return true;
-		}
-
-		// Check for Helm charts
-		if ((lowerPath.endsWith(".yaml") || lowerPath.endsWith(".yml")) &&
-			(lowerPath.contains("helm") || fileName.contains("values") ||
-			 fileName.contains("Chart"))) {
-			return true;
-		}
-
-		// Check for HCL files
-		if (lowerPath.endsWith(".hcl")) {
+		// Accept YAML and JSON (widely used for IaC: CloudFormation, Kubernetes, Ansible, Helm, Docker Compose)
+		if (lowerPath.endsWith(".yaml") || lowerPath.endsWith(".yml") ||
+			lowerPath.endsWith(".json")) {
 			return true;
 		}
 
@@ -187,9 +179,9 @@ public class IacScannerService extends BaseScannerService {
 
 			Object wrapper = wrapperClass.getConstructor(configClass).newInstance(config);
 
-			// Call iacRealtimeScan(filePath)
-			Method scanMethod = wrapperClass.getMethod("iacRealtimeScan", String.class);
-			Object scanResult = scanMethod.invoke(wrapper, filePath);
+			// Call iacRealtimeScan(sourcePath, containerTool, ignoredFilePath)
+			Method scanMethod = wrapperClass.getMethod("iacRealtimeScan", String.class, String.class, String.class);
+			Object scanResult = scanMethod.invoke(wrapper, filePath, "", "");
 
 			CxLogger.info(logTag + " ✓ Called real IaC API successfully");
 			return scanResult;
@@ -237,8 +229,10 @@ public class IacScannerService extends BaseScannerService {
 	 * Adapt IaC scan results to ScanIssue model.
 	 *
 	 * Handles both real results from API and legacy mock data.
+	 * Implements JetBrains pattern: group by line, generate stable IDs.
 	 *
 	 * @param rawResults Raw results from executeNativeScanner()
+	 * @param filePath Original file path being scanned (for stable ID generation)
 	 * @return List of ScanIssue objects
 	 */
 	@Override
@@ -251,7 +245,7 @@ public class IacScannerService extends BaseScannerService {
 
 		// Try to adapt as real IaC result first
 		if (isRealIacResult(rawResults)) {
-			return adaptRealIacResult(rawResults);
+			return adaptRealIacResult(rawResults, filePath);
 		}
 
 		// Fall back to mock data
@@ -260,7 +254,15 @@ public class IacScannerService extends BaseScannerService {
 		}
 
 		List<?> results = (List<?>) rawResults;
-		int id = 4000;
+
+		// Extract REAL filename from filePath
+		String actualFileName = "Unknown";
+		if (filePath != null && !filePath.isEmpty()) {
+			actualFileName = new java.io.File(filePath).getName();
+		}
+
+		// JetBrains Pattern: Group mock data by line number
+		Map<Integer, List<Object>> groupedByLine = new HashMap<>();
 
 		for (Object result : results) {
 			if (!(result instanceof MockIacMisconfiguration)) {
@@ -268,19 +270,87 @@ public class IacScannerService extends BaseScannerService {
 			}
 
 			MockIacMisconfiguration config = (MockIacMisconfiguration) result;
-			ScanIssue issue = new ScanIssue();
+			int line = config.line_number;
 
-			issue.setScanIssueId("IAC-" + id++);
-			issue.setTitle(config.title);
-			issue.setDescription(config.description + " - " + config.details);
-			issue.setSeverity(config.severity);
-			issue.setProblematicLineNumber(config.line_number);
-			issue.setRemediationAdvise(config.remediation);
-			issue.setRuleId(Integer.parseInt(
-				config.title.replaceAll("[^0-9]", "0" + id).substring(0, 5)));
-			issue.setScanEngine(ScanEngine.IAC);
+			groupedByLine.computeIfAbsent(line, k -> new ArrayList<>()).add(config);
+		}
 
-			issues.add(issue);
+		// Create ONE ScanIssue per line group
+		for (Map.Entry<Integer, List<Object>> entry : groupedByLine.entrySet()) {
+			Integer line = entry.getKey();
+			List<Object> configsOnLine = entry.getValue();
+
+			if (configsOnLine.isEmpty()) {
+				continue;
+			}
+
+			try {
+				// Create base ScanIssue from first config on this line
+				Object firstConfig = configsOnLine.get(0);
+				MockIacMisconfiguration firstMock = (MockIacMisconfiguration) firstConfig;
+
+				// Generate content-based ID using ACTUAL filename (JetBrains pattern)
+				String scanIssueId = com.checkmarx.eclipse.devassist.backend.DevAssistUtils.generateUniqueId(
+					line,
+					firstMock.title,
+					actualFileName
+				);
+
+				ScanIssue issue = new ScanIssue();
+				issue.setScanIssueId(scanIssueId);
+				issue.setProblematicLineNumber(line);
+				issue.setScanEngine(ScanEngine.IAC);
+
+				// Add ALL misconfigurations on this line to the SAME ScanIssue
+				for (int i = 0; i < configsOnLine.size(); i++) {
+					Object config = configsOnLine.get(i);
+					MockIacMisconfiguration mockConfig = (MockIacMisconfiguration) config;
+
+					com.checkmarx.eclipse.devassist.ui.findings.model.Vulnerability vulnerability =
+						new com.checkmarx.eclipse.devassist.ui.findings.model.Vulnerability();
+
+					// First vulnerability gets scanIssueId, others get unique IDs
+					String vulnerabilityId;
+					if (i == 0) {
+						vulnerabilityId = scanIssueId;
+					} else {
+						vulnerabilityId = com.checkmarx.eclipse.devassist.backend.DevAssistUtils.generateUniqueId(
+							line,
+							mockConfig.title,
+							actualFileName
+						);
+					}
+
+					vulnerability.setVulnerabilityId(vulnerabilityId);
+					vulnerability.setTitle(mockConfig.title);
+					vulnerability.setDescription(mockConfig.description + " - " + mockConfig.details);
+					vulnerability.setSeverity(com.checkmarx.eclipse.devassist.backend.DevAssistUtils.normalizeSeverity(mockConfig.severity));
+
+					issue.getVulnerabilities().add(vulnerability);
+				}
+
+				// Dynamic title based on vulnerability count (JetBrains pattern)
+				if (issue.getVulnerabilities().size() == 1) {
+					issue.setTitle(issue.getVulnerabilities().get(0).getTitle());
+				} else if (issue.getVulnerabilities().size() > 1) {
+					issue.setTitle(issue.getVulnerabilities().size() + " IaC issues");
+				}
+
+				// Set remediation from first config
+				issue.setRemediationAdvise(firstMock.remediation);
+				issue.setSeverity(firstMock.severity);
+
+				Location location = new Location();
+				location.setLine(line);
+				location.setStartIndex(0);
+				location.setEndIndex(0);
+				issue.getLocations().add(location);
+
+				issues.add(issue);
+
+			} catch (Exception e) {
+				CxLogger.error(logTag + " Error adapting IaC mock group: " + e.getMessage(), e);
+			}
 		}
 
 		return issues;
@@ -291,92 +361,255 @@ public class IacScannerService extends BaseScannerService {
 			obj.getClass().getSimpleName().equals("IacScanResults"));
 	}
 
-	private List<ScanIssue> adaptRealIacResult(Object iacResult) {
+	private List<ScanIssue> adaptRealIacResult(Object iacResult, String filePath) {
 		List<ScanIssue> issues = new ArrayList<>();
 		try {
-			System.out.println(logTag + " adaptRealIacResult: result type = " + iacResult.getClass().getName());
-			System.out.println(logTag + " Available methods:");
-			for (Method m : iacResult.getClass().getMethods()) {
-				if (!m.getName().startsWith("java")) {
-					System.out.println(logTag + "   - " + m.getName() + "() returns " + m.getReturnType().getSimpleName());
-				}
-			}
+			CxLogger.info(logTag + " adaptRealIacResult: result type = " + iacResult.getClass().getName());
 
-			// Try to get misconfigurations from result
-			Method getMisconfig = null;
+			// Get issues list from result (JetBrains: getResults())
+			Method getIssues = null;
 			try {
-				getMisconfig = iacResult.getClass().getMethod("getMisconfigurations");
+				getIssues = iacResult.getClass().getMethod("getResults");
 			} catch (Exception e) {
 				try {
-					getMisconfig = iacResult.getClass().getMethod("getFindings");
+					getIssues = iacResult.getClass().getMethod("getMisconfigurations");
 				} catch (Exception e2) {
 					try {
-						getMisconfig = iacResult.getClass().getMethod("getResults");
+						getIssues = iacResult.getClass().getMethod("getFindings");
 					} catch (Exception e3) {
-						CxLogger.warning(logTag + " Could not find get method in IaC result");
+						CxLogger.warning(logTag + " Could not find getResults/getMisconfigurations/getFindings method in IaC result");
 						return issues;
 					}
 				}
 			}
 
-			Object iacData = getMisconfig.invoke(iacResult);
+			Object iacData = getIssues.invoke(iacResult);
 			if (iacData == null) {
-				System.out.println(logTag + " No misconfigurations found in IaC result");
+				CxLogger.info(logTag + " No issues found in IaC result");
 				return issues;
 			}
 
-			if (iacData instanceof List) {
-				List<?> misconfigs = (List<?>) iacData;
-				System.out.println(logTag + " Found " + misconfigs.size() + " misconfigurations");
+			if (!(iacData instanceof List)) {
+				CxLogger.warning(logTag + " IaC data is not a List, it's: " + iacData.getClass().getName());
+				return issues;
+			}
 
-				int id = 4000;
-				for (Object misconfig : misconfigs) {
-					try {
-						ScanIssue issue = new ScanIssue();
+			List<?> iacIssuesList = (List<?>) iacData;
+			CxLogger.info(logTag + " Found " + iacIssuesList.size() + " IaC issues - grouping by location");
 
-						String title = getIacProperty(misconfig, "getTitle", String.class);
-						if (title == null) {
-							title = getIacProperty(misconfig, "getRuleName", String.class);
-						}
-						if (title == null) {
-							title = "IaC Misconfiguration";
-						}
+			// JetBrains Pattern: Flatten issues with their locations, then group
+			// Step 1: Create IssueLocationEntry pairs (issue + each location)
+			List<IssueLocationEntry> allEntries = new ArrayList<>();
 
-						String severity = getIacProperty(misconfig, "getSeverity", String.class);
-						String description = getIacProperty(misconfig, "getDescription", String.class);
-						Integer lineNumber = getIacProperty(misconfig, "getLine", Integer.class);
-						String remediation = getIacProperty(misconfig, "getRemediationAdvice", String.class);
+			for (Object issue : iacIssuesList) {
+				if (issue == null) {
+					continue;
+				}
 
-						issue.setScanIssueId("IAC-" + id);
-						issue.setTitle(title);
-						issue.setDescription(description != null ? description : "Infrastructure misconfiguration detected");
-						issue.setSeverity(severity != null ? severity : "MEDIUM");
-						issue.setProblematicLineNumber(lineNumber != null ? lineNumber : 1);
-						issue.setRemediationAdvise(remediation);
-						issue.setScanEngine(ScanEngine.IAC);
+				// Get locations from issue
+				List<?> locations = getIacProperty(issue, "getLocations", List.class);
+				if (locations == null || locations.isEmpty()) {
+					CxLogger.warning(logTag + " Issue has no locations, skipping");
+					continue;
+				}
 
-						Location location = new Location();
-						location.setLine(lineNumber != null ? lineNumber : 1);
-						location.setStartIndex(0);
-						location.setEndIndex(0);
-						issue.getLocations().add(location);
-
-						issues.add(issue);
-						id++;
-
-					} catch (Exception e) {
-						System.err.println(logTag + "   ✗ Error adapting IaC misconfiguration: " + e.getMessage());
+				// Create entry for each location
+				for (Object location : locations) {
+					if (location != null) {
+						allEntries.add(new IssueLocationEntry(issue, location));
 					}
 				}
 			}
 
-			System.out.println(logTag + " ✓ Adapted " + issues.size() + " real IaC issues from server");
+			if (allEntries.isEmpty()) {
+				CxLogger.info(logTag + " No valid issue-location entries found after flattening");
+				return issues;
+			}
+
+			// Step 2: Sort by severity (highest first)
+			allEntries.sort((e1, e2) -> {
+				String sev1 = getIacProperty(e1.issue, "getSeverity", String.class);
+				String sev2 = getIacProperty(e2.issue, "getSeverity", String.class);
+				// Simple severity comparison: CRITICAL > HIGH > MEDIUM > LOW > INFO
+				return severityToInt(sev2) - severityToInt(sev1);
+			});
+
+			// Step 3: Group by location key (filePath + line + startIndex + endIndex)
+			Map<String, List<IssueLocationEntry>> groupedByLocation = new LinkedHashMap<>();
+
+			for (IssueLocationEntry entry : allEntries) {
+				String groupKey = getGroupingKey(entry);
+				groupedByLocation.computeIfAbsent(groupKey, k -> new ArrayList<>()).add(entry);
+			}
+
+			CxLogger.info(logTag + " Grouped " + allEntries.size() + " issue-location entries into " + groupedByLocation.size() + " location groups");
+
+			// Step 4: Create ONE ScanIssue per group
+			for (List<IssueLocationEntry> groupEntries : groupedByLocation.values()) {
+				if (groupEntries.isEmpty()) {
+					continue;
+				}
+
+				try {
+					ScanIssue scanIssue = createScanIssueFromGroup(groupEntries);
+					issues.add(scanIssue);
+
+					CxLogger.info(logTag + " ✓ Created grouped ScanIssue with " + scanIssue.getVulnerabilities().size() +
+						" vulnerabilities, ID=" + scanIssue.getScanIssueId());
+
+				} catch (Exception e) {
+					CxLogger.error(logTag + " Error creating ScanIssue from group: " + e.getMessage(), e);
+				}
+			}
+
+			CxLogger.info(logTag + " ✓ Adapted " + issues.size() + " grouped IaC issues from " + allEntries.size() + " issue-location entries");
 
 		} catch (Exception e) {
-			System.err.println(logTag + " Error adapting real IaC result: " + e.getMessage());
-			e.printStackTrace();
+			CxLogger.error(logTag + " Error adapting real IaC result: " + e.getMessage(), e);
 		}
 		return issues;
+	}
+
+	/**
+	 * Internal class to pair an issue with its location (JetBrains pattern)
+	 */
+	private static class IssueLocationEntry {
+		final Object issue;
+		final Object location;
+
+		IssueLocationEntry(Object issue, Object location) {
+			this.issue = issue;
+			this.location = location;
+		}
+	}
+
+	/**
+	 * Generate grouping key: filePath + line + startIndex + endIndex (JetBrains pattern)
+	 */
+	private String getGroupingKey(IssueLocationEntry entry) {
+		String issueFilePath = getIacProperty(entry.issue, "getFilePath", String.class);
+		Integer line = getIacProperty(entry.location, "getLine", Integer.class);
+		Integer startIndex = getIacProperty(entry.location, "getStartIndex", Integer.class);
+		Integer endIndex = getIacProperty(entry.location, "getEndIndex", Integer.class);
+
+		return (issueFilePath != null ? issueFilePath : "unknown") + ":" +
+			(line != null ? line : 0) + ":" +
+			(startIndex != null ? startIndex : 0) + ":" +
+			(endIndex != null ? endIndex : 0);
+	}
+
+	/**
+	 * Create one ScanIssue from a group of IssueLocationEntry (JetBrains pattern)
+	 */
+	private ScanIssue createScanIssueFromGroup(List<IssueLocationEntry> groupEntries) {
+		ScanIssue scanIssue = new ScanIssue();
+
+		// Get properties from first entry (highest severity)
+		IssueLocationEntry firstEntry = groupEntries.get(0);
+		Object firstIssue = firstEntry.issue;
+
+		String title = getIacProperty(firstIssue, "getTitle", String.class);
+		if (title == null) {
+			title = getIacProperty(firstIssue, "getRuleName", String.class);
+		}
+		if (title == null) {
+			title = "IaC Misconfiguration";
+		}
+
+		String description = getIacProperty(firstIssue, "getDescription", String.class);
+		String severity = getIacProperty(firstIssue, "getSeverity", String.class);
+		String similarityId = getIacProperty(firstIssue, "getSimilarityId", String.class);
+		Integer line = getIacProperty(firstEntry.location, "getLine", Integer.class);
+		Integer startIndex = getIacProperty(firstEntry.location, "getStartIndex", Integer.class);
+		Integer endIndex = getIacProperty(firstEntry.location, "getEndIndex", Integer.class);
+
+		// Set dynamic title based on group size
+		if (groupEntries.size() > 1) {
+			scanIssue.setTitle(groupEntries.size() + " IaC issues");
+		} else {
+			scanIssue.setTitle(title);
+		}
+
+		// Generate ID using: line + title + similarityId (JetBrains pattern)
+		String scanIssueId = com.checkmarx.eclipse.devassist.backend.DevAssistUtils.generateUniqueId(
+			line != null ? line : 0,
+			title,
+			similarityId != null ? similarityId : title
+		);
+
+		scanIssue.setScanIssueId(scanIssueId);
+		scanIssue.setDescription(description != null ? description : "Infrastructure misconfiguration detected");
+		String normalizedSeverity = com.checkmarx.eclipse.devassist.backend.DevAssistUtils.normalizeSeverity(severity != null ? severity : "Medium");
+		scanIssue.setSeverity(normalizedSeverity);
+		scanIssue.setProblematicLineNumber(line != null ? line : 0);
+		scanIssue.setScanEngine(ScanEngine.IAC);
+
+		// Add all vulnerabilities in this group
+		for (int i = 0; i < groupEntries.size(); i++) {
+			IssueLocationEntry entry = groupEntries.get(i);
+			Object issue = entry.issue;
+
+			String vulnTitle = getIacProperty(issue, "getTitle", String.class);
+			if (vulnTitle == null) {
+				vulnTitle = getIacProperty(issue, "getRuleName", String.class);
+			}
+			if (vulnTitle == null) {
+				vulnTitle = "IaC Misconfiguration";
+			}
+
+			String vulnDescription = getIacProperty(issue, "getDescription", String.class);
+			String vulnSeverity = getIacProperty(issue, "getSeverity", String.class);
+			String vulnSimilarityId = getIacProperty(issue, "getSimilarityId", String.class);
+
+			com.checkmarx.eclipse.devassist.ui.findings.model.Vulnerability vulnerability =
+				new com.checkmarx.eclipse.devassist.ui.findings.model.Vulnerability();
+
+			// First vulnerability gets scanIssueId, others get unique IDs
+			String vulnerabilityId;
+			if (i == 0) {
+				vulnerabilityId = scanIssueId;
+			} else {
+				vulnerabilityId = com.checkmarx.eclipse.devassist.backend.DevAssistUtils.generateUniqueId(
+					line != null ? line : 0,
+					vulnTitle,
+					vulnSimilarityId != null ? vulnSimilarityId : vulnTitle
+				);
+			}
+
+			vulnerability.setVulnerabilityId(vulnerabilityId);
+			vulnerability.setTitle(vulnTitle);
+			vulnerability.setDescription(vulnDescription != null ? vulnDescription : "Infrastructure misconfiguration detected");
+			String normalizedVulnSeverity = com.checkmarx.eclipse.devassist.backend.DevAssistUtils.normalizeSeverity(vulnSeverity != null ? vulnSeverity : "Medium");
+			vulnerability.setSeverity(normalizedVulnSeverity);
+
+			scanIssue.getVulnerabilities().add(vulnerability);
+
+			CxLogger.info(logTag + " Added vulnerability: " + vulnTitle + " (id: " + vulnerabilityId + ")");
+		}
+
+		// Add location from first entry
+		Location location = new Location();
+		location.setLine((line != null ? line : 0) + 1); // JetBrains adds 1 to line
+		location.setStartIndex(startIndex != null ? startIndex : 0);
+		location.setEndIndex(endIndex != null ? endIndex : 0);
+		scanIssue.getLocations().add(location);
+
+		return scanIssue;
+	}
+
+	/**
+	 * Convert severity string to int for comparison (higher int = higher severity)
+	 */
+	private int severityToInt(String severity) {
+		if (severity == null) return 0;
+		switch (severity.toUpperCase()) {
+			case "CRITICAL": return 5;
+			case "HIGH": return 4;
+			case "MEDIUM": return 3;
+			case "LOW": return 2;
+			case "INFO": return 1;
+			default: return 0;
+		}
 	}
 
 	@SuppressWarnings("unchecked")

@@ -69,4 +69,59 @@ public class DevAssistUtils {
 			return "";
 		}
 	}
+
+	/**
+	 * Normalize severity string to match SeverityLevel enum format (capitalized).
+	 * Converts uppercase/lowercase/mixed case to proper format.
+	 * Examples: "MEDIUM" → "Medium", "low" → "Low", "Critical" → "Critical"
+	 *
+	 * @param severity Raw severity string from API
+	 * @return Normalized severity in SeverityLevel format, or original if no match
+	 */
+	public static String normalizeSeverity(String severity) {
+		if (severity == null || severity.isEmpty()) {
+			return "Unknown";
+		}
+
+		String upper = severity.toUpperCase();
+		switch (upper) {
+			case "MALICIOUS":
+				return SeverityLevel.MALICIOUS.getSeverity();
+			case "CRITICAL":
+				return SeverityLevel.CRITICAL.getSeverity();
+			case "HIGH":
+				return SeverityLevel.HIGH.getSeverity();
+			case "MEDIUM":
+				return SeverityLevel.MEDIUM.getSeverity();
+			case "LOW":
+				return SeverityLevel.LOW.getSeverity();
+			case "UNKNOWN":
+				return SeverityLevel.UNKNOWN.getSeverity();
+			case "OK":
+				return SeverityLevel.OK.getSeverity();
+			case "IGNORED":
+				return SeverityLevel.IGNORED.getSeverity();
+			default:
+				// Return as-is if not recognized, will be treated as UNKNOWN in icon lookup
+				return severity;
+		}
+	}
+
+	/**
+	 * Check if severity represents a problem (displayable finding).
+	 * Returns false for OK, UNKNOWN, and IGNORED severities.
+	 * Mirrors JetBrains implementation for UI filtering.
+	 *
+	 * @param severity Severity string (case-insensitive)
+	 * @return true if severity is a problem, false if OK/UNKNOWN/IGNORED
+	 */
+	public static boolean isProblem(String severity) {
+		if (severity == null) {
+			return false;
+		}
+		return !severity.equalsIgnoreCase(SeverityLevel.OK.getSeverity()) &&
+				!severity.equalsIgnoreCase(SeverityLevel.UNKNOWN.getSeverity()) &&
+				!severity.equalsIgnoreCase(SeverityLevel.IGNORED.getSeverity());
+	}
 }
+

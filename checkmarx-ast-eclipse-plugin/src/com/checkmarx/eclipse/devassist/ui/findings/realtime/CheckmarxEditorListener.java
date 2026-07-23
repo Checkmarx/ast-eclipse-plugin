@@ -211,21 +211,47 @@ public class CheckmarxEditorListener implements IPartListener2 {
 
 	/**
 	 * Extract the IDocument from an editor.
+	 * Handles both standard ITextEditor and editors like MavenPomEditor.
 	 *
 	 * @param editor the editor part
 	 * @return the document, or null if not available
 	 */
 	private IDocument getDocumentFromEditor(IEditorPart editor) {
-		if (!(editor instanceof ITextEditor)) {
+		if (editor == null) {
 			return null;
 		}
 
-		ITextEditor textEditor = (ITextEditor) editor;
-		try {
-			return textEditor.getDocumentProvider().getDocument(textEditor.getEditorInput());
-		} catch (Exception e) {
-			return null;
+		// Try method 1: Direct ITextEditor instance
+		if (editor instanceof ITextEditor) {
+			ITextEditor textEditor = (ITextEditor) editor;
+			try {
+				return textEditor.getDocumentProvider().getDocument(textEditor.getEditorInput());
+			} catch (Exception e) {
+				// Fall through to try adapter pattern
+			}
 		}
+
+		// Try method 2: Adapter pattern (for MavenPomEditor and other non-ITextEditor editors)
+		try {
+			ITextEditor textEditor = editor.getAdapter(ITextEditor.class);
+			if (textEditor != null) {
+				return textEditor.getDocumentProvider().getDocument(textEditor.getEditorInput());
+			}
+		} catch (Exception e) {
+			// Fall through to next method
+		}
+
+		// Try method 3: Direct IDocument adapter (some editors provide this)
+		try {
+			IDocument document = editor.getAdapter(IDocument.class);
+			if (document != null) {
+				return document;
+			}
+		} catch (Exception e) {
+			// Fall through
+		}
+
+		return null;
 	}
 
 	/**

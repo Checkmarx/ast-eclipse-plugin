@@ -191,21 +191,32 @@ public class ContainerScannerService extends BaseScannerService {
 	 * Adapt container scan results to ScanIssue model.
 	 *
 	 * Handles both real results from API and legacy mock data.
+	 * Implements JetBrains pattern: 1 Image = 1 ScanIssue with multiple Vulnerabilities.
 	 *
 	 * @param rawResults Raw results from executeNativeScanner()
+	 * @param filePath Original file path being scanned
 	 * @return List of ScanIssue objects
 	 */
 	@Override
 	protected List<ScanIssue> adaptResults(Object rawResults, String filePath) {
 		List<ScanIssue> issues = new ArrayList<>();
 
+		// CRITICAL DEBUG: This log will show if adaptResults is called at all
+		System.out.println("════════════════════════════════════════════");
+		System.out.println("⚠️  CONTAINER ADAPTER CALLED - rawResults: " + (rawResults != null ? rawResults.getClass().getSimpleName() : "NULL"));
+		System.out.println("⚠️  filePath: " + filePath);
+		System.out.println("════════════════════════════════════════════");
+		CxLogger.info(logTag + " ✓✓✓ CONTAINER adaptResults() CALLED with rawResults type: " +
+			(rawResults != null ? rawResults.getClass().getSimpleName() : "NULL"));
+
 		if (rawResults == null) {
+			CxLogger.warning(logTag + " rawResults is NULL, returning empty list");
 			return issues;
 		}
 
 		// Try to adapt as real container result first
 		if (isRealContainerResult(rawResults)) {
-			return adaptRealContainerResult(rawResults);
+			return adaptRealContainerResult(rawResults, filePath);
 		}
 
 		// Fall back to mock data
@@ -214,24 +225,39 @@ public class ContainerScannerService extends BaseScannerService {
 		}
 
 		List<?> results = (List<?>) rawResults;
-		int id = 3000;
 
 		for (Object result : results) {
 			if (!(result instanceof MockContainerVulnerability)) {
 				continue;
 			}
 
-			MockContainerVulnerability vuln = (MockContainerVulnerability) result;
+			MockContainerVulnerability mockVuln = (MockContainerVulnerability) result;
 			ScanIssue issue = new ScanIssue();
 
-			issue.setScanIssueId("CONTAINER-" + id++);
-			issue.setTitle(vuln.title);
-			issue.setDescription(vuln.description);
-			issue.setSeverity(vuln.severity);
-			issue.setRemediationAdvise(vuln.remediation);
+			// JetBrains Pattern: Generate unique ID based on content (line + title + imageTag)
+			String scanIssueId = com.checkmarx.eclipse.devassist.backend.DevAssistUtils.generateUniqueId(
+				1,
+				mockVuln.title,
+				"latest"
+			);
+
+			issue.setScanIssueId(scanIssueId);
+			issue.setTitle(mockVuln.title);
+			issue.setDescription(mockVuln.description);
+			issue.setSeverity(com.checkmarx.eclipse.devassist.backend.DevAssistUtils.normalizeSeverity(mockVuln.severity));
+			issue.setRemediationAdvise(mockVuln.remediation);
 			issue.setImageTag("latest");
 			issue.setProblematicLineNumber(1);
 			issue.setScanEngine(ScanEngine.CONTAINERS);
+
+			// JetBrains Pattern: Multiple Vulnerabilities per ScanIssue
+			com.checkmarx.eclipse.devassist.ui.findings.model.Vulnerability vulnerability =
+				new com.checkmarx.eclipse.devassist.ui.findings.model.Vulnerability();
+			vulnerability.setTitle(mockVuln.title);
+			vulnerability.setDescription(mockVuln.description);
+			vulnerability.setSeverity(com.checkmarx.eclipse.devassist.backend.DevAssistUtils.normalizeSeverity(mockVuln.severity));
+			// JetBrains: Do NOT set vulnerability ID for Container
+			issue.getVulnerabilities().add(vulnerability);
 
 			issues.add(issue);
 		}
@@ -241,92 +267,222 @@ public class ContainerScannerService extends BaseScannerService {
 
 	private boolean isRealContainerResult(Object obj) {
 		return obj != null && (obj.getClass().getSimpleName().equals("ContainersScanResults") ||
-			obj.getClass().getSimpleName().equals("ContainerRealtimeResults"));
+			obj.getClass().getSimpleName().equals("ContainersRealtimeResults"));  // Fixed: was "ContainerRealtimeResults"
 	}
 
-	private List<ScanIssue> adaptRealContainerResult(Object containerResult) {
+	private List<ScanIssue> adaptRealContainerResult(Object containerResult, String filePath) {
 		List<ScanIssue> issues = new ArrayList<>();
 		try {
-			System.out.println(logTag + " adaptRealContainerResult: result type = " + containerResult.getClass().getName());
-			System.out.println(logTag + " Available methods:");
+			CxLogger.info(logTag + " Adapting real container result from API");
+			CxLogger.info(logTag + " Result type: " + containerResult.getClass().getName());
+			CxLogger.info(logTag + " Result class name: " + containerResult.getClass().getSimpleName());
+
+			// DEBUG: Print all available methods
+			CxLogger.info(logTag + " Available methods on result object:");
 			for (Method m : containerResult.getClass().getMethods()) {
-				if (!m.getName().startsWith("java")) {
-					System.out.println(logTag + "   - " + m.getName() + "() returns " + m.getReturnType().getSimpleName());
+				if (!m.getName().startsWith("java") && m.getParameterCount() == 0) {
+					CxLogger.info(logTag + "   - " + m.getName() + "() returns " + m.getReturnType().getSimpleName());
 				}
 			}
 
-			// Try to get vulnerabilities/layers/images from result
+			// Get images from result (JetBrains: getImages())
 			Method getImagesMethod = null;
 			try {
 				getImagesMethod = containerResult.getClass().getMethod("getImages");
+				CxLogger.info(logTag + " Found getImages() method");
 			} catch (Exception e) {
 				try {
 					getImagesMethod = containerResult.getClass().getMethod("getLayers");
+					CxLogger.info(logTag + " Found getLayers() method");
 				} catch (Exception e2) {
 					try {
 						getImagesMethod = containerResult.getClass().getMethod("getFindings");
+						CxLogger.info(logTag + " Found getFindings() method");
 					} catch (Exception e3) {
-						CxLogger.warning(logTag + " Could not find get method in container result");
+						CxLogger.warning(logTag + " Could not find getImages/getLayers/getFindings method");
+						CxLogger.warning(logTag + " DEBUG - tried: getImages() - " + e.getMessage());
+						CxLogger.warning(logTag + " DEBUG - tried: getLayers() - " + e2.getMessage());
+						CxLogger.warning(logTag + " DEBUG - tried: getFindings() - " + e3.getMessage());
 						return issues;
 					}
 				}
 			}
 
 			Object containerData = getImagesMethod.invoke(containerResult);
+			CxLogger.info(logTag + " getImages/getLayers/getFindings() returned: " + (containerData != null ? containerData.getClass().getSimpleName() : "null"));
+
 			if (containerData == null) {
-				System.out.println(logTag + " No data found in container result");
+				CxLogger.warning(logTag + " No data found in container result (returned null)");
 				return issues;
 			}
 
-			if (containerData instanceof List) {
-				List<?> items = (List<?>) containerData;
-				System.out.println(logTag + " Found " + items.size() + " items");
+			if (!(containerData instanceof List)) {
+				CxLogger.warning(logTag + " Container data is not a List, it's: " + containerData.getClass().getSimpleName());
+				return issues;
+			}
 
-				int id = 3000;
-				for (Object item : items) {
-					try {
-						ScanIssue issue = new ScanIssue();
-						String title = getContainerProperty(item, "getImageName", String.class);
-						if (title == null) {
-							title = getContainerProperty(item, "getTitle", String.class);
+			List<?> images = (List<?>) containerData;
+			CxLogger.info(logTag + " Found " + images.size() + " images - creating ScanIssues");
+
+			if (images.isEmpty()) {
+				CxLogger.info(logTag + " Images list is empty, returning empty issues");
+				return issues;
+			}
+
+			// JetBrains Pattern: 1 Image → 1 ScanIssue
+			for (Object image : images) {
+				if (image == null) {
+					continue;
+				}
+
+				try {
+					ScanIssue issue = new ScanIssue();
+
+					// Extract image properties
+					String imageName = getContainerProperty(image, "getImageName", String.class);
+					if (imageName == null) {
+						imageName = getContainerProperty(image, "getTitle", String.class);
+					}
+					if (imageName == null) {
+						imageName = "Unknown Container";
+					}
+
+					String imageTag = getContainerProperty(image, "getImageTag", String.class);
+					if (imageTag == null) {
+						imageTag = "latest";
+					}
+
+					String severity = getContainerProperty(image, "getStatus", String.class);
+					if (severity == null) {
+						severity = getContainerProperty(image, "getSeverity", String.class);
+					}
+					if (severity == null) {
+						severity = "Medium";
+					}
+					severity = com.checkmarx.eclipse.devassist.backend.DevAssistUtils.normalizeSeverity(severity);
+
+					// JetBrains Pattern: Generate unique ID using line + imageName + imageTag
+					String scanIssueId = com.checkmarx.eclipse.devassist.backend.DevAssistUtils.generateUniqueId(
+						1,
+						imageName,
+						imageTag
+					);
+
+					issue.setScanIssueId(scanIssueId);
+					issue.setTitle(imageName);
+					issue.setImageTag(imageTag);
+					issue.setSeverity(severity);
+					issue.setFilePath(filePath);
+					issue.setProblematicLineNumber(1);
+					issue.setScanEngine(ScanEngine.CONTAINERS);
+					issue.setFileType(getFileType(filePath));
+
+					// JetBrains Pattern: Add ALL vulnerabilities from this image
+					List<?> vulnerabilities = getContainerProperty(image, "getVulnerabilities", List.class);
+					if (vulnerabilities != null && !vulnerabilities.isEmpty()) {
+						for (Object vulnObj : vulnerabilities) {
+							try {
+								com.checkmarx.eclipse.devassist.ui.findings.model.Vulnerability vulnerability =
+									new com.checkmarx.eclipse.devassist.ui.findings.model.Vulnerability();
+
+								String cve = getContainerProperty(vulnObj, "getCve", String.class);
+								String vulnDescription = getContainerProperty(vulnObj, "getDescription", String.class);
+								String vulnSeverity = getContainerProperty(vulnObj, "getSeverity", String.class);
+
+								if (vulnSeverity == null) {
+									vulnSeverity = "Medium";
+								}
+								vulnSeverity = com.checkmarx.eclipse.devassist.backend.DevAssistUtils.normalizeSeverity(vulnSeverity);
+
+								vulnerability.setCve(cve);
+								vulnerability.setTitle(cve != null ? cve : "Container Vulnerability");
+								vulnerability.setDescription(vulnDescription != null ? vulnDescription : "");
+								vulnerability.setSeverity(vulnSeverity);
+								// JetBrains: Do NOT set vulnerability ID for Container
+								issue.getVulnerabilities().add(vulnerability);
+
+								CxLogger.info(logTag + " Added vulnerability: " + (cve != null ? cve : "Unknown"));
+
+							} catch (Exception e) {
+								CxLogger.warning(logTag + " Error processing vulnerability: " + e.getMessage());
+							}
 						}
-						if (title == null) {
-							title = "Container Vulnerability";
+					}
+
+					// JetBrains Pattern: Add ALL locations from this image
+					List<?> locations = getContainerProperty(image, "getLocations", List.class);
+					if (locations != null && !locations.isEmpty()) {
+						for (Object locObj : locations) {
+							try {
+								Integer line = getLocationProperty(locObj, "getLine", Integer.class);
+								Integer startIndex = getLocationProperty(locObj, "getStartIndex", Integer.class);
+								Integer endIndex = getLocationProperty(locObj, "getEndIndex", Integer.class);
+
+								// JetBrains pattern: Add 1 to line (0-based → 1-based)
+								Location location = new Location(
+									(line != null ? line : 0) + 1,
+									startIndex != null ? startIndex : 0,
+									endIndex != null ? endIndex : 0
+								);
+								issue.getLocations().add(location);
+
+								CxLogger.info(logTag + " Added location - Line: " + ((line != null ? line : 0) + 1));
+
+							} catch (Exception e) {
+								CxLogger.warning(logTag + " Error extracting location: " + e.getMessage());
+							}
 						}
+					}
 
-						String severity = getContainerProperty(item, "getSeverity", String.class);
-						String description = getContainerProperty(item, "getDescription", String.class);
-
-						issue.setScanIssueId("CONTAINER-" + id);
-						issue.setTitle(title);
-						issue.setDescription(description != null ? description : "Container vulnerability detected");
-						issue.setSeverity(severity != null ? severity : "MEDIUM");
-						issue.setImageTag("latest");
-						issue.setProblematicLineNumber(1);
-						issue.setScanEngine(ScanEngine.CONTAINERS);
-
+					// If no locations were added, create a default one
+					if (issue.getLocations().isEmpty()) {
 						Location location = new Location();
 						location.setLine(1);
 						location.setStartIndex(0);
 						location.setEndIndex(0);
 						issue.getLocations().add(location);
-
-						issues.add(issue);
-						id++;
-
-					} catch (Exception e) {
-						System.err.println(logTag + "   ✗ Error adapting item: " + e.getMessage());
 					}
+
+					issues.add(issue);
+					CxLogger.info(logTag + " ✓ Created ScanIssue: " + imageName + " with " +
+						issue.getVulnerabilities().size() + " vulnerabilities (ID: " + scanIssueId + ")");
+
+				} catch (Exception e) {
+					CxLogger.warning(logTag + " Error adapting image: " + e.getMessage());
 				}
 			}
 
-			System.out.println(logTag + " ✓ Adapted " + issues.size() + " real container issues from server");
+			CxLogger.info(logTag + " ✓ Adapted " + issues.size() + " images from server");
 
 		} catch (Exception e) {
-			System.err.println(logTag + " Error adapting real container result: " + e.getMessage());
-			e.printStackTrace();
+			CxLogger.error(logTag + " Error adapting real container result: " + e.getMessage(), e);
 		}
 		return issues;
+	}
+
+	/**
+	 * Get file type from file path (e.g., "Dockerfile", "docker-compose.yaml")
+	 */
+	private String getFileType(String filePath) {
+		if (filePath == null || filePath.isEmpty()) {
+			return "dockerfile";
+		}
+		String fileName = new java.io.File(filePath).getName().toLowerCase();
+		if (fileName.contains("docker-compose")) {
+			return "docker-compose";
+		}
+		return "dockerfile";
+	}
+
+	@SuppressWarnings("unchecked")
+	private <T> T getLocationProperty(Object location, String methodName, Class<T> returnType) {
+		try {
+			Method method = location.getClass().getMethod(methodName);
+			return (T) method.invoke(location);
+		} catch (Exception e) {
+			CxLogger.warning(logTag + " Could not get location property " + methodName + ": " + e.getMessage());
+			return null;
+		}
 	}
 
 	@SuppressWarnings("unchecked")

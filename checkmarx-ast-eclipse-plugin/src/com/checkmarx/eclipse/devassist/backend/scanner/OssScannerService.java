@@ -6,6 +6,7 @@ import java.util.List;
 
 import org.eclipse.core.resources.IProject;
 
+import com.checkmarx.eclipse.devassist.backend.DevAssistUtils;
 import com.checkmarx.eclipse.devassist.ui.findings.model.Location;
 import com.checkmarx.eclipse.devassist.ui.findings.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.ui.findings.model.ScanIssue;
@@ -227,7 +228,8 @@ public class OssScannerService extends BaseScannerService {
 			issue.setScanIssueId(scanIssueId);
 			issue.setTitle(vuln.package_name);
 			issue.setDescription(vuln.title);
-			issue.setSeverity(vuln.severity.toUpperCase());
+			String normalizedSeverity = com.checkmarx.eclipse.devassist.backend.DevAssistUtils.normalizeSeverity(vuln.severity);
+			issue.setSeverity(normalizedSeverity);
 			issue.setPackageVersion(vuln.vulnerable_version);
 			issue.setPackageManager(packageManager);
 			issue.setCve(vuln.cve);
@@ -249,7 +251,7 @@ public class OssScannerService extends BaseScannerService {
 			vulnerability.setVulnerabilityId(scanIssueId);
 			vulnerability.setTitle(vuln.title);
 			vulnerability.setDescription(vuln.title);
-			vulnerability.setSeverity(vuln.severity.toUpperCase());
+			vulnerability.setSeverity(normalizedSeverity);
 			vulnerability.setCve(vuln.cve);
 			issue.getVulnerabilities().add(vulnerability);
 
@@ -307,9 +309,9 @@ public class OssScannerService extends BaseScannerService {
 						version = getOssProperty(pkg, "getCurrentVersion", String.class);
 					}
 
-					String severity = getOssProperty(pkg, "getSeverity", String.class);
+					String severity = getOssProperty(pkg, "getStatus", String.class);
 					if (severity == null) {
-						severity = getOssProperty(pkg, "getHighestSeverity", String.class);
+						severity = getOssProperty(pkg, "getStatus", String.class);
 					}
 
 					String description = getOssProperty(pkg, "getDescription", String.class);
@@ -326,7 +328,8 @@ public class OssScannerService extends BaseScannerService {
 					issue.setScanIssueId(scanIssueId);
 					issue.setTitle(packageName);
 					issue.setDescription(description != null ? description : "Vulnerable version detected");
-					issue.setSeverity(severity != null ? severity : "MEDIUM");
+					String normalizedSeverity = com.checkmarx.eclipse.devassist.backend.DevAssistUtils.normalizeSeverity(severity != null ? severity : "Medium");
+					issue.setSeverity(normalizedSeverity);
 					issue.setPackageVersion(version);
 					issue.setPackageManager(packageManager);
 					issue.setProblematicLineNumber(1);
@@ -382,12 +385,14 @@ public class OssScannerService extends BaseScannerService {
 								String vulnSeverity = getOssProperty(vulnObj, "getSeverity", String.class);
 								String fixVersion = getOssProperty(vulnObj, "getFixVersion", String.class);
 
+								String normalizedVulnSeverity = DevAssistUtils.normalizeSeverity(vulnSeverity != null ? vulnSeverity : "Medium");
+
 								com.checkmarx.eclipse.devassist.ui.findings.model.Vulnerability vulnerability =
 									new com.checkmarx.eclipse.devassist.ui.findings.model.Vulnerability();
 								vulnerability.setVulnerabilityId(scanIssueId);
 								vulnerability.setTitle(vulnCve != null ? vulnCve : "OSS Vulnerability");
 								vulnerability.setDescription(vulnDescription);
-								vulnerability.setSeverity(vulnSeverity != null ? vulnSeverity : "MEDIUM");
+								vulnerability.setSeverity(normalizedVulnSeverity);
 								vulnerability.setCve(vulnCve);
 								issue.getVulnerabilities().add(vulnerability);
 
@@ -406,7 +411,7 @@ public class OssScannerService extends BaseScannerService {
 						vulnerability.setVulnerabilityId(scanIssueId);
 						vulnerability.setTitle("Vulnerable Package");
 						vulnerability.setDescription(description);
-						vulnerability.setSeverity(severity);
+						vulnerability.setSeverity(normalizedSeverity);
 						issue.getVulnerabilities().add(vulnerability);
 					}
 
@@ -432,11 +437,7 @@ public class OssScannerService extends BaseScannerService {
 					e.printStackTrace();
 					CxLogger.error(logTag + " Error adapting OSS package: " + e.getMessage(), e);
 				}
-			}
-
-			System.out.println(logTag + " [OSS-ADAPT] ════════════════════════════════════════════");
-			System.out.println(logTag + " [OSS-ADAPT] ✓ Adapted " + issues.size() + " real OSS issues from server");
-			System.out.println(logTag + " [OSS-ADAPT] ════════════════════════════════════════════");
+			}		
 
 		} catch (Exception e) {
 			System.err.println(logTag + " [OSS-ADAPT] ✗ Error adapting real OSS result: " + e.getMessage());

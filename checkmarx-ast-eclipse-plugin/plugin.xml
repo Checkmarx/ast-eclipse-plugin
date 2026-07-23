@@ -76,6 +76,10 @@
     <!-- Annotation types for custom Findings Window editor decorations (gutter icons + underlines) -->
     <extension point="org.eclipse.ui.editors.annotationTypes">
         <type
+            name="com.checkmarx.eclipse.findings.malicious"
+            super="org.eclipse.ui.workbench.texteditor.error">
+        </type>
+        <type
             name="com.checkmarx.eclipse.findings.critical"
             super="org.eclipse.ui.workbench.texteditor.error">
         </type>
@@ -91,10 +95,31 @@
             name="com.checkmarx.eclipse.findings.low"
             super="org.eclipse.ui.workbench.texteditor.info">
         </type>
+        <type
+            name="com.checkmarx.eclipse.findings.unknown"
+            super="org.eclipse.ui.workbench.texteditor.info">
+        </type>
+        <type
+            name="com.checkmarx.eclipse.findings.ok"
+            super="org.eclipse.ui.workbench.texteditor.info">
+        </type>
+        <type
+            name="com.checkmarx.eclipse.findings.ignored"
+            super="org.eclipse.ui.workbench.texteditor.info">
+        </type>
     </extension>
 
     <!-- Gutter icon + squiggly underline specifications for Findings annotations -->
     <extension point="org.eclipse.ui.editors.markerAnnotationSpecification">
+        <specification
+            annotationType="com.checkmarx.eclipse.findings.malicious"
+            label="Checkmarx Malicious Finding"
+            icon="icons/severity/malicious_16.svg"
+            textStylePreferenceValue="SQUIGGLES"
+            verticalRulerPreferenceValue="true"
+            overviewRulerPreferenceValue="true"
+            presentationLayer="8">
+        </specification>
         <specification
             annotationType="com.checkmarx.eclipse.findings.critical"
             label="Checkmarx Critical Finding"
@@ -130,6 +155,33 @@
             verticalRulerPreferenceValue="true"
             overviewRulerPreferenceValue="true"
             presentationLayer="4">
+        </specification>
+        <specification
+            annotationType="com.checkmarx.eclipse.findings.unknown"
+            label="Checkmarx Unknown Finding"
+            icon="icons/severity/unknown_16.svg"
+            textStylePreferenceValue="SQUIGGLES"
+            verticalRulerPreferenceValue="true"
+            overviewRulerPreferenceValue="true"
+            presentationLayer="3">
+        </specification>
+        <specification
+            annotationType="com.checkmarx.eclipse.findings.ok"
+            label="Checkmarx OK Finding"
+            icon="icons/severity/ok_16.svg"
+            textStylePreferenceValue="SQUIGGLES"
+            verticalRulerPreferenceValue="true"
+            overviewRulerPreferenceValue="true"
+            presentationLayer="2">
+        </specification>
+        <specification
+            annotationType="com.checkmarx.eclipse.findings.ignored"
+            label="Checkmarx Ignored Finding"
+            icon="icons/severity/ignored_16.svg"
+            textStylePreferenceValue="SQUIGGLES"
+            verticalRulerPreferenceValue="true"
+            overviewRulerPreferenceValue="true"
+            presentationLayer="1">
         </specification>
     </extension>
 

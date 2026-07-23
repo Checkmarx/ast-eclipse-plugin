@@ -247,6 +247,7 @@ public class SecretsScannerService extends BaseScannerService {
 	 * Handles both real SecretsRealtimeResults from API and legacy mock data.
 	 *
 	 * @param rawResults Raw results from executeNativeScanner()
+	 * @param filePath Original file path being scanned
 	 * @return List of ScanIssue objects
 	 */
 	@Override
@@ -259,7 +260,7 @@ public class SecretsScannerService extends BaseScannerService {
 
 		// Try to adapt as real SecretsRealtimeResults first
 		if (isRealSecretsResult(rawResults)) {
-			return adaptRealSecretsResult(rawResults);
+			return adaptRealSecretsResult(rawResults, filePath);
 		}
 
 		// Fall back to mock data if available
@@ -268,7 +269,6 @@ public class SecretsScannerService extends BaseScannerService {
 		}
 
 		List<?> results = (List<?>) rawResults;
-		int id = 1000;
 
 		for (Object result : results) {
 			if (!(result instanceof MockSecret)) {
@@ -278,7 +278,14 @@ public class SecretsScannerService extends BaseScannerService {
 			MockSecret secret = (MockSecret) result;
 			ScanIssue issue = new ScanIssue();
 
-			issue.setScanIssueId("SEC-" + id);
+			// JetBrains Pattern: Generate unique ID based on content (line + title + description)
+			String scanIssueId = com.checkmarx.eclipse.devassist.backend.DevAssistUtils.generateUniqueId(
+				secret.line_number,
+				secret.type,
+				secret.description
+			);
+
+			issue.setScanIssueId(scanIssueId);
 			issue.setTitle(secret.type);
 			issue.setDescription(secret.description);
 			issue.setSeverity(secret.severity);
@@ -287,7 +294,15 @@ public class SecretsScannerService extends BaseScannerService {
 				" from source code and use environment variables instead");
 			issue.setSecretValue("***MASKED***");
 			issue.setScanEngine(ScanEngine.SECRETS);
-			id++;
+
+			// JetBrains Pattern: ONE Vulnerability per ScanIssue
+			com.checkmarx.eclipse.devassist.ui.findings.model.Vulnerability vulnerability =
+				new com.checkmarx.eclipse.devassist.ui.findings.model.Vulnerability();
+			vulnerability.setVulnerabilityId(scanIssueId);
+			vulnerability.setTitle(secret.type);
+			vulnerability.setDescription(secret.description);
+			vulnerability.setSeverity(com.checkmarx.eclipse.devassist.backend.DevAssistUtils.normalizeSeverity(secret.severity));
+			issue.getVulnerabilities().add(vulnerability);
 
 			issues.add(issue);
 		}
@@ -299,95 +314,107 @@ public class SecretsScannerService extends BaseScannerService {
 		return obj != null && obj.getClass().getSimpleName().equals("SecretsRealtimeResults");
 	}
 
-	private List<ScanIssue> adaptRealSecretsResult(Object secretsResult) {
+	private List<ScanIssue> adaptRealSecretsResult(Object secretsResult, String filePath) {
 		List<ScanIssue> issues = new ArrayList<>();
 		try {
-			CxLogger.info(logTag + " ╔═══════════════════════════════════════════════════════╗");
-			CxLogger.info(logTag + " ║ SECRETS SCANNER - ADAPTING REAL API RESULTS          ║");
-			CxLogger.info(logTag + " ╚═══════════════════════════════════════════════════════╝");
+			CxLogger.info(logTag + " Adapting real secrets result from API");
 
 			Method getSecrets = secretsResult.getClass().getMethod("getSecrets");
 			List<?> secrets = (List<?>) getSecrets.invoke(secretsResult);
 
 			if (secrets == null || secrets.isEmpty()) {
-				CxLogger.info(logTag + " ℹ No secrets found in real result");
+				CxLogger.info(logTag + " No secrets found in real result");
 				return issues;
 			}
 
-			CxLogger.info(logTag + " Found " + secrets.size() + " secrets from API");
+			CxLogger.info(logTag + " Found " + secrets.size() + " secrets - creating ScanIssues");
 
-			int id = 1000;
+			// JetBrains Pattern: 1 Secret → 1 ScanIssue with 1 Vulnerability
 			for (Object secret : secrets) {
 				try {
 					ScanIssue issue = new ScanIssue();
 
 					String title = getSecretProperty(secret, "getTitle", String.class);
 					String description = getSecretProperty(secret, "getDescription", String.class);
+					String severity = getSecretProperty(secret, "getSeverity", String.class);
+					String secretValue = getSecretProperty(secret, "getSecretValue", String.class);
 
-					CxLogger.info(logTag + " ─────────────────────────────────────────────────────");
-					CxLogger.info(logTag + " Secret #" + id + ":");
-					CxLogger.info(logTag + "   Title: " + title);
-					CxLogger.info(logTag + "   Description: " + description);
+					// Get first location for ID generation (JetBrains pattern)
+					List<?> locations = getSecretProperty(secret, "getLocations", List.class);
+					Integer firstLine = 0;
+					if (locations != null && !locations.isEmpty()) {
+						firstLine = getLocationProperty(locations.get(0), "getLine", Integer.class);
+						if (firstLine == null) {
+							firstLine = 0;
+						}
+					}
 
-					issue.setScanIssueId("SEC-" + id);
-					issue.setTitle(title);
-					issue.setDescription(description);
-					issue.setSeverity(mapSecretSeverity(title));
-					issue.setRemediationAdvise("Remove " + title +
-						" from source code and use environment variables or secure vaults instead");
-					issue.setSecretValue("***MASKED***");
+					// JetBrains Pattern: Generate unique ID using line + title + description
+					String scanIssueId = com.checkmarx.eclipse.devassist.backend.DevAssistUtils.generateUniqueId(
+						firstLine,
+						title != null ? title : "Unknown Secret",
+						description != null ? description : ""
+					);
+
+					issue.setScanIssueId(scanIssueId);
+					issue.setTitle(title != null ? title : "Unknown Secret");
+					issue.setDescription(description != null ? description : "");
+					String normalizedSeverity = com.checkmarx.eclipse.devassist.backend.DevAssistUtils.normalizeSeverity(severity != null ? severity : "Medium");
+					issue.setSeverity(normalizedSeverity);
+					issue.setFilePath(filePath);
+					issue.setSecretValue(secretValue != null ? secretValue : "***MASKED***");
 					issue.setScanEngine(ScanEngine.SECRETS);
 
-					// Extract precise location data from RealtimeLocation objects
-					List<?> locations = getSecretProperty(secret, "getLocations", List.class);
-					CxLogger.info(logTag + "   Locations: " + (locations != null ? locations.size() : 0) + " location(s)");
+					// JetBrains Pattern: ONE Vulnerability per ScanIssue
+					com.checkmarx.eclipse.devassist.ui.findings.model.Vulnerability vulnerability =
+						new com.checkmarx.eclipse.devassist.ui.findings.model.Vulnerability();
+					vulnerability.setVulnerabilityId(scanIssueId);
+					vulnerability.setTitle(title != null ? title : "Unknown Secret");
+					vulnerability.setDescription(description != null ? description : "");
+					vulnerability.setSeverity(normalizedSeverity);
+					issue.getVulnerabilities().add(vulnerability);
 
+					// Add ALL locations to this ScanIssue
 					if (locations != null && !locations.isEmpty()) {
-						int locIndex = 0;
 						for (Object locObj : locations) {
 							try {
 								Integer line = getLocationProperty(locObj, "getLine", Integer.class);
 								Integer startIndex = getLocationProperty(locObj, "getStartIndex", Integer.class);
 								Integer endIndex = getLocationProperty(locObj, "getEndIndex", Integer.class);
 
-								CxLogger.info(logTag + "     Location " + locIndex + ":");
-								CxLogger.info(logTag + "       Line: " + line);
-								CxLogger.info(logTag + "       CharStart (absolute): " + startIndex);
-								CxLogger.info(logTag + "       CharEnd (absolute): " + endIndex);
-								CxLogger.info(logTag + "       Range length: " + (endIndex - startIndex) + " chars");
-
+								// JetBrains pattern: Add 1 to line (0-based → 1-based)
 								com.checkmarx.eclipse.devassist.ui.findings.model.Location location =
 									new com.checkmarx.eclipse.devassist.ui.findings.model.Location(
-										line != null ? line : 0,
+										(line != null ? line : 0) + 1,
 										startIndex != null ? startIndex : 0,
 										endIndex != null ? endIndex : 0
 									);
 								issue.getLocations().add(location);
 
-								CxLogger.info(logTag + "       ✓ Location added to ScanIssue");
-								locIndex++;
+								CxLogger.info(logTag + " Added location - Line: " + ((line != null ? line : 0) + 1) +
+									", StartIdx: " + (startIndex != null ? startIndex : 0) +
+									", EndIdx: " + (endIndex != null ? endIndex : 0));
 
 							} catch (Exception e) {
-								CxLogger.warning(logTag + "       ✗ Error extracting location: " + e.getMessage());
+								CxLogger.warning(logTag + " Error extracting location: " + e.getMessage());
 							}
 						}
-					} else {
-						CxLogger.warning(logTag + "   ⚠ No locations found for secret!");
+					}
+
+					// Set problematic line from first location
+					if (issue.getProblematicLineNumber() == 0 && !issue.getLocations().isEmpty()) {
+						issue.setProblematicLineNumber(issue.getLocations().get(0).getLine());
 					}
 
 					issues.add(issue);
-					CxLogger.info(logTag + " ✓ Secret #" + id + " complete");
-					id++;
+					CxLogger.info(logTag + " ✓ Created ScanIssue: " + title + " (ID: " + scanIssueId + ")");
 
 				} catch (Exception e) {
 					CxLogger.warning(logTag + " Error adapting secret: " + e.getMessage());
-					e.printStackTrace();
 				}
 			}
 
-			CxLogger.info(logTag + " ═══════════════════════════════════════════════════════");
-			CxLogger.info(logTag + " ✓ TOTAL: Adapted " + issues.size() + " real secrets from server");
-			CxLogger.info(logTag + " ═══════════════════════════════════════════════════════");
+			CxLogger.info(logTag + " ✓ Adapted " + issues.size() + " real secrets from server");
 
 		} catch (Exception e) {
 			CxLogger.error(logTag + " Error adapting real secrets result: " + e.getMessage(), e);
@@ -418,16 +445,16 @@ public class SecretsScannerService extends BaseScannerService {
 	}
 
 	private String mapSecretSeverity(String secretType) {
-		if (secretType == null) return "MEDIUM";
+		if (secretType == null) return com.checkmarx.eclipse.devassist.backend.SeverityLevel.MEDIUM.getSeverity();
 		String lower = secretType.toLowerCase();
 		if (lower.contains("private") || lower.contains("password") ||
 			lower.contains("api_key") || lower.contains("token")) {
-			return "CRITICAL";
+			return com.checkmarx.eclipse.devassist.backend.SeverityLevel.CRITICAL.getSeverity();
 		}
 		if (lower.contains("bearer") || lower.contains("webhook")) {
-			return "HIGH";
+			return com.checkmarx.eclipse.devassist.backend.SeverityLevel.HIGH.getSeverity();
 		}
-		return "MEDIUM";
+		return com.checkmarx.eclipse.devassist.backend.SeverityLevel.MEDIUM.getSeverity();
 	}
 
 	/**
