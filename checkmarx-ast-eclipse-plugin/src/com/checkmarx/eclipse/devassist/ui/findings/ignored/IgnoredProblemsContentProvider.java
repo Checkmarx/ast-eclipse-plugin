@@ -1,9 +1,9 @@
-package com.checkmarx.eclipse.devassist.ui.findings.ignored;
+﻿package com.checkmarx.eclipse.devassist.ui.findings.ignored;
 
 import org.eclipse.jface.viewers.ITreeContentProvider;
 import org.eclipse.jface.viewers.Viewer;
 
-import com.checkmarx.eclipse.devassist.ui.findings.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.model.ScanIssue;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -75,3 +75,4 @@ public class IgnoredProblemsContentProvider implements ITreeContentProvider {
 		fileToIssues.clear();
 	}
 }
+

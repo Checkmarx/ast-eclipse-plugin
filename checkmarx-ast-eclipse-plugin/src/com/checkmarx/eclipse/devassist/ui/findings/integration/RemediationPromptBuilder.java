@@ -1,7 +1,7 @@
-package com.checkmarx.eclipse.devassist.ui.findings.integration;
+﻿package com.checkmarx.eclipse.devassist.ui.findings.integration;
 
-import com.checkmarx.eclipse.devassist.ui.findings.model.ScanIssue;
-import com.checkmarx.eclipse.devassist.ui.findings.model.ScanEngine;
+import com.checkmarx.eclipse.devassist.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.model.ScanEngine;
 
 /**
  * Builds engine-specific remediation prompts for Copilot.
@@ -220,13 +220,13 @@ public class RemediationPromptBuilder {
         if (severity == null) return "UNKNOWN";
         switch (severity.toUpperCase()) {
             case "CRITICAL":
-                return "🔴 CRITICAL - Requires immediate attention";
+                return "ðŸ”´ CRITICAL - Requires immediate attention";
             case "HIGH":
-                return "🟠 HIGH - Should be fixed soon";
+                return "ðŸŸ  HIGH - Should be fixed soon";
             case "MEDIUM":
-                return "🟡 MEDIUM - Should be addressed";
+                return "ðŸŸ¡ MEDIUM - Should be addressed";
             case "LOW":
-                return "🟢 LOW - May be fixed in next iteration";
+                return "ðŸŸ¢ LOW - May be fixed in next iteration";
             default:
                 return severity;
         }
@@ -271,3 +271,4 @@ public class RemediationPromptBuilder {
         return "";
     }
 }
+

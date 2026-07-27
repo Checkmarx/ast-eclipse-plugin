@@ -1,7 +1,7 @@
-package com.checkmarx.eclipse.devassist.ui.findings.dialogs;
+﻿package com.checkmarx.eclipse.devassist.ui.findings.dialogs;
 
-import com.checkmarx.eclipse.devassist.ui.findings.model.ScanIssue;
-import com.checkmarx.eclipse.devassist.ui.findings.model.Vulnerability;
+import com.checkmarx.eclipse.devassist.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.model.Vulnerability;
 
 import java.util.Arrays;
 import java.util.List;
@@ -178,3 +178,4 @@ public final class ProblemDescription {
                 .replace("'", "&#39;");
     }
 }
+

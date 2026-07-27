@@ -1,4 +1,4 @@
-package com.checkmarx.eclipse.devassist.ui.findings.provider;
+﻿package com.checkmarx.eclipse.devassist.ui.findings.provider;
 
 import org.eclipse.jface.viewers.ITreeContentProvider;
 import org.eclipse.jface.viewers.Viewer;
@@ -8,7 +8,7 @@ import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.graphics.Image;
 
 import com.checkmarx.eclipse.devassist.ui.findings.model.FileNodeLabel;
-import com.checkmarx.eclipse.devassist.ui.findings.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.ui.findings.model.ScanDetailWithPath;
 
 import java.util.List;
@@ -63,12 +63,12 @@ public class FindingsContentProvider implements ITreeContentProvider {
                     })
                     .toArray();
 
-            System.out.println("[FINDINGS-CONTENT] ✓ Created " + elements.length + " FileNodeLabel elements");
+            System.out.println("[FINDINGS-CONTENT] âœ“ Created " + elements.length + " FileNodeLabel elements");
             System.out.println("[FINDINGS-CONTENT] ========================================");
             return elements;
         }
 
-        System.out.println("[FINDINGS-CONTENT] ✗ Input is not a Map, type: " +
+        System.out.println("[FINDINGS-CONTENT] âœ— Input is not a Map, type: " +
             (inputElement != null ? inputElement.getClass().getSimpleName() : "null"));
         return new Object[0];
     }
@@ -139,3 +139,4 @@ public class FindingsContentProvider implements ITreeContentProvider {
         // Cleanup if needed
     }
 }
+

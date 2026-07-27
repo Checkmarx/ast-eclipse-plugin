@@ -1,4 +1,4 @@
-package com.checkmarx.eclipse.devassist.ui.findings.ignored;
+﻿package com.checkmarx.eclipse.devassist.ui.findings.ignored;
 
 import org.eclipse.jface.viewers.DelegatingStyledCellLabelProvider;
 import org.eclipse.jface.viewers.ILabelProviderListener;
@@ -7,7 +7,7 @@ import org.eclipse.jface.viewers.StyledString.Styler;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.TextStyle;
 
-import com.checkmarx.eclipse.devassist.ui.findings.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.ui.findings.icons.IconRegistry;
 
 /**
@@ -73,3 +73,4 @@ public class IgnoredProblemsLabelProvider extends DelegatingStyledCellLabelProvi
 		});
 	}
 }
+

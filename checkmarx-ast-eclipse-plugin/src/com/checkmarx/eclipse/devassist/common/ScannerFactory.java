@@ -1,4 +1,4 @@
-package com.checkmarx.eclipse.devassist.backend.scanner;
+package com.checkmarx.eclipse.devassist.common;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -6,7 +6,9 @@ import java.util.List;
 import com.checkmarx.eclipse.devassist.backend.GlobalScannerController;
 import com.checkmarx.eclipse.devassist.backend.ScannerRegistry;
 import com.checkmarx.eclipse.devassist.backend.ScannerRegistry.ScannerType;
+import com.checkmarx.eclipse.devassist.basescanner.ScannerService;
 import com.checkmarx.eclipse.utils.CxLogger;
+import org.eclipse.core.resources.IProject;
 
 /**
  * Factory for selecting appropriate scanners by file type.
@@ -121,21 +123,19 @@ public class ScannerFactory {
 
 	/**
 	 * Get a scanner service by type.
-	 * Retrieves from registry, creating if necessary.
+	 * Retrieves from the registry which manages scanner lifecycle.
 	 *
 	 * @param type Scanner type
 	 * @return Scanner instance, or null if not available
 	 */
 	private ScannerService getScannerService(ScannerType type) {
-		// Retrieve from registry
-		// (Registry will lazily create scanner on first access)
-		Object scanner = registry.getScannerService(type);
-
-		if (scanner instanceof ScannerService) {
-			return (ScannerService) scanner;
+		try {
+			Object scanner = registry.getScannerService(type);
+			return scanner instanceof ScannerService ? (ScannerService) scanner : null;
+		} catch (Exception e) {
+			CxLogger.warning(LOG_TAG + " Error getting scanner for type " + type + ": " + e.getMessage());
+			return null;
 		}
-
-		return null;
 	}
 
 	/**

@@ -1,4 +1,4 @@
-package com.checkmarx.eclipse.devassist.backend.scanner;
+﻿package com.checkmarx.eclipse.devassist.basescanner;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -6,7 +6,8 @@ import java.util.List;
 import com.checkmarx.eclipse.devassist.backend.DevAssistScanStateHolder;
 import com.checkmarx.eclipse.devassist.backend.ScannerRegistry;
 import com.checkmarx.eclipse.devassist.backend.ScannerRegistry.ScannerType;
-import com.checkmarx.eclipse.devassist.ui.findings.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.common.ScannerFactory;
+import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.utils.CxLogger;
 
 /**
@@ -53,39 +54,39 @@ public class ScanManager {
 	 */
 	public List<ScanIssue> scanFile(String filePath) throws Exception {
 		if (filePath == null || filePath.isEmpty()) {
-			System.out.println(LOG_TAG + " ✗ BLOCKED: Null or empty file path");
+			System.out.println(LOG_TAG + " âœ— BLOCKED: Null or empty file path");
 			return List.of();
 		}
 
-		System.out.println(LOG_TAG + " ╔════════════════════════════════════════════╗");
-		System.out.println(LOG_TAG + " ║ SCAN MANAGER: Starting file scan             ║");
-		System.out.println(LOG_TAG + " ╚════════════════════════════════════════════╝");
+		System.out.println(LOG_TAG + " â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—");
+		System.out.println(LOG_TAG + " â•‘ SCAN MANAGER: Starting file scan             â•‘");
+		System.out.println(LOG_TAG + " â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•");
 		System.out.println(LOG_TAG + " File path: " + filePath);
 
 		// 1. Compute current file state hash
 		System.out.println(LOG_TAG + " [STEP 1/5] Computing file state hash...");
 		long currentStateHash = DevAssistScanStateHolder.computeFileStateHash(filePath);
-		System.out.println(LOG_TAG + " ✓ File hash: " + currentStateHash);
+		System.out.println(LOG_TAG + " âœ“ File hash: " + currentStateHash);
 
 		// 2. Check if file changed since last scan
 		System.out.println(LOG_TAG + " [STEP 2/5] Checking if file changed...");
 		if (!stateHolder.hasChanged(filePath, currentStateHash)) {
-			System.out.println(LOG_TAG + " ℹ️  File unchanged since last scan - skipping (cache result)");
+			System.out.println(LOG_TAG + " â„¹ï¸  File unchanged since last scan - skipping (cache result)");
 			return List.of();
 		}
-		System.out.println(LOG_TAG + " ✓ File changed - proceeding with scan");
+		System.out.println(LOG_TAG + " âœ“ File changed - proceeding with scan");
 
 		// 3. Get all scanners that support this file
 		System.out.println(LOG_TAG + " [STEP 3/5] Getting applicable scanners...");
 		List<ScannerService> applicableScanners = factory.getAllSupportedScanners(filePath);
 
-		System.out.println(LOG_TAG + " ✓ Found " + applicableScanners.size() + " applicable scanners:");
+		System.out.println(LOG_TAG + " âœ“ Found " + applicableScanners.size() + " applicable scanners:");
 		for (ScannerService scanner : applicableScanners) {
 			System.out.println(LOG_TAG + "   - " + scanner.getDisplayName());
 		}
 
 		if (applicableScanners.isEmpty()) {
-			System.out.println(LOG_TAG + " ℹ️  No scanners support this file type - skipping");
+			System.out.println(LOG_TAG + " â„¹ï¸  No scanners support this file type - skipping");
 			// Still update state to avoid re-checking unsupported files
 			stateHolder.updateStateHash(filePath, currentStateHash);
 			return List.of();
@@ -105,9 +106,9 @@ public class ScanManager {
 
 				if (scannerResults == null) {
 					System.out.println(
-							LOG_TAG + "   ⚠️  WARNING: " + scanner.getDisplayName() + " returned NULL results!");
+							LOG_TAG + "   âš ï¸  WARNING: " + scanner.getDisplayName() + " returned NULL results!");
 				} else {
-					System.out.println(LOG_TAG + "   ✓ " + scanner.getDisplayName() + " returned "
+					System.out.println(LOG_TAG + "   âœ“ " + scanner.getDisplayName() + " returned "
 							+ scannerResults.size() + " issues");
 					for (ScanIssue issue : scannerResults) {
 						System.out.println(
@@ -118,7 +119,7 @@ public class ScanManager {
 
 			} catch (Exception e) {
 				// Log but continue with other scanners
-				System.err.println(LOG_TAG + "   ✗ ERROR in " + scanner.getDisplayName() + ": " + e.getMessage());
+				System.err.println(LOG_TAG + "   âœ— ERROR in " + scanner.getDisplayName() + ": " + e.getMessage());
 				e.printStackTrace();
 			}
 			scannerIndex++;
@@ -158,7 +159,7 @@ public class ScanManager {
 
 		try {
 			List<ScanIssue> results = scanner.scan(filePath);
-			CxLogger.info(LOG_TAG + " ✓ " + scannerType.getDisplayName() + " found " + results.size() + " issues");
+			CxLogger.info(LOG_TAG + " âœ“ " + scannerType.getDisplayName() + " found " + results.size() + " issues");
 			return results;
 		} catch (Exception e) {
 			CxLogger.error(LOG_TAG + " " + scannerType.getDisplayName() + " scan failed: " + e.getMessage(), e);
@@ -175,3 +176,4 @@ public class ScanManager {
 		return factory.getStatistics();
 	}
 }
+

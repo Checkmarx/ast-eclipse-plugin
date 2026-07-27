@@ -1,4 +1,4 @@
-package com.checkmarx.eclipse.devassist.backend;
+﻿package com.checkmarx.eclipse.devassist.backend;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -7,9 +7,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IProject;
 import org.eclipse.e4.core.services.events.IEventBroker;
 
-import com.checkmarx.eclipse.devassist.ui.findings.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.utils.CxLogger;
 import com.checkmarx.eclipse.utils.PluginUtils;
 
@@ -32,6 +34,16 @@ public class ProblemHolderService {
 
 	private final ConcurrentHashMap<String, List<ScanIssue>> fileToScanIssues =
 		new ConcurrentHashMap<>();
+	
+    /**
+     * Returns the instance of this service for the given project.
+     *
+     * @param project the project.
+     * @return the instance of this service for the given project.
+     */
+	public static ProblemHolderService getInstance(IProject project) {
+        return ProblemHolderService.getInstance(project);
+    }
 
 	/**
 	 * Cache scan issues for a file.
@@ -66,7 +78,7 @@ public class ProblemHolderService {
 	/**
 	 * Get all cached issues across all files.
 	 *
-	 * @return Map of file path → issues
+	 * @return Map of file path â†’ issues
 	 */
 	public Map<String, List<ScanIssue>> getAllScanIssues() {
 
@@ -191,11 +203,18 @@ public class ProblemHolderService {
 				System.out.println(LOG_TAG + " [EVENT-BROKER] Publishing issues update: " + allIssues.size() + " files");
 				eventBroker.post(ISSUES_UPDATED_TOPIC, allIssues);
 			} else {
-				System.err.println(LOG_TAG + " [EVENT-BROKER] ✗ EventBroker not available");
+				System.err.println(LOG_TAG + " [EVENT-BROKER] âœ— EventBroker not available");
 			}
 		} catch (Exception e) {
 			System.err.println(LOG_TAG + " [EVENT-BROKER] Error publishing event: " + e.getMessage());
 			e.printStackTrace();
 		}
 	}
+	
+	public static void addToCxOneFindings(IFile file, List<ScanIssue> problemsList) {
+        getInstance(file.getProject()).addScanIssues(file.getFullPath().toOSString(), problemsList);
+    }
+	
+
 }
+

@@ -1,11 +1,11 @@
-package com.checkmarx.eclipse.devassist.ui.findings.marker;
+﻿package com.checkmarx.eclipse.devassist.ui.findings.marker;
 
 import org.eclipse.core.resources.IMarker;
 
 import com.checkmarx.eclipse.enums.Severity;
-import com.checkmarx.eclipse.devassist.ui.findings.model.Location;
-import com.checkmarx.eclipse.devassist.ui.findings.model.ScanEngine;
-import com.checkmarx.eclipse.devassist.ui.findings.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.model.Location;
+import com.checkmarx.eclipse.devassist.model.ScanEngine;
+import com.checkmarx.eclipse.devassist.model.ScanIssue;
 
 /**
  * Maps between ScanIssue objects and IMarker attributes.
@@ -193,3 +193,4 @@ public class MarkerIssueMapper {
         }
     }
 }
+

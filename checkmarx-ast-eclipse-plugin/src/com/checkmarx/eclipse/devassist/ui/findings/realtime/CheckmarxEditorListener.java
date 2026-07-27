@@ -319,7 +319,7 @@ public class CheckmarxEditorListener implements IPartListener2 {
 				return;
 			}
 
-			java.util.List<com.checkmarx.eclipse.devassist.ui.findings.model.ScanIssue> cachedIssues =
+			java.util.List<com.checkmarx.eclipse.devassist.model.ScanIssue> cachedIssues =
 				problemHolder.getScanIssuesByFile(filePath);
 
 			if (cachedIssues == null || cachedIssues.isEmpty()) {

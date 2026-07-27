@@ -1,4 +1,4 @@
-package com.checkmarx.eclipse.devassist.ui.findings.provider;
+﻿package com.checkmarx.eclipse.devassist.ui.findings.provider;
 
 import java.util.Map;
 import org.eclipse.jface.viewers.DelegatingStyledCellLabelProvider;
@@ -12,7 +12,7 @@ import org.eclipse.swt.widgets.Event;
 
 import com.checkmarx.eclipse.devassist.ui.findings.model.FileNodeLabel;
 import com.checkmarx.eclipse.devassist.ui.findings.model.ScanDetailWithPath;
-import com.checkmarx.eclipse.devassist.ui.findings.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.ui.findings.icons.IconRegistry;
 
 /**

@@ -1,4 +1,4 @@
-package com.checkmarx.eclipse.devassist.ui.findings.ignored;
+﻿package com.checkmarx.eclipse.devassist.ui.findings.ignored;
 
 import java.util.List;
 
@@ -13,7 +13,7 @@ import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.ui.part.ViewPart;
 
-import com.checkmarx.eclipse.devassist.ui.findings.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.ui.findings.ignored.IgnoredProblemsStore.IgnoredProblemsListener;
 
 /**
@@ -60,7 +60,7 @@ public class CxIgnoredProblemsView extends ViewPart implements IgnoredProblemsLi
 			}
 		});
 
-		System.out.println("[IGNORED-VIEW] ✓ Ignored Problems View created");
+		System.out.println("[IGNORED-VIEW] âœ“ Ignored Problems View created");
 	}
 
 	private void setupToolbar() {
@@ -166,7 +166,7 @@ public class CxIgnoredProblemsView extends ViewPart implements IgnoredProblemsLi
 								} else {
 									// No line info, just open the file
 									org.eclipse.ui.ide.IDE.openEditor(page, found[0], true);
-									System.out.println("[IGNORED-VIEW] ✓ Opened file: " + simpleName);
+									System.out.println("[IGNORED-VIEW] âœ“ Opened file: " + simpleName);
 								}
 							}
 						}
@@ -195,12 +195,12 @@ public class CxIgnoredProblemsView extends ViewPart implements IgnoredProblemsLi
 
 			// Open editor
 			org.eclipse.ui.IEditorPart editor = org.eclipse.ui.ide.IDE.openEditor(page, file, true);
-			System.out.println("[IGNORED-VIEW] ✓ Opened file: " + file.getName());
+			System.out.println("[IGNORED-VIEW] âœ“ Opened file: " + file.getName());
 
 			// Use IDE.gotoMarker to position cursor (same as native Problems View)
 			if (editor != null) {
 				org.eclipse.ui.ide.IDE.gotoMarker(editor, tempMarker);
-				System.out.println("[IGNORED-VIEW] ✓ Cursor positioned at line " + lineNumber);
+				System.out.println("[IGNORED-VIEW] âœ“ Cursor positioned at line " + lineNumber);
 			}
 
 			// Delete the temporary marker
@@ -214,7 +214,7 @@ public class CxIgnoredProblemsView extends ViewPart implements IgnoredProblemsLi
 			// Fallback: just open the file
 			try {
 				org.eclipse.ui.ide.IDE.openEditor(page, file, true);
-				System.out.println("[IGNORED-VIEW] ✓ Opened file (fallback): " + file.getName());
+				System.out.println("[IGNORED-VIEW] âœ“ Opened file (fallback): " + file.getName());
 			} catch (Exception fallbackEx) {
 				System.err.println("[IGNORED-VIEW] Error in fallback: " + fallbackEx.getMessage());
 			}
@@ -266,3 +266,4 @@ public class CxIgnoredProblemsView extends ViewPart implements IgnoredProblemsLi
 		super.dispose();
 	}
 }
+

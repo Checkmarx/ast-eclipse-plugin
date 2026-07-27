@@ -160,17 +160,17 @@ public class RealTimeScanJob extends Job {
 
 				// Execute backend scanners
 				System.out.println("[REALTIME] [STEP 3/5] Creating ScanManager...");
-				com.checkmarx.eclipse.devassist.backend.scanner.ScanManager scanManager =
-					new com.checkmarx.eclipse.devassist.backend.scanner.ScanManager(registry, stateHolder);
+				com.checkmarx.eclipse.devassist.basescanner.ScanManager scanManager =
+					new com.checkmarx.eclipse.devassist.basescanner.ScanManager(registry, stateHolder);
 
 				String filePath = file.getLocation().toOSString();
 				System.out.println("[REALTIME] [STEP 4/5] Executing backend scanners for: " + filePath);
 
-				java.util.List<com.checkmarx.eclipse.devassist.ui.findings.model.ScanIssue> issues =
+				java.util.List<com.checkmarx.eclipse.devassist.model.ScanIssue> issues =
 					scanManager.scanFile(filePath);
 
 				System.out.println("[REALTIME] ✓ Scan completed - found " + issues.size() + " issues");
-				for (com.checkmarx.eclipse.devassist.ui.findings.model.ScanIssue issue : issues) {
+				for (com.checkmarx.eclipse.devassist.model.ScanIssue issue : issues) {
 					System.out.println("[REALTIME]   - " + issue.getScanEngine() + ": " + issue.getTitle() +
 						" (severity: " + issue.getSeverity() + ")");
 				}

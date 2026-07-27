@@ -1,4 +1,4 @@
-package com.checkmarx.eclipse.devassist.backend.result;
+﻿package com.checkmarx.eclipse.devassist.backend.result;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.ui.IWorkbench;
@@ -6,7 +6,7 @@ import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.PlatformUI;
 
 import com.checkmarx.eclipse.devassist.backend.result.ScanResultDecorator;
-import com.checkmarx.eclipse.devassist.ui.findings.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.utils.CxLogger;
 import java.util.List;
 
@@ -42,14 +42,14 @@ public class ResultPublisher {
 			// Step 1: Update Findings View (try to display immediately if view is open)
 			System.out.println(LOG_TAG + " [STEP 1/2] Attempting to update Findings View if open...");
 			updateFindingsView(file, scanIssues);
-			System.out.println(LOG_TAG + " ✓ Findings View update attempted");
+			System.out.println(LOG_TAG + " âœ“ Findings View update attempted");
 
 			// Step 2: Render editor decorations (gutter icons, underlines)
 			System.out.println(LOG_TAG + " [STEP 2/2] Rendering editor decorations...");
 			renderEditorDecorations(file, scanIssues);
 
 		} catch (Exception e) {
-			System.err.println(LOG_TAG + " ✗ ERROR: " + e.getMessage());
+			System.err.println(LOG_TAG + " âœ— ERROR: " + e.getMessage());
 			e.printStackTrace();
 			CxLogger.error(LOG_TAG + " Error publishing results: " + e.getMessage(), e);
 		}
@@ -73,7 +73,7 @@ public class ResultPublisher {
 				return;
 			}
 
-			// **JetBrains Pattern: Remove old engine results → Then merge new results**
+			// **JetBrains Pattern: Remove old engine results â†’ Then merge new results**
 			// This triggers the message bus pattern:
 			// 1. removeScanIssuesByFileAndScanner() removes old results for THIS engine
 			// 2. mergeScanIssues() stores new results in cache
@@ -83,7 +83,7 @@ public class ResultPublisher {
 			// 6. Tree shows merged results (no duplicates, no stale issues)
 			// **FIX: Use getLocation() (absolute path) to match cache key format used in RealTimeScanJob**
 			// ProblemHolderService cache is keyed with absolute paths from RealTimeScanJob.scanFile()
-			// Must use same path format for cache lookups or removal will fail → causing duplicates
+			// Must use same path format for cache lookups or removal will fail â†’ causing duplicates
 			String filePath = file.getLocation().toOSString();
 
 			org.eclipse.core.resources.IProject project = file.getProject();
@@ -109,7 +109,7 @@ public class ResultPublisher {
 					System.out.println(LOG_TAG + " [MERGE] Merged " + scanIssues.size() + " new issues from " +
 						(engineType != null ? engineType : "UNKNOWN") + " for: " + filePath);
 				} else {
-					System.out.println(LOG_TAG + " [VIEW-UPDATE] ⚠ ProblemHolderService not initialized - results not cached");
+					System.out.println(LOG_TAG + " [VIEW-UPDATE] âš  ProblemHolderService not initialized - results not cached");
 				}
 			}
 
@@ -199,3 +199,4 @@ public class ResultPublisher {
 		}
 	}
 }
+

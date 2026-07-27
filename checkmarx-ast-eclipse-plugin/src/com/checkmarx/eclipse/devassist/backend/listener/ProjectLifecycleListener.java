@@ -1,4 +1,4 @@
-package com.checkmarx.eclipse.devassist.backend.listener;
+﻿package com.checkmarx.eclipse.devassist.backend.listener;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,8 +15,8 @@ import com.checkmarx.eclipse.devassist.backend.DevAssistScanStateHolder;
 import com.checkmarx.eclipse.devassist.backend.ProblemHolderService;
 import com.checkmarx.eclipse.devassist.backend.ScannerRegistry;
 import com.checkmarx.eclipse.devassist.backend.result.ResultPublisher;
-import com.checkmarx.eclipse.devassist.backend.scanner.ScanManager;
-import com.checkmarx.eclipse.devassist.ui.findings.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.basescanner.ScanManager;
+import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.utils.CxLogger;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
@@ -43,7 +43,7 @@ public class ProjectLifecycleListener implements IResourceChangeListener {
 			this,
 			IResourceChangeEvent.PRE_CLOSE | IResourceChangeEvent.POST_CHANGE
 		);
-		CxLogger.info(LOG_TAG + " ✓ Registered");
+		CxLogger.info(LOG_TAG + " âœ“ Registered");
 
 		// FIX 1: Run immediate initialization for projects ALREADY open on IDE startup
 		initExistingProjects();
@@ -143,14 +143,14 @@ public class ProjectLifecycleListener implements IResourceChangeListener {
 	}
 
 	private void onProjectClose(IProject project) {
-		CxLogger.info(LOG_TAG + " ✓ Project closing: " + project.getName());
+		CxLogger.info(LOG_TAG + " âœ“ Project closing: " + project.getName());
 
 		try {
 			try {
 				ScannerRegistry registry = (ScannerRegistry) project.getSessionProperty(REGISTRY_KEY);
 				if (registry != null) {
 					registry.deregisterAllScanners();
-					CxLogger.info(LOG_TAG + " ✓ ScannerRegistry disposed");
+					CxLogger.info(LOG_TAG + " âœ“ ScannerRegistry disposed");
 				}
 			} catch (Exception e) {
 				CxLogger.warning(LOG_TAG + " Error disposing ScannerRegistry: " + e.getMessage());
@@ -160,7 +160,7 @@ public class ProjectLifecycleListener implements IResourceChangeListener {
 				ProblemHolderService problemHolder = (ProblemHolderService) project.getSessionProperty(PROBLEM_HOLDER_KEY);
 				if (problemHolder != null) {
 					problemHolder.clearAll();
-					CxLogger.info(LOG_TAG + " ✓ Result cache cleared");
+					CxLogger.info(LOG_TAG + " âœ“ Result cache cleared");
 				}
 			} catch (Exception e) {
 				CxLogger.warning(LOG_TAG + " Error clearing cache: " + e.getMessage());
@@ -170,14 +170,14 @@ public class ProjectLifecycleListener implements IResourceChangeListener {
 				DevAssistScanStateHolder stateHolder = (DevAssistScanStateHolder) project.getSessionProperty(STATE_HOLDER_KEY);
 				if (stateHolder != null) {
 					stateHolder.clearAll();
-					CxLogger.info(LOG_TAG + " ✓ State holder cleared");
+					CxLogger.info(LOG_TAG + " âœ“ State holder cleared");
 				}
 			} catch (Exception e) {
 				CxLogger.warning(LOG_TAG + " Error clearing state: " + e.getMessage());
 			}
 
 			initializedProjects.remove(project.getName());
-			CxLogger.info(LOG_TAG + " ✓ Project cleanup completed: " + project.getName());
+			CxLogger.info(LOG_TAG + " âœ“ Project cleanup completed: " + project.getName());
 
 		} catch (Exception e) {
 			CxLogger.error(LOG_TAG + " Error cleaning up project " + project.getName() + ": " + e.getMessage(), e);
@@ -248,7 +248,7 @@ public class ProjectLifecycleListener implements IResourceChangeListener {
 
 	private void findAndScanFiles(IProject project, String[] patterns, String fileType) {
 		try {
-			System.out.println(LOG_TAG + " ► Scanning for " + fileType + "...");
+			System.out.println(LOG_TAG + " â–º Scanning for " + fileType + "...");
 
 			ScannerRegistry registry = (ScannerRegistry) project.getSessionProperty(
 				new QualifiedName(PLUGIN_ID, "scanner-registry"));
@@ -296,3 +296,4 @@ public class ProjectLifecycleListener implements IResourceChangeListener {
 		}
 	}
 }
+

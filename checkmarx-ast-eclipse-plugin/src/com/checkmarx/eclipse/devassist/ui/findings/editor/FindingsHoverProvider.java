@@ -1,4 +1,4 @@
-package com.checkmarx.eclipse.devassist.ui.findings.editor;
+﻿package com.checkmarx.eclipse.devassist.ui.findings.editor;
 
 import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.IDocument;
@@ -20,7 +20,7 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Text;
 
-import com.checkmarx.eclipse.devassist.ui.findings.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.model.ScanIssue;
 
 /**
  * Provides custom hover information for findings in the editor.
@@ -180,19 +180,19 @@ public class FindingsHoverProvider implements ITextHover, ITextHoverExtension {
 
         private static String getSeverityIcon(String severity) {
             if (severity == null) {
-                return "⚪"; // white circle for unknown
+                return "âšª"; // white circle for unknown
             }
             switch (severity.toLowerCase()) {
                 case "critical":
-                    return "🔴";
+                    return "ðŸ”´";
                 case "high":
-                    return "🟠";
+                    return "ðŸŸ ";
                 case "medium":
-                    return "🟡";
+                    return "ðŸŸ¡";
                 case "low":
-                    return "🟢";
+                    return "ðŸŸ¢";
                 default:
-                    return "⚪";
+                    return "âšª";
             }
         }
 
@@ -219,7 +219,7 @@ public class FindingsHoverProvider implements ITextHover, ITextHoverExtension {
                 org.eclipse.swt.dnd.TextTransfer transfer = org.eclipse.swt.dnd.TextTransfer.getInstance();
                 clipboard.setContents(new Object[] { text }, new org.eclipse.swt.dnd.Transfer[] { transfer });
                 clipboard.dispose();
-                System.out.println("[FINDINGS-HOVER] ✓ Copied to clipboard");
+                System.out.println("[FINDINGS-HOVER] âœ“ Copied to clipboard");
             });
         }
 
@@ -318,3 +318,4 @@ public class FindingsHoverProvider implements ITextHover, ITextHoverExtension {
         }
     }
 }
+

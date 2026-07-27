@@ -1,5 +1,7 @@
 package com.checkmarx.eclipse.devassist.ui.findings.model;
 
+import com.checkmarx.eclipse.devassist.model.ScanIssue;
+
 /**
  * Represents a scan issue with its associated file path.
  * Used as a leaf node in the findings tree.

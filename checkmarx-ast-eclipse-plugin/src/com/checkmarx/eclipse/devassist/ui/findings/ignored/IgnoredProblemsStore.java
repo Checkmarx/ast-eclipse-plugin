@@ -1,4 +1,4 @@
-package com.checkmarx.eclipse.devassist.ui.findings.ignored;
+﻿package com.checkmarx.eclipse.devassist.ui.findings.ignored;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -12,7 +12,7 @@ import org.eclipse.core.runtime.preferences.ConfigurationScope;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 import org.osgi.service.prefs.BackingStoreException;
 
-import com.checkmarx.eclipse.devassist.ui.findings.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.model.ScanIssue;
 
 /**
  * Persistent storage for ignored problems. Uses Eclipse preferences to store
@@ -58,9 +58,9 @@ public class IgnoredProblemsStore {
 			ignoreProblem(issue.getScanIssueId());
 			// Cache the full issue details for later retrieval
 			ignoredProblemsCache.put(issue.getScanIssueId(), issue);
-			System.out.println("[IGNORED-STORE] ✓ Cached issue details. Cache size: " + ignoredProblemsCache.size());
+			System.out.println("[IGNORED-STORE] âœ“ Cached issue details. Cache size: " + ignoredProblemsCache.size());
 		} else {
-			System.out.println("[IGNORED-STORE] ✗ ERROR: issue is null or ID is null!");
+			System.out.println("[IGNORED-STORE] âœ— ERROR: issue is null or ID is null!");
 		}
 	}
 
@@ -209,3 +209,4 @@ public class IgnoredProblemsStore {
 		void onIgnoredProblemsChanged();
 	}
 }
+

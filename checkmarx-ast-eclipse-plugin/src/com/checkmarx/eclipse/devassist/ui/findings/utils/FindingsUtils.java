@@ -1,7 +1,7 @@
-package com.checkmarx.eclipse.devassist.ui.findings.utils;
+﻿package com.checkmarx.eclipse.devassist.ui.findings.utils;
 
-import com.checkmarx.eclipse.devassist.ui.findings.model.ScanIssue;
-import com.checkmarx.eclipse.devassist.ui.findings.model.ScanEngine;
+import com.checkmarx.eclipse.devassist.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.model.ScanEngine;
 
 import java.util.Arrays;
 import java.util.List;
@@ -91,3 +91,4 @@ public class FindingsUtils {
         return filePath;
     }
 }
+

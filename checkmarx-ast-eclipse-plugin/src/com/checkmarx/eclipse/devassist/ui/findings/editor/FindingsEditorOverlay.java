@@ -1,4 +1,4 @@
-package com.checkmarx.eclipse.devassist.ui.findings.editor;
+﻿package com.checkmarx.eclipse.devassist.ui.findings.editor;
 
 import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.IDocument;
@@ -6,8 +6,8 @@ import org.eclipse.jface.text.Position;
 import org.eclipse.jface.text.source.IAnnotationModel;
 import org.eclipse.jface.text.source.ISourceViewer;
 import org.eclipse.ui.editors.text.TextEditor;
-import com.checkmarx.eclipse.devassist.ui.findings.model.Location;
-import com.checkmarx.eclipse.devassist.ui.findings.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.model.Location;
+import com.checkmarx.eclipse.devassist.model.ScanIssue;
 
 /**
  * Manages highlighting and underlining of problematic code lines in the editor.
@@ -105,7 +105,7 @@ public class FindingsEditorOverlay {
                 }
             });
 
-            System.out.println("[FINDINGS-OVERLAY] ✓ Cleared all findings highlights");
+            System.out.println("[FINDINGS-OVERLAY] âœ“ Cleared all findings highlights");
         } catch (Exception e) {
             System.out.println("[FINDINGS-OVERLAY] Error clearing highlights: " + e.getMessage());
         }
@@ -133,3 +133,4 @@ public class FindingsEditorOverlay {
         }
     }
 }
+

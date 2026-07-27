@@ -1,8 +1,8 @@
-package com.checkmarx.eclipse.devassist.backend.scanner;
+﻿package com.checkmarx.eclipse.devassist.basescanner;
 
 import java.util.List;
 
-import com.checkmarx.eclipse.devassist.ui.findings.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.model.ScanIssue;
 
 /**
  * Interface for all scanner implementations.
@@ -70,3 +70,4 @@ public interface ScannerService extends AutoCloseable {
 		}
 	}
 }
+

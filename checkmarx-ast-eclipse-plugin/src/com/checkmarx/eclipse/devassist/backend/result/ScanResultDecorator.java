@@ -1,4 +1,4 @@
-package com.checkmarx.eclipse.devassist.backend.result;
+﻿package com.checkmarx.eclipse.devassist.backend.result;
 
 import java.util.HashMap;
 import java.util.List;
@@ -14,7 +14,7 @@ import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.texteditor.ITextEditor;
 
 import com.checkmarx.eclipse.devassist.ui.findings.editor.FindingsAnnotation;
-import com.checkmarx.eclipse.devassist.ui.findings.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.utils.CxLogger;
 
 /**
@@ -50,15 +50,15 @@ public class ScanResultDecorator {
 			(scanIssues != null ? scanIssues.size() : "null") + " issues");
 
 		if (file == null) {
-			System.out.println("[SCAN-DECORATOR-ENTRY] ✗ File is NULL - returning");
+			System.out.println("[SCAN-DECORATOR-ENTRY] âœ— File is NULL - returning");
 			return;
 		}
 		if (scanIssues == null) {
-			System.out.println("[SCAN-DECORATOR-ENTRY] ✗ ScanIssues is NULL - returning");
+			System.out.println("[SCAN-DECORATOR-ENTRY] âœ— ScanIssues is NULL - returning");
 			return;
 		}
 		if (scanIssues.isEmpty()) {
-			System.out.println("[SCAN-DECORATOR-ENTRY] ✗ ScanIssues is EMPTY - returning");
+			System.out.println("[SCAN-DECORATOR-ENTRY] âœ— ScanIssues is EMPTY - returning");
 			return;
 		}
 
@@ -72,11 +72,11 @@ public class ScanResultDecorator {
 			System.out.println("[SCAN-DECORATOR-ENTRY] [STEP 1/3] Finding open editor...");
 			ITextEditor editor = findOpenEditor(file);
 			if (editor == null) {
-				System.out.println("[SCAN-DECORATOR-ENTRY] ✗ [STEP 1/3] No open editor for: " + filePath);
-				CxLogger.info(LOG_TAG + " ✗ No open editor for: " + filePath);
+				System.out.println("[SCAN-DECORATOR-ENTRY] âœ— [STEP 1/3] No open editor for: " + filePath);
+				CxLogger.info(LOG_TAG + " âœ— No open editor for: " + filePath);
 				return;
 			}
-			System.out.println("[SCAN-DECORATOR-ENTRY] ✓ [STEP 1/3] Found editor: " + editor.getClass().getSimpleName());
+			System.out.println("[SCAN-DECORATOR-ENTRY] âœ“ [STEP 1/3] Found editor: " + editor.getClass().getSimpleName());
 
 			// Get annotation model from editor
 			System.out.println("[SCAN-DECORATOR-ENTRY] [STEP 2/3] Getting annotation model...");
@@ -84,11 +84,11 @@ public class ScanResultDecorator {
 				.getAnnotationModel(editor.getEditorInput());
 
 			if (annotationModel == null) {
-				System.out.println("[SCAN-DECORATOR-ENTRY] ✗ [STEP 2/3] Annotation model is NULL");
-				CxLogger.warning(LOG_TAG + " ✗ No annotation model available");
+				System.out.println("[SCAN-DECORATOR-ENTRY] âœ— [STEP 2/3] Annotation model is NULL");
+				CxLogger.warning(LOG_TAG + " âœ— No annotation model available");
 				return;
 			}
-			System.out.println("[SCAN-DECORATOR-ENTRY] ✓ [STEP 2/3] Got annotation model");
+			System.out.println("[SCAN-DECORATOR-ENTRY] âœ“ [STEP 2/3] Got annotation model");
 
 			// Remove previous annotations for this file
 			System.out.println("[SCAN-DECORATOR-ENTRY] [STEP 3/3] Processing " + scanIssues.size() + " issues...");
@@ -104,7 +104,7 @@ public class ScanResultDecorator {
 						annotation.addButton(filePath, null);
 						annotations.add(annotation);
 
-						CxLogger.info(LOG_TAG + " ─────────────────────────────────────────────────");
+						CxLogger.info(LOG_TAG + " â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€");
 						CxLogger.info(LOG_TAG + " Issue: " + issue.getTitle());
 						CxLogger.info(LOG_TAG + "   Engine: " + issue.getScanEngine());
 						CxLogger.info(LOG_TAG + "   Severity: " + issue.getSeverity());
@@ -130,9 +130,9 @@ public class ScanResultDecorator {
 
 							// Add annotation to model for display
 							annotationModel.addAnnotation(annotation, pos);
-							CxLogger.info(LOG_TAG + "   ✓ Annotation added to model");
+							CxLogger.info(LOG_TAG + "   âœ“ Annotation added to model");
 						} else {
-							CxLogger.warning(LOG_TAG + "   ✗ FAILED: Invalid position (offset=" +
+							CxLogger.warning(LOG_TAG + "   âœ— FAILED: Invalid position (offset=" +
 								(pos != null ? pos.getOffset() : "null") + ", length=" +
 								(pos != null ? pos.getLength() : "null") + ")");
 						}
@@ -147,10 +147,10 @@ public class ScanResultDecorator {
 			// Store annotations for later cleanup
 			fileAnnotations.put(filePath, annotations);
 
-			CxLogger.info(LOG_TAG + " ══════════════════════════════════════════════════");
-			CxLogger.info(LOG_TAG + " ✓ COMPLETE: Added " + annotations.size() +
+			CxLogger.info(LOG_TAG + " â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•");
+			CxLogger.info(LOG_TAG + " âœ“ COMPLETE: Added " + annotations.size() +
 				" annotations to editor");
-			CxLogger.info(LOG_TAG + " ══════════════════════════════════════════════════");
+			CxLogger.info(LOG_TAG + " â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•");
 
 		} catch (Exception e) {
 			CxLogger.warning(LOG_TAG + " Error decorating editor: " +
@@ -268,7 +268,7 @@ public class ScanResultDecorator {
 				return null;
 			}
 
-			com.checkmarx.eclipse.devassist.ui.findings.model.Location location =
+			com.checkmarx.eclipse.devassist.model.Location location =
 				issue.getLocations().get(0);
 			int lineNumber = location.getLine() - 1;  // Convert to 0-based
 
@@ -315,7 +315,7 @@ public class ScanResultDecorator {
 				return null;
 			}
 
-			CxLogger.info(LOG_TAG + "   [OSS] ✓ Decorating first line: [" + lineOffset +
+			CxLogger.info(LOG_TAG + "   [OSS] âœ“ Decorating first line: [" + lineOffset +
 				"-" + (lineOffset + decorationLength) + "] = " + decorationLength + " chars");
 
 			return new org.eclipse.jface.text.Position(lineOffset, decorationLength);
@@ -356,7 +356,7 @@ public class ScanResultDecorator {
 
 			// Use Location data if available for precise character range
 			if (issue.getLocations() != null && !issue.getLocations().isEmpty()) {
-				com.checkmarx.eclipse.devassist.ui.findings.model.Location location =
+				com.checkmarx.eclipse.devassist.model.Location location =
 					issue.getLocations().get(0);
 
 				int rawStartIndex = location.getStartIndex();
@@ -387,7 +387,7 @@ public class ScanResultDecorator {
 	                }
 				} else {
 					// Absolute: use directly
-					CxLogger.info(LOG_TAG + "     → Treating as ABSOLUTE document offsets");
+					CxLogger.info(LOG_TAG + "     â†’ Treating as ABSOLUTE document offsets");
 					charStart = rawStartIndex;
 					charEnd = rawEndIndex;
 				}
@@ -397,12 +397,12 @@ public class ScanResultDecorator {
 				boolean endFixed = false;
 
 				if (charStart < 0 || charStart > docLength) {
-					CxLogger.warning(LOG_TAG + "     ⚠ Start offset " + charStart + " out of bounds! Doc length: " + docLength);
+					CxLogger.warning(LOG_TAG + "     âš  Start offset " + charStart + " out of bounds! Doc length: " + docLength);
 					charStart = 0;
 					startFixed = true;
 				}
 				if (charEnd < 0 || charEnd > docLength) {
-					CxLogger.warning(LOG_TAG + "     ⚠ End offset " + charEnd + " out of bounds! Doc length: " + docLength);
+					CxLogger.warning(LOG_TAG + "     âš  End offset " + charEnd + " out of bounds! Doc length: " + docLength);
 					charEnd = docLength;
 					endFixed = true;
 				}
@@ -414,7 +414,7 @@ public class ScanResultDecorator {
 				// Ensure valid range
 				if (charEnd > charStart && charStart >= 0) {
 					int length = charEnd - charStart;
-					CxLogger.info(LOG_TAG + "     ✓ PRECISE RANGE: [" + charStart + "-" + charEnd + "] = " + length + " chars");
+					CxLogger.info(LOG_TAG + "     âœ“ PRECISE RANGE: [" + charStart + "-" + charEnd + "] = " + length + " chars");
 					return new org.eclipse.jface.text.Position(charStart, length);
 				}
 			}
@@ -429,7 +429,7 @@ public class ScanResultDecorator {
 				lineNumber = issue.getLocations().get(0).getLine() - 1;
 				CxLogger.info(LOG_TAG + "     Line from location: " + (lineNumber + 1));
 			} else {
-				CxLogger.warning(LOG_TAG + "     ⚠ No line number found, using line 0");
+				CxLogger.warning(LOG_TAG + "     âš  No line number found, using line 0");
 			}
 
 			// Bounds check
@@ -437,7 +437,7 @@ public class ScanResultDecorator {
 			CxLogger.info(LOG_TAG + "     Document has " + lineCount + " lines");
 
 			if (lineNumber >= lineCount) {
-				CxLogger.warning(LOG_TAG + "     ⚠ Line " + (lineNumber + 1) + " exceeds document (max " + lineCount + ")");
+				CxLogger.warning(LOG_TAG + "     âš  Line " + (lineNumber + 1) + " exceeds document (max " + lineCount + ")");
 				lineNumber = Math.max(0, lineCount - 1);
 			}
 			lineNumber = Math.max(0, lineNumber);
@@ -450,7 +450,7 @@ public class ScanResultDecorator {
 				length = 1;
 			}
 
-			CxLogger.info(LOG_TAG + "     ✓ FALLBACK RANGE (line " + (lineNumber + 1) + "): [" + offset + "-" + (offset + length) + "] = " + length + " chars");
+			CxLogger.info(LOG_TAG + "     âœ“ FALLBACK RANGE (line " + (lineNumber + 1) + "): [" + offset + "-" + (offset + length) + "] = " + length + " chars");
 			return new org.eclipse.jface.text.Position(offset, length);
 
 		} catch (Exception e) {
@@ -503,7 +503,7 @@ public class ScanResultDecorator {
 				}
 				fileAnnotations.remove(filePath);
 
-				CxLogger.info(LOG_TAG + " ✓ Cleared " + previousAnnotations.size() +
+				CxLogger.info(LOG_TAG + " âœ“ Cleared " + previousAnnotations.size() +
 					" previous annotations");
 			}
 		} catch (Exception e) {
@@ -598,7 +598,7 @@ public class ScanResultDecorator {
 				clearAnnotations(filePath, annotationModel);
 			}
 
-			CxLogger.info(LOG_TAG + " ✓ Decorations cleared");
+			CxLogger.info(LOG_TAG + " âœ“ Decorations cleared");
 
 		} catch (Exception e) {
 			CxLogger.warning(LOG_TAG + " Error clearing decorations: " +
@@ -619,3 +619,4 @@ public class ScanResultDecorator {
 			", Total annotations: " + totalAnnotations;
 	}
 }
+

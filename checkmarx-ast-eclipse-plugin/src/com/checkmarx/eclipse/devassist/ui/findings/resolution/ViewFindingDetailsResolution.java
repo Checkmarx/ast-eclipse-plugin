@@ -1,4 +1,4 @@
-package com.checkmarx.eclipse.devassist.ui.findings.resolution;
+﻿package com.checkmarx.eclipse.devassist.ui.findings.resolution;
 
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.jface.dialogs.Dialog;
@@ -22,7 +22,7 @@ import org.eclipse.ui.IMarkerResolution2;
 import org.eclipse.ui.PlatformUI;
 
 import com.checkmarx.eclipse.devassist.ui.findings.marker.MarkerIssueMapper;
-import com.checkmarx.eclipse.devassist.ui.findings.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.model.ScanIssue;
 
 /**
  * Marker resolution that opens a dialog showing complete finding details.
@@ -152,7 +152,7 @@ public class ViewFindingDetailsResolution implements IMarkerResolution2 {
 
             // Quick Fix button
             Button quickFixBtn = new Button(buttonsComposite, SWT.PUSH);
-            quickFixBtn.setText("⚡ Quick Fix");
+            quickFixBtn.setText("âš¡ Quick Fix");
             quickFixBtn.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
             quickFixBtn.addSelectionListener(new SelectionAdapter() {
                 @Override
@@ -163,7 +163,7 @@ public class ViewFindingDetailsResolution implements IMarkerResolution2 {
 
             // Ignore button
             Button ignoreBtn = new Button(buttonsComposite, SWT.PUSH);
-            ignoreBtn.setText("🚫 Ignore");
+            ignoreBtn.setText("ðŸš« Ignore");
             ignoreBtn.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
             ignoreBtn.addSelectionListener(new SelectionAdapter() {
                 @Override
@@ -174,7 +174,7 @@ public class ViewFindingDetailsResolution implements IMarkerResolution2 {
 
             // Copy button
             Button copyBtn = new Button(buttonsComposite, SWT.PUSH);
-            copyBtn.setText("📋 Copy");
+            copyBtn.setText("ðŸ“‹ Copy");
             copyBtn.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
             copyBtn.addSelectionListener(new SelectionAdapter() {
                 @Override
@@ -185,7 +185,7 @@ public class ViewFindingDetailsResolution implements IMarkerResolution2 {
 
             // Open Window button
             Button openBtn = new Button(buttonsComposite, SWT.PUSH);
-            openBtn.setText("🪟 Details");
+            openBtn.setText("ðŸªŸ Details");
             openBtn.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
             openBtn.addSelectionListener(new SelectionAdapter() {
                 @Override
@@ -223,7 +223,7 @@ public class ViewFindingDetailsResolution implements IMarkerResolution2 {
                 TextTransfer transfer = TextTransfer.getInstance();
                 clipboard.setContents(new Object[] { text }, new Transfer[] { transfer });
                 clipboard.dispose();
-                System.out.println("[FINDING-DETAILS] ✓ Copied to clipboard");
+                System.out.println("[FINDING-DETAILS] âœ“ Copied to clipboard");
             });
         }
 
@@ -234,19 +234,19 @@ public class ViewFindingDetailsResolution implements IMarkerResolution2 {
 
         private String getSeverityIcon(String severity) {
             if (severity == null) {
-                return "⚪";
+                return "âšª";
             }
             switch (severity.toLowerCase()) {
                 case "critical":
-                    return "🔴";
+                    return "ðŸ”´";
                 case "high":
-                    return "🟠";
+                    return "ðŸŸ ";
                 case "medium":
-                    return "🟡";
+                    return "ðŸŸ¡";
                 case "low":
-                    return "🟢";
+                    return "ðŸŸ¢";
                 default:
-                    return "⚪";
+                    return "âšª";
             }
         }
 
@@ -255,3 +255,4 @@ public class ViewFindingDetailsResolution implements IMarkerResolution2 {
         }
     }
 }
+

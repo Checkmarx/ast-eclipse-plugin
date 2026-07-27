@@ -1,5 +1,6 @@
 package com.checkmarx.eclipse.devassist.ui.findings.model;
 
+import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import org.eclipse.swt.graphics.Image;
 import java.util.List;
 import java.util.Map;
