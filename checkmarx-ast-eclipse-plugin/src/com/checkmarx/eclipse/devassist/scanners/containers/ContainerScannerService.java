@@ -200,15 +200,23 @@ public class ContainerScannerService {
      */
     private String getFileContent(String filePath, IDocument document) {
         if (document != null) {
-            return document.get();
+            String content = document.get();
+            if (content != null && !content.isEmpty()) {
+                return content;
+            }
         }
+
+        if (filePath == null || filePath.isBlank()) {
+            return null;
+        }
+
         try {
-            Path path = Paths.get(filePath);
-            if (Files.exists(path)) {
-                return Files.readString(path, StandardCharsets.UTF_8);
+            Path nioPath = Paths.get(filePath);
+            if (Files.exists(nioPath) && Files.isRegularFile(nioPath)) {
+                return Files.readString(nioPath, StandardCharsets.UTF_8);
             }
         } catch (IOException e) {
-            CxLogger.warning(LOG_TAG + " Failed to read file: " + e.getMessage());
+            CxLogger.warning(LOG_TAG + " Failed to read file content from disk: " + e.getMessage());
         }
         return null;
     }

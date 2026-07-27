@@ -184,7 +184,7 @@ public class IacScanResultAdaptor implements ScanResult<Object> {
 			if (iacIssue.getLocations() != null) {
 				for (RealtimeLocation loc : iacIssue.getLocations()) {
 					Location location = new Location();
-					location.setLine(loc.getLine());
+					location.setLine(loc.getLine()+1);
 					location.setStartIndex(loc.getStartIndex());
 					location.setEndIndex(loc.getEndIndex());
 					scanIssue.getLocations().add(location);

@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.eclipse.core.resources.IFile;
+import org.eclipse.jface.text.IDocument;
+import org.eclipse.jface.text.IRegion;
 import org.eclipse.jface.text.source.Annotation;
 import org.eclipse.jface.text.source.AnnotationModel;
 import org.eclipse.jface.text.source.IAnnotationModel;
@@ -14,6 +16,7 @@ import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.texteditor.ITextEditor;
 
 import com.checkmarx.eclipse.devassist.ui.findings.editor.FindingsAnnotation;
+import com.checkmarx.eclipse.devassist.model.Location;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.utils.CxLogger;
 
@@ -50,15 +53,12 @@ public class ScanResultDecorator {
 			(scanIssues != null ? scanIssues.size() : "null") + " issues");
 
 		if (file == null) {
-			System.out.println("[SCAN-DECORATOR-ENTRY] âœ— File is NULL - returning");
 			return;
 		}
 		if (scanIssues == null) {
-			System.out.println("[SCAN-DECORATOR-ENTRY] âœ— ScanIssues is NULL - returning");
 			return;
 		}
 		if (scanIssues.isEmpty()) {
-			System.out.println("[SCAN-DECORATOR-ENTRY] âœ— ScanIssues is EMPTY - returning");
 			return;
 		}
 
@@ -339,127 +339,70 @@ public class ScanResultDecorator {
 	 * @param issue Scan issue with location info
 	 * @return org.eclipse.jface.text.Position representing the precise range
 	 */
-	private static org.eclipse.jface.text.Position calculateRange(
-		ITextEditor editor, ScanIssue issue) {
+	private static org.eclipse.jface.text.Position calculateRange(ITextEditor editor, ScanIssue issue) {
+	    try {
+	        IDocument document = editor.getDocumentProvider().getDocument(editor.getEditorInput());
+	        if (document == null) return new org.eclipse.jface.text.Position(0, 1);
 
-		try {
-			org.eclipse.jface.text.IDocument document =
-				editor.getDocumentProvider().getDocument(editor.getEditorInput());
+	        int docLength = document.getLength();
 
-			if (document == null) {
-				CxLogger.warning(LOG_TAG + " Document is null!");
-				return new org.eclipse.jface.text.Position(0, 1);
-			}
+	        // 1. Precise location-based offset calculation
+	        if (issue.getLocations() != null && !issue.getLocations().isEmpty()) {
+	            Location location = issue.getLocations().get(0);
+	            int rawStart = location.getStartIndex();
+	            int rawEnd = location.getEndIndex();
+	            int line = Math.max(0, location.getLine() - 1);
 
-			int docLength = document.getLength();
-			CxLogger.info(LOG_TAG + "   calculateRange() - Document length: " + docLength + " chars");
-
-			// Use Location data if available for precise character range
-			if (issue.getLocations() != null && !issue.getLocations().isEmpty()) {
-				com.checkmarx.eclipse.devassist.model.Location location =
-					issue.getLocations().get(0);
-
-				int rawStartIndex = location.getStartIndex();
-				int rawEndIndex = location.getEndIndex();
-				int lineNumber = location.getLine() - 1;  // Convert to 0-based
-				org.eclipse.jface.text.IRegion lineInfo = document.getLineInformation(lineNumber);
+	            IRegion lineInfo = document.getLineInformation(line);
 	            int lineOffset = lineInfo.getOffset();
 	            int lineLength = lineInfo.getLength();
 
-				// Determine if indices are absolute or line-relative
-				// If rawStartIndex is 0 and we're not on line 1, they're likely line-relative
-				boolean isLineRelative = (rawStartIndex == 0 && lineNumber > 0) ||
-										  (rawEndIndex < 100 && rawEndIndex - rawStartIndex < 100);
-				// Calculate leading whitespace on the line
-	            int leadingWhitespace = getLeadingWhitespaceOffset(document, lineOffset, lineLength);
+	            int trimIndent = getLeadingWhitespaceOffset(document, lineOffset, lineLength);
+	            boolean isLineRelative = (rawStart == 0 && line > 0) || (rawEnd < 100 && rawEnd - rawStart < 100);
 
-				int charStart, charEnd;
+	            int charStart = isLineRelative ? (lineOffset + rawStart) : rawStart;
+	            int charEnd = isLineRelative ? (lineOffset + rawEnd) : rawEnd;
 
-				if (isLineRelative) {
-					int effectiveStart = (rawStartIndex == 0) ? leadingWhitespace : rawStartIndex;
-	                
-	                charStart = lineOffset + effectiveStart;
-	                charEnd = lineOffset + rawEndIndex;
+	            // If start points to the beginning of the line, shift past leading whitespace
+	            if (charStart <= lineOffset) {
+	                charStart = lineOffset + trimIndent;
+	            }
 
-	                // Ensure charEnd is after charStart if end index was also line-relative/small
-	                if (charEnd <= charStart) {
-	                    charEnd = lineOffset + lineLength;
-	                }
-				} else {
-					// Absolute: use directly
-					CxLogger.info(LOG_TAG + "     â†’ Treating as ABSOLUTE document offsets");
-					charStart = rawStartIndex;
-					charEnd = rawEndIndex;
-				}
+	            if (charEnd <= charStart) {
+	                charEnd = lineOffset + lineLength;
+	            }
 
-				// Bounds check
-				boolean startFixed = false;
-				boolean endFixed = false;
+	            // Clamp offsets safely within document bounds
+	            charStart = Math.max(0, Math.min(charStart, docLength));
+	            charEnd = Math.max(charStart, Math.min(charEnd, docLength));
 
-				if (charStart < 0 || charStart > docLength) {
-					CxLogger.warning(LOG_TAG + "     âš  Start offset " + charStart + " out of bounds! Doc length: " + docLength);
-					charStart = 0;
-					startFixed = true;
-				}
-				if (charEnd < 0 || charEnd > docLength) {
-					CxLogger.warning(LOG_TAG + "     âš  End offset " + charEnd + " out of bounds! Doc length: " + docLength);
-					charEnd = docLength;
-					endFixed = true;
-				}
+	            if (charEnd > charStart) {
+	                return new org.eclipse.jface.text.Position(charStart, charEnd - charStart);
+	            }
+	        }
 
-				if (startFixed || endFixed) {
-					CxLogger.info(LOG_TAG + "     Bounds-checked: Start=" + charStart + ", End=" + charEnd);
-				}
+	        // 2. Fallback: Highlight line content (skipping leading indentation)
+	        int targetLine = 0;
+	        if (issue.getProblematicLineNumber() != null) {
+	            targetLine = issue.getProblematicLineNumber() - 1;
+	        } else if (issue.getLocations() != null && !issue.getLocations().isEmpty()) {
+	            targetLine = issue.getLocations().get(0).getLine() - 1;
+	        }
 
-				// Ensure valid range
-				if (charEnd > charStart && charStart >= 0) {
-					int length = charEnd - charStart;
-					CxLogger.info(LOG_TAG + "     âœ“ PRECISE RANGE: [" + charStart + "-" + charEnd + "] = " + length + " chars");
-					return new org.eclipse.jface.text.Position(charStart, length);
-				}
-			}
+	        int line = Math.max(0, Math.min(targetLine, document.getNumberOfLines() - 1));
+	        IRegion lineInfo = document.getLineInformation(line);
 
-			// Fallback: Use line number from problematicLineNumber or location line
-			CxLogger.info(LOG_TAG + "   Using FALLBACK line-based range:");
-			int lineNumber = 0;
-			if (issue.getProblematicLineNumber() != null) {
-				lineNumber = issue.getProblematicLineNumber() - 1;
-				CxLogger.info(LOG_TAG + "     Line from problematicLineNumber: " + (lineNumber + 1));
-			} else if (issue.getLocations() != null && !issue.getLocations().isEmpty()) {
-				lineNumber = issue.getLocations().get(0).getLine() - 1;
-				CxLogger.info(LOG_TAG + "     Line from location: " + (lineNumber + 1));
-			} else {
-				CxLogger.warning(LOG_TAG + "     âš  No line number found, using line 0");
-			}
+	        int trimIndent = getLeadingWhitespaceOffset(document, lineInfo.getOffset(), lineInfo.getLength());
+	        int startOffset = lineInfo.getOffset() + trimIndent;
+	        int length = Math.max(1, lineInfo.getLength() - trimIndent);
 
-			// Bounds check
-			int lineCount = document.getNumberOfLines();
-			CxLogger.info(LOG_TAG + "     Document has " + lineCount + " lines");
+	        return new org.eclipse.jface.text.Position(startOffset, length);
 
-			if (lineNumber >= lineCount) {
-				CxLogger.warning(LOG_TAG + "     âš  Line " + (lineNumber + 1) + " exceeds document (max " + lineCount + ")");
-				lineNumber = Math.max(0, lineCount - 1);
-			}
-			lineNumber = Math.max(0, lineNumber);
-
-			// Get line information for fallback (underline entire line)
-			org.eclipse.jface.text.IRegion lineInfo = document.getLineInformation(lineNumber);
-			int offset = lineInfo.getOffset();
-			int length = Math.min(lineInfo.getLength(), 100); // Underline first 100 chars
-			if (length == 0) {
-				length = 1;
-			}
-
-			CxLogger.info(LOG_TAG + "     âœ“ FALLBACK RANGE (line " + (lineNumber + 1) + "): [" + offset + "-" + (offset + length) + "] = " + length + " chars");
-			return new org.eclipse.jface.text.Position(offset, length);
-
-		} catch (Exception e) {
-			CxLogger.warning(LOG_TAG + " Error calculating range: " + e.getMessage());
-			e.printStackTrace();
-			return new org.eclipse.jface.text.Position(0, 1);
-		}
+	    } catch (Exception e) {
+	        CxLogger.warning(LOG_TAG + " Error calculating range: " + e.getMessage());
+	        return new org.eclipse.jface.text.Position(0, 1);
+	    }
 	}
-	
 	/**
 	 * Calculates the number of leading whitespace characters (spaces/tabs) on a given line.
 	 *
