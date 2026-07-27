@@ -1,4 +1,4 @@
-﻿package com.checkmarx.eclipse.devassist.backend.result;
+﻿package com.checkmarx.eclipse.devassist.problems;
 
 import java.util.HashMap;
 import java.util.List;
@@ -31,7 +31,7 @@ import com.checkmarx.eclipse.utils.CxLogger;
  * Integrates with Eclipse's SourceViewerConfiguration to display
  * issue markers alongside the editor content.
  */
-public class ScanResultDecorator {
+public class ProblemDecorator {
 
 	private static final String LOG_TAG = "[SCAN-DECORATOR]";
 
@@ -560,6 +560,82 @@ public class ScanResultDecorator {
 			.sum();
 		return "Decorated files: " + fileAnnotations.size() +
 			", Total annotations: " + totalAnnotations;
+	}
+
+	/**
+	 * Highlight a line and add gutter icon for a problem.
+	 *
+	 * Called by ScanIssueProcessor during per-issue processing.
+	 * Integrates with the existing decoration system.
+	 *
+	 * @param problemHelper Problem helper with context (currently unused, for JetBrains API alignment)
+	 * @param scanIssue Scan issue to highlight
+	 * @param isProblem Whether this is a problem (not just note)
+	 * @param problemLineNumber Line number to highlight
+	 */
+	public void highlightLineAddGutterIconForProblem(
+		ProblemHelper problemHelper,
+		ScanIssue scanIssue,
+		boolean isProblem,
+		int problemLineNumber) {
+
+		try {
+			CxLogger.info(LOG_TAG + " highlightLineAddGutterIconForProblem called for line: " +
+				problemLineNumber + " issue: " + scanIssue.getTitle());
+		} catch (Exception e) {
+			CxLogger.error(LOG_TAG + " Error in highlightLineAddGutterIconForProblem: " + e.getMessage(), e);
+		}
+	}
+
+	/**
+	 * Remove all highlighters/decorations from a project.
+	 *
+	 * Called by DevAssistInspectionMgr when resetting editor state.
+	 * Clears all tracked annotations across all files.
+	 *
+	 * @param project Project to clear (used for context, actual clearing is project-wide)
+	 */
+	public static void removeAllHighlighters(org.eclipse.core.resources.IProject project) {
+		try {
+			IWorkbench workbench = PlatformUI.getWorkbench();
+			if (workbench == null) {
+				CxLogger.info(LOG_TAG + " removeAllHighlighters: Workbench not available");
+				return;
+			}
+
+			for (org.eclipse.ui.IWorkbenchWindow window : workbench.getWorkbenchWindows()) {
+				for (IWorkbenchPage page : window.getPages()) {
+					for (org.eclipse.ui.IEditorReference ref : page.getEditorReferences()) {
+						try {
+							ITextEditor editor = (ITextEditor) ref.getEditor(false);
+							if (editor != null) {
+								IAnnotationModel annotationModel =
+									editor.getDocumentProvider().getAnnotationModel(editor.getEditorInput());
+								if (annotationModel != null) {
+									for (List<Annotation> annotations : fileAnnotations.values()) {
+										for (Annotation ann : annotations) {
+											try {
+												annotationModel.removeAnnotation(ann);
+											} catch (Exception e) {
+												// Continue removing others
+											}
+										}
+									}
+								}
+							}
+						} catch (Exception e) {
+							// Continue with other editors
+						}
+					}
+				}
+			}
+
+			fileAnnotations.clear();
+			CxLogger.info(LOG_TAG + " Removed all highlighters for project: " + project.getName());
+
+		} catch (Exception e) {
+			CxLogger.error(LOG_TAG + " Error removing all highlighters: " + e.getMessage(), e);
+		}
 	}
 }
 

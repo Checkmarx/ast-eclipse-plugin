@@ -5,7 +5,8 @@ import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.PlatformUI;
 
-import com.checkmarx.eclipse.devassist.backend.result.ScanResultDecorator;
+import com.checkmarx.eclipse.devassist.problems.ProblemDecorator;
+import com.checkmarx.eclipse.devassist.problems.ProblemHolderService;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.utils.CxLogger;
 import java.util.List;
@@ -88,8 +89,8 @@ public class ResultPublisher {
 
 			org.eclipse.core.resources.IProject project = file.getProject();
 			if (project != null) {
-				com.checkmarx.eclipse.devassist.backend.ProblemHolderService problemHolder =
-					(com.checkmarx.eclipse.devassist.backend.ProblemHolderService) project.getSessionProperty(
+				ProblemHolderService problemHolder =
+					(ProblemHolderService) project.getSessionProperty(
 						new org.eclipse.core.runtime.QualifiedName("com.checkmarx.eclipse.plugin", "problem-holder"));
 
 				if (problemHolder != null) {
@@ -138,7 +139,7 @@ public class ResultPublisher {
 			display.asyncExec(() -> {
 				try {
 					// Render gutter icons and underlines using Findings Window data
-					ScanResultDecorator.decorateEditor(file, scanIssues);
+					ProblemDecorator.decorateEditor(file, scanIssues);
 					CxLogger.info(LOG_TAG + " Editor decorations rendered for " + scanIssues.size() + " issues");
 
 				} catch (Exception e) {

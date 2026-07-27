@@ -1,4 +1,4 @@
-﻿package com.checkmarx.eclipse.devassist.backend;
+﻿package com.checkmarx.eclipse.devassist.problems;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -34,7 +34,9 @@ public class ProblemHolderService {
 
 	private final ConcurrentHashMap<String, List<ScanIssue>> fileToScanIssues =
 		new ConcurrentHashMap<>();
-	
+	private final ConcurrentHashMap<String, List<ProblemDescriptor>> fileToProblemDescriptors =
+		new ConcurrentHashMap<>();
+
     /**
      * Returns the instance of this service for the given project.
      *
@@ -214,7 +216,47 @@ public class ProblemHolderService {
 	public static void addToCxOneFindings(IFile file, List<ScanIssue> problemsList) {
         getInstance(file.getProject()).addScanIssues(file.getFullPath().toOSString(), problemsList);
     }
-	
+
+	/**
+	 * Cache problem descriptors for a file.
+	 *
+	 * @param filePath Absolute file path
+	 * @param descriptors Problem descriptors to cache
+	 */
+	public void addProblemDescriptors(String filePath, List<ProblemDescriptor> descriptors) {
+		if (filePath == null || descriptors == null) {
+			return;
+		}
+		fileToProblemDescriptors.put(filePath, new ArrayList<>(descriptors));
+		CxLogger.info(LOG_TAG + " Cached " + descriptors.size() + " problem descriptors for: " + filePath);
+	}
+
+	/**
+	 * Get cached problem descriptors for a file.
+	 *
+	 * @param filePath Absolute file path
+	 * @return Cached problem descriptors or empty list
+	 */
+	public List<ProblemDescriptor> getProblemDescriptors(String filePath) {
+		if (filePath == null) {
+			return Collections.emptyList();
+		}
+		List<ProblemDescriptor> cached = fileToProblemDescriptors.get(filePath);
+		return cached != null ? Collections.unmodifiableList(cached) : Collections.emptyList();
+	}
+
+	/**
+	 * Remove cached problem descriptors for a file.
+	 *
+	 * @param filePath Absolute file path
+	 */
+	public void removeProblemDescriptorsForFile(String filePath) {
+		if (filePath == null) {
+			return;
+		}
+		fileToProblemDescriptors.remove(filePath);
+		CxLogger.info(LOG_TAG + " Removed problem descriptors for: " + filePath);
+	}
 
 }
 

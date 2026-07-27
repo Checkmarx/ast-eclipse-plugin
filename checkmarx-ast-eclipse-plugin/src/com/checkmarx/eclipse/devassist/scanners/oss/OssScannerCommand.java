@@ -1,7 +1,7 @@
 package com.checkmarx.eclipse.devassist.scanners.oss;
 
 import com.checkmarx.ast.ossrealtime.OssRealtimeResults;
-import com.checkmarx.eclipse.devassist.backend.ProblemHolderService;
+import com.checkmarx.eclipse.devassist.problems.ProblemHolderService;
 import com.checkmarx.eclipse.devassist.common.ScanResult;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.utils.CxLogger;

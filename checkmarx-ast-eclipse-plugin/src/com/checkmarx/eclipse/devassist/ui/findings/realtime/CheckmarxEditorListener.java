@@ -13,6 +13,9 @@ import org.eclipse.core.runtime.Status;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.checkmarx.eclipse.devassist.problems.ProblemHolderService;
+import com.checkmarx.eclipse.devassist.problems.ProblemDecorator;
+
 /**
  * Real-time editor listener for Checkmarx scanning.
  *
@@ -311,8 +314,8 @@ public class CheckmarxEditorListener implements IPartListener2 {
 			}
 
 			// Get cached findings for this file
-			com.checkmarx.eclipse.devassist.backend.ProblemHolderService problemHolder =
-				(com.checkmarx.eclipse.devassist.backend.ProblemHolderService) project.getSessionProperty(
+			ProblemHolderService problemHolder =
+				(ProblemHolderService) project.getSessionProperty(
 					new org.eclipse.core.runtime.QualifiedName("com.checkmarx.eclipse.plugin", "problem-holder"));
 
 			if (problemHolder == null) {
@@ -329,7 +332,7 @@ public class CheckmarxEditorListener implements IPartListener2 {
 
 			// Apply decorations for cached findings
 			System.out.println("[REALTIME] ✓ Applying " + cachedIssues.size() + " cached decorations for: " + file.getName());
-			com.checkmarx.eclipse.devassist.backend.result.ScanResultDecorator.decorateEditor(file, cachedIssues);
+			ProblemDecorator.decorateEditor(file, cachedIssues);
 
 		} catch (Exception e) {
 			System.err.println("[REALTIME] Error applying cached decorations: " + e.getMessage());

@@ -31,7 +31,7 @@ import com.checkmarx.eclipse.devassist.ui.findings.model.ScanDetailWithPath;
 import com.checkmarx.eclipse.devassist.model.Location;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.ui.findings.marker.MarkerIssueMapper;
-import com.checkmarx.eclipse.devassist.backend.ProblemHolderService;
+import com.checkmarx.eclipse.devassist.problems.ProblemHolderService;
 import com.checkmarx.eclipse.devassist.ui.findings.actions.VulnerabilityFilterAction;
 import com.checkmarx.eclipse.devassist.ui.findings.actions.VulnerabilityFilterState;
 import com.checkmarx.eclipse.devassist.ui.findings.ignored.IgnoredProblemsStore;
@@ -95,9 +95,9 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
                     }
                 };
 
-                eventBroker.subscribe(com.checkmarx.eclipse.devassist.backend.ProblemHolderService.ISSUES_UPDATED_TOPIC, eventHandler);
+                eventBroker.subscribe(ProblemHolderService.ISSUES_UPDATED_TOPIC, eventHandler);
                 System.out.println("[FINDINGS] [INIT-STEP 3/5] âœ“ Registered IEventBroker subscriber on topic: " 
-                    + com.checkmarx.eclipse.devassist.backend.ProblemHolderService.ISSUES_UPDATED_TOPIC);
+                    + ProblemHolderService.ISSUES_UPDATED_TOPIC);
             } else {
                 System.err.println("[FINDINGS] [INIT-STEP 3/5] âœ— IEventBroker service unavailable");
             }
@@ -781,11 +781,12 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
             int offset = lineInfo.getOffset();
             int length = lineInfo.getLength();
 
-            if (length == 0) {
-                length = 1;
-            }
+            // FIX: Skip leading whitespace to match ProblemDecorator.calculateRange()
+            int trimOffset = getLeadingWhitespaceOffset(document, offset, length);
+            int adjustedOffset = offset + trimOffset;
+            int adjustedLength = Math.max(1, length - trimOffset);
 
-            return new org.eclipse.jface.text.Position(offset, length);
+            return new org.eclipse.jface.text.Position(adjustedOffset, adjustedLength);
 
         } catch (Exception e) {
             return null;
@@ -847,6 +848,9 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
             newMarker.setAttribute(IMarker.MESSAGE, issue.getTitle() != null ? issue.getTitle() : "Checkmarx Finding");
             newMarker.setAttribute(IMarker.SEVERITY, IMarker.SEVERITY_WARNING);
             newMarker.setAttribute(IMarker.USER_EDITABLE, false);
+
+            // FIX: Set character offsets with whitespace trimming (so underline doesn't include leading spaces)
+            setMarkerCharacterOffsets(newMarker, file, lineNumber);
 
             // 3. Populate custom attributes
             com.checkmarx.eclipse.devassist.ui.findings.marker.MarkerIssueMapper.populateMarker(newMarker, issue);
@@ -1243,6 +1247,48 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
         }
     }
 
+
+    private void setMarkerCharacterOffsets(IMarker marker, IFile file, int lineNumber) {
+        try {
+            org.eclipse.ui.IWorkbenchWindow window = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
+            if (window == null) return;
+            org.eclipse.ui.IWorkbenchPage page = window.getActivePage();
+            if (page == null) return;
+            org.eclipse.ui.IEditorPart editor = page.getActiveEditor();
+            if (editor == null) return;
+
+            org.eclipse.ui.texteditor.ITextEditor textEditor = editor.getAdapter(org.eclipse.ui.texteditor.ITextEditor.class);
+            if (textEditor == null) return;
+
+            org.eclipse.jface.text.IDocument doc = textEditor.getDocumentProvider().getDocument(textEditor.getEditorInput());
+            if (doc == null || lineNumber <= 0 || lineNumber > doc.getNumberOfLines()) return;
+
+            int lineIdx = lineNumber - 1;
+            int lineOffset = doc.getLineOffset(lineIdx);
+            int lineLen = doc.getLineLength(lineIdx);
+
+            int trimOffset = getLeadingWhitespaceOffset(doc, lineOffset, lineLen);
+            marker.setAttribute(IMarker.CHAR_START, lineOffset + trimOffset);
+            marker.setAttribute(IMarker.CHAR_END, lineOffset + lineLen);
+
+        } catch (Exception e) {
+            // If we can't set char offsets, marker will still work with line-based positioning
+        }
+    }
+
+    private int getLeadingWhitespaceOffset(org.eclipse.jface.text.IDocument document, int lineOffset, int lineLength) {
+        try {
+            String lineText = document.get(lineOffset, lineLength);
+            int count = 0;
+            for (int i = 0; i < lineText.length(); i++) {
+                if (!Character.isWhitespace(lineText.charAt(i))) break;
+                count++;
+            }
+            return count;
+        } catch (Exception e) {
+            return 0;
+        }
+    }
 
 }
 

@@ -20,13 +20,16 @@ import com.checkmarx.eclipse.utils.CxLogger;
  *
  * This is the main entry point for initiating scans. Called from
  * FileEditorListener when a file is modified.
+ *
+ * NOTE: Uses backend.DevAssistScanStateHolder (not inspection.version) to maintain compatibility
+ * with existing code that passes backend version to super().
  */
 public class ScanManager {
 
 	private static final String LOG_TAG = "[SCAN-MANAGER]";
 
 	private final ScannerFactory factory;
-	private final DevAssistScanStateHolder stateHolder;
+	private final com.checkmarx.eclipse.devassist.backend.DevAssistScanStateHolder stateHolder;
 
 	/**
 	 * Create a scan manager for a project.

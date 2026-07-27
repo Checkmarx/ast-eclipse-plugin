@@ -12,7 +12,7 @@ import org.eclipse.core.resources.IResourceDelta;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.QualifiedName;
 import com.checkmarx.eclipse.devassist.backend.DevAssistScanStateHolder;
-import com.checkmarx.eclipse.devassist.backend.ProblemHolderService;
+import com.checkmarx.eclipse.devassist.problems.ProblemHolderService;
 import com.checkmarx.eclipse.devassist.backend.ScannerRegistry;
 import com.checkmarx.eclipse.devassist.backend.result.ResultPublisher;
 import com.checkmarx.eclipse.devassist.basescanner.ScanManager;
