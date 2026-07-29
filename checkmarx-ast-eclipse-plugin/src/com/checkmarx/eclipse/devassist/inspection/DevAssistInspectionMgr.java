@@ -58,7 +58,7 @@ public class DevAssistInspectionMgr extends ScanManager {
 	 *
 	 * Complete orchestration:
 	 * 1. Build problem helper
-	 * 2. Scan file → get ScanIssue list
+	 * 2. Scan file → get ScanIssue list (if not already provided)
 	 * 3. Cache scan issues
 	 * 4. Create ScanIssueProcessor for validation
 	 * 5. For each issue: validate and create ProblemDescriptor
@@ -76,9 +76,14 @@ public class DevAssistInspectionMgr extends ScanManager {
 		CxLogger.info(LOG_TAG + " Starting scan for file: " + problemHelper.getFile().getName());
 
 		try {
-			// Scan file
-			List<ScanIssue> allScanIssues = scanFile(
-				problemHelper.getFilePath());
+			// Use pre-scanned issues if available, otherwise scan file
+			List<ScanIssue> allScanIssues = problemHelper.getScanIssueList();
+			if (allScanIssues == null || allScanIssues.isEmpty()) {
+				allScanIssues = scanFile(problemHelper.getFilePath());
+				CxLogger.info(LOG_TAG + " Performed fresh scan for file: " + problemHelper.getFile().getName());
+			} else {
+				CxLogger.info(LOG_TAG + " Using pre-scanned issues for file: " + problemHelper.getFile().getName());
+			}
 
 			if (allScanIssues.isEmpty()) {
 				CxLogger.info(LOG_TAG + " No scan issues found for: " +
@@ -87,7 +92,7 @@ public class DevAssistInspectionMgr extends ScanManager {
 				return new ProblemDescriptor[0];
 			}
 
-			// Update helper with issues
+			// Ensure helper has the issues (in case they were pre-populated)
 			problemHelperBuilder.scanIssueList(allScanIssues);
 			ProblemHelper helperWithIssues = problemHelperBuilder.build();
 

@@ -315,24 +315,43 @@ public class WelcomeDialog extends TitleAreaDialog {
 	}
 
 	/**
-	 * Default implementation - can be extended when MCP settings are available
+	 * Default implementation using ScannerStateManager for persistence
 	 */
 	private static class DefaultRealTimeSettingsManager implements RealTimeSettingsManager {
+		private final com.checkmarx.eclipse.devassist.state.ScannerStateManager stateManager;
+		private com.checkmarx.eclipse.devassist.state.ScannerState currentState;
+
+		DefaultRealTimeSettingsManager() {
+			this.stateManager = new com.checkmarx.eclipse.devassist.state.ScannerStateManager();
+			this.currentState = stateManager.loadState();
+		}
+
 		@Override
 		public boolean areAllEnabled() {
-			// Future: Check all real-time scanner settings
-			return false;
+			for (com.checkmarx.eclipse.devassist.model.ScanEngine engine : com.checkmarx.eclipse.devassist.model.ScanEngine.values()) {
+				if (!currentState.isEnabled(engine)) {
+					return false;
+				}
+			}
+			return true;
 		}
 
 		@Override
 		public boolean areAnyEnabled() {
-			// Future: Check if any real-time scanner is enabled
+			for (com.checkmarx.eclipse.devassist.model.ScanEngine engine : com.checkmarx.eclipse.devassist.model.ScanEngine.values()) {
+				if (currentState.isEnabled(engine)) {
+					return true;
+				}
+			}
 			return false;
 		}
 
 		@Override
 		public void setAll(boolean enable) {
-			// Future: Set all real-time scanners
+			for (com.checkmarx.eclipse.devassist.model.ScanEngine engine : com.checkmarx.eclipse.devassist.model.ScanEngine.values()) {
+				currentState.setEnabled(engine, enable);
+			}
+			stateManager.saveState(currentState);
 		}
 	}
 }

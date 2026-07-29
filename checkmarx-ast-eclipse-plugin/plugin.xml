@@ -9,6 +9,11 @@
                 id="com.checkmarx.eclipse.properties.preferencespage"
                 name="Checkmarx One">
         </page>
+        <page
+                class="com.checkmarx.eclipse.devassist.prefs.CheckmarxPreferencePage"
+                id="com.checkmarx.eclipse.devassist.prefs.checkmarxpreferencepage"
+                name="Checkmarx Scanner Configuration">
+        </page>
     </extension>
     <extension
           point="org.eclipse.ui.views">

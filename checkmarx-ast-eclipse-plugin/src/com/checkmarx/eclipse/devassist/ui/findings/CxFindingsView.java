@@ -558,8 +558,20 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
             System.out.println("[REALTIME-SETUP] [STEP 4/5] Creating and registering document listener...");
 
             // Create a document listener that reschedules the job on every keystroke
+            com.checkmarx.eclipse.devassist.inspection.DevAssistScanScheduler scheduler = null;
+            if (file != null) {
+                try {
+                    org.eclipse.core.resources.IProject project = file.getProject();
+                    if (project != null) {
+                        scheduler = (com.checkmarx.eclipse.devassist.inspection.DevAssistScanScheduler) project.getSessionProperty(
+                            new org.eclipse.core.runtime.QualifiedName("com.checkmarx.eclipse.plugin", "scan-scheduler"));
+                    }
+                } catch (Exception e) {
+                    // Ignore if scheduler not available
+                }
+            }
             com.checkmarx.eclipse.devassist.ui.findings.realtime.CheckmarxDocumentListener docListener =
-                new com.checkmarx.eclipse.devassist.ui.findings.realtime.CheckmarxDocumentListener(fileName, scanJob);
+                new com.checkmarx.eclipse.devassist.ui.findings.realtime.CheckmarxDocumentListener(fileName, scanJob, file, scheduler);
 
             // Register the document listener
             document.addDocumentListener(docListener);

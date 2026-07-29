@@ -78,14 +78,29 @@ public class CheckmarxEditorListener implements IPartListener2 {
 
 	/**
 	 * Called when an editor is activated.
-	 * Also install scanning if not already done.
+	 * Setup scanning if not done, or trigger rescan if switching to an already-open tab.
 	 */
 	@Override
 	public void partActivated(IWorkbenchPartReference partRef) {
 		try {
 			Object part = partRef.getPart(false);
 			if (part instanceof IEditorPart) {
-				setupRealtimeScanning((IEditorPart) part);
+				IEditorPart editor = (IEditorPart) part;
+				IDocument document = getDocumentFromEditor(editor);
+				if (document != null) {
+					int documentId = document.hashCode();
+					// If already set up, trigger a rescan when user switches to tab
+					if (activeListeners.containsKey(documentId)) {
+						RealTimeScanJob scanJob = activeScanJobs.get(documentId);
+						if (scanJob != null) {
+							System.out.println("[REALTIME] User switched to tab - triggering rescan for: " + extractFileNameFromEditor(editor));
+							scanJob.reschedule(0);
+						}
+						return;
+					}
+				}
+				// Not yet set up - do initial setup
+				setupRealtimeScanning(editor);
 			}
 		} catch (Exception e) {
 			System.err.println("[REALTIME] Error in partActivated: " + e.getMessage());
@@ -150,8 +165,22 @@ public class CheckmarxEditorListener implements IPartListener2 {
 		org.eclipse.core.resources.IFile file = extractFileFromEditor(editor);
 		RealTimeScanJob scanJob = new RealTimeScanJob(file, fileName);
 
+		// Get the scheduler from project session properties
+		com.checkmarx.eclipse.devassist.inspection.DevAssistScanScheduler scheduler = null;
+		if (file != null) {
+			try {
+				org.eclipse.core.resources.IProject project = file.getProject();
+				if (project != null) {
+					scheduler = (com.checkmarx.eclipse.devassist.inspection.DevAssistScanScheduler) project.getSessionProperty(
+						new org.eclipse.core.runtime.QualifiedName("com.checkmarx.eclipse.plugin", "scan-scheduler"));
+				}
+			} catch (Exception e) {
+				System.out.println("[REALTIME] Warning: Could not get scheduler from session: " + e.getMessage());
+			}
+		}
+
 		// Create a document listener that will reschedule the job on every keystroke
-		CheckmarxDocumentListener docListener = new CheckmarxDocumentListener(fileName, scanJob);
+		CheckmarxDocumentListener docListener = new CheckmarxDocumentListener(fileName, scanJob, file, scheduler);
 
 		// Register the document listener
 		try {
@@ -167,6 +196,12 @@ public class CheckmarxEditorListener implements IPartListener2 {
 			// JetBrains pattern: when editor opens, apply cached decorations immediately
 			// This fixes the issue where decorations don't appear if editor wasn't open during scan
 			applyCachedDecorationsForFile(file, document);
+
+			// **CRITICAL FIX: Trigger initial scan when file is opened**
+			// JetBrains pattern: scan on file open, then on keystroke debounce
+			// Without this, opening a file doesn't trigger any scan — only edits do
+			System.out.println("[REALTIME] Triggering initial scan for: " + fileName);
+			scanJob.reschedule(0);
 
 		} catch (Exception e) {
 			System.err.println("[REALTIME] ✗ Error registering document listener: " + e.getMessage());
