@@ -36,16 +36,41 @@ public class OssScannerService {
 	private static final String OSS_DIR = "CxOSS";
 	private static final Object SCAN_LOCK = new Object();
 
-	private static final List<String> MANIFEST_FILE_PATTERNS = List.of(
-			"package.json", "package-lock.json", "npm-shrinkwrap.json",
-			"pom.xml",
-			"go.mod", "go.sum",
-			"requirements.txt", "Pipfile", "Pipfile.lock", "setup.py",
-			"Gemfile", "Gemfile.lock",
-			"Cargo.toml", "Cargo.lock",
-			"composer.json", "composer.lock",
-			"packages.config", "*.csproj",
-			"yarn.lock", ".npm"
+	private static final List<String> MANIFEST_FILE_PATTERNS = List.of(			
+           "**/Directory.Packages.props",
+            "**/packages.config",
+            "**/pom.xml",
+            "**/package.json",
+            "**/requirements.txt",
+            "**/go.mod",
+            "**/*.csproj",
+            "**/build.gradle",
+            "**/build.gradle.kts",
+            "**/yarn.lock",
+            "**/*.sbt",
+            "**/Gemfile",
+            "**/bower.json",
+            "**/requirement-*.txt",
+            "**/requirements-*.txt",
+            "**/Setup.py",
+            "**/Setup.cfg",
+            "**/pyproject.toml",
+            "**/poetry.lock",
+            "**/Package.swift",
+            "**/Package.resolved",
+            "**/composer.json",
+            "**/composer.lock",
+            "**/*.podspec.json",
+            "**/*.podspec",
+            "**/Podfile",
+            "**/Podfile.lock",
+            "**/Cartfile.resolved",
+            "**/Gemfile.lock",
+            "**/Gemfile",
+            "**/cpanfile.snapshot",
+            "**/cpanfile",
+            "**/pubspec.lock"
+            
 	);
 
 	private final IProject project;
@@ -72,7 +97,7 @@ public class OssScannerService {
 				.collect(Collectors.toList());
 
 		for (PathMatcher pathMatcher : pathMatchers) {
-			if (pathMatcher.matches(path.getFileName())) {
+			if (pathMatcher.matches(path)) {
 				return true;
 			}
 		}
