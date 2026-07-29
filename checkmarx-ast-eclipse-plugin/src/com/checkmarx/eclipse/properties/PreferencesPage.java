@@ -31,6 +31,7 @@ import org.eclipse.swt.widgets.Link;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.browser.IWorkbenchBrowserSupport;
 import org.eclipse.ui.PartInitException;
+import org.eclipse.ui.dialogs.PreferencesUtil;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -164,6 +165,38 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 						}));
 					}
 				}));
+			}
+		});
+
+		addField(space());
+
+		Button logoutButton = new Button(topComposite, SWT.PUSH);
+		logoutButton.setText("Logout");
+		logoutButton.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				Preferences.clearApiKey();
+				apiKey.setStringValue("");
+				textControl.setText("");
+				connectionLabel.setText("");
+				getFieldEditorParent().layout();
+			}
+		});
+
+		addField(space());
+
+		Link realtimeScannersLink = new Link(getFieldEditorParent(), SWT.NONE);
+		realtimeScannersLink.setText("<a>Go to Realtime Scanners</a>");
+		realtimeScannersLink.setLayoutData(new GridData(SWT.BEGINNING, SWT.CENTER, true, false));
+		realtimeScannersLink.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				PreferencesUtil.createPreferenceDialogOn(
+					getShell(),
+					"com.checkmarx.eclipse.devassist.prefs.checkmarxpreferencepage",
+					null,
+					null
+				).open();
 			}
 		});
 	}
