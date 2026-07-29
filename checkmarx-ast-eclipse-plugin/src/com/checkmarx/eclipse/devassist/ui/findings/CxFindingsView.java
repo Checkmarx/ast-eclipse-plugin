@@ -11,8 +11,10 @@ import org.eclipse.ui.part.ViewPart;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
+import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.ui.IEditorPart;
+import org.eclipse.ui.ISharedImages;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.ide.IDE;
@@ -26,6 +28,7 @@ import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import com.checkmarx.eclipse.devassist.ui.findings.provider.FindingsContentProvider;
 import com.checkmarx.eclipse.devassist.ui.findings.provider.FindingsLabelProvider;
+import com.checkmarx.eclipse.views.actions.ActionOpenPreferencesPage;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.ui.findings.model.ScanDetailWithPath;
 import com.checkmarx.eclipse.devassist.model.Location;
@@ -215,11 +218,68 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
         toolbar.add(new VulnerabilityFilterAction.HighFilter(filterListener));
         toolbar.add(new VulnerabilityFilterAction.MediumFilter(filterListener));
         toolbar.add(new VulnerabilityFilterAction.LowFilter(filterListener));
+        
+        toolbar.add(new org.eclipse.jface.action.Separator("\t"));
+
+     // Shared Eclipse images (replace with your own icons later)
+        ISharedImages images = PlatformUI.getWorkbench().getSharedImages();
+
+        // Toggle Expand/Collapse action
+        Action toggleExpandCollapseAction = new Action("Expand All", Action.AS_PUSH_BUTTON) {
+
+            private boolean expanded = false;
+
+            {
+                setToolTipText("Collapse All Findings");
+                setImageDescriptor(images.getImageDescriptor(ISharedImages.IMG_ELCL_COLLAPSEALL));
+            }
+
+            @Override
+            public void run() {
+                if (expanded) {
+                    treeViewer.collapseAll();
+                    setText("Expand All");
+                    setToolTipText("Expand All Findings");
+                    setImageDescriptor(images.getImageDescriptor(ISharedImages.IMG_ELCL_COLLAPSEALL_DISABLED));
+                } else {
+                    treeViewer.expandAll();
+                    setText("Collapse All");
+                    setToolTipText("Collapse All Findings");
+                    setImageDescriptor(images.getImageDescriptor(ISharedImages.IMG_ELCL_COLLAPSEALL));
+                }
+
+                expanded = !expanded;
+            }
+        };
+
+        toolbar.add(toggleExpandCollapseAction);
+
+        // Add spacing before preferences button
+        toolbar.add(new org.eclipse.jface.action.Separator("\t"));
+
+        // Preferences action (same implementation as CheckmarxView)
+        Action openPreferencesPageAction =
+            new ActionOpenPreferencesPage(
+                null,
+                treeViewer,
+                PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell())
+            .createAction();
+
+        // Toolbar preferences button
+        Action toolbarPreferencesAction =
+            new Action("\u2000⋮", Action.AS_PUSH_BUTTON) {
+                @Override
+                public void run() {
+                    openPreferencesPageAction.run();
+                }
+            };
+
+        toolbarPreferencesAction.setToolTipText("Checkmarx Preferences");
+        toolbar.add(toolbarPreferencesAction);
 
         toolbar.update(true);
-        System.out.println("[FINDINGS] Toolbar configured with 5 severity filters");
+        System.out.println("[FINDINGS] Toolbar configured with 5 severity filters and preferences button");
     }
-
     private void setupTreeListeners() {
         Tree tree = treeViewer.getTree();
         System.out.println("[FINDINGS] Setting up tree listeners...");
