@@ -1,11 +1,15 @@
 package com.checkmarx.eclipse.views.ui;
 
+import org.eclipse.e4.core.services.events.IEventBroker;
+import org.eclipse.e4.ui.css.swt.theme.ITheme;
+import org.eclipse.e4.ui.css.swt.theme.IThemeEngine;
 import org.eclipse.jface.dialogs.TitleAreaDialog;
+import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.FontData;
+import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -15,8 +19,13 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.ui.plugin.AbstractUIPlugin;
+import org.osgi.service.event.EventHandler;
 
+import com.checkmarx.eclipse.Activator;
+import com.checkmarx.eclipse.utils.CxLogger;
 import com.checkmarx.eclipse.utils.PluginConstants;
+import com.checkmarx.eclipse.utils.PluginUtils;
 
 /**
  * Welcome dialog for Checkmarx Eclipse plugin.
@@ -24,15 +33,27 @@ import com.checkmarx.eclipse.utils.PluginConstants;
  */
 public class WelcomeDialog extends TitleAreaDialog {
 
-	private static final int DIALOG_WIDTH = 720;
-	private static final int DIALOG_HEIGHT = 500;
+	private static final int DIALOG_WIDTH = 800;
+	private static final int DIALOG_HEIGHT = 530;
 	private static final int WRAP_WIDTH = 250;
 	private static final int BULLET_INDENT = 20;
 	private static final int CONTENT_MARGIN = 20;
+	private static final int IMAGE_PANEL_WIDTH = 380;
+	private static final String SCANNER_IMAGE_PATH = "icons/welcomePageScanner.svg";
+	private static final String SCANNER_IMAGE_PATH_DARK = "icons/welcomePageScanner_dark.svg";
+	// Key the e4 CSS theme engine itself is registered under on the Display;
+	// this is the same lookup org.eclipse.e4.ui.css.swt.internal.theme.ThemeEngineManager
+	// uses internally, so it reflects Eclipse's actual active theme (not a guess).
+	private static final String THEME_ENGINE_DISPLAY_KEY = "org.eclipse.e4.ui.css.swt.theme";
+	private static final String DARK_THEME_ID_FRAGMENT = "dark";
 
 	private final boolean mcpEnabled;
 	private Button realTimeScannersCheckbox;
 	private final RealTimeSettingsManager settingsManager;
+	private Image scannerImage;
+	private Label scannerImageLabel;
+	private IEventBroker themeEventBroker;
+	private EventHandler themeChangeHandler;
 
 	/**
 	 * Constructor
@@ -53,7 +74,8 @@ public class WelcomeDialog extends TitleAreaDialog {
 		super(parentShell);
 		this.mcpEnabled = mcpEnabled;
 		this.settingsManager = settingsManager;
-		setShellStyle(getShellStyle() | SWT.RESIZE);
+		// Deliberately not adding SWT.RESIZE: the dialog is sized to show every
+		// section at once, so resizing (which could clip content again) is disabled.
 
 		// Log MCP status for debugging
 		String mcpStatus = mcpEnabled ? "ENABLED" : "DISABLED";
@@ -76,8 +98,7 @@ public class WelcomeDialog extends TitleAreaDialog {
 		Composite container = (Composite) super.createDialogArea(parent);
 		container.setLayout(new GridLayout(1, false));
 
-		// Create left panel with scrolling
-		createLeftPanel(container);
+		createContentArea(container);
 
 		return container;
 	}
@@ -87,72 +108,159 @@ public class WelcomeDialog extends TitleAreaDialog {
 		createButton(parent, OK, PluginConstants.WELCOME_CLOSE_BUTTON, true);
 	}
 
-	private void createLeftPanel(Composite container) {
+	private void createContentArea(Composite container) {
 
-	    ScrolledComposite scrolled = new ScrolledComposite(container, SWT.V_SCROLL);
-	    scrolled.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-	    scrolled.setExpandHorizontal(true);
-	    scrolled.setExpandVertical(true);
+	    // Everything below is laid out directly (no scrolled composite) so that,
+	    // combined with the fixed, non-resizable dialog size, all content is
+	    // visible at once without scrolling or clipping.
+	    Composite mainRow = new Composite(container, SWT.NONE);
+	    GridLayout rowLayout = new GridLayout(2, false);
+	    rowLayout.marginLeft = CONTENT_MARGIN;
+	    rowLayout.marginRight = CONTENT_MARGIN;
+	    rowLayout.marginTop = CONTENT_MARGIN;
+	    rowLayout.marginBottom = CONTENT_MARGIN;
+	    rowLayout.horizontalSpacing = 20;
+	    mainRow.setLayout(rowLayout);
+	    mainRow.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
-	    // Left panel (main content)
-	    Composite leftPanel = new Composite(scrolled, SWT.NONE);
-	    GridLayout layout = new GridLayout(1, false);
-	    layout.marginLeft = CONTENT_MARGIN;
-	    layout.marginRight = CONTENT_MARGIN;
-	    layout.marginTop = CONTENT_MARGIN;
-	    layout.marginBottom = CONTENT_MARGIN;
-	    layout.verticalSpacing = 5;
-	    leftPanel.setLayout(layout);
+	    // Left column - Feature card + main bullets, stacked
+	    Composite leftColumn = new Composite(mainRow, SWT.NONE);
+	    GridLayout leftLayout = new GridLayout(1, false);
+	    leftLayout.marginWidth = 0;
+	    leftLayout.marginHeight = 0;
+	    leftLayout.verticalSpacing = 8;
+	    leftColumn.setLayout(leftLayout);
+	    leftColumn.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
 
-	    // ---------- Top Section ----------
-	    Composite topSection = new Composite(leftPanel, SWT.NONE);
-	    GridLayout topLayout = new GridLayout(2, false);
-	    topLayout.marginWidth = 0;
-	    topLayout.marginHeight = 0;
-	    topLayout.horizontalSpacing = 20;
-	    topSection.setLayout(topLayout);
-	    topSection.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
-
-	    // Left side - Feature Card
 	    if (mcpEnabled) {
-	        addFeatureCard(topSection);
+	        addFeatureCard(leftColumn);
 	    }
 
-	    // Right side - Image
-	    createScannerImage(topSection);
+	    addBullet(leftColumn, PluginConstants.WELCOME_MAIN_FEATURE_1);
+	    addBullet(leftColumn, PluginConstants.WELCOME_MAIN_FEATURE_2);
+	    addBullet(leftColumn, PluginConstants.WELCOME_MAIN_FEATURE_3);
+	    addBullet(leftColumn, PluginConstants.WELCOME_MAIN_FEATURE_4);
 
-	    // ---------- Main Features ----------
-	    addBullet(leftPanel, PluginConstants.WELCOME_MAIN_FEATURE_1);
-	    addBullet(leftPanel, PluginConstants.WELCOME_MAIN_FEATURE_2);
-	    addBullet(leftPanel, PluginConstants.WELCOME_MAIN_FEATURE_3);
-	    addBullet(leftPanel, PluginConstants.WELCOME_MAIN_FEATURE_4);
-
-	    scrolled.setContent(leftPanel);
-	    scrolled.setMinSize(leftPanel.computeSize(SWT.DEFAULT, SWT.DEFAULT));
+	    // Right column - scanner image
+	    createScannerImage(mainRow);
 	}
 
 	private void createScannerImage(Composite container) {
 		Composite rightPanel = new Composite(container, SWT.NONE);
 		GridLayout layout = new GridLayout(1, false);
-		layout.marginLeft = CONTENT_MARGIN;
-		layout.marginRight = CONTENT_MARGIN;
-		layout.marginTop = CONTENT_MARGIN;
-		layout.marginBottom = CONTENT_MARGIN;
+		layout.marginWidth = 0;
+		layout.marginHeight = 0;
 		rightPanel.setLayout(layout);
-		GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
-		gd.widthHint = 350;
+		GridData gd = new GridData(SWT.CENTER, SWT.TOP, true, false);
+		gd.widthHint = IMAGE_PANEL_WIDTH;
 		rightPanel.setLayoutData(gd);
 
-		// Placeholder for future image/icon
-		Label imageLabel = new Label(rightPanel, SWT.CENTER);
-		imageLabel.setText("Checkmarx Scanner");
-		imageLabel.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, true, true));
+		scannerImageLabel = new Label(rightPanel, SWT.CENTER);
+		scannerImageLabel.setLayoutData(new GridData(SWT.CENTER, SWT.TOP, true, false));
 
-		FontData fontData = imageLabel.getFont().getFontData()[0];
-		fontData.setHeight(14);
-		Font boldFont = new Font(Display.getCurrent(), fontData);
-		imageLabel.setFont(boldFont);
-		imageLabel.addDisposeListener(e -> boldFont.dispose());
+		scannerImage = loadScannerImage();
+		if (scannerImage != null) {
+			scannerImageLabel.setImage(scannerImage);
+		}
+		scannerImageLabel.addDisposeListener(e -> {
+			unsubscribeThemeChangeListener();
+			if (scannerImage != null && !scannerImage.isDisposed()) {
+				scannerImage.dispose();
+			}
+		});
+
+		registerThemeChangeListener();
+	}
+
+	private Image loadScannerImage() {
+		String path = isDarkTheme() ? SCANNER_IMAGE_PATH_DARK : SCANNER_IMAGE_PATH;
+		try {
+			ImageDescriptor descriptor = AbstractUIPlugin.imageDescriptorFromPlugin(Activator.PLUGIN_ID, path);
+			if (descriptor != null) {
+				return descriptor.createImage();
+			}
+		} catch (Exception e) {
+			CxLogger.error("Failed to load welcome scanner image", e);
+		}
+		return null;
+	}
+
+	/**
+	 * Reads Eclipse's own e4 CSS theme engine - the same mechanism the Platform
+	 * uses to decide dark vs. light styling - so the scanner image always matches
+	 * whatever theme Eclipse is actually rendering with, instead of guessing from
+	 * a color sample (which broke down in practice, e.g. custom/high-contrast themes).
+	 */
+	private boolean isDarkTheme() {
+		ITheme activeTheme = getActiveTheme();
+		if (activeTheme != null && activeTheme.getId() != null) {
+			return activeTheme.getId().toLowerCase().contains(DARK_THEME_ID_FRAGMENT);
+		}
+		return isDarkByBackgroundLuminance();
+	}
+
+	private ITheme getActiveTheme() {
+		try {
+			Display display = Display.getCurrent();
+			Object engineData = display != null ? display.getData(THEME_ENGINE_DISPLAY_KEY) : null;
+			if (engineData instanceof IThemeEngine) {
+				return ((IThemeEngine) engineData).getActiveTheme();
+			}
+		} catch (Throwable t) {
+			// e4 CSS theming bundle not present/active in this runtime; caller falls back.
+			CxLogger.error("Eclipse e4 theme engine unavailable, falling back to color heuristic",
+					t instanceof Exception ? (Exception) t : new Exception(t));
+		}
+		return null;
+	}
+
+	/**
+	 * Fallback for the rare runtime where the e4 CSS theme engine isn't registered
+	 * on the Display: approximate dark mode from the widget background luminance.
+	 */
+	private boolean isDarkByBackgroundLuminance() {
+		Color background = Display.getCurrent().getSystemColor(SWT.COLOR_WIDGET_BACKGROUND);
+		double luminance = (0.299 * background.getRed() + 0.587 * background.getGreen() + 0.114 * background.getBlue()) / 255.0;
+		return luminance < 0.5;
+	}
+
+	/**
+	 * Keeps the scanner image correct if the user flips Eclipse's theme (Preferences >
+	 * General > Appearance) while this dialog happens to be open, instead of only
+	 * checking the theme once at open time.
+	 */
+	private void registerThemeChangeListener() {
+		try {
+			themeEventBroker = PluginUtils.getEventBroker();
+			if (themeEventBroker != null) {
+				themeChangeHandler = event -> Display.getDefault().asyncExec(this::refreshScannerImageForThemeChange);
+				themeEventBroker.subscribe(IThemeEngine.Events.THEME_CHANGED, themeChangeHandler);
+			}
+		} catch (Exception e) {
+			CxLogger.error("Failed to subscribe to Eclipse theme change events", e);
+		}
+	}
+
+	private void unsubscribeThemeChangeListener() {
+		if (themeEventBroker != null && themeChangeHandler != null) {
+			themeEventBroker.unsubscribe(themeChangeHandler);
+		}
+		themeEventBroker = null;
+		themeChangeHandler = null;
+	}
+
+	private void refreshScannerImageForThemeChange() {
+		if (scannerImageLabel == null || scannerImageLabel.isDisposed()) {
+			return;
+		}
+		Image newImage = loadScannerImage();
+		Image oldImage = scannerImage;
+		scannerImage = newImage;
+		scannerImageLabel.setImage(newImage);
+		scannerImageLabel.getParent().layout();
+		if (oldImage != null && !oldImage.isDisposed()) {
+			oldImage.dispose();
+		}
 	}
 
 	private void addFeatureCard(Composite parent) {
