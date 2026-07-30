@@ -2,6 +2,8 @@
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.SashForm;
+import org.eclipse.swt.events.ControlAdapter;
+import org.eclipse.swt.events.ControlEvent;
 import org.eclipse.swt.events.MouseAdapter;
 import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.layout.FillLayout;
@@ -29,6 +31,9 @@ import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.QualifiedName;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.graphics.ImageData;
+
 import com.checkmarx.eclipse.devassist.ui.findings.provider.FindingsContentProvider;
 import com.checkmarx.eclipse.devassist.ui.findings.provider.FindingsLabelProvider;
 import com.checkmarx.eclipse.utils.PluginConstants;
@@ -37,6 +42,7 @@ import com.checkmarx.eclipse.views.CheckmarxView;
 import com.checkmarx.eclipse.views.actions.ActionOpenPreferencesPage;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.ui.findings.model.ScanDetailWithPath;
+import com.checkmarx.eclipse.Activator;
 import com.checkmarx.eclipse.devassist.model.Location;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.problems.ProblemHolderService;
@@ -70,6 +76,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
     private Map<String, List<ScanIssue>> currentIssues = new HashMap<>();
     private IgnoredProblemsStore ignoredStore;
     Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell();
+    public static final Image FINDINGS_PROMOTIONAL_CUBE = createScaledImage("/icons/cx-one-assist-cube.png", 240);
 
     public CxFindingsView() {
         super();
@@ -98,6 +105,27 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
         // Initial render check
         refreshViewMode();
     }
+    
+    
+     /**
+      * Loads an image and scales it down to the given max width (maintaining aspect ratio)
+      * if it is larger than that width.
+      */
+     private static Image createScaledImage(String path, int maxWidth) {
+       Image original = Activator.getImageDescriptor(path).createImage();
+       if (original.getBounds().width <= maxWidth) {
+         return original;
+       }
+  
+       double scale = (double) maxWidth / original.getBounds().width;
+       int scaledWidth = maxWidth;
+       int scaledHeight = (int) Math.round(original.getBounds().height * scale);
+   
+       ImageData scaledData = original.getImageData().scaledTo(scaledWidth, scaledHeight);
+       Image scaledImage = new Image(original.getDevice(), scaledData);
+       original.dispose();
+       return scaledImage;
+     }
 
     /**
      * Determines which panel to draw based on current credentials status.
@@ -191,14 +219,14 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
         Composite treeComposite = new Composite(sashForm, SWT.NONE);
         treeComposite.setLayout(new FillLayout());
 
-        treeViewer = new TreeViewer(treeComposite, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER);
+        treeViewer = new TreeViewer(treeComposite, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL);
         treeViewer.setContentProvider(new FindingsContentProvider());
         treeViewer.setLabelProvider(new FindingsLabelProvider());
 
         Composite promotionalComposite = new Composite(sashForm, SWT.NONE);
-        promotionalComposite.setLayout(new FillLayout());
+        drawPromotionalPanel(promotionalComposite);
 
-//        sashForm.setWeights(new int[] { 70, 30 });
+        sashForm.setWeights(new int[] { 70, 30 });
 
         setupToolbar();
         setupTreeListeners();
@@ -209,7 +237,51 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 
         parent.layout(true, true);
     }
-    
+
+    /**
+     * Renders the promotional cube image and description text in the right-hand pane
+     * of the findings split view.
+     */
+    private void drawPromotionalPanel(Composite promotionalComposite) {
+        GridLayout layout = new GridLayout(1, false);
+        layout.marginLeft = 0;
+        layout.marginRight = 40;
+        layout.marginHeight = 10;
+        promotionalComposite.setLayout(layout);
+
+        Label cubeLabel = new Label(promotionalComposite, SWT.NONE);
+        cubeLabel.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, true, false));
+        cubeLabel.setImage(FINDINGS_PROMOTIONAL_CUBE);
+        Label descriptionLabel = new Label(promotionalComposite, SWT.WRAP);
+        GridData descriptionData = new GridData(SWT.LEFT, SWT.CENTER, true, false);
+        descriptionLabel.setLayoutData(descriptionData);
+        descriptionLabel.setText(PluginConstants.FINDINGS_PROMO_DESCRIPTION);
+
+        // SWT.WRAP labels need an explicit widthHint to wrap and left-align under the image
+        // instead of growing to one unbroken line. The pane has no real bounds yet at this
+        // point (the parent hasn't laid out), so compute it once asynchronously after the
+        // initial layout, and again whenever the pane is resized (e.g. by dragging the sash).
+        Runnable applyWrapWidth = () -> {
+            if (promotionalComposite.isDisposed()) {
+                return;
+            }
+            int availableWidth = promotionalComposite.getClientArea().width
+                    - (layout.marginLeft + layout.marginRight);
+            if (availableWidth > 0 && descriptionData.widthHint != availableWidth) {
+                descriptionData.widthHint = availableWidth;
+                promotionalComposite.layout(true);
+            }
+        };
+
+        promotionalComposite.addControlListener(new ControlAdapter() {
+            @Override
+            public void controlResized(ControlEvent e) {
+                applyWrapWidth.run();
+            }
+        });
+        Display.getDefault().asyncExec(applyWrapWidth);
+    }
+
     /**
      * Subscribes to IEventBroker for issue updates & settings changes.
      */

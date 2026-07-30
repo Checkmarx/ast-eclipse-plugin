@@ -21,6 +21,7 @@ public class PluginConstants {
 	public static final String BFL_NOT_FOUND = "Best fix Location not available for given results";
 	public static final String TOOLBAR_ACTION_PREFERENCES = "Preferences";
 	public static final String TOOLBAR_ACTION_CLEAR_RESULTS = "Clear results section";
+	public static final String FINDINGS_PROMO_DESCRIPTION = "Checkmarx AI (Cx Assist) provides real-time threat detection and helps you avoid vulnerabilities before they happen.";
 
 	
 	/******************************** LOG VIEW: ERRORS ********************************/
