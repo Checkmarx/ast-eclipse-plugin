@@ -7,11 +7,12 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.dialogs.PreferencesUtil;
 
 import com.checkmarx.eclipse.enums.ActionName;
+import com.checkmarx.eclipse.properties.CxPreferencesDialogSizing;
 import com.checkmarx.eclipse.utils.PluginConstants;
 import com.checkmarx.eclipse.views.DisplayModel;
 
 public class ActionOpenPreferencesPage extends CxBaseAction {
-	
+
 	private static final String PREFERENCE_PAGE_ID = "com.checkmarx.eclipse.properties.preferencespage";
 
 	private Shell shell;
@@ -30,8 +31,9 @@ public class ActionOpenPreferencesPage extends CxBaseAction {
 			@Override
 			public void run() {
 				PreferenceDialog pref = PreferencesUtil.createPreferenceDialogOn(shell, PREFERENCE_PAGE_ID, null, null);
-				
+
 				if (pref != null) {
+					CxPreferencesDialogSizing.applyTo(pref);
 					pref.open();
 				}
 			}

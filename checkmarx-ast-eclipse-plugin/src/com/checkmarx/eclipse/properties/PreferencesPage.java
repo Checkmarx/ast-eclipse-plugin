@@ -4,6 +4,7 @@ import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jface.preference.FieldEditor;
 import org.eclipse.jface.preference.FieldEditorPreferencePage;
+import org.eclipse.jface.preference.PreferenceDialog;
 import org.eclipse.jface.preference.StringFieldEditor;
 import org.eclipse.jface.util.PropertyChangeEvent;
 import org.eclipse.swt.SWT;
@@ -251,12 +252,16 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 		realtimeScannersLink.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
-				PreferencesUtil.createPreferenceDialogOn(
+				PreferenceDialog dialog = PreferencesUtil.createPreferenceDialogOn(
 					getShell(),
 					"com.checkmarx.eclipse.devassist.prefs.checkmarxpreferencepage",
 					null,
 					null
-				).open();
+				);
+				if (dialog != null) {
+					CxPreferencesDialogSizing.applyTo(dialog);
+					dialog.open();
+				}
 			}
 		});
 	}

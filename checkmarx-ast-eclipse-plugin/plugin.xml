@@ -32,7 +32,7 @@
              icon="platform:/plugin/com.checkmarx.eclipse.plugin/icons/severity/critical_16.svg"
              id="com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView"
              inject="true"
-             name="Checkmarx Findings"
+             name="Checkmarx One Assist Findings"
              restorable="true">
        </view>
        <view
