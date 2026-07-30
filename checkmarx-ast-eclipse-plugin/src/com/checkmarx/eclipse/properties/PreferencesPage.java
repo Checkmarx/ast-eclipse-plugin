@@ -27,6 +27,8 @@ import com.checkmarx.eclipse.utils.PluginConstants;
 import com.checkmarx.eclipse.utils.PluginUtils;
 import com.checkmarx.eclipse.views.ui.WelcomeDialog;
 import com.checkmarx.eclipse.devassist.configuration.McpInstallService;
+import com.checkmarx.eclipse.devassist.backend.listener.ProjectLifecycleListener;
+import com.checkmarx.eclipse.startup.PluginStartup;
 import org.eclipse.swt.widgets.Link;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.browser.IWorkbenchBrowserSupport;
@@ -38,6 +40,19 @@ import java.net.URL;
 
 
 public class PreferencesPage extends FieldEditorPreferencePage implements IWorkbenchPreferencePage {
+
+	// Captured once the fields are loaded, so performOk() can tell whether THIS
+	// page's own settings actually changed. Needed because Eclipse's shared
+	// Preferences dialog calls performOk() on every page the user visited during
+	// the session - not just the one they edited - so simply opening/looking at
+	// "Checkmarx One" while really only changing "Checkmarx Scanner Configuration"
+	// (Realtime Scanners) would otherwise still unconditionally fire
+	// TOPIC_APPLY_SETTINGS below and refresh the unrelated Checkmarx One scan view.
+	private StringFieldEditor apiKeyField;
+	private StringFieldEditor additionalParamsField;
+	private String initialApiKey;
+	private String initialAdditionalOptions;
+
 	public PreferencesPage() {
 		super(GRID);
 		Activator.getDefault().getPreferenceStore().addPropertyChangeListener(this::handlePropertyChange);
@@ -73,14 +88,21 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 		topComposite.setLayout(parentLayout);
 
 		StringFieldEditor apiKey = new StringFieldEditor(Preferences.API_KEY, PluginConstants.PREFERENCES_API_KEY, topComposite);
+		apiKeyField = apiKey;
 		addField(apiKey);
 		Text textControl = apiKey.getTextControl(topComposite);
 		textControl.setEchoChar('*');
 
 		StringFieldEditor additionalParams = new StringFieldEditor(Preferences.ADDITIONAL_OPTIONS,
 		        PluginConstants.PREFERENCES_ADDITIONAL_OPTIONS, StringFieldEditor.UNLIMITED, StringFieldEditor.VALIDATE_ON_KEY_STROKE, topComposite);
+		additionalParamsField = additionalParams;
 		addField(additionalParams);
-		 
+
+		// Baseline for the change-detection guard in performOk() - captured now that
+		// both fields have loaded their values from the preference store.
+		initialApiKey = apiKey.getStringValue();
+		initialAdditionalOptions = additionalParams.getStringValue();
+
         //set the width for API Key text field
 		GridData gridData = new GridData(SWT.BEGINNING, SWT.CENTER, true, false);
 		gridData.widthHint = 500; // Some width
@@ -186,7 +208,7 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 							if (!getFieldEditorParent().isDisposed()) {
 								getFieldEditorParent().layout();
 							}
-							showWelcomeDialog(mcpEnabled, logoutButtonHolder[0]);
+							showWelcomeDialog(mcpEnabled, logoutButtonHolder[0], apiKey_str, additionalParams_str);
 						}));
 					} else {
 						// Authentication failed - the flow ends here with no welcome dialog,
@@ -248,8 +270,27 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 		return result;
 	}
 
-	private void showWelcomeDialog(boolean mcpEnabled, Button logoutButton) {
+	private void showWelcomeDialog(boolean mcpEnabled, Button logoutButton, String apiKey_str, String additionalParams_str) {
 		try {
+			// The key was only just validated by "Test Connection" - it isn't persisted
+			// to the store until the user clicks OK/Apply on this dialog, which they may
+			// never do once they see the Welcome page. Persist it now so
+			// isUserAuthenticated() (checked by ProjectLifecycleListener below, and by
+			// anything else gated on login) actually sees it.
+			Preferences.STORE.setValue(Preferences.API_KEY, apiKey_str);
+			Preferences.STORE.setValue(Preferences.ADDITIONAL_OPTIONS, additionalParams_str);
+
+			// Trigger the same initial OSS/IaC/container workspace scan that runs for
+			// already-open projects at plugin launch (PluginStartup.initializeBackendScanners()).
+			// A project that was already open before this login never gets that scan
+			// otherwise, since ProjectLifecycleListener only scans a project when it
+			// *opens* while the user is authenticated - re-run it now that login succeeded.
+			ProjectLifecycleListener projectListener = PluginStartup.getProjectListener();
+			if (projectListener != null) {
+				CxLogger.info("[PREFS] Login succeeded - triggering workspace OSS/IaC/container scan...");
+				projectListener.scanAlreadyOpenProjects();
+			}
+
 			WelcomeDialog dlg = new WelcomeDialog(
 				Display.getDefault().getActiveShell(),
 				mcpEnabled);
@@ -279,7 +320,22 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 		boolean ok = super.performOk();
 
 		if (ok) {
-			PluginUtils.getEventBroker().post(PluginConstants.TOPIC_APPLY_SETTINGS, PluginConstants.EMPTY_STRING);
+			// Only notify listeners (e.g. the Checkmarx One scan view refresh) if this
+			// page's own settings actually changed in this session. Without this guard,
+			// merely having visited this page in the same Preferences dialog session as
+			// the unrelated "Checkmarx Scanner Configuration" (Realtime Scanners) page -
+			// a sibling top-level page in the same tree - is enough for Eclipse to call
+			// this performOk() too when the user only meant to save realtime scanner
+			// settings, spuriously refreshing the Checkmarx One scan window.
+			String currentApiKey = apiKeyField != null ? apiKeyField.getStringValue() : null;
+			String currentAdditionalOptions = additionalParamsField != null ? additionalParamsField.getStringValue() : null;
+			boolean settingsActuallyChanged =
+					!java.util.Objects.equals(currentApiKey, initialApiKey)
+					|| !java.util.Objects.equals(currentAdditionalOptions, initialAdditionalOptions);
+
+			if (settingsActuallyChanged) {
+				PluginUtils.getEventBroker().post(PluginConstants.TOPIC_APPLY_SETTINGS, PluginConstants.EMPTY_STRING);
+			}
 		}
 
 		return ok;

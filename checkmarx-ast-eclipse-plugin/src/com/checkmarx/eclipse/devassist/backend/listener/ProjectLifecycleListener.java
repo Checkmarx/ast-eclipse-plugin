@@ -50,6 +50,20 @@ public class ProjectLifecycleListener implements IResourceChangeListener {
 	}
 
 	/**
+	 * Re-runs initialization (registry setup + initial OSS/IaC/container scan) for
+	 * any already-open projects that were skipped earlier because the user wasn't
+	 * authenticated yet - the exact same path {@link #register()} runs for
+	 * already-open projects at plugin launch. onProjectOpen() only proceeds when
+	 * isUserAuthenticated() is true and nothing else ever re-triggers it for a
+	 * project that was already open (only a real open/close event does), so a
+	 * login that happens after Eclipse already started needs to call this to get
+	 * the same initial scan that a fresh launch would have performed.
+	 */
+	public void scanAlreadyOpenProjects() {
+		initExistingProjects();
+	}
+
+	/**
 	 * Scans the workspace and initializes any projects that are already open.
 	 */
 	private void initExistingProjects() {

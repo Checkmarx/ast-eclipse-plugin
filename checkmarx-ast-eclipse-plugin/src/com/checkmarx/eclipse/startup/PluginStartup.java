@@ -36,6 +36,16 @@ public class PluginStartup implements IStartup {
 	private static CheckmarxEditorListener realtimeScanListener; // Keep strong reference to prevent GC
 	private static ProjectLifecycleListener projectListener; // Keep strong reference to prevent GC
 
+	/**
+	 * Exposes the registered listener so a later successful login (from the
+	 * Preferences page) can ask it to re-scan already-open projects, the same way
+	 * it scans them at plugin launch - reusing the singleton instead of creating a
+	 * new one, which would double-register the resource-change listener.
+	 */
+	public static ProjectLifecycleListener getProjectListener() {
+		return projectListener;
+	}
+
 	@Override
 	public void earlyStartup() {
 		PlatformUI.getWorkbench().getDisplay().asyncExec(() -> {
