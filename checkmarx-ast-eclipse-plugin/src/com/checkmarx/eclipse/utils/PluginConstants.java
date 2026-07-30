@@ -60,7 +60,7 @@ public class PluginConstants {
 	/******************************** PREFERENCES ********************************/
 	public static final String PREFERENCES_API_KEY = "API key:";
 	public static final String PREFERENCES_ADDITIONAL_OPTIONS = "Additional Params:";
-	public static final String PREFERENCES_TEST_CONNECTION = "Test Connection";
+	public static final String PREFERENCES_TEST_CONNECTION = "Connect to Checkmarx";
 	public static final String PREFERENCES_VALIDATING_STATE = "Validating...";
 
 	/******************************** WELCOME DIALOG ********************************/

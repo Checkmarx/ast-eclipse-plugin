@@ -755,10 +755,10 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		// This is the key line: center horizontally and vertically, and expand to fill
 	    openSettingsComposite.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, true, true));
 
-		final Label hidden = new Label(openSettingsComposite, SWT.NONE);
-		hidden.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, true, false));
-		hidden.setImage(CHECKMARX_OPEN_SETTINGS_LOGO);
-		hidden.setVisible(false);
+	    GridLayout parentLayout = new GridLayout(1, true);
+	    parentLayout.marginWidth = 0;
+	    parentLayout.marginHeight = 0;
+	    parent.setLayout(parentLayout);
 
 		final Label cxLogo = new Label(openSettingsComposite, SWT.NONE);
 		cxLogo.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, true, false));

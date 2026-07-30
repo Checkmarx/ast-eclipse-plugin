@@ -177,8 +177,8 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 			public void widgetSelected(SelectionEvent e) {
 				Preferences.clearApiKey();
 				apiKey.setStringValue("");
-				textControl.setText("");
-				connectionLabel.setText("");
+//				textControl.setText("");
+//				connectionLabel.setText("");
 				getFieldEditorParent().layout();
 			}
 		});

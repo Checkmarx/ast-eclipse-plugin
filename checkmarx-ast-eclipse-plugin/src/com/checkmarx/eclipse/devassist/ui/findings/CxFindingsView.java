@@ -5,6 +5,8 @@ import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.events.MouseAdapter;
 import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.layout.FillLayout;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Tree;
 import org.eclipse.ui.part.ViewPart;
@@ -13,27 +15,30 @@ import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IToolBarManager;
+import org.eclipse.jface.preference.PreferenceDialog;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.ISharedImages;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.dialogs.PreferencesUtil;
 import org.eclipse.ui.ide.IDE;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.ResourcesPlugin;
-import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.QualifiedName;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import com.checkmarx.eclipse.devassist.ui.findings.provider.FindingsContentProvider;
 import com.checkmarx.eclipse.devassist.ui.findings.provider.FindingsLabelProvider;
+import com.checkmarx.eclipse.utils.PluginConstants;
+import com.checkmarx.eclipse.utils.PluginUtils;
+import com.checkmarx.eclipse.views.CheckmarxView;
 import com.checkmarx.eclipse.views.actions.ActionOpenPreferencesPage;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.ui.findings.model.ScanDetailWithPath;
 import com.checkmarx.eclipse.devassist.model.Location;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
-import com.checkmarx.eclipse.devassist.ui.findings.marker.MarkerIssueMapper;
 import com.checkmarx.eclipse.devassist.problems.ProblemHolderService;
 import com.checkmarx.eclipse.devassist.ui.findings.actions.VulnerabilityFilterAction;
 import com.checkmarx.eclipse.devassist.ui.findings.actions.VulnerabilityFilterState;
@@ -42,6 +47,11 @@ import com.checkmarx.eclipse.devassist.ui.findings.ignored.IgnoredProblemsStore.
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Shell;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Control;
 
 
 /**
@@ -54,18 +64,154 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 
     public static final String ID = "com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView";
     private org.osgi.service.event.EventHandler eventHandler;
+    private org.osgi.service.event.EventHandler settingsEventHandler;
 
     private TreeViewer treeViewer;
     private Map<String, List<ScanIssue>> currentIssues = new HashMap<>();
     private IgnoredProblemsStore ignoredStore;
+    Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell();
 
     public CxFindingsView() {
         super();
     }
 
     
+    @Override
+    public void createPartControl(Composite parent) {
+        this.parentComposite = parent;
+
+        // Set a clean 1-column layout on parent
+        GridLayout parentLayout = new GridLayout(1, true);
+        parentLayout.marginWidth = 0;
+        parentLayout.marginHeight = 0;
+        parentLayout.horizontalSpacing = 0;
+        parentLayout.verticalSpacing = 0;
+        parent.setLayout(parentLayout);
+
+        // Always subscribe to events first
+        subscribeToEventBroker();
+
+        // Register ignored problems listener
+        ignoredStore = IgnoredProblemsStore.getInstance();
+        ignoredStore.addListener(this);
+
+        // Initial render check
+        refreshViewMode();
+    }
+
     /**
-     * Subscribes to ProblemHolderService updates via Eclipse IEventBroker.
+     * Determines which panel to draw based on current credentials status.
+     */
+    private void refreshViewMode() {
+        if (parentComposite == null || parentComposite.isDisposed()) {
+            return;
+        }
+
+        if (!PluginUtils.areCredentialsDefined()) {
+            drawMissingCredentialsPanel(parentComposite);
+        } else {
+            loadCachedIssues();
+            drawFindingsPanel(parentComposite);
+        }
+    }
+    
+    
+    /**
+     * Loads initial cached scan issues from workspace session properties.
+     */
+    private void loadCachedIssues() {
+        try {
+            IProject[] projects = ResourcesPlugin.getWorkspace().getRoot().getProjects();
+            if (projects.length > 0 && projects[0].isOpen()) {
+                IProject project = projects[0];
+                ProblemHolderService problemHolder = (ProblemHolderService) project.getSessionProperty(
+                        new QualifiedName("com.checkmarx.eclipse.plugin", "problem-holder"));
+
+                if (problemHolder != null) {
+                    Map<String, List<ScanIssue>> existingIssues = problemHolder.getAllScanIssues();
+                    if (existingIssues != null && !existingIssues.isEmpty()) {
+                        this.currentIssues = existingIssues;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("[FINDINGS] Error reading cached issues: " + e.getMessage());
+        }
+    }
+        
+    
+    private Composite openSettingsComposite;
+
+    /**
+     * Renders the missing credentials panel centered inside the view parent.
+     */
+    private void drawMissingCredentialsPanel(Composite parent) {
+        // Dispose all existing UI components in the view container
+        for (Control child : parent.getChildren()) {
+            child.dispose();
+        }
+
+        clearToolbar();
+
+        openSettingsComposite = new Composite(parent, SWT.NONE);
+        openSettingsComposite.setLayout(new GridLayout(1, true));
+        openSettingsComposite.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, true, true));
+
+        // Logo
+        final Label cxLogo = new Label(openSettingsComposite, SWT.NONE);
+        cxLogo.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, true, false));
+        cxLogo.setImage(CheckmarxView.CHECKMARX_OPEN_SETTINGS_LOGO);
+
+        // Open Settings Button
+        Button btn = new Button(openSettingsComposite, SWT.NONE);
+        btn.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, true, false));
+        btn.setText(PluginConstants.BTN_OPEN_SETTINGS);
+
+        btn.addListener(SWT.Selection, event -> {            
+            PreferenceDialog pref = PreferencesUtil.createPreferenceDialogOn(
+                    shell, "com.checkmarx.eclipse.properties.preferencespage", null, null);
+            if (pref != null) {
+                pref.open();
+            }
+        });
+
+        parent.layout(true, true);
+    }
+
+    private void drawFindingsPanel(Composite parent) {
+        // Clear out missing credentials panel if it exists
+        for (Control child : parent.getChildren()) {
+            child.dispose();
+        }
+
+        SashForm sashForm = new SashForm(parent, SWT.HORIZONTAL);
+        sashForm.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+        sashForm.setLayout(new FillLayout());
+
+        Composite treeComposite = new Composite(sashForm, SWT.NONE);
+        treeComposite.setLayout(new FillLayout());
+
+        treeViewer = new TreeViewer(treeComposite, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER);
+        treeViewer.setContentProvider(new FindingsContentProvider());
+        treeViewer.setLabelProvider(new FindingsLabelProvider());
+
+        Composite promotionalComposite = new Composite(sashForm, SWT.NONE);
+        promotionalComposite.setLayout(new FillLayout());
+
+//        sashForm.setWeights(new int[] { 70, 30 });
+
+        setupToolbar();
+        setupTreeListeners();
+
+        if (!currentIssues.isEmpty()) {
+            refreshTreeWithFilter();
+        }
+
+        parent.layout(true, true);
+    }
+    
+    /**
+     * Subscribes to IEventBroker for issue updates & settings changes.
      */
     private void subscribeToEventBroker() {
         try {
@@ -73,43 +219,42 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
                 getSite().getService(org.eclipse.e4.core.services.events.IEventBroker.class);
 
             if (eventBroker == null) {
-                eventBroker = org.eclipse.ui.PlatformUI.getWorkbench().getService(
+                eventBroker = PlatformUI.getWorkbench().getService(
                     org.eclipse.e4.core.services.events.IEventBroker.class);
             }
 
             if (eventBroker != null) {
-                // Save handler reference so we can unsubscribe later in dispose()
-                eventHandler = event -> {
+                // Topic 1: Scan issues updated
+            	eventHandler = event -> {
                     Object data = event.getProperty(org.eclipse.e4.core.services.events.IEventBroker.DATA);
-                    
                     if (data instanceof Map<?, ?>) {
                         @SuppressWarnings("unchecked")
                         Map<String, List<ScanIssue>> newIssues = (Map<String, List<ScanIssue>>) data;
-                        
-                        System.out.println("[FINDINGS] [EVENT-RECEIVED] Received updated scan issues from IEventBroker");
 
-                        // UI elements MUST be updated on the SWT Display Thread
-                        org.eclipse.swt.widgets.Display.getDefault().asyncExec(() -> {
+                        Display.getDefault().asyncExec(() -> {
+                            this.currentIssues = newIssues;
                             if (treeViewer != null && !treeViewer.getControl().isDisposed()) {
-                                this.currentIssues = newIssues;
                                 refreshTreeWithFilter();
                             }
                         });
                     }
                 };
-
                 eventBroker.subscribe(ProblemHolderService.ISSUES_UPDATED_TOPIC, eventHandler);
-                System.out.println("[FINDINGS] [INIT-STEP 3/5] âœ“ Registered IEventBroker subscriber on topic: " 
-                    + ProblemHolderService.ISSUES_UPDATED_TOPIC);
-            } else {
-                System.err.println("[FINDINGS] [INIT-STEP 3/5] âœ— IEventBroker service unavailable");
+
+                // Topic 2: Settings/Credentials applied or changed
+                settingsEventHandler = event -> {
+                    Display.getDefault().asyncExec(() -> {
+                        refreshViewMode();
+                    });
+                };
+                eventBroker.subscribe(PluginConstants.TOPIC_APPLY_SETTINGS, settingsEventHandler);
             }
         } catch (Exception e) {
-            System.err.println("[FINDINGS] âœ— Error subscribing to IEventBroker: " + e.getMessage());
+            System.err.println("[FINDINGS] Error subscribing to IEventBroker: " + e.getMessage());
             e.printStackTrace();
         }
     }
-
+    
     @Override
     public void dispose() {
         System.out.println("[FINDINGS] Disposing CxFindingsView...");
@@ -139,73 +284,57 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
         super.dispose();
     }
     
-    @Override
-    public void createPartControl(Composite parent) {
+    private Composite parentComposite;
+
+
+    private void initFindingsViewUI() {
         try {
-            // STEP 1 & 2: Try to load cached results if ProblemHolderService exists
             System.out.println("[FINDINGS] [INIT-STEP 1/5] Getting workspace projects...");
             IProject[] projects = ResourcesPlugin.getWorkspace().getRoot().getProjects();
 
             if (projects.length > 0 && projects[0].isOpen()) {
                 IProject project = projects[0];
-                System.out.println("[FINDINGS] [INIT-STEP 1/5] âœ“ Found project: " + project.getName());
-
                 ProblemHolderService problemHolder = (ProblemHolderService) project.getSessionProperty(
                         new QualifiedName("com.checkmarx.eclipse.plugin", "problem-holder"));
 
                 if (problemHolder != null) {
                     Map<String, List<ScanIssue>> existingIssues = problemHolder.getAllScanIssues();
                     if (existingIssues != null && !existingIssues.isEmpty()) {
-                        System.out.println("[FINDINGS] [INIT-STEP 2/5] âœ“ Found " + existingIssues.size() + " cached issue files");
                         this.currentIssues = existingIssues;
                     }
-                } else {
-                    System.out.println("[FINDINGS] [INIT-STEP 2/5] No cache found on startup. Waiting for IEventBroker events...");
                 }
             }
 
-            // STEP 3: ALWAYS subscribe to IEventBroker regardless of cache state (THE FIX)
-            System.out.println("[FINDINGS] [INIT-STEP 3/5] Subscribing to EventBroker...");
             subscribeToEventBroker();
 
-            // STEP 4: Setup UI and Ignored Store
-            System.out.println("[FINDINGS] [INIT-STEP 4/5] Creating UI components...");
             ignoredStore = IgnoredProblemsStore.getInstance();
             ignoredStore.addListener(this);
 
-            SashForm sashForm = new SashForm(parent, SWT.HORIZONTAL);
-            sashForm.setLayout(new FillLayout());
-
-            Composite treeComposite = new Composite(sashForm, SWT.NONE);
-            treeComposite.setLayout(new FillLayout());
-
-            treeViewer = new TreeViewer(treeComposite, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.BORDER);
-            treeViewer.setContentProvider(new FindingsContentProvider());
-            treeViewer.setLabelProvider(new FindingsLabelProvider());
-
-            Composite promotionalComposite = new Composite(sashForm, SWT.NONE);
-            promotionalComposite.setLayout(new FillLayout());
-
-            sashForm.setWeights(new int[] { 70, 30 });
-
-            setupToolbar();
-            setupTreeListeners();
-
-            // STEP 5: Display cached results if any existed at startup
-            System.out.println("[FINDINGS] [INIT-STEP 5/5] Initializing tree view...");
-            if (!currentIssues.isEmpty()) {
-                refreshTreeWithFilter();
-            }
+            drawFindingsPanel(parentComposite);
 
         } catch (Exception e) {
-            System.err.println("[FINDINGS] âœ— ERROR during view creation: " + e.getMessage());
+            System.err.println("[FINDINGS] Error during view creation: " + e.getMessage());
             e.printStackTrace();
         }
+    }
+
+    /**
+     * Removes every contribution from the view toolbar.
+     */
+    private void clearToolbar() {
+        IToolBarManager toolbar = getViewSite().getActionBars().getToolBarManager();
+        toolbar.removeAll();
+        toolbar.update(true);
+        getViewSite().getActionBars().updateActionBars();
     }
 
     private void setupToolbar() {
         System.out.println("[FINDINGS] Setting up toolbar with severity filters...");
         IToolBarManager toolbar = getViewSite().getActionBars().getToolBarManager();
+
+        // The same IToolBarManager instance survives every re-render of the view,
+        // so previous contributions must be dropped before re-adding them.
+        toolbar.removeAll();
 
         // Add filter actions
         VulnerabilityFilterAction.IFilterChangeListener filterListener = () -> {
@@ -278,6 +407,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
         toolbar.add(toolbarPreferencesAction);
 
         toolbar.update(true);
+        getViewSite().getActionBars().updateActionBars();
         System.out.println("[FINDINGS] Toolbar configured with 5 severity filters and preferences button");
     }
     private void setupTreeListeners() {
