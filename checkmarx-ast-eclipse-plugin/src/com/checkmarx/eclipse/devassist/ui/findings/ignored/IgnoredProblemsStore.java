@@ -1,4 +1,4 @@
-﻿package com.checkmarx.eclipse.devassist.ui.findings.ignored;
+package com.checkmarx.eclipse.devassist.ui.findings.ignored;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -42,7 +42,7 @@ public class IgnoredProblemsStore {
 	 */
 	public void ignoreProblem(String problemId) {
 		if (problemId != null && ignoredProblemIds.add(problemId)) {
-			System.out.println("[IGNORED-STORE] Added to ignored: " + problemId);
+			
 			saveToPreferences();
 			notifyListeners();
 		}
@@ -54,13 +54,13 @@ public class IgnoredProblemsStore {
 	 */
 	public void ignoreProblem(ScanIssue issue) {
 		if (issue != null && issue.getScanIssueId() != null) {
-			System.out.println("[IGNORED-STORE] ignoreProblem(ScanIssue) called with ID: " + issue.getScanIssueId());
+			
 			ignoreProblem(issue.getScanIssueId());
 			// Cache the full issue details for later retrieval
 			ignoredProblemsCache.put(issue.getScanIssueId(), issue);
-			System.out.println("[IGNORED-STORE] âœ“ Cached issue details. Cache size: " + ignoredProblemsCache.size());
+			
 		} else {
-			System.out.println("[IGNORED-STORE] âœ— ERROR: issue is null or ID is null!");
+			
 		}
 	}
 
@@ -69,7 +69,7 @@ public class IgnoredProblemsStore {
 	 */
 	public void restoreProblem(String problemId) {
 		if (problemId != null && ignoredProblemIds.remove(problemId)) {
-			System.out.println("[IGNORED-STORE] Removed from ignored: " + problemId);
+			
 			ignoredProblemsCache.remove(problemId);
 			saveToPreferences();
 			notifyListeners();
@@ -150,7 +150,7 @@ public class IgnoredProblemsStore {
 		ignoredProblemsCache.clear();
 		saveToPreferences();
 		notifyListeners();
-		System.out.println("[IGNORED-STORE] Cleared all ignored problems");
+		
 	}
 
 	/**
@@ -186,7 +186,7 @@ public class IgnoredProblemsStore {
 						ignoredProblemIds.add(id.trim());
 					}
 				}
-				System.out.println("[IGNORED-STORE] Loaded " + ignoredProblemIds.size() + " ignored problems from preferences");
+				
 			}
 		} catch (Exception e) {
 			System.err.println("[IGNORED-STORE] Error loading preferences: " + e.getMessage());
@@ -199,7 +199,7 @@ public class IgnoredProblemsStore {
 			String ignored = String.join(SEPARATOR, ignoredProblemIds);
 			prefs.put(PREF_IGNORED_PROBLEMS, ignored);
 			prefs.flush();
-			System.out.println("[IGNORED-STORE] Saved " + ignoredProblemIds.size() + " ignored problems to preferences");
+			
 		} catch (BackingStoreException e) {
 			System.err.println("[IGNORED-STORE] Error saving preferences: " + e.getMessage());
 		}

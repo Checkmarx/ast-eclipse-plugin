@@ -1,4 +1,4 @@
-﻿package com.checkmarx.eclipse.devassist.ui.findings.resolution;
+package com.checkmarx.eclipse.devassist.ui.findings.resolution;
 
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.jface.dialogs.Dialog;
@@ -57,7 +57,7 @@ public class ViewFindingDetailsResolution implements IMarkerResolution2 {
             // Reconstruct ScanIssue from marker attributes
             ScanIssue issue = MarkerIssueMapper.fromMarker(marker);
             if (issue == null) {
-                System.out.println("[CX-RESOLUTION] Failed to reconstruct ScanIssue from marker");
+                
                 return;
             }
 
@@ -68,10 +68,10 @@ public class ViewFindingDetailsResolution implements IMarkerResolution2 {
             );
             dialog.open();
 
-            System.out.println("[CX-RESOLUTION] Opened finding details: " + issue.getTitle());
+            
 
         } catch (Exception e) {
-            System.out.println("[CX-RESOLUTION] Error opening finding details: " + e.getMessage());
+            
             e.printStackTrace();
         }
     }
@@ -152,7 +152,7 @@ public class ViewFindingDetailsResolution implements IMarkerResolution2 {
 
             // Quick Fix button
             Button quickFixBtn = new Button(buttonsComposite, SWT.PUSH);
-            quickFixBtn.setText("âš¡ Quick Fix");
+            quickFixBtn.setText("⚡ Quick Fix");
             quickFixBtn.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
             quickFixBtn.addSelectionListener(new SelectionAdapter() {
                 @Override
@@ -163,7 +163,7 @@ public class ViewFindingDetailsResolution implements IMarkerResolution2 {
 
             // Ignore button
             Button ignoreBtn = new Button(buttonsComposite, SWT.PUSH);
-            ignoreBtn.setText("ðŸš« Ignore");
+            ignoreBtn.setText("🚫 Ignore");
             ignoreBtn.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
             ignoreBtn.addSelectionListener(new SelectionAdapter() {
                 @Override
@@ -174,7 +174,7 @@ public class ViewFindingDetailsResolution implements IMarkerResolution2 {
 
             // Copy button
             Button copyBtn = new Button(buttonsComposite, SWT.PUSH);
-            copyBtn.setText("ðŸ“‹ Copy");
+            copyBtn.setText("📋 Copy");
             copyBtn.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
             copyBtn.addSelectionListener(new SelectionAdapter() {
                 @Override
@@ -185,7 +185,7 @@ public class ViewFindingDetailsResolution implements IMarkerResolution2 {
 
             // Open Window button
             Button openBtn = new Button(buttonsComposite, SWT.PUSH);
-            openBtn.setText("ðŸªŸ Details");
+            openBtn.setText("🪟 Details");
             openBtn.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
             openBtn.addSelectionListener(new SelectionAdapter() {
                 @Override
@@ -204,12 +204,12 @@ public class ViewFindingDetailsResolution implements IMarkerResolution2 {
         }
 
         private void onQuickFixClick() {
-            System.out.println("[FINDING-DETAILS] Quick Fix clicked for: " + issue.getTitle());
+            
             // TODO: Implement remediation integration
         }
 
         private void onIgnoreClick() {
-            System.out.println("[FINDING-DETAILS] Ignore clicked for: " + issue.getTitle());
+            
             // TODO: Implement ignore logic
         }
 
@@ -223,30 +223,30 @@ public class ViewFindingDetailsResolution implements IMarkerResolution2 {
                 TextTransfer transfer = TextTransfer.getInstance();
                 clipboard.setContents(new Object[] { text }, new Transfer[] { transfer });
                 clipboard.dispose();
-                System.out.println("[FINDING-DETAILS] âœ“ Copied to clipboard");
+                
             });
         }
 
         private void onOpenWindowClick() {
-            System.out.println("[FINDING-DETAILS] Open Findings Window clicked for: " + issue.getTitle());
+            
             // TODO: Open Findings window and navigate to this issue
         }
 
         private String getSeverityIcon(String severity) {
             if (severity == null) {
-                return "âšª";
+                return "⚪";
             }
             switch (severity.toLowerCase()) {
                 case "critical":
-                    return "ðŸ”´";
+                    return "🔴";
                 case "high":
-                    return "ðŸŸ ";
+                    return "🟠";
                 case "medium":
-                    return "ðŸŸ¡";
+                    return "🟡";
                 case "low":
-                    return "ðŸŸ¢";
+                    return "🟢";
                 default:
-                    return "âšª";
+                    return "⚪";
             }
         }
 

@@ -1,4 +1,4 @@
-﻿package com.checkmarx.eclipse.devassist.ui.findings.marker;
+package com.checkmarx.eclipse.devassist.ui.findings.marker;
 
 import org.eclipse.core.resources.IMarker;
 
@@ -81,7 +81,7 @@ public class MarkerIssueMapper {
 
             return issue;
         } catch (Exception e) {
-            System.out.println("[MARKER-MAPPER] Error reconstructing ScanIssue from marker: " + e.getMessage());
+            
             e.printStackTrace();
             return null;
         }
@@ -142,10 +142,10 @@ public class MarkerIssueMapper {
                 marker.setAttribute(IMarker.SEVERITY, severity);
             }
 
-            System.out.println("[MARKER-MAPPER] Populated marker for issue: " + issue.getTitle());
+            
 
         } catch (Exception e) {
-            System.out.println("[MARKER-MAPPER] Error populating marker: " + e.getMessage());
+            
             e.printStackTrace();
         }
     }

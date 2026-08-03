@@ -1,4 +1,4 @@
-﻿package com.checkmarx.eclipse.devassist.problems;
+package com.checkmarx.eclipse.devassist.problems;
 
 import java.util.HashMap;
 import java.util.List;
@@ -49,9 +49,6 @@ public class ProblemDecorator {
 	 * @param scanIssues Issues to visualize
 	 */
 	public static void decorateEditor(IFile file, List<ScanIssue> scanIssues) {
-		System.out.println("[SCAN-DECORATOR-ENTRY] decorateEditor called with " +
-			(scanIssues != null ? scanIssues.size() : "null") + " issues");
-
 		if (file == null) {
 			return;
 		}
@@ -65,33 +62,33 @@ public class ProblemDecorator {
 		// **FIX: Use getLocation() (absolute path) for consistency with RealTimeScanJob and ResultPublisher**
 		// This ensures fileAnnotations map keys match the same path format used throughout the codebase
 		String filePath = file.getLocation().toOSString();
-		System.out.println("[SCAN-DECORATOR-ENTRY] File path: " + filePath);
+		
 
 		try {
 			// Find open editor for this file
-			System.out.println("[SCAN-DECORATOR-ENTRY] [STEP 1/3] Finding open editor...");
+			
 			ITextEditor editor = findOpenEditor(file);
 			if (editor == null) {
-				System.out.println("[SCAN-DECORATOR-ENTRY] âœ— [STEP 1/3] No open editor for: " + filePath);
-				CxLogger.info(LOG_TAG + " âœ— No open editor for: " + filePath);
+				
+				CxLogger.info(LOG_TAG + " ✗ No open editor for: " + filePath);
 				return;
 			}
-			System.out.println("[SCAN-DECORATOR-ENTRY] âœ“ [STEP 1/3] Found editor: " + editor.getClass().getSimpleName());
+			
 
 			// Get annotation model from editor
-			System.out.println("[SCAN-DECORATOR-ENTRY] [STEP 2/3] Getting annotation model...");
+			
 			IAnnotationModel annotationModel = editor.getDocumentProvider()
 				.getAnnotationModel(editor.getEditorInput());
 
 			if (annotationModel == null) {
-				System.out.println("[SCAN-DECORATOR-ENTRY] âœ— [STEP 2/3] Annotation model is NULL");
-				CxLogger.warning(LOG_TAG + " âœ— No annotation model available");
+				
+				CxLogger.warning(LOG_TAG + " ✗ No annotation model available");
 				return;
 			}
-			System.out.println("[SCAN-DECORATOR-ENTRY] âœ“ [STEP 2/3] Got annotation model");
+			
 
 			// Remove previous annotations for this file
-			System.out.println("[SCAN-DECORATOR-ENTRY] [STEP 3/3] Processing " + scanIssues.size() + " issues...");
+			
 			clearAnnotations(filePath, annotationModel);
 
 			// Add new annotations for each issue
@@ -104,7 +101,7 @@ public class ProblemDecorator {
 						annotation.addButton(filePath, null);
 						annotations.add(annotation);
 
-						CxLogger.info(LOG_TAG + " â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€");
+						CxLogger.info(LOG_TAG + " ─────────────────────────────────────────────────");
 						CxLogger.info(LOG_TAG + " Issue: " + issue.getTitle());
 						CxLogger.info(LOG_TAG + "   Engine: " + issue.getScanEngine());
 						CxLogger.info(LOG_TAG + "   Severity: " + issue.getSeverity());
@@ -130,9 +127,9 @@ public class ProblemDecorator {
 
 							// Add annotation to model for display
 							annotationModel.addAnnotation(annotation, pos);
-							CxLogger.info(LOG_TAG + "   âœ“ Annotation added to model");
+							CxLogger.info(LOG_TAG + "   ✓ Annotation added to model");
 						} else {
-							CxLogger.warning(LOG_TAG + "   âœ— FAILED: Invalid position (offset=" +
+							CxLogger.warning(LOG_TAG + "   ✗ FAILED: Invalid position (offset=" +
 								(pos != null ? pos.getOffset() : "null") + ", length=" +
 								(pos != null ? pos.getLength() : "null") + ")");
 						}
@@ -147,10 +144,10 @@ public class ProblemDecorator {
 			// Store annotations for later cleanup
 			fileAnnotations.put(filePath, annotations);
 
-			CxLogger.info(LOG_TAG + " â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•");
-			CxLogger.info(LOG_TAG + " âœ“ COMPLETE: Added " + annotations.size() +
+			CxLogger.info(LOG_TAG + " ══════════════════════════════════════════════════");
+			CxLogger.info(LOG_TAG + " ✓ COMPLETE: Added " + annotations.size() +
 				" annotations to editor");
-			CxLogger.info(LOG_TAG + " â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•");
+			CxLogger.info(LOG_TAG + " ══════════════════════════════════════════════════");
 
 		} catch (Exception e) {
 			CxLogger.warning(LOG_TAG + " Error decorating editor: " +
@@ -315,7 +312,7 @@ public class ProblemDecorator {
 				return null;
 			}
 
-			CxLogger.info(LOG_TAG + "   [OSS] âœ“ Decorating first line: [" + lineOffset +
+			CxLogger.info(LOG_TAG + "   [OSS] ✓ Decorating first line: [" + lineOffset +
 				"-" + (lineOffset + decorationLength) + "] = " + decorationLength + " chars");
 
 			return new org.eclipse.jface.text.Position(lineOffset, decorationLength);
@@ -446,7 +443,7 @@ public class ProblemDecorator {
 				}
 				fileAnnotations.remove(filePath);
 
-				CxLogger.info(LOG_TAG + " âœ“ Cleared " + previousAnnotations.size() +
+				CxLogger.info(LOG_TAG + " ✓ Cleared " + previousAnnotations.size() +
 					" previous annotations");
 			}
 		} catch (Exception e) {
@@ -541,7 +538,7 @@ public class ProblemDecorator {
 				clearAnnotations(filePath, annotationModel);
 			}
 
-			CxLogger.info(LOG_TAG + " âœ“ Decorations cleared");
+			CxLogger.info(LOG_TAG + " ✓ Decorations cleared");
 
 		} catch (Exception e) {
 			CxLogger.warning(LOG_TAG + " Error clearing decorations: " +

@@ -45,7 +45,7 @@ public class RealTimeScanJob extends Job {
 		setPriority(Job.DECORATE); // Lower priority than user interactions
 		setUser(false); // Not a user-initiated job
 
-		System.out.println("[REALTIME] ✓ RealTimeScanJob created for: " + fileName);
+		
 	}
 
 	/**
@@ -73,7 +73,7 @@ public class RealTimeScanJob extends Job {
 		// Schedule the job to run after the delay
 		schedule(delayMs);
 
-		System.out.println("[REALTIME] Job rescheduled for: " + fileName + " (delay=" + delayMs + "ms)");
+		
 	}
 
 	/**
@@ -96,34 +96,33 @@ public class RealTimeScanJob extends Job {
 		try {
 			// Check if file still exists and is accessible
 			if (file == null || !file.exists()) {
-				System.out.println("[REALTIME] ✗ File no longer exists: " + fileName);
+				
 				return Status.CANCEL_STATUS;
 			}
 
 			// Check if the job was cancelled while waiting
 			if (monitor.isCanceled()) {
-				System.out.println("[REALTIME] ✗ Scan cancelled for: " + fileName);
+				
 				return Status.CANCEL_STATUS;
 			}
 
 			// **STEP 1: Check authentication status**
 			if (!isUserAuthenticated()) {
-				System.out.println("[REALTIME] ✗ BLOCKED: User not authenticated - scan cannot proceed");
-				System.out.println("[REALTIME] ℹ️  User must configure API key in preferences first");
+				
+				
 				return Status.OK_STATUS; // Return OK but don't scan
 			}
 
-			System.out.println("[REALTIME] ════════════════════════════════════════");
-			System.out.println("[REALTIME] ✓ Authentication verified - starting backend security scan...");
-			System.out.println("[REALTIME] File: " + fileName);
-			System.out.println("[REALTIME] Last change: " + (System.currentTimeMillis() - lastChangeTime) + "ms ago");
-			System.out.println("[REALTIME] ════════════════════════════════════════");
+
+
+
+
 
 			// Call our backend scanners via ScanManager
 			try {
 				org.eclipse.core.resources.IProject project = file.getProject();
 				if (project == null || !project.isOpen()) {
-					System.out.println("[REALTIME] ✗ Project not accessible");
+					
 					return Status.OK_STATUS;
 				}
 
@@ -144,44 +143,42 @@ public class RealTimeScanJob extends Job {
 
 				// Lazy initialization if not found
 				if (registry == null) {
-					System.out.println("[REALTIME] [STEP 1/5] Lazily initializing ScannerRegistry for: " + projectName);
+					
 					registry = new com.checkmarx.eclipse.devassist.backend.ScannerRegistry(project);
 					registry.registerAllScanners();
 					project.setSessionProperty(registryKey, registry);
-					System.out.println("[REALTIME] ✓ ScannerRegistry initialized");
+					
 				}
 
 				if (stateHolder == null) {
-					System.out.println("[REALTIME] [STEP 2/5] Lazily initializing DevAssistScanStateHolder for: " + projectName);
+					
 					stateHolder = new com.checkmarx.eclipse.devassist.backend.DevAssistScanStateHolder();
 					project.setSessionProperty(stateHolderKey, stateHolder);
-					System.out.println("[REALTIME] ✓ State holder initialized");
+					
 				}
 
 				// Execute backend scanners
-				System.out.println("[REALTIME] [STEP 3/5] Creating ScanManager...");
+				
 				com.checkmarx.eclipse.devassist.common.ScanManager scanManager =
 					new com.checkmarx.eclipse.devassist.common.ScanManager(registry, stateHolder);
 
 				String filePath = file.getLocation().toOSString();
-				System.out.println("[REALTIME] [STEP 4/5] Executing backend scanners for: " + filePath);
+				
 
 				java.util.List<com.checkmarx.eclipse.devassist.model.ScanIssue> issues =
 					scanManager.scanFile(filePath);
 
-				System.out.println("[REALTIME] ✓ Scan completed - found " + issues.size() + " issues");
+				
 				for (com.checkmarx.eclipse.devassist.model.ScanIssue issue : issues) {
-					System.out.println("[REALTIME]   - " + issue.getScanEngine() + ": " + issue.getTitle() +
-						" (severity: " + issue.getSeverity() + ")");
 				}
 
 				// Publish results to UI
-				System.out.println("[REALTIME] [STEP 5/5] Publishing results to UI...");
+				
 				if (!issues.isEmpty()) {
 					com.checkmarx.eclipse.devassist.backend.result.ResultPublisher.publishResults(file, issues);
-					System.out.println("[REALTIME] ✓ Results successfully published to findings view");
+					
 				} else {
-					System.out.println("[REALTIME] ℹ️  No issues found - findings view will be empty for this file");
+					
 				}
 
 			} catch (Exception e) {
@@ -193,7 +190,7 @@ public class RealTimeScanJob extends Job {
 				}
 			}
 
-			System.out.println("[REALTIME] ════════════════════════════════════════");
+			
 			return Status.OK_STATUS;
 
 		} catch (Exception e) {
@@ -230,7 +227,7 @@ public class RealTimeScanJob extends Job {
 	 */
 	@Override
 	protected void canceling() {
-		System.out.println("[REALTIME] Cancelling scan for: " + fileName);
+		
 		super.canceling();
 	}
 

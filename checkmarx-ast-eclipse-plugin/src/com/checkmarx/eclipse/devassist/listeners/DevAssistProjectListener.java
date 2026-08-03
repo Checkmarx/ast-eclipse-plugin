@@ -67,7 +67,7 @@ public class DevAssistProjectListener implements IResourceChangeListener {
 			IProject[] projects = ResourcesPlugin.getWorkspace().getRoot().getProjects();
 			for (IProject project : projects) {
 				if (project.isOpen() && !isInitialized(project)) {
-					System.out.println(LOG_TAG + " Found existing open project on startup: " + project.getName());
+					
 					onProjectOpen(project);
 				}
 			}
@@ -253,7 +253,7 @@ public class DevAssistProjectListener implements IResourceChangeListener {
 
 	private void findAndScanFiles(IProject project, String[] patterns, String fileType) {
 		try {
-			System.out.println(LOG_TAG + " ▶ Scanning for " + fileType + "...");
+			
 
 			ScannerRegistry registry = (ScannerRegistry) project.getSessionProperty(
 				new QualifiedName(PLUGIN_ID, "scanner-registry"));

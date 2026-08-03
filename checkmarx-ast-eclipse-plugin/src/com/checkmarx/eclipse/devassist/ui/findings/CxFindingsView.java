@@ -1,4 +1,4 @@
-﻿package com.checkmarx.eclipse.devassist.ui.findings;
+package com.checkmarx.eclipse.devassist.ui.findings;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.SashForm;
@@ -329,7 +329,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
     
     @Override
     public void dispose() {
-        System.out.println("[FINDINGS] Disposing CxFindingsView...");
+        
 
         // 1. Unsubscribe from IEventBroker to prevent memory leaks
         if (eventHandler != null) {
@@ -340,7 +340,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
                         
                 if (eventBroker != null) {
                     eventBroker.unsubscribe(eventHandler);
-                    System.out.println("[FINDINGS] âœ“ Unsubscribed from IEventBroker");
+                    
                 }
             } catch (Exception e) {
                 System.err.println("[FINDINGS] Error unsubscribing from IEventBroker: " + e.getMessage());
@@ -361,7 +361,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 
     private void initFindingsViewUI() {
         try {
-            System.out.println("[FINDINGS] [INIT-STEP 1/5] Getting workspace projects...");
+            
             IProject[] projects = ResourcesPlugin.getWorkspace().getRoot().getProjects();
 
             if (projects.length > 0 && projects[0].isOpen()) {
@@ -401,7 +401,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
     }
 
     private void setupToolbar() {
-        System.out.println("[FINDINGS] Setting up toolbar with severity filters...");
+        
         IToolBarManager toolbar = getViewSite().getActionBars().getToolBarManager();
 
         // The same IToolBarManager instance survives every re-render of the view,
@@ -410,7 +410,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 
         // Add filter actions
         VulnerabilityFilterAction.IFilterChangeListener filterListener = () -> {
-            System.out.println("[FINDINGS] Filter changed - refreshing tree");
+            
             refreshTreeWithFilter();
         };
 
@@ -468,7 +468,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 
         // Toolbar preferences button
         Action toolbarPreferencesAction =
-            new Action("\u2000⋮", Action.AS_PUSH_BUTTON) {
+            new Action("\u2000?", Action.AS_PUSH_BUTTON) {
                 @Override
                 public void run() {
                     openPreferencesPageAction.run();
@@ -480,17 +480,17 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 
         toolbar.update(true);
         getViewSite().getActionBars().updateActionBars();
-        System.out.println("[FINDINGS] Toolbar configured with 5 severity filters and preferences button");
+        
     }
     private void setupTreeListeners() {
         Tree tree = treeViewer.getTree();
-        System.out.println("[FINDINGS] Setting up tree listeners...");
+        
 
         //Listner for redirection
         tree.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                System.out.println("[FINDINGS] Single-click detected");
+                
                 navigateToSelectedIssue(treeViewer.getSelection());
             }
         });
@@ -500,17 +500,17 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
             @Override
             public void mouseDown(MouseEvent e) {
                 if (e.button == 3) {
-                    System.out.println("[FINDINGS] Right-click detected at coordinates: " + e.x + ", " + e.y);
+                    
                     showContextMenu(e);
                 }
             }
         });
 
-        System.out.println("[FINDINGS] Tree listeners configured");
+        
     }
 
     private void navigateToSelectedIssue(ISelection selection) {
-        System.out.println("[FINDINGS] Navigating to selected issue...");
+        
         if (selection instanceof IStructuredSelection) {
             IStructuredSelection ssel = (IStructuredSelection) selection;
             Object element = ssel.getFirstElement();
@@ -533,10 +533,10 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 
         if (detail.getLocations() != null && !detail.getLocations().isEmpty()) {
             Location location = detail.getLocations().get(0);
-            System.out.println("[FINDINGS] Navigating to: " + filePath + ", Line: " + location.getLine());
+            
             openFileInEditor(filePath, location.getLine(), detail);
         } else {
-            System.out.println("[FINDINGS] No location information available for issue: " + detail.getTitle());
+            
         }
     }
 
@@ -567,7 +567,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
         }
         details.append("====================================\n");
 
-        System.out.println(details.toString());
+        
     }
 
     /**
@@ -581,24 +581,24 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
                     .buildRemediationPrompt(issue);
 
             if (prompt == null || prompt.isEmpty()) {
-                System.out.println("[FINDINGS] ERROR: Failed to build remediation prompt");
+                
                 showErrorNotification("Failed to build prompt for this issue type");
                 return;
             }
 
             // Send to Copilot via integration
-            System.out.println("[FINDINGS] Sending prompt to Copilot...");
+            
             boolean success = com.checkmarx.eclipse.devassist.ui.findings.integration.CopilotIntegration
                     .sendPromptToCopilot(prompt);
 
             if (success) {
-                System.out.println("[FINDINGS] Prompt sent to Copilot successfully");
+                
             } else {
-                System.out.println("[FINDINGS] ! Copilot not available, prompt in clipboard");
+                
             }
 
         } catch (Exception e) {
-            System.out.println("[FINDINGS] ERROR: Exception in fixWithAIAssist: " + e.getMessage());
+            
             e.printStackTrace();
             showErrorNotification("Error: " + e.getMessage());
         }
@@ -630,23 +630,23 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
                 return;
             }
 
-            System.out.println("[FINDINGS] IgnoredProblemsStore is initialized");
+            
 
             // Add to ignored store with full finding details for display in Ignored Problems View
             ignoredStore.ignoreProblem(issue);
-            System.out.println("[FINDINGS] Added to IgnoredProblemsStore: " + issue.getScanIssueId());
+            
 
             // Check if it was actually added
             boolean isIgnored = ignoredStore.isIgnored(issue.getScanIssueId());
 
             // Refresh the tree to remove the ignored finding
-            System.out.println("[FINDINGS] Calling refreshTreeWithFilter...");
+            
             refreshTreeWithFilter();
-            System.out.println("[FINDINGS] âœ“ Findings tree refreshed - finding removed");
+            
 
-            System.out.println("[FINDINGS] ========================================");
+            
         } catch (Exception e) {
-            System.err.println("[FINDINGS] âœ— Error ignoring finding: " + e.getMessage());
+            System.err.println("[FINDINGS] ✗ Error ignoring finding: " + e.getMessage());
             e.printStackTrace();
             showErrorNotification("Failed to ignore finding: " + e.getMessage());
         }
@@ -679,12 +679,12 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
                 }
             }
 
-            System.out.println("[FINDINGS] âœ“ Ignored " + ignoredCount + " findings of this type");
+            
             refreshTreeWithFilter();
-            System.out.println("[FINDINGS] âœ“ Findings tree refreshed");
-            System.out.println("[FINDINGS] ========================================");
+            
+            
         } catch (Exception e) {
-            System.err.println("[FINDINGS] âœ— Error ignoring findings of type: " + e.getMessage());
+            System.err.println("[FINDINGS] ✗ Error ignoring findings of type: " + e.getMessage());
             e.printStackTrace();
             showErrorNotification("Failed to ignore findings of this type: " + e.getMessage());
         }
@@ -706,10 +706,10 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
         try {
             java.awt.Toolkit.getDefaultToolkit().getSystemClipboard()
                     .setContents(new java.awt.datatransfer.StringSelection(json.toString()), null);
-            System.out.println("[FINDINGS] Issue details copied to clipboard");
-            System.out.println(json.toString());
+            
+            
         } catch (Exception e) {
-            System.out.println("[FINDINGS] Failed to copy to clipboard: " + e.getMessage());
+            
         }
     }
 
@@ -720,20 +720,20 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 
     private void openFileInEditor(String filePath, int lineNumber, ScanIssue issue) {
         try {
-            System.out.println("[FINDINGS] Attempting to navigate to: " + filePath + " at line " + lineNumber);
+            
 
             IFile file = ResourcesPlugin.getWorkspace().getRoot().getFileForLocation(
                     new org.eclipse.core.runtime.Path(filePath));
 
             if (file == null || !file.exists()) {
-                System.out.println("âœ— File not found in workspace: " + filePath);
+                
                 return;
             }
 
             // 1. Open file in active workbench page
             IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
             IEditorPart editor = IDE.openEditor(page, file);
-            System.out.println("âœ“ Opened file in editor: " + filePath);
+            
 
             // **CRITICAL FIX: Navigation-based opens don't trigger IPartListener2 events**
             // Directly set up real-time scanning and apply cached decorations
@@ -750,7 +750,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
             }
 
         } catch (Exception e) {
-            System.out.println("âœ— Error navigating to file: " + e.getMessage());
+            
             e.printStackTrace();
         }
     }
@@ -761,12 +761,12 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
      */
     private void setupRealtimeScanningForFile(org.eclipse.core.resources.IFile file, IEditorPart editor) {
         if (file == null || editor == null) {
-            System.out.println("[REALTIME-SETUP] âœ— File or editor is null");
+            
             return;
         }
 
-        System.out.println("[REALTIME-SETUP] [STEP 1/5] Starting setup for: " + file.getName());
-        System.out.println("[REALTIME-SETUP] [STEP 1/5] Editor type: " + editor.getClass().getSimpleName());
+        
+        
 
         try {
             // Extract document for real-time scanning
@@ -774,50 +774,50 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
             String filePath = file.getLocation().toOSString();
             String fileName = file.getName();
 
-            System.out.println("[REALTIME-SETUP] [STEP 2/5] Extracting document from editor...");
+            
 
             // Try method 1: Direct ITextEditor instance check
             if (editor instanceof org.eclipse.ui.texteditor.ITextEditor) {
-                System.out.println("[REALTIME-SETUP] [STEP 2/5] Editor is ITextEditor (direct)");
+                
                 org.eclipse.ui.texteditor.ITextEditor textEditor = (org.eclipse.ui.texteditor.ITextEditor) editor;
                 document = textEditor.getDocumentProvider().getDocument(textEditor.getEditorInput());
             }
 
             // Try method 2: ITextEditor Adapter pattern (for MavenPomEditor, etc.)
             if (document == null) {
-                System.out.println("[REALTIME-SETUP] [STEP 2/5] Trying ITextEditor adapter pattern...");
+                
                 org.eclipse.ui.texteditor.ITextEditor textEditor = editor.getAdapter(org.eclipse.ui.texteditor.ITextEditor.class);
                 if (textEditor != null) {
-                    System.out.println("[REALTIME-SETUP] [STEP 2/5] Got ITextEditor via adapter");
+                    
                     document = textEditor.getDocumentProvider().getDocument(textEditor.getEditorInput());
                 }
             }
 
             // Try method 3: Direct IDocument adapter (some editors provide this directly)
             if (document == null) {
-                System.out.println("[REALTIME-SETUP] [STEP 2/5] Trying direct IDocument adapter...");
+                
                 document = editor.getAdapter(org.eclipse.jface.text.IDocument.class);
                 if (document != null) {
-                    System.out.println("[REALTIME-SETUP] [STEP 2/5] Got IDocument directly via adapter");
+                    
                 }
             }
 
             if (document == null) {
-                System.out.println("[REALTIME-SETUP] âœ— [STEP 2/5] FAILED: Could not extract document from editor type: " + editor.getClass().getName());
+                
                 return;
             }
 
-            System.out.println("[REALTIME-SETUP] âœ“ [STEP 2/5] Document extracted successfully");
+            
 
-            System.out.println("[REALTIME-SETUP] [STEP 3/5] Creating RealTimeScanJob for: " + fileName);
+            
 
             // Create a scan job for this file
             com.checkmarx.eclipse.devassist.ui.findings.realtime.RealTimeScanJob scanJob =
                 new com.checkmarx.eclipse.devassist.ui.findings.realtime.RealTimeScanJob(file, fileName);
 
-            System.out.println("[REALTIME-SETUP] âœ“ [STEP 3/5] RealTimeScanJob created");
+            
 
-            System.out.println("[REALTIME-SETUP] [STEP 4/5] Creating and registering document listener...");
+            
 
             // Create a document listener that reschedules the job on every keystroke
             com.checkmarx.eclipse.devassist.inspection.DevAssistScanScheduler scheduler = null;
@@ -837,18 +837,18 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 
             // Register the document listener
             document.addDocumentListener(docListener);
-            System.out.println("[REALTIME-SETUP] âœ“ [STEP 4/5] Document listener registered - edits will now trigger scans");
+            
 
-            System.out.println("[REALTIME-SETUP] [STEP 5/5] Applying cached decorations...");
+            
 
             // Apply cached decorations if findings exist for this file
             // Pass the editor directly to avoid search issues with MavenPomEditor
             applyCachedDecorationsForFile(file, document, editor);
 
-            System.out.println("[REALTIME-SETUP] âœ“ [STEP 5/5] Setup complete for: " + fileName);
+            
 
         } catch (Exception e) {
-            System.err.println("[REALTIME-SETUP] âœ— EXCEPTION during setup: " + e.getMessage());
+            System.err.println("[REALTIME-SETUP] ✗ EXCEPTION during setup: " + e.getMessage());
             System.err.println("[REALTIME-SETUP] Exception type: " + e.getClass().getName());
             System.err.println("[REALTIME-SETUP] Stack trace:");
             e.printStackTrace();
@@ -886,12 +886,12 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
             java.util.List<ScanIssue> cachedIssues = problemHolder.getScanIssuesByFile(filePath);
 
             if (cachedIssues == null || cachedIssues.isEmpty()) {
-                System.out.println("[REALTIME-SETUP] No cached findings for: " + file.getName());
+                
                 return;
             }
 
             // Apply decorations directly using the provided editor
-            System.out.println("[REALTIME-SETUP] âœ“ Applying " + cachedIssues.size() + " cached decorations for: " + file.getName());
+            
             applyDecorationsDirectly(editor, file, cachedIssues);
 
         } catch (Exception e) {
@@ -917,14 +917,14 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
                 editor.getAdapter(org.eclipse.ui.texteditor.ITextEditor.class);
 
             if (textEditor == null) {
-                System.out.println("[REALTIME-SETUP-DIRECT] âœ— Cannot adapt editor to ITextEditor");
+                
                 return;
             }
 
             // Get document provider and input
             org.eclipse.ui.texteditor.IDocumentProvider docProvider = textEditor.getDocumentProvider();
             if (docProvider == null) {
-                System.out.println("[REALTIME-SETUP-DIRECT] âœ— No document provider for editor");
+                
                 return;
             }
 
@@ -933,17 +933,17 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
                 docProvider.getAnnotationModel(textEditor.getEditorInput());
 
             if (annotationModel == null) {
-                System.out.println("[REALTIME-SETUP-DIRECT] âœ— No annotation model from provider");
+                
                 return;
             }
 
-            System.out.println("[REALTIME-SETUP-DIRECT] âœ“ Got annotation model, applying " + scanIssues.size() + " decorations");
+            
 
             // Get document from provider
             org.eclipse.jface.text.IDocument document = docProvider.getDocument(textEditor.getEditorInput());
 
             if (document == null) {
-                System.out.println("[REALTIME-SETUP-DIRECT] âœ— Cannot get document from provider");
+                
                 return;
             }
 
@@ -967,17 +967,17 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
                     if (pos != null && pos.getLength() > 0) {
                         annotationModel.addAnnotation(annotation, pos);
                         annotations.add(annotation);
-                        System.out.println("[REALTIME-SETUP-DIRECT] âœ“ Added annotation for: " + issue.getTitle());
+                        
                     }
                 } catch (Exception e) {
                     System.err.println("[REALTIME-SETUP-DIRECT] Error decorating issue: " + e.getMessage());
                 }
             }
 
-            System.out.println("[REALTIME-SETUP-DIRECT] âœ“ Applied " + annotations.size() + " decorations successfully");
+            
 
         } catch (Exception e) {
-            System.err.println("[REALTIME-SETUP-DIRECT] âœ— Error applying decorations directly: " + e.getMessage());
+            System.err.println("[REALTIME-SETUP-DIRECT] ✗ Error applying decorations directly: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -1088,13 +1088,13 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
                         // Line numbers in IDocument are 0-indexed
                         int lineOffset = document.getLineOffset(lineNumber - 1);
                         textEditor.selectAndReveal(lineOffset, 0);
-                        System.out.println("[FINDINGS] âœ“ Successfully scrolled to line " + lineNumber);
+                        
                         return true;
                     }
                 }
             }
         } catch (Exception e) {
-            System.out.println("[FINDINGS] Line scrolling via adapter failed: " + e.getMessage());
+            
         }
         return false;
     }
@@ -1129,7 +1129,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
             // 3. Populate custom attributes
             com.checkmarx.eclipse.devassist.ui.findings.marker.MarkerIssueMapper.populateMarker(newMarker, issue);
 
-            System.out.println("[FINDINGS] âœ“ Created marker with LINE_NUMBER=" + lineNumber + " and MESSAGE=" + issue.getTitle());
+            
 
         } catch (org.eclipse.core.runtime.CoreException e) {
             System.err.println("[FINDINGS] Error creating marker: " + e.getMessage());
@@ -1155,12 +1155,12 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
             IMarker marker = findMarkerForIssue(file, issue);
             if (marker != null && marker.exists()) {
                 org.eclipse.ui.ide.IDE.gotoMarker(editor, marker);
-                System.out.println("[FINDINGS] âœ“ Navigated to marker for: " + issue.getTitle());
+                
             } else {
-                System.out.println("[FINDINGS] No marker found for issue: " + issue.getTitle());
+                
             }
         } catch (Exception e) {
-            System.out.println("[FINDINGS] Error navigating to marker: " + e.getMessage());
+            
         }
     }
 
@@ -1189,7 +1189,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
                 }
             }
         } catch (Exception e) {
-            System.out.println("[FINDINGS] Error finding marker for issue: " + e.getMessage());
+            
         }
 
         return null;
@@ -1212,23 +1212,23 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
      */
 //    private void createMarkerForIssue(IFile file, ScanIssue issue) {
 //        if (file == null || issue == null || issue.getLocations() == null || issue.getLocations().isEmpty()) {
-//            System.out.println("[FINDINGS] [MARKER-CREATE] âœ— Missing file, issue, or locations");
+//            
 //            return;
 //        }
 //
 //        try {
-//            System.out.println("[FINDINGS] [MARKER-CREATE] â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—");
-//            System.out.println("[FINDINGS] [MARKER-CREATE] â•‘ Creating marker for ScanIssue        â•‘");
-//            System.out.println("[FINDINGS] [MARKER-CREATE] â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•");
-//            System.out.println("[FINDINGS] [MARKER-CREATE] File: " + file.getFullPath());
-//            System.out.println("[FINDINGS] [MARKER-CREATE] Issue: " + issue.getTitle());
-//            System.out.println("[FINDINGS] [MARKER-CREATE] Engine: " + issue.getScanEngine());
-//            System.out.println("[FINDINGS] [MARKER-CREATE] Line: " + issue.getLocations().get(0).getLine());
+//            
+//            
+//            
+//            
+//            
+//            
+//            
 //
 //            // Step 1: Check if marker already exists for this issue
 //            IMarker existingMarker = findMarkerForIssue(file, issue);
 //            if (existingMarker != null && existingMarker.exists()) {
-//                System.out.println("[FINDINGS] [MARKER-CREATE] âœ“ Marker already exists, skipping creation");
+//                
 //                return;
 //            }
 //
@@ -1238,12 +1238,12 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 //            // - Marker appears in Eclipse's Problems View
 //            // - Can be navigated with IDE.gotoMarker()
 //            IMarker newMarker = file.createMarker("com.checkmarx.eclipse.plugin.checkmarxProblemMarker");
-//            System.out.println("[FINDINGS] [MARKER-CREATE] âœ“ Marker created");
+//            
 //
 //            // Step 3: Populate marker attributes using MarkerIssueMapper
 //            // This stores all ScanIssue data in marker for later retrieval
 //            com.checkmarx.eclipse.devassist.ui.findings.marker.MarkerIssueMapper.populateMarker(newMarker, issue);
-//            System.out.println("[FINDINGS] [MARKER-CREATE] âœ“ Marker populated with issue data");
+//            
 //
 //            // Step 4: Verify marker creation
 //            if (newMarker.exists()) {
@@ -1251,21 +1251,21 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 //                int markerLine = newMarker.getAttribute(org.eclipse.core.resources.IMarker.LINE_NUMBER, -1);
 //                int markerSeverity = newMarker.getAttribute(org.eclipse.core.resources.IMarker.SEVERITY, -1);
 //
-//                System.out.println("[FINDINGS] [MARKER-CREATE] âœ“ Marker verified:");
-//                System.out.println("[FINDINGS] [MARKER-CREATE]   ID: " + newMarker.getId());
-//                System.out.println("[FINDINGS] [MARKER-CREATE]   Message: " + markerMsg);
-//                System.out.println("[FINDINGS] [MARKER-CREATE]   Line: " + markerLine);
-//                System.out.println("[FINDINGS] [MARKER-CREATE]   Severity: " + markerSeverity);
-//                System.out.println("[FINDINGS] [MARKER-CREATE] â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•");
+//                
+//                
+//                
+//                
+//                
+//                
 //            } else {
-//                System.out.println("[FINDINGS] [MARKER-CREATE] âœ— Failed to create marker!");
+//                
 //            }
 //
 //        } catch (org.eclipse.core.runtime.CoreException e) {
-//            System.err.println("[FINDINGS] [MARKER-CREATE] âœ— CoreException creating marker: " + e.getMessage());
+//            System.err.println("[FINDINGS] [MARKER-CREATE] ✗ CoreException creating marker: " + e.getMessage());
 //            e.printStackTrace();
 //        } catch (Exception e) {
-//            System.err.println("[FINDINGS] [MARKER-CREATE] âœ— Error creating marker: " + e.getMessage());
+//            System.err.println("[FINDINGS] [MARKER-CREATE] ✗ Error creating marker: " + e.getMessage());
 //            e.printStackTrace();
 //        }
 //    }
@@ -1273,7 +1273,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
     private void showContextMenu(MouseEvent e) {
         ISelection selection = treeViewer.getSelection();
         if (!(selection instanceof IStructuredSelection)) {
-            System.out.println("[FINDINGS] Invalid selection for context menu");
+            
             return;
         }
 
@@ -1281,14 +1281,14 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
         Object element = ssel.getFirstElement();
 
         if (!(element instanceof ScanDetailWithPath)) {
-            System.out.println("[FINDINGS] Context menu: Selected element is not a ScanDetailWithPath");
+            
             return;
         }
 
         ScanDetailWithPath detailWithPath = (ScanDetailWithPath) element;
         ScanIssue issue = detailWithPath.getDetail();
 
-        System.out.println("[FINDINGS] Creating context menu for: " + issue.getTitle());
+        
 
         org.eclipse.swt.widgets.Menu menu = new org.eclipse.swt.widgets.Menu(treeViewer.getTree());
 
@@ -1298,7 +1298,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
         viewDetailsItem.addSelectionListener(new org.eclipse.swt.events.SelectionAdapter() {
             @Override
             public void widgetSelected(org.eclipse.swt.events.SelectionEvent e) {
-                System.out.println("[FINDINGS] Action: View Details - Issue: " + issue.getTitle());
+                
                 showIssueDetails(issue);
             }
         });
@@ -1309,7 +1309,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
         fixWithAIItem.addSelectionListener(new org.eclipse.swt.events.SelectionAdapter() {
             @Override
             public void widgetSelected(org.eclipse.swt.events.SelectionEvent e) {
-                System.out.println("[FINDINGS] Action: Fix with AI Assist - Issue: " + issue.getTitle());
+                
                 fixWithAIAssist(issue);
             }
         });
@@ -1320,7 +1320,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
         ignoreItem.addSelectionListener(new org.eclipse.swt.events.SelectionAdapter() {
             @Override
             public void widgetSelected(org.eclipse.swt.events.SelectionEvent e) {
-                System.out.println("[FINDINGS] Action: Ignore This Finding - Issue: " + issue.getTitle());
+                
                 ignoreThisFinding(issue);
             }
         });
@@ -1332,7 +1332,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
             ignoreAllItem.addSelectionListener(new org.eclipse.swt.events.SelectionAdapter() {
                 @Override
                 public void widgetSelected(org.eclipse.swt.events.SelectionEvent e) {
-                    System.out.println("[FINDINGS] Action: Ignore All of This Type - Issue Type: " + issue.getTitle());
+                    
                     ignoreAllOfType(issue);
                 }
             });
@@ -1347,7 +1347,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
         copyItem.addSelectionListener(new org.eclipse.swt.events.SelectionAdapter() {
             @Override
             public void widgetSelected(org.eclipse.swt.events.SelectionEvent e) {
-                System.out.println("[FINDINGS] Action: Copy Issue Details - Issue: " + issue.getTitle());
+                
                 copyIssueDetails(issue);
             }
         });
@@ -1358,7 +1358,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
         terminalItem.addSelectionListener(new org.eclipse.swt.events.SelectionAdapter() {
             @Override
             public void widgetSelected(org.eclipse.swt.events.SelectionEvent e) {
-                System.out.println("[FINDINGS] Action: Navigate to Line - File: " + detailWithPath.getFilePath());
+                
                 navigateToIssue(detailWithPath);
             }
         });
@@ -1368,15 +1368,13 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
     }
 
     private void refreshTreeWithFilter() {
-        System.out.println("[FINDINGS] ========== REFRESH TREE START ==========");
-        System.out.println("[FINDINGS] Refreshing tree with active filters and ignored problems...");
-        System.out.println("[FINDINGS] Current issues: " + currentIssues.size() + " files");
+        
+        
+        
 
         // Apply active filters and refresh
         VulnerabilityFilterState filterState = VulnerabilityFilterState.getInstance();
-        System.out.println("[FINDINGS] Active filters: " + filterState.getFilters());
-        System.out.println("[FINDINGS] Ignored IDs in store: " + 
-                (ignoredStore != null ? ignoredStore.getIgnoredProblemIds() : "[]"));
+        
 
         Map<String, List<ScanIssue>> filteredIssues = new HashMap<>();
         int totalBefore = 0;
@@ -1390,9 +1388,9 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
             List<ScanIssue> filtered = new java.util.ArrayList<>();
 
             for (ScanIssue issue : issues) {
-                // âœ… Safe null guard FIRST before calling any methods on issue
+                // ✅ Safe null guard FIRST before calling any methods on issue
                 if (issue == null || issue.getSeverity() == null) {
-                    System.out.println("[FINDINGS] WARNING: Null issue or severity detected");
+                    
                     continue;
                 }
 
@@ -1401,29 +1399,25 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
                 boolean hasFilter = filterState.hasFilter(issue.getSeverity());
                 boolean isProblem = com.checkmarx.eclipse.devassist.backend.DevAssistUtils.isProblem(issue.getSeverity());
 
-                System.out.println("[FINDINGS] Issue: " + issue.getTitle() +
-                        " | ID: " + issueId +
-                        " | Ignored: " + isIgnored +
-                        " | HasFilter: " + hasFilter +
-                        " | IsProblem: " + isProblem);
+                
 
                 // Filter by OK/UNKNOWN/IGNORED severity (Phase 3)
                 if (!isProblem) {
-                    System.out.println("[FINDINGS]   -> Filtered out because severity is OK/UNKNOWN/IGNORED");
+                    
                     continue;
                 }
                 // Filter by severity preference
                 if (!hasFilter) {
-                    System.out.println("[FINDINGS]   -> Filtered out by severity");
+                    
                     continue;
                 }
                 // Filter out ignored problems
                 if (isIgnored) {
-                    System.out.println("[FINDINGS]   -> Filtered out because IGNORED");
+                    
                     continue;
                 }
 
-                System.out.println("[FINDINGS]   -> KEEPING");
+                
                 filtered.add(issue);
             }
 
@@ -1433,19 +1427,19 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
             }
         }
 
-        System.out.println("[FINDINGS] Total issues before filtering: " + totalBefore);
-        System.out.println("[FINDINGS] Total issues after filtering: " + totalAfter);
-        System.out.println("[FINDINGS] Filtered issues map: " + filteredIssues.size() + " files");
+        
+        
+        
 
-        // âœ… Verify treeViewer control before manipulating UI
+        // ✅ Verify treeViewer control before manipulating UI
         if (treeViewer != null && treeViewer.getControl() != null && !treeViewer.getControl().isDisposed()) {
-            System.out.println("[FINDINGS] Setting tree input...");
+            
             treeViewer.setInput(filteredIssues);
-            System.out.println("[FINDINGS] Expanding all nodes...");
+            
             treeViewer.expandAll();
         }
 
-        System.out.println("[FINDINGS] ========== REFRESH TREE END ==========");
+        
     }
 
     /**
@@ -1456,12 +1450,12 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
     public void refreshTree(Map<String, List<ScanIssue>> issues) {
         if (issues == null) return;
 
-        System.out.println("[FINDINGS] â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—");
-        System.out.println("[FINDINGS] â•‘ FINDINGS VIEW: REFRESH TREE                  â•‘");
-        System.out.println("[FINDINGS] â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•");
-        System.out.println("[FINDINGS] Input: " + issues.size() + " files");
+        
+        
+        
+        
         int totalIssues = issues.values().stream().filter(java.util.Objects::nonNull).mapToInt(List::size).sum();
-        System.out.println("[FINDINGS] Total Issues: " + totalIssues);
+        
 
         // Log issues by severity
         Map<String, Long> severityCounts = new HashMap<>();
@@ -1476,27 +1470,23 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
             }
         });
 
-        System.out.println("[FINDINGS] Severity breakdown:");
-        severityCounts.forEach((severity, count) ->
-            System.out.println("[FINDINGS]   - " + severity + ": " + count)
-        );
+        
 
         for (String filePath : issues.keySet()) {
             List<ScanIssue> fileIssues = issues.get(filePath);
-            System.out.println("[FINDINGS] File: " + filePath + " â†’ " + (fileIssues != null ? fileIssues.size() : 0) + " issues");
         }
 
-        System.out.println("[FINDINGS] Setting currentIssues and dispatching UI update...");
+        
         this.currentIssues = issues;
 
-        // âœ… Thread-safe dispatching for background updates
+        // ✅ Thread-safe dispatching for background updates
         org.eclipse.swt.widgets.Display.getDefault().asyncExec(() -> {
             if (treeViewer != null && treeViewer.getControl() != null && !treeViewer.getControl().isDisposed()) {
                 refreshTreeWithFilter();
             }
         });
 
-        System.out.println("[FINDINGS] â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•");
+        
     }
 
     @Override
@@ -1515,7 +1505,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
      */
     @Override
     public void onIgnoredProblemsChanged() {
-        System.out.println("[FINDINGS] Ignored problems changed - refreshing findings tree");
+        
         if (treeViewer != null && treeViewer.getControl() != null && !treeViewer.getControl().isDisposed()) {
             treeViewer.getControl().getDisplay().asyncExec(this::refreshTreeWithFilter);
         }

@@ -49,7 +49,7 @@ public class CheckmarxEditorListener implements IPartListener2 {
 	private final Map<Integer, RealTimeScanJob> activeScanJobs = new HashMap<>();
 
 	public CheckmarxEditorListener() {
-		System.out.println("[REALTIME] ✓ CheckmarxEditorListener created");
+		
 	}
 
 	/**
@@ -93,7 +93,7 @@ public class CheckmarxEditorListener implements IPartListener2 {
 					if (activeListeners.containsKey(documentId)) {
 						RealTimeScanJob scanJob = activeScanJobs.get(documentId);
 						if (scanJob != null) {
-							System.out.println("[REALTIME] User switched to tab - triggering rescan for: " + extractFileNameFromEditor(editor));
+							
 							scanJob.reschedule(0);
 						}
 						return;
@@ -147,13 +147,13 @@ public class CheckmarxEditorListener implements IPartListener2 {
 
 		// Check if we've already set up scanning for this document
 		if (activeListeners.containsKey(documentId)) {
-			System.out.println("[REALTIME] Document listener already registered");
+			
 			return;
 		}
 
 		// Get file name for logging
 		String fileName = extractFileNameFromEditor(editor);
-		System.out.println("[REALTIME] Setting up real-time scanning for: " + fileName);
+		
 
 		// Log to Eclipse Error Log
 		String message = "User opened the file: " + fileName;
@@ -175,7 +175,7 @@ public class CheckmarxEditorListener implements IPartListener2 {
 						new org.eclipse.core.runtime.QualifiedName("com.checkmarx.eclipse.plugin", "scan-scheduler"));
 				}
 			} catch (Exception e) {
-				System.out.println("[REALTIME] Warning: Could not get scheduler from session: " + e.getMessage());
+				
 			}
 		}
 
@@ -190,7 +190,7 @@ public class CheckmarxEditorListener implements IPartListener2 {
 			activeListeners.put(documentId, docListener);
 			activeScanJobs.put(documentId, scanJob);
 
-			System.out.println("[REALTIME] ✓ Document listener registered for: " + fileName);
+			
 
 			// **CRITICAL FIX: Apply cached decorations if findings exist for this file**
 			// JetBrains pattern: when editor opens, apply cached decorations immediately
@@ -200,7 +200,7 @@ public class CheckmarxEditorListener implements IPartListener2 {
 			// **CRITICAL FIX: Trigger initial scan when file is opened**
 			// JetBrains pattern: scan on file open, then on keystroke debounce
 			// Without this, opening a file doesn't trigger any scan — only edits do
-			System.out.println("[REALTIME] Triggering initial scan for: " + fileName);
+			
 			scanJob.reschedule(0);
 
 		} catch (Exception e) {
@@ -233,7 +233,7 @@ public class CheckmarxEditorListener implements IPartListener2 {
 			try {
 				document.removeDocumentListener(listener);
 				listener.dispose();
-				System.out.println("[REALTIME] ✓ Document listener removed for: " + listener.getFileName());
+				
 			} catch (Exception e) {
 				System.err.println("[REALTIME] Error removing document listener: " + e.getMessage());
 			}
@@ -243,7 +243,7 @@ public class CheckmarxEditorListener implements IPartListener2 {
 		RealTimeScanJob scanJob = activeScanJobs.remove(documentId);
 		if (scanJob != null) {
 			scanJob.cancel();
-			System.out.println("[REALTIME] ✓ Scan job cancelled for: " + scanJob.getFileName());
+			
 		}
 	}
 
@@ -361,12 +361,12 @@ public class CheckmarxEditorListener implements IPartListener2 {
 				problemHolder.getScanIssuesByFile(filePath);
 
 			if (cachedIssues == null || cachedIssues.isEmpty()) {
-				System.out.println("[REALTIME] No cached findings for: " + file.getName());
+				
 				return;
 			}
 
 			// Apply decorations for cached findings
-			System.out.println("[REALTIME] ✓ Applying " + cachedIssues.size() + " cached decorations for: " + file.getName());
+			
 			ProblemDecorator.decorateEditor(file, cachedIssues);
 
 		} catch (Exception e) {
