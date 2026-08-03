@@ -2,10 +2,14 @@ package com.checkmarx.eclipse.devassist.scanners.iac;
 
 import com.checkmarx.ast.iacrealtime.IacRealtimeResults;
 import com.checkmarx.ast.wrapper.CxException;
+import com.checkmarx.eclipse.devassist.basescanner.BaseScannerService;
 import com.checkmarx.eclipse.devassist.common.ScanResult;
+import com.checkmarx.eclipse.devassist.common.ScannerConfig;
 import com.checkmarx.eclipse.devassist.factory.CxWrapperFactory;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.backend.DevAssistUtils;
+import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
 import com.checkmarx.eclipse.utils.CxLogger;
 import org.apache.commons.lang3.tuple.Pair;
 import org.eclipse.core.resources.IProject;
@@ -24,12 +28,12 @@ import java.util.stream.Collectors;
 
 /**
  * Realtime IaC scanner service for Eclipse.
- * 
+ *
  * Manages temporary folder creation, file hash generation, type extraction
- * (Terraform, CloudFormation, Kubernetes, Dockerfile, etc.), execution of 
+ * (Terraform, CloudFormation, Kubernetes, Dockerfile, etc.), execution of
  * Checkmarx IaC real-time scans, and updating ignored issue tracking data.
  */
-public class IacScannerService {
+public class IacScannerService extends BaseScannerService<IacRealtimeResults> {
 
     private static final String LOG_TAG = "[IAC-SERVICE]";
     private static final String IAC_DIR = "CxIaC";
@@ -49,22 +53,32 @@ public class IacScannerService {
             "tf", "tf.json", "yaml", "yml", "json", "dockerfile"
     );
 
-    private final IProject project;
     private String fileType;
 
     public IacScannerService(IProject project) {
-        this.project = project;
+        super(project, createConfig());
     }
 
-    public String getScannerName() {
-        return "IAC";
+    /**
+     * Create default IaC scanner configuration.
+     */
+    public static ScannerConfig createConfig() {
+        return ScannerConfig.builder()
+                .engineName(ScanEngine.IAC.name())
+                .configSection(DevAssistConstants.IAC_REALTIME_SCANNER)
+                .activateKey(DevAssistConstants.ACTIVATE_IAC_REALTIME_SCANNER)
+                .enabledMessage(DevAssistConstants.IAC_REALTIME_SCANNER_START)
+                .disabledMessage(DevAssistConstants.IAC_REALTIME_SCANNER_DISABLED)
+                .errorMessage(DevAssistConstants.ERROR_IAC_REALTIME_SCANNER)
+                .build();
     }
 
     /**
      * Checks if the provided file path corresponds to a supported IaC file.
      * Also detects and assigns the appropriate file type (e.g., dockerfile or extension).
      */
-    public boolean isFileTypeSupported(String filePath) {
+    @Override
+    protected boolean isFileTypeSupported(String filePath) {
         if (filePath == null || filePath.isBlank()) {
             return false;
         }
@@ -91,17 +105,7 @@ public class IacScannerService {
         return IAC_FILE_EXTENSIONS.contains(fileType);
     }
 
-    /**
-     * Determines whether a file should be scanned by evaluating general filters and pattern matching.
-     */
-    public boolean shouldScanFile(String filePath) {
-        if (filePath == null || filePath.isEmpty()) {
-            return false;
-        }
-        String normalized = filePath.replace("\\", "/");
-        return !normalized.contains("/node_modules/") && isFileTypeSupported(filePath);
-    }
-
+    @Override
     public void close() throws Exception {
         // No resources to release
     }
@@ -110,7 +114,7 @@ public class IacScannerService {
      * Primary scan method. Converts editor/document contents to a temporary isolated file
      * and executes the real-time IaC scan via CxWrapperFactory.
      */
-    public ScanResult<Object> scan(String filePath, IDocument document, IProject proj) {
+    public ScanResult<IacRealtimeResults> scan(String filePath, IDocument document, IProject proj) {
         if (!shouldScanFile(filePath)) {
             return null;
         }
@@ -169,14 +173,14 @@ public class IacScannerService {
     }
 
     /**
-     * Compatibility method matching ScannerService interface returning issue lists.
+     * Compatibility method matching ScannerService interface.
      */
-    public List<ScanIssue> scan(String filePath) throws Exception {
+    @Override
+    public ScanResult<IacRealtimeResults> scan(String filePath) {
         if (!shouldScanFile(filePath)) {
-            return List.of();
+            return null;
         }
-        ScanResult<Object> result = scan(filePath, new Document(), project);
-        return result != null ? result.getIssues() : List.of();
+        return scan(filePath, new Document(), project);
     }
 
     /**
@@ -245,13 +249,17 @@ public class IacScannerService {
         return Paths.get(tempOSPath, IAC_DIR).toAbsolutePath().normalize();
     }
 
-    private void createTempFolder(Path tempDir) throws IOException {
+    protected void createTempFolder(Path tempDir) {
         if (!Files.exists(tempDir)) {
-            Files.createDirectories(tempDir);
+            try {
+                Files.createDirectories(tempDir);
+            } catch (IOException e) {
+                CxLogger.warning(LOG_TAG + " Failed to create temp folder: " + e.getMessage());
+            }
         }
     }
 
-    private void deleteTempFolder(Path tempDir) {
+    protected void deleteTempFolder(Path tempDir) {
         if (tempDir == null || !Files.exists(tempDir)) {
             return;
         }

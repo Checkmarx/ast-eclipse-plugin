@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
  *
  * Adapted from JetBrains implementation for Eclipse platform.
  */
-public class IacScanResultAdaptor implements ScanResult<Object> {
+public class IacScanResultAdaptor implements ScanResult<IacRealtimeResults> {
 
 	private static final String LOG_TAG = "[IAC-ADAPTOR]";
 	private static final String MULTIPLE_ISSUES_SUFFIX = " IaC misconfigurations";

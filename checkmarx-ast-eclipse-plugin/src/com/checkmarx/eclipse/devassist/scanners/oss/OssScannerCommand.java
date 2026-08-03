@@ -4,6 +4,7 @@ import com.checkmarx.ast.ossrealtime.OssRealtimeResults;
 import com.checkmarx.eclipse.devassist.problems.ProblemHolderService;
 import com.checkmarx.eclipse.devassist.common.ScanResult;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
 import com.checkmarx.eclipse.utils.CxLogger;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
@@ -37,31 +38,14 @@ public class OssScannerCommand {
 
     private static final String LOG_TAG = "[OSS-COMMAND]";
 
-    // Manifest pattern list mirroring DevAssistConstants.MANIFEST_FILE_PATTERNS
-    private static final List<String> MANIFEST_FILE_PATTERNS = List.of(
-            "package.json", "package-lock.json", "npm-shrinkwrap.json",
-            "pom.xml",
-            "go.mod", "go.sum",
-            "requirements.txt", "Pipfile", "Pipfile.lock", "setup.py",
-            "Gemfile", "Gemfile.lock",
-            "Cargo.toml", "Cargo.lock",
-            "composer.json", "composer.lock",
-            "packages.config", "*.csproj",
-            "yarn.lock", ".npm"
-    );
-
     public final OssScannerService ossScannerService;
     private final IProject project;
 
-    public OssScannerCommand(IProject project, OssScannerService ossScannerService) {
-        this.ossScannerService = ossScannerService;
+    public OssScannerCommand(IProject project) {
+        this.ossScannerService = new OssScannerService(project);
         this.project = project;
         CxLogger.info(LOG_TAG + " Created for project: " + project.getName());
         initializeScanner();
-    }
-
-    public OssScannerCommand(IProject project) {
-        this(project, new OssScannerService(project));
     }
 
     /**
@@ -93,7 +77,7 @@ public class OssScannerCommand {
 
         List<IFile> matchedFiles = new ArrayList<>();
 
-        List<PathMatcher> pathMatchers = MANIFEST_FILE_PATTERNS.stream()
+        List<PathMatcher> pathMatchers = DevAssistConstants.MANIFEST_FILE_PATTERNS.stream()
                 .map(p -> FileSystems.getDefault().getPathMatcher("glob:" + p))
                 .collect(Collectors.toList());
 
@@ -138,7 +122,7 @@ public class OssScannerCommand {
             String uri = file.getLocation() != null ? file.getLocation().toOSString() : file.getFullPath().toString();
             try {
                 // Perform OSS scan using service
-                ScanResult<OssRealtimeResults> ossRealtimeResults = ossScannerService.scan(uri, new Document(), project);
+                ScanResult<OssRealtimeResults> ossRealtimeResults = ossScannerService.scanWithDocument(uri, new Document());
 
                 if (Objects.isNull(ossRealtimeResults)) {
                     CxLogger.warning(LOG_TAG + " Scan failed for manifest file: " + uri);
@@ -166,14 +150,14 @@ public class OssScannerCommand {
      * Execute scan on a file with document content.
      */
     public ScanResult<OssRealtimeResults> scan(String filePath, IDocument document) {
-        return ossScannerService.scan(filePath, document, project);
+        return ossScannerService.scanWithDocument(filePath, document);
     }
 
     /**
      * Execute scan on a file path directly.
      */
     public ScanResult<OssRealtimeResults> scan(String filePath) {
-        return ossScannerService.scan(filePath, new Document(), project);
+        return ossScannerService.scan(filePath);
     }
 
     /**

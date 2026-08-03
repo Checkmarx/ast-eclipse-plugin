@@ -9,8 +9,8 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.jface.text.IDocument;
 
-import com.checkmarx.eclipse.devassist.basescanner.ScanManager;
 import com.checkmarx.eclipse.devassist.basescanner.ScannerService;
+import com.checkmarx.eclipse.devassist.common.ScanManager;
 import com.checkmarx.eclipse.devassist.backend.ScannerRegistry;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.problems.ProblemBuilder;

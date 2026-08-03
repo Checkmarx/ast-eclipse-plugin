@@ -1,73 +1,43 @@
-﻿package com.checkmarx.eclipse.devassist.basescanner;
+package com.checkmarx.eclipse.devassist.basescanner;
 
-import java.util.List;
-
-import com.checkmarx.eclipse.devassist.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.common.ScanResult;
+import com.checkmarx.eclipse.devassist.common.ScannerConfig;
 
 /**
- * Interface for all scanner implementations.
+ * Generic interface for scanner services.
+ * Each scanner produces a specific result type T.
  *
- * Each scanner (OSS, Secrets, ASCA, Containers, IAC) implements this
- * to provide consistent scan execution and file type detection.
+ * @param <T> The result type produced by this scanner
  */
-public interface ScannerService extends AutoCloseable {
+public interface ScannerService<T> {
 
 	/**
-	 * Check if this scanner supports a file type.
+	 * Check if this scanner should scan the file.
 	 *
-	 * @param filePath File path to check
-	 * @return true if this scanner can scan this file
+	 * @param filePath File path
+	 * @return true if file should be scanned
 	 */
 	boolean shouldScanFile(String filePath);
 
 	/**
-	 * Execute a scan on a file.
+	 * Perform a scan on the file and return result.
 	 *
-	 * @param filePath Absolute file path to scan
-	 * @return List of issues found by this scanner
-	 * @throws Exception if scan fails
+	 * @param filePath File path
+	 * @return ScanResult of type T or null
 	 */
-	List<ScanIssue> scan(String filePath) throws Exception;
+	ScanResult<T> scan(String filePath);
 
 	/**
-	 * Get the display name of this scanner.
+	 * Get the scanner configuration.
 	 *
-	 * @return Human-readable name (e.g., "Open Source Supply Chain")
+	 * @return Scanner config
 	 */
-	String getDisplayName();
+	ScannerConfig getConfig();
 
 	/**
-	 * Get the scanner type.
+	 * Close scanner and release resources.
 	 *
-	 * @return Scanner type enum
+	 * @throws Exception if close fails
 	 */
-	ScannerType getScannerType();
-
-	/**
-	 * Cleanup resources when scanner is no longer needed.
-	 */
-	@Override
 	void close() throws Exception;
-
-	/**
-	 * Scanner type enumeration.
-	 */
-	enum ScannerType {
-		OSS("Open Source Supply Chain"),
-		SECRETS("Secrets Scanning"),
-		CONTAINERS("Container Scanning"),
-		IAC("Infrastructure as Code"),
-		ASCA("Application Security Code Analysis");
-
-		private final String displayName;
-
-		ScannerType(String displayName) {
-			this.displayName = displayName;
-		}
-
-		public String getDisplayName() {
-			return displayName;
-		}
-	}
 }
-

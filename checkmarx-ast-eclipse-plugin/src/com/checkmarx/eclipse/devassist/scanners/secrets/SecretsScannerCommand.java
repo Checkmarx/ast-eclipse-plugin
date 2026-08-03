@@ -1,5 +1,7 @@
 package com.checkmarx.eclipse.devassist.scanners.secrets;
 
+import com.checkmarx.ast.secretsrealtime.SecretsRealtimeResults;
+import com.checkmarx.eclipse.devassist.common.ScanResult;
 import com.checkmarx.eclipse.utils.CxLogger;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.jface.text.IDocument;
@@ -23,7 +25,7 @@ public class SecretsScannerCommand {
 		return scannerService.shouldScanFile(filePath);
 	}
 
-	public SecretsScanResultAdaptor scan(String filePath, IDocument document) {
+	public ScanResult<SecretsRealtimeResults> scan(String filePath, IDocument document) {
 		return scannerService.scan(filePath, document, project);
 	}
 

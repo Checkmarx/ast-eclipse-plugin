@@ -164,102 +164,137 @@ public class ScannerRegistry {
 	 * These are minimal adapters that delegate to the proper scanner packages.
 	 */
 
-	private static class OssScannerServiceImpl implements ScannerService {
+	private static class OssScannerServiceImpl implements ScannerService<Object> {
 		private final com.checkmarx.eclipse.devassist.scanners.oss.OssScannerCommand command;
+		private final com.checkmarx.eclipse.devassist.common.ScannerConfig config;
 		OssScannerServiceImpl(IProject project) {
 			this.command = new com.checkmarx.eclipse.devassist.scanners.oss.OssScannerCommand(project);
+			this.config = com.checkmarx.eclipse.devassist.common.ScannerConfig.builder()
+				.engineName("OSS")
+				.build();
 		}
 		@Override
-		public boolean shouldScanFile(String filePath) { return command.shouldScan(filePath); }
+		public boolean shouldScanFile(String filePath) { return filePath != null && !filePath.isEmpty(); }
 		@Override
-		public java.util.List<com.checkmarx.eclipse.devassist.model.ScanIssue> scan(String filePath) throws Exception {
-			var result = command.scan(filePath, new org.eclipse.jface.text.Document());
-			return result != null ? result.getIssues() : java.util.List.of();
+		public com.checkmarx.eclipse.devassist.common.ScanResult<Object> scan(String filePath) {
+			try {
+				var result = command.scan(filePath, new org.eclipse.jface.text.Document());
+				return (com.checkmarx.eclipse.devassist.common.ScanResult<Object>) (Object) result;
+			} catch (Exception e) {
+				CxLogger.error("[OSS-SERVICE] Scan error: " + e.getMessage(), e);
+				return null;
+			}
 		}
 		@Override
-		public String getDisplayName() { return "Open Source Supply Chain"; }
-		@Override
-		public ScannerType getScannerType() { return ScannerType.OSS; }
+		public com.checkmarx.eclipse.devassist.common.ScannerConfig getConfig() { return config; }
 		@Override
 		public void close() throws Exception { command.dispose(); }
 	}
 
-	private static class SecretsScannerServiceImpl implements ScannerService {
+	private static class SecretsScannerServiceImpl implements ScannerService<Object> {
 		private final com.checkmarx.eclipse.devassist.scanners.secrets.SecretsScannerCommand command;
+		private final com.checkmarx.eclipse.devassist.common.ScannerConfig config;
 		SecretsScannerServiceImpl(IProject project) {
 			this.command = new com.checkmarx.eclipse.devassist.scanners.secrets.SecretsScannerCommand(project);
+			this.config = com.checkmarx.eclipse.devassist.common.ScannerConfig.builder()
+				.engineName("SECRETS")
+				.build();
 		}
 		@Override
-		public boolean shouldScanFile(String filePath) { return command.shouldScan(filePath); }
+		public boolean shouldScanFile(String filePath) { return filePath != null && !filePath.isEmpty(); }
 		@Override
-		public java.util.List<com.checkmarx.eclipse.devassist.model.ScanIssue> scan(String filePath) throws Exception {
-			var result = command.scan(filePath, new org.eclipse.jface.text.Document());
-			return result != null ? result.getIssues() : java.util.List.of();
+		public com.checkmarx.eclipse.devassist.common.ScanResult<Object> scan(String filePath) {
+			try {
+				var result = command.scan(filePath, new org.eclipse.jface.text.Document());
+				return (com.checkmarx.eclipse.devassist.common.ScanResult<Object>) (Object) result;
+			} catch (Exception e) {
+				CxLogger.error("[SECRETS-SERVICE] Scan error: " + e.getMessage(), e);
+				return null;
+			}
 		}
 		@Override
-		public String getDisplayName() { return "Secrets Scanning"; }
-		@Override
-		public ScannerType getScannerType() { return ScannerType.SECRETS; }
+		public com.checkmarx.eclipse.devassist.common.ScannerConfig getConfig() { return config; }
 		@Override
 		public void close() throws Exception { command.dispose(); }
 	}
 
-	private static class IacScannerServiceImpl implements ScannerService {
+	private static class IacScannerServiceImpl implements ScannerService<Object> {
 		private final com.checkmarx.eclipse.devassist.scanners.iac.IacScannerCommand command;
+		private final com.checkmarx.eclipse.devassist.common.ScannerConfig config;
 		IacScannerServiceImpl(IProject project) {
 			this.command = new com.checkmarx.eclipse.devassist.scanners.iac.IacScannerCommand(project);
+			this.config = com.checkmarx.eclipse.devassist.common.ScannerConfig.builder()
+				.engineName("IAC")
+				.build();
 		}
 		@Override
-		public boolean shouldScanFile(String filePath) { return command.shouldScan(filePath); }
+		public boolean shouldScanFile(String filePath) { return filePath != null && !filePath.isEmpty(); }
 		@Override
-		public java.util.List<com.checkmarx.eclipse.devassist.model.ScanIssue> scan(String filePath) throws Exception {
-			var result = command.scan(filePath, new org.eclipse.jface.text.Document());
-			return result != null ? result.getIssues() : java.util.List.of();
+		public com.checkmarx.eclipse.devassist.common.ScanResult<Object> scan(String filePath) {
+			try {
+				var result = command.scan(filePath, new org.eclipse.jface.text.Document());
+				return (com.checkmarx.eclipse.devassist.common.ScanResult<Object>) (Object) result;
+			} catch (Exception e) {
+				CxLogger.error("[IAC-SERVICE] Scan error: " + e.getMessage(), e);
+				return null;
+			}
 		}
 		@Override
-		public String getDisplayName() { return "Infrastructure as Code"; }
-		@Override
-		public ScannerType getScannerType() { return ScannerType.IAC; }
+		public com.checkmarx.eclipse.devassist.common.ScannerConfig getConfig() { return config; }
 		@Override
 		public void close() throws Exception { command.dispose(); }
 	}
 
-	private static class AscaScannerServiceImpl implements ScannerService {
+	private static class AscaScannerServiceImpl implements ScannerService<Object> {
 		private final com.checkmarx.eclipse.devassist.scanners.asca.AscaScannerCommand command;
+		private final com.checkmarx.eclipse.devassist.common.ScannerConfig config;
 		AscaScannerServiceImpl(IProject project) {
 			this.command = new com.checkmarx.eclipse.devassist.scanners.asca.AscaScannerCommand(project);
+			this.config = com.checkmarx.eclipse.devassist.common.ScannerConfig.builder()
+				.engineName("ASCA")
+				.build();
 		}
 		@Override
-		public boolean shouldScanFile(String filePath) { return command.shouldScan(filePath); }
+		public boolean shouldScanFile(String filePath) { return filePath != null && !filePath.isEmpty(); }
 		@Override
-		public java.util.List<com.checkmarx.eclipse.devassist.model.ScanIssue> scan(String filePath) throws Exception {
-			var result = command.scan(filePath, new org.eclipse.jface.text.Document());
-			return result != null ? result.getIssues() : java.util.List.of();
+		public com.checkmarx.eclipse.devassist.common.ScanResult<Object> scan(String filePath) {
+			try {
+				var result = command.scan(filePath, new org.eclipse.jface.text.Document());
+				return (com.checkmarx.eclipse.devassist.common.ScanResult<Object>) (Object) result;
+			} catch (Exception e) {
+				CxLogger.error("[ASCA-SERVICE] Scan error: " + e.getMessage(), e);
+				return null;
+			}
 		}
 		@Override
-		public String getDisplayName() { return "Application Security Code Analysis"; }
-		@Override
-		public ScannerType getScannerType() { return ScannerType.ASCA; }
+		public com.checkmarx.eclipse.devassist.common.ScannerConfig getConfig() { return config; }
 		@Override
 		public void close() throws Exception { command.dispose(); }
 	}
 
-	private static class ContainerScannerServiceImpl implements ScannerService {
+	private static class ContainerScannerServiceImpl implements ScannerService<Object> {
 		private final com.checkmarx.eclipse.devassist.scanners.containers.ContainerScannerCommand command;
+		private final com.checkmarx.eclipse.devassist.common.ScannerConfig config;
 		ContainerScannerServiceImpl(IProject project) {
 			this.command = new com.checkmarx.eclipse.devassist.scanners.containers.ContainerScannerCommand(project);
+			this.config = com.checkmarx.eclipse.devassist.common.ScannerConfig.builder()
+				.engineName("CONTAINERS")
+				.build();
 		}
 		@Override
-		public boolean shouldScanFile(String filePath) { return command.shouldScan(filePath); }
+		public boolean shouldScanFile(String filePath) { return filePath != null && !filePath.isEmpty(); }
 		@Override
-		public java.util.List<com.checkmarx.eclipse.devassist.model.ScanIssue> scan(String filePath) throws Exception {
-			var result = command.scan(filePath, new org.eclipse.jface.text.Document());
-			return result != null ? result.getIssues() : java.util.List.of();
+		public com.checkmarx.eclipse.devassist.common.ScanResult<Object> scan(String filePath) {
+			try {
+				var result = command.scan(filePath, new org.eclipse.jface.text.Document());
+				return (com.checkmarx.eclipse.devassist.common.ScanResult<Object>) (Object) result;
+			} catch (Exception e) {
+				CxLogger.error("[CONTAINER-SERVICE] Scan error: " + e.getMessage(), e);
+				return null;
+			}
 		}
 		@Override
-		public String getDisplayName() { return "Container Scanning"; }
-		@Override
-		public ScannerType getScannerType() { return ScannerType.CONTAINERS; }
+		public com.checkmarx.eclipse.devassist.common.ScannerConfig getConfig() { return config; }
 		@Override
 		public void close() throws Exception { command.dispose(); }
 	}

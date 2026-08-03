@@ -27,6 +27,8 @@ Import-Package: org.eclipse.core.resources,
  org.osgi.service.event;version="1.4.1"
 Bundle-ActivationPolicy: lazy
 Bundle-Activator: com.checkmarx.eclipse.Activator
+Export-Package: com.checkmarx.ast.asca,
+ com.checkmarx.ast.wrapper
 Bundle-ClassPath: .,
  lib/slf4j-simple-2.0.17.jar,
  lib/slf4j-reload4j-2.0.17.jar,

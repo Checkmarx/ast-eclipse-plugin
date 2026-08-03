@@ -1,5 +1,6 @@
 package com.checkmarx.eclipse.devassist.scanners.iac;
 
+import com.checkmarx.ast.iacrealtime.IacRealtimeResults;
 import com.checkmarx.eclipse.devassist.common.ScanResult;
 import com.checkmarx.eclipse.utils.CxLogger;
 import org.eclipse.core.resources.IProject;
@@ -54,7 +55,7 @@ public class IacScannerCommand {
      * @param document editor document content
      * @return ScanResult containing issues found, or null
      */
-    public ScanResult<Object> scan(String filePath, IDocument document) {
+    public ScanResult<IacRealtimeResults> scan(String filePath, IDocument document) {
         return scannerService.scan(filePath, document, project);
     }
 

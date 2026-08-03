@@ -1,4 +1,4 @@
-﻿package com.checkmarx.eclipse.devassist.backend.listener;
+package com.checkmarx.eclipse.devassist.listeners;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,7 +23,11 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
 
-public class ProjectLifecycleListener implements IResourceChangeListener {
+/**
+ * ProjectListener is responsible for listening for project open/close events and
+ * managing scanner registration and deregistration for each project.
+ */
+public class DevAssistProjectListener implements IResourceChangeListener {
 
 	private static final String LOG_TAG = "[PROJECT-LISTENER]";
 	private static final String PLUGIN_ID = "com.checkmarx.eclipse.plugin";
@@ -43,21 +47,13 @@ public class ProjectLifecycleListener implements IResourceChangeListener {
 			this,
 			IResourceChangeEvent.PRE_CLOSE | IResourceChangeEvent.POST_CHANGE
 		);
-		CxLogger.info(LOG_TAG + " âœ“ Registered");
+		CxLogger.info(LOG_TAG + " ✓ Registered");
 
-		// FIX 1: Run immediate initialization for projects ALREADY open on IDE startup
 		initExistingProjects();
 	}
 
 	/**
-	 * Re-runs initialization (registry setup + initial OSS/IaC/container scan) for
-	 * any already-open projects that were skipped earlier because the user wasn't
-	 * authenticated yet - the exact same path {@link #register()} runs for
-	 * already-open projects at plugin launch. onProjectOpen() only proceeds when
-	 * isUserAuthenticated() is true and nothing else ever re-triggers it for a
-	 * project that was already open (only a real open/close event does), so a
-	 * login that happens after Eclipse already started needs to call this to get
-	 * the same initial scan that a fresh launch would have performed.
+	 * Re-runs initialization for any already-open projects.
 	 */
 	public void scanAlreadyOpenProjects() {
 		initExistingProjects();
@@ -91,7 +87,6 @@ public class ProjectLifecycleListener implements IResourceChangeListener {
 	@Override
 	public void resourceChanged(IResourceChangeEvent event) {
 		try {
-			// Handle project close (PRE_CLOSE)
 			if (event.getType() == IResourceChangeEvent.PRE_CLOSE) {
 				IResource resource = event.getResource();
 				if (resource instanceof IProject) {
@@ -100,13 +95,11 @@ public class ProjectLifecycleListener implements IResourceChangeListener {
 				return;
 			}
 
-			// FIX 2: Inspect IResourceDelta to catch when a closed project is opened manually
 			if (event.getType() == IResourceChangeEvent.POST_CHANGE && event.getDelta() != null) {
 				event.getDelta().accept(delta -> {
 					IResource resource = delta.getResource();
 					if (resource instanceof IProject) {
 						IProject project = (IProject) resource;
-						// Check if project OPEN state changed
 						if ((delta.getFlags() & IResourceDelta.OPEN) != 0) {
 							if (project.isOpen() && !isInitialized(project)) {
 								onProjectOpen(project);
@@ -115,7 +108,6 @@ public class ProjectLifecycleListener implements IResourceChangeListener {
 							}
 						}
 					}
-					// Only visit top-level delta children (projects are at root level)
 					return true;
 				});
 			}
@@ -128,10 +120,10 @@ public class ProjectLifecycleListener implements IResourceChangeListener {
 		String projName = project.getName();
 		if (projName.length() > 26) projName = projName.substring(0, 26);
 		try {
-			if (!isUserAuthenticated()) {		
+			if (!isUserAuthenticated()) {
 				return;
 			}
-			
+
 			ScannerRegistry registry = new ScannerRegistry(project);
 			registry.registerAllScanners();
 			project.setSessionProperty(REGISTRY_KEY, registry);
@@ -141,7 +133,7 @@ public class ProjectLifecycleListener implements IResourceChangeListener {
 			DevAssistScanStateHolder stateHolder = new DevAssistScanStateHolder();
 			project.setSessionProperty(STATE_HOLDER_KEY, stateHolder);
 			initializedProjects.add(project.getName());
-			
+
 			startWorkspaceFileScanning(project);
 
 		} catch (Exception e) {
@@ -157,14 +149,14 @@ public class ProjectLifecycleListener implements IResourceChangeListener {
 	}
 
 	private void onProjectClose(IProject project) {
-		CxLogger.info(LOG_TAG + " âœ“ Project closing: " + project.getName());
+		CxLogger.info(LOG_TAG + " ✓ Project closing: " + project.getName());
 
 		try {
 			try {
 				ScannerRegistry registry = (ScannerRegistry) project.getSessionProperty(REGISTRY_KEY);
 				if (registry != null) {
 					registry.deregisterAllScanners();
-					CxLogger.info(LOG_TAG + " âœ“ ScannerRegistry disposed");
+					CxLogger.info(LOG_TAG + " ✓ ScannerRegistry disposed");
 				}
 			} catch (Exception e) {
 				CxLogger.warning(LOG_TAG + " Error disposing ScannerRegistry: " + e.getMessage());
@@ -174,7 +166,7 @@ public class ProjectLifecycleListener implements IResourceChangeListener {
 				ProblemHolderService problemHolder = (ProblemHolderService) project.getSessionProperty(PROBLEM_HOLDER_KEY);
 				if (problemHolder != null) {
 					problemHolder.clearAll();
-					CxLogger.info(LOG_TAG + " âœ“ Result cache cleared");
+					CxLogger.info(LOG_TAG + " ✓ Result cache cleared");
 				}
 			} catch (Exception e) {
 				CxLogger.warning(LOG_TAG + " Error clearing cache: " + e.getMessage());
@@ -184,14 +176,14 @@ public class ProjectLifecycleListener implements IResourceChangeListener {
 				DevAssistScanStateHolder stateHolder = (DevAssistScanStateHolder) project.getSessionProperty(STATE_HOLDER_KEY);
 				if (stateHolder != null) {
 					stateHolder.clearAll();
-					CxLogger.info(LOG_TAG + " âœ“ State holder cleared");
+					CxLogger.info(LOG_TAG + " ✓ State holder cleared");
 				}
 			} catch (Exception e) {
 				CxLogger.warning(LOG_TAG + " Error clearing state: " + e.getMessage());
 			}
 
 			initializedProjects.remove(project.getName());
-			CxLogger.info(LOG_TAG + " âœ“ Project cleanup completed: " + project.getName());
+			CxLogger.info(LOG_TAG + " ✓ Project cleanup completed: " + project.getName());
 
 		} catch (Exception e) {
 			CxLogger.error(LOG_TAG + " Error cleaning up project " + project.getName() + ": " + e.getMessage(), e);
@@ -207,35 +199,34 @@ public class ProjectLifecycleListener implements IResourceChangeListener {
 	}
 
 	private void startWorkspaceFileScanning(IProject project) {
-	    Job scanJob = new Job("Checkmarx Workspace Scanner (" + project.getName() + ")") {
-	        @Override
-	        protected IStatus run(IProgressMonitor monitor) {
-	            try {
-	                monitor.beginTask("Scanning manifest, IaC, and container files...", 3);
+		Job scanJob = new Job("Checkmarx Workspace Scanner (" + project.getName() + ")") {
+			@Override
+			protected IStatus run(IProgressMonitor monitor) {
+				try {
+					monitor.beginTask("Scanning manifest, IaC, and container files...", 3);
 
-	                scanManifestFiles(project);
-	                monitor.worked(1);
+					scanManifestFiles(project);
+					monitor.worked(1);
 
-	                scanIacFiles(project);
-	                monitor.worked(1);
+					scanIacFiles(project);
+					monitor.worked(1);
 
-	                scanContainerFiles(project);
-	                monitor.worked(1);
+					scanContainerFiles(project);
+					monitor.worked(1);
 
-	                return Status.OK_STATUS;
+					return Status.OK_STATUS;
 
-	            } catch (Exception e) {
-	                e.printStackTrace();
-	                return new Status(IStatus.ERROR, PLUGIN_ID, "Error scanning workspace files", e);
-	            } finally {
-	                monitor.done();
-	            }
-	        }
-	    };
+				} catch (Exception e) {
+					e.printStackTrace();
+					return new Status(IStatus.ERROR, PLUGIN_ID, "Error scanning workspace files", e);
+				} finally {
+					monitor.done();
+				}
+			}
+		};
 
-	    // Run as a background job so it doesn't block the IDE
-	    scanJob.setPriority(Job.BUILD);
-	    scanJob.schedule();
+		scanJob.setPriority(Job.BUILD);
+		scanJob.schedule();
 	}
 
 	private void scanManifestFiles(IProject project) {
@@ -262,7 +253,7 @@ public class ProjectLifecycleListener implements IResourceChangeListener {
 
 	private void findAndScanFiles(IProject project, String[] patterns, String fileType) {
 		try {
-			System.out.println(LOG_TAG + " â–º Scanning for " + fileType + "...");
+			System.out.println(LOG_TAG + " ▶ Scanning for " + fileType + "...");
 
 			ScannerRegistry registry = (ScannerRegistry) project.getSessionProperty(
 				new QualifiedName(PLUGIN_ID, "scanner-registry"));
@@ -310,4 +301,3 @@ public class ProjectLifecycleListener implements IResourceChangeListener {
 		}
 	}
 }
-

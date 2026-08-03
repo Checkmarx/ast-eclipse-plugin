@@ -1,9 +1,10 @@
 package com.checkmarx.eclipse.devassist.basescanner;
 
 import com.checkmarx.eclipse.devassist.common.ScanResult;
+import com.checkmarx.eclipse.devassist.common.ScannerConfig;
 import com.checkmarx.eclipse.utils.CxLogger;
 import org.eclipse.core.resources.IProject;
-import org.eclipse.jface.text.IDocument;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -12,36 +13,35 @@ import java.util.Comparator;
 import java.util.stream.Stream;
 
 /**
- * Base implementation of ScannerService providing common functionality.
+ * Base implementation of {@link ScannerService} that wires respective ScannerConfig called
+ * from different scannerServices.
+ * Provides helpers for deciding when to scan files and scanners managing temporary folders.
  *
- * Provides:
- * - File filtering (node_modules exclusion, etc.)
- * - Temporary folder management
- * - Template methods for subclasses
+ * @param <T> is type of ScanResult produced by concrete scanner Scan method implementations
  */
-public abstract class BaseScannerService implements ScannerService {
+public abstract class BaseScannerService<T> implements ScannerService<T> {
 
 	protected final IProject project;
-	protected final String logTag;
+	public ScannerConfig config;
+	private static final String LOG_TAG = "[SCANNER-SERVICE]";
 
 	/**
-	 * Create a scanner for a project.
+	 * Creates a new scanner service with the supplied configuration.
 	 *
 	 * @param project Eclipse project
+	 * @param config configuration values to be used by the scanner
 	 */
-	public BaseScannerService(IProject project) {
+	public BaseScannerService(IProject project, ScannerConfig config) {
 		this.project = project;
-		this.logTag = "[" + getScannerName() + "-SCANNER]";
+		this.config = config;
 	}
 
 	/**
-	 * Check if file should be scanned.
+	 * Determines whether the file at the given path should be scanned.
+	 * Files inside /node_modules/ are skipped by default.
 	 *
-	 * Applies common exclusions then delegates to subclass for type checking.
-	 *
-	 * @param filePath File path
-	 * @param project Eclipse project
-	 * @return true if file should be scanned
+	 * @param filePath absolute or project-relative file path
+	 * @return true if the file should be scanned; false otherwise
 	 */
 	@Override
 	public boolean shouldScanFile(String filePath) {
@@ -50,21 +50,11 @@ public abstract class BaseScannerService implements ScannerService {
 		}
 
 		// Common exclusions
-		if (isCommonlyExcluded(filePath)) {
+		if (filePath.contains("/node_modules/") || filePath.contains("\\node_modules\\")) {
 			return false;
 		}
 
 		return isFileTypeSupported(filePath);
-	}
-
-	/**
-	 * Apply common exclusions.
-	 *
-	 * @param filePath File path
-	 * @return true if file should be excluded
-	 */
-	private boolean isCommonlyExcluded(String filePath) {
-		return filePath.contains("/node_modules/") || filePath.contains("\\node_modules\\");
 	}
 
 	/**
@@ -76,26 +66,29 @@ public abstract class BaseScannerService implements ScannerService {
 	protected abstract boolean isFileTypeSupported(String filePath);
 
 	/**
-	 * Get the scanner name for logging (e.g., "OSS", "SECRETS").
+	 * Perform scan - subclasses must implement this.
 	 *
-	 * @return Scanner name
+	 * @param filePath File to scan
+	 * @return ScanResult of type T or null
 	 */
-	protected abstract String getScannerName();
+	@Override
+	public abstract ScanResult<T> scan(String filePath);
 
 	/**
-	 * Get the log tag for this scanner.
+	 * Get the configuration.
 	 *
-	 * @return Log tag
+	 * @return Scanner config
 	 */
-	protected String getLogTag() {
-		return logTag;
+	@Override
+	public ScannerConfig getConfig() {
+		return config;
 	}
 
 	/**
-	 * Build path to temp sub-folder in system temp directory.
+	 * Builds the path to a temporary sub-folder within the system temp directory.
 	 *
-	 * @param baseDir Sub-folder name
-	 * @return Absolute path to temp directory
+	 * @param baseDir name of the sub-folder to create under java.io.tmpdir
+	 * @return absolute path string for the temporary sub-folder
 	 */
 	protected String getTempSubFolderPath(String baseDir) {
 		String tempOS = System.getProperty("java.io.tmpdir");
@@ -104,22 +97,22 @@ public abstract class BaseScannerService implements ScannerService {
 	}
 
 	/**
-	 * Create temp folder if it doesn't exist.
+	 * Ensures that the specified temporary folder exists, creating any missing directories.
 	 *
-	 * @param folderPath Folder path
+	 * @param folderPath target temporary folder path
 	 */
 	protected void createTempFolder(Path folderPath) {
 		try {
 			Files.createDirectories(folderPath);
 		} catch (IOException e) {
-			CxLogger.warning("Failed to create temp folder: " + folderPath);
+			CxLogger.warning("Failed to create temporary folder:" + folderPath);
 		}
 	}
 
 	/**
-	 * Recursively delete temp folder and contents.
+	 * Recursively deletes the provided temporary folder and files in it, if it has been created.
 	 *
-	 * @param tempFolder Folder to delete
+	 * @param tempFolder root path of the temporary folder to remove
 	 */
 	protected void deleteTempFolder(Path tempFolder) {
 		if (Files.notExists(tempFolder)) {
@@ -127,15 +120,15 @@ public abstract class BaseScannerService implements ScannerService {
 		}
 		try (Stream<Path> walk = Files.walk(tempFolder)) {
 			walk.sorted(Comparator.reverseOrder())
-				.forEach(path -> {
-					try {
-						Files.deleteIfExists(path);
-					} catch (Exception e) {
-						CxLogger.warning("Failed to delete temp file: " + path);
-					}
-				});
+					.forEach(path -> {
+						try {
+							Files.deleteIfExists(path);
+						} catch (Exception e) {
+							CxLogger.warning("Failed to delete file in temp folder:" + path);
+						}
+					});
 		} catch (IOException e) {
-			CxLogger.warning("Failed to delete temp folder: " + tempFolder);
+			CxLogger.warning("Failed to delete temporary folder:" + tempFolder);
 		}
 	}
 
@@ -144,7 +137,8 @@ public abstract class BaseScannerService implements ScannerService {
 	 *
 	 * @throws Exception if close fails
 	 */
+	@Override
 	public void close() throws Exception {
-		CxLogger.info(logTag + " Closed for project: " + project.getName());
+		CxLogger.info(LOG_TAG + " Closed for project: " + project.getName());
 	}
 }

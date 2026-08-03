@@ -1,9 +1,12 @@
 package com.checkmarx.eclipse.devassist.scanners.asca;
 
+import com.checkmarx.ast.asca.ScanResult;
 import com.checkmarx.ast.wrapper.CxException;
-import com.checkmarx.eclipse.devassist.common.ScanResult;
+import com.checkmarx.eclipse.devassist.basescanner.BaseScannerService;
+import com.checkmarx.eclipse.devassist.common.ScannerConfig;
 import com.checkmarx.eclipse.devassist.factory.CxWrapperFactory;
-import com.checkmarx.eclipse.devassist.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
+import com.checkmarx.eclipse.devassist.utils.ScanEngine;
 import com.checkmarx.eclipse.utils.CxLogger;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
@@ -14,7 +17,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
 
 /**
  * ASCA (Application Source Code Analysis) scanner service.
@@ -25,40 +27,38 @@ import java.util.List;
  *
  * Adapted from JetBrains implementation for Eclipse platform.
  */
-public class AscaScannerService {
+public class AscaScannerService extends BaseScannerService<ScanResult> {
 
-	private final IProject project;
 	private static final String LOG_TAG = "[ASCA-SERVICE]";
 	private static final String ASCA_DIR = "CxASCA";
 	private static final Object SCAN_LOCK = new Object();
 
-	// Supported extensions for ASCA scanning (based on VSCode/JetBrains
-	// implementation)
-	private static final String[] SUPPORTED_EXTENSIONS = { "java", "py", "js", "jsx", "ts", "tsx", "go", "rb", "cs",
-			"cpp" };
-
 	public AscaScannerService(IProject project) {
-		this.project = project;
-	}
-
-	private String getScannerName() {
-		return "ASCA";
-	}
-
-	private String getLogTag() {
-		return LOG_TAG;
+		super(project, createConfig());
 	}
 
 	/**
-	 * Check if file has a supported extension for ASCA scanning.
+	 * Create default ASCA scanner configuration.
 	 */
-	private boolean isFileTypeSupported(String filePath) {
+	public static ScannerConfig createConfig() {
+		return ScannerConfig.builder()
+				.engineName(ScanEngine.ASCA.name())
+				.configSection(DevAssistConstants.ASCA_REALTIME_SCANNER)
+				.activateKey(DevAssistConstants.ACTIVATE_ASCA_REALTIME_SCANNER)
+				.enabledMessage(DevAssistConstants.ASCA_REALTIME_SCANNER_START)
+				.disabledMessage(DevAssistConstants.ASCA_REALTIME_SCANNER_DISABLED)
+				.errorMessage(DevAssistConstants.ERROR_ASCA_REALTIME_SCANNER)
+				.build();
+	}
+
+	@Override
+	protected boolean isFileTypeSupported(String filePath) {
 		if (filePath == null) {
 			return false;
 		}
 
 		String lowerPath = filePath.toLowerCase();
-		for (String ext : SUPPORTED_EXTENSIONS) {
+		for (String ext : DevAssistConstants.ASCA_SUPPORTED_EXTENSIONS) {
 			if (lowerPath.endsWith("." + ext)) {
 				return true;
 			}
@@ -66,22 +66,25 @@ public class AscaScannerService {
 		return false;
 	}
 
-	public boolean shouldScanFile(String filePath) {
-		if (filePath == null || filePath.isEmpty()) {
-			return false;
-		}
-		String normalized = filePath.replace("\\", "/");
-		return !normalized.contains("/node_modules/") && isFileTypeSupported(filePath);
-	}
-
-	public void close() throws Exception {
-		// No resources to close
+	@Override
+	public com.checkmarx.eclipse.devassist.common.ScanResult<ScanResult> scan(String filePath) {
+		com.checkmarx.eclipse.devassist.common.ScanResult<Object> result = scanWithDocument(filePath, new Document());
+		return (com.checkmarx.eclipse.devassist.common.ScanResult<ScanResult>) (com.checkmarx.eclipse.devassist.common.ScanResult<?>) result;
 	}
 
 	/**
 	 * Primary scan method - gets file content and executes scan.
 	 */
-	public ScanResult<Object> scan(String filePath, IDocument document, IProject proj) {
+	public com.checkmarx.eclipse.devassist.common.ScanResult<Object> scanWithDocument(String filePath, IDocument document) {
+		return scanInternal(filePath, document, project);
+	}
+
+	@Override
+	public void close() throws Exception {
+		// No resources to close
+	}
+
+	private com.checkmarx.eclipse.devassist.common.ScanResult<Object> scanInternal(String filePath, IDocument document, IProject proj) {
 		if (!shouldScanFile(filePath)) {
 			return null;
 		}
@@ -89,7 +92,7 @@ public class AscaScannerService {
 			// Get file content from document or file system
 			String fileContent = getFileContent(filePath, document);
 			if (fileContent == null) {
-				CxLogger.warning(getLogTag() + " Could not read file content: " + filePath);
+				CxLogger.warning(LOG_TAG + " Could not read file content: " + filePath);
 				return null;
 			}
 			// Run ASCA scan with proper temp file management
@@ -99,7 +102,7 @@ public class AscaScannerService {
 			}
 			return new AscaScanResultAdaptor((com.checkmarx.ast.asca.ScanResult) rawResults, filePath);
 		} catch (Exception e) {
-			CxLogger.error(getLogTag() + " Scan failed: " + e.getMessage(), e);
+			CxLogger.error(LOG_TAG + " Scan failed: " + e.getMessage(), e);
 			return null;
 		}
 	}
@@ -147,14 +150,14 @@ public class AscaScannerService {
 				return java.nio.file.Files.readString(nioPath, java.nio.charset.StandardCharsets.UTF_8);
 			}
 		} catch (java.io.IOException e) {
-			CxLogger.warning(getLogTag() + " Failed to read file content from disk: " + e.getMessage());
+			CxLogger.warning(LOG_TAG + " Failed to read file content from disk: " + e.getMessage());
 		} catch (Exception e) {
 			if (e instanceof InterruptedException || e.getCause() instanceof InterruptedException) {
 				// Restore interrupted flag without failing the application
 				Thread.currentThread().interrupt();
-				CxLogger.warning(getLogTag() + " File reading interrupted for: " + filePath);
+				CxLogger.warning(LOG_TAG + " File reading interrupted for: " + filePath);
 			} else {
-				CxLogger.warning(getLogTag() + " Unexpected error reading file: " + e.getMessage());
+				CxLogger.warning(LOG_TAG + " Unexpected error reading file: " + e.getMessage());
 			}
 		}
 		return null;
@@ -168,15 +171,15 @@ public class AscaScannerService {
 		synchronized (SCAN_LOCK) {
 			String tempFilePath = saveTempFile(Paths.get(filePath).getFileName().toString(), fileContent);
 			if (tempFilePath == null) {
-				CxLogger.warning(getLogTag() + " Failed to create temporary file");
+				CxLogger.warning(LOG_TAG + " Failed to create temporary file");
 				return null;
 			}
 
 			try {
-				CxLogger.info(getLogTag() + " Starting ASCA scan: " + filePath);
+				CxLogger.info(LOG_TAG + " Starting ASCA scan: " + filePath);
 				String ignoreFilePath = getIgnoreFilePath();
 				Object scanResult = executeAscaScanner(tempFilePath, ignoreFilePath);
-				CxLogger.info(getLogTag() + " ASCA scan completed");
+				CxLogger.info(LOG_TAG + " ASCA scan completed");
 				return scanResult;
 			} finally {
 				deleteFile(tempFilePath);
@@ -191,7 +194,7 @@ public class AscaScannerService {
 		try {
 			return scanAscaFile(filePath, true, "Eclipse", ignoreFilePath);
 		} catch (Exception e) {
-			CxLogger.error(getLogTag() + " ASCA scan error: " + e.getMessage(), e);
+			CxLogger.error(LOG_TAG + " ASCA scan error: " + e.getMessage(), e);
 			return null;
 		}
 	}
@@ -261,14 +264,6 @@ public class AscaScannerService {
 		}
 	}
 
-	/**
-	 * Create temp folder if it doesn't exist.
-	 */
-	private void createTempFolder(Path tempDir) throws IOException {
-		if (!Files.exists(tempDir)) {
-			Files.createDirectories(tempDir);
-		}
-	}
 
 	/**
 	 * Sanitize file name to prevent directory traversal attacks.
@@ -317,32 +312,22 @@ public class AscaScannerService {
 
 			// Security check: only delete files in temp directory
 			if (!path.startsWith(tempDir)) {
-				CxLogger.warning(getLogTag() + " Security violation: file outside temp: " + filePath);
+				CxLogger.warning(LOG_TAG + " Security violation: file outside temp: " + filePath);
 				return;
 			}
 
 			Files.deleteIfExists(path);
-			CxLogger.info(getLogTag() + " Temporary file deleted: " + path);
+			CxLogger.info(LOG_TAG + " Temporary file deleted: " + path);
 
 		} catch (SecurityException e) {
-			CxLogger.error(getLogTag() + " Security error deleting file: " + e.getMessage(), e);
+			CxLogger.error(LOG_TAG + " Security error deleting file: " + e.getMessage(), e);
 		} catch (IOException e) {
-			CxLogger.warning(getLogTag() + " Failed to delete temp file: " + filePath);
+			CxLogger.warning(LOG_TAG + " Failed to delete temp file: " + filePath);
 		} catch (Exception e) {
-			CxLogger.warning(getLogTag() + " Unexpected error deleting temp file: " + e.getMessage());
+			CxLogger.warning(LOG_TAG + " Unexpected error deleting temp file: " + e.getMessage());
 		}
 	}
 
-	/**
-	 * Compatibility method matching basescanner.ScannerService interface.
-	 */
-	public List<ScanIssue> scan(String filePath) throws Exception {
-		if (!shouldScanFile(filePath)) {
-			return List.of();
-		}
-		var result = scan(filePath, new Document(), project);
-		return result != null ? result.getIssues() : List.of();
-	}
 
 	private com.checkmarx.ast.asca.ScanResult scanAscaFile(String path, boolean ascaLatestVersion, String agent,
 			String ignoreFilePath) throws IOException, CxException, InterruptedException {

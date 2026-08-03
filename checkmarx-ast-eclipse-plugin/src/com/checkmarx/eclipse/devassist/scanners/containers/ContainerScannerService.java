@@ -1,10 +1,14 @@
 package com.checkmarx.eclipse.devassist.scanners.containers;
 
 import com.checkmarx.ast.containersrealtime.ContainersRealtimeResults;
+import com.checkmarx.eclipse.devassist.basescanner.BaseScannerService;
 import com.checkmarx.eclipse.devassist.backend.DevAssistUtils;
+import com.checkmarx.eclipse.devassist.common.ScannerConfig;
 import com.checkmarx.eclipse.devassist.factory.CxWrapperFactory;
 import com.checkmarx.eclipse.devassist.common.ScanResult;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.model.ScanEngine;
+import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
 import com.checkmarx.eclipse.utils.CxLogger;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.jface.text.IDocument;
@@ -25,7 +29,7 @@ import java.util.stream.Collectors;
  * Handles file detection (Docker, Docker Compose, Helm), secure temporary folder management,
  * and direct invocation of Checkmarx Container Realtime scanning via CxWrapperFactory.
  */
-public class ContainerScannerService {
+public class ContainerScannerService extends BaseScannerService<ContainersRealtimeResults> {
 
     private static final String LOG_TAG = "[CONTAINER-SERVICE]";
     private static final String CONTAINER_DIR = "CxContainer";
@@ -46,30 +50,28 @@ public class ContainerScannerService {
             "values.yml"
     );
 
-    private final IProject project;
     private String fileType;
 
     public ContainerScannerService(IProject project) {
-        this.project = project;
+        super(project, createConfig());
     }
 
     /**
-     * Determines whether a file path or file context should be scanned by evaluating
-     * container path patterns and Helm configurations.
-     *
-     * @param filePath path to evaluate
-     * @return {@code true} if eligible for scanning; {@code false} otherwise
+     * Create default Container scanner configuration.
      */
-    public boolean shouldScanFile(String filePath) {
-        if (filePath == null || filePath.isBlank()) {
-            return false;
-        }
+    public static ScannerConfig createConfig() {
+        return ScannerConfig.builder()
+                .engineName(ScanEngine.CONTAINERS.name())
+                .configSection(DevAssistConstants.CONTAINER_REALTIME_SCANNER)
+                .activateKey(DevAssistConstants.ACTIVATE_CONTAINER_REALTIME_SCANNER)
+                .enabledMessage(DevAssistConstants.CONTAINER_REALTIME_SCANNER_START)
+                .disabledMessage(DevAssistConstants.CONTAINER_REALTIME_SCANNER_DISABLED)
+                .errorMessage(DevAssistConstants.ERROR_CONTAINER_REALTIME_SCANNER)
+                .build();
+    }
 
-        String normalized = filePath.replace("\\", "/");
-        if (normalized.contains("/node_modules/")) {
-            return false;
-        }
-
+    @Override
+    protected boolean isFileTypeSupported(String filePath) {
         return isContainersFilePatternMatching(filePath) || isHelmFile(filePath);
     }
 
@@ -250,13 +252,17 @@ public class ContainerScannerService {
         return baseTempDir.resolve(CONTAINER_DIR).normalize();
     }
 
-    private void createTempFolder(Path tempDir) throws IOException {
+    protected void createTempFolder(Path tempDir) {
         if (!Files.exists(tempDir)) {
-            Files.createDirectories(tempDir);
+            try {
+                Files.createDirectories(tempDir);
+            } catch (IOException e) {
+                CxLogger.warning(LOG_TAG + " Failed to create temp folder: " + e.getMessage());
+            }
         }
     }
 
-    private void deleteTempFolder(Path path) {
+    protected void deleteTempFolder(Path path) {
         if (path == null || !Files.exists(path)) {
             return;
         }
@@ -272,16 +278,17 @@ public class ContainerScannerService {
     }
 
     /**
-     * Compatibility method matching base scanner interfaces.
+     * Compatibility method matching ScannerService interface.
      */
-    public List<ScanIssue> scan(String filePath) throws Exception {
+    @Override
+    public ScanResult<ContainersRealtimeResults> scan(String filePath) {
         if (!shouldScanFile(filePath)) {
-            return List.of();
+            return null;
         }
-        ScanResult<ContainersRealtimeResults> result = scan(filePath, null, this.project);
-        return result != null ? result.getIssues() : List.of();
+        return scan(filePath, null, project);
     }
 
+    @Override
     public void close() throws Exception {
         // No persistent connections to close
     }
