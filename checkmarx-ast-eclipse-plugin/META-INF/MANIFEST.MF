@@ -5,9 +5,14 @@ Bundle-SymbolicName: com.checkmarx.eclipse.plugin;singleton:=true
 Bundle-Version: 1.0.0.qualifier
 Bundle-Vendor: Checkmarx
 Require-Bundle: org.eclipse.ui,
+ org.eclipse.ui.workbench.texteditor,
+ org.eclipse.ui.editors,
  org.eclipse.core.runtime,
  org.eclipse.jdt.core,
  org.eclipse.ui.ide,
+ org.eclipse.jface.text,
+ org.eclipse.text,
+ org.eclipse.jdt.ui,
  org.eclipse.jgit,
  org.eclipse.e4.core.services,
  com.google.guava,
