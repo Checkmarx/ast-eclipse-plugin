@@ -52,7 +52,7 @@ public class PluginUtils {
 			DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(PARAM_TIMESTAMP_PATTERN).withZone(ZoneId.systemDefault());
 			parsedDate = dateTimeFormatter.format(instant);
 		} catch (Exception e) {
-			System.out.println(e);
+			
 			return timestamp;
 		}
 

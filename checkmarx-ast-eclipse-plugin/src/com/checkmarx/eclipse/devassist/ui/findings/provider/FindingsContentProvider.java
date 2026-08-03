@@ -1,4 +1,4 @@
-﻿package com.checkmarx.eclipse.devassist.ui.findings.provider;
+package com.checkmarx.eclipse.devassist.ui.findings.provider;
 
 import org.eclipse.jface.viewers.ITreeContentProvider;
 import org.eclipse.jface.viewers.Viewer;
@@ -31,9 +31,9 @@ public class FindingsContentProvider implements ITreeContentProvider {
             @SuppressWarnings("unchecked")
             Map<String, List<ScanIssue>> map = (Map<String, List<ScanIssue>>) inputElement;
 
-            System.out.println("[FINDINGS-CONTENT] ========================================");
-            System.out.println("[FINDINGS-CONTENT] Creating FileNodeLabel elements...");
-            System.out.println("[FINDINGS-CONTENT] Input files: " + map.size());
+            
+            
+            
 
             Object[] elements = map.entrySet().stream()
                     .map(entry -> {
@@ -41,9 +41,9 @@ public class FindingsContentProvider implements ITreeContentProvider {
                         Image fileIcon = getFileIcon(fileName);
                         List<ScanIssue> issues = entry.getValue();
 
-                        System.out.println("[FINDINGS-CONTENT] File: " + fileName);
-                        System.out.println("[FINDINGS-CONTENT]   Path: " + entry.getKey());
-                        System.out.println("[FINDINGS-CONTENT]   Issues: " + issues.size());
+                        
+                        
+                        
 
                         // Calculate and log severity counts
                         java.util.Map<String, Long> counts = new java.util.HashMap<>();
@@ -51,9 +51,6 @@ public class FindingsContentProvider implements ITreeContentProvider {
                             String severity = issue.getSeverity();
                             counts.put(severity, counts.getOrDefault(severity, 0L) + 1);
                         }
-                        counts.forEach((sev, cnt) ->
-                            System.out.println("[FINDINGS-CONTENT]     " + sev + ": " + cnt)
-                        );
 
                         return new FileNodeLabel(
                                 fileName,
@@ -63,13 +60,11 @@ public class FindingsContentProvider implements ITreeContentProvider {
                     })
                     .toArray();
 
-            System.out.println("[FINDINGS-CONTENT] âœ“ Created " + elements.length + " FileNodeLabel elements");
-            System.out.println("[FINDINGS-CONTENT] ========================================");
+            
+            
             return elements;
         }
 
-        System.out.println("[FINDINGS-CONTENT] âœ— Input is not a Map, type: " +
-            (inputElement != null ? inputElement.getClass().getSimpleName() : "null"));
         return new Object[0];
     }
 
@@ -89,7 +84,7 @@ public class FindingsContentProvider implements ITreeContentProvider {
                 }
             }
         } catch (Exception e) {
-            System.out.println("[FINDINGS-CONTENT] Error getting file icon for: " + fileName + " - " + e.getMessage());
+            
         }
 
         return null;

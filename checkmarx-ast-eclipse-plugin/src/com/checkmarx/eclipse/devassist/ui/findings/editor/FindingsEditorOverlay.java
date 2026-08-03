@@ -1,4 +1,4 @@
-﻿package com.checkmarx.eclipse.devassist.ui.findings.editor;
+package com.checkmarx.eclipse.devassist.ui.findings.editor;
 
 import org.eclipse.jface.text.BadLocationException;
 import org.eclipse.jface.text.IDocument;
@@ -44,13 +44,13 @@ public class FindingsEditorOverlay {
 
             ISourceViewer viewer = (ISourceViewer) editor.getAdapter(ISourceViewer.class);
             if (viewer == null) {
-                System.out.println("[FINDINGS-OVERLAY] Could not get source viewer from editor");
+                
                 return;
             }
 
             IDocument document = viewer.getDocument();
             if (document == null || lineNumber < 0 || lineNumber >= document.getNumberOfLines()) {
-                System.out.println("[FINDINGS-OVERLAY] Invalid document or line number: " + lineNumber);
+                
                 return;
             }
 
@@ -68,14 +68,14 @@ public class FindingsEditorOverlay {
             IAnnotationModel annotationModel = viewer.getAnnotationModel();
             if (annotationModel != null) {
                 annotationModel.addAnnotation(annotation, position);
-                System.out.println("Annotation added");
-                System.out.println("Annotation model = " + annotationModel.getClass().getName());
-                System.out.println("Annotation type = " + annotation.getType());
-                System.out.println("Offset = " + position.offset);
-                System.out.println("Length = " + position.length);
+                
+                
+                
+                
+                
             }
         } catch (BadLocationException e) {
-            System.out.println("[FINDINGS-OVERLAY] Error highlighting line: " + e.getMessage());
+            
         }
     }
 
@@ -105,9 +105,9 @@ public class FindingsEditorOverlay {
                 }
             });
 
-            System.out.println("[FINDINGS-OVERLAY] âœ“ Cleared all findings highlights");
+            
         } catch (Exception e) {
-            System.out.println("[FINDINGS-OVERLAY] Error clearing highlights: " + e.getMessage());
+            
         }
     }
 

@@ -50,14 +50,14 @@ public class ResultPublisher {
 		}
 		try {
 			// Step 1: Update Findings View (try to display immediately if view is open)
-			System.out.println(LOG_TAG + " [STEP 1/3] Attempting to update Findings View if open...");
+			
 			updateFindingsView(file, scanIssues);
-			System.out.println(LOG_TAG + " [OK] Findings View update attempted");
+			
 
 			// Step 2: Create problem descriptors via DevAssistInspectionMgr
-			System.out.println(LOG_TAG + " [STEP 2/3] Creating problem descriptors...");
+			
 			createAndRenderDecorations(file, scanIssues);
-			System.out.println(LOG_TAG + " [OK] Problem descriptors created and rendered");
+			
 
 		} catch (Exception e) {
 			System.err.println(LOG_TAG + " [ERROR] " + e.getMessage());
@@ -112,15 +112,14 @@ public class ResultPublisher {
 					// Step 1: Remove old results from THIS scanner engine
 					if (engineType != null) {
 						problemHolder.removeScanIssuesByFileAndScanner(engineType, filePath);
-						System.out.println(LOG_TAG + " [REMOVE] Removed old " + engineType + " issues for: " + filePath);
+						
 					}
 
 					// Step 2: Add new results from THIS scanner engine
 					problemHolder.mergeScanIssues(filePath, scanIssues);
-					System.out.println(LOG_TAG + " [MERGE] Merged " + scanIssues.size() + " new issues from " +
-						(engineType != null ? engineType : "UNKNOWN") + " for: " + filePath);
+					
 				} else {
-					System.out.println(LOG_TAG + " [VIEW-UPDATE] ProblemHolderService not initialized - results not cached");
+					
 				}
 			}
 

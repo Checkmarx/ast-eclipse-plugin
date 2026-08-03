@@ -252,7 +252,7 @@ public class CopilotIntegration {
 
                     // Execute the command with parameters
                     try {
-                    	System.out.println("=== BEFORE EXECUTE ===");
+                    	
                         command.executeWithChecks(new ExecutionEvent(
                                 command,
                                 parameters,
@@ -260,13 +260,13 @@ public class CopilotIntegration {
                                 null
                         ));
                         
-                        System.out.println("=== AFTER EXECUTE ===");
+                        
 
 
                         CxLogger.info(LOG_PREFIX + " ✓ Successfully executed Copilot command with prompt");
                         success[0] = true;
                         
-                        System.out.println("=== SUCCESS SET TRUE ===");
+                        
 
                     } catch (Exception e) {
                         CxLogger.warning(LOG_PREFIX + " Command execution failed: " + e.getMessage());
@@ -281,7 +281,7 @@ public class CopilotIntegration {
         } catch (Exception e) {
             CxLogger.error(LOG_PREFIX + " Error in executeOpenCopilotCommand: " + e.getMessage(), e);
         }
-        System.out.println("executeOpenCopilotCommand returning = " + success[0]);
+        
         return success[0];
     }
 

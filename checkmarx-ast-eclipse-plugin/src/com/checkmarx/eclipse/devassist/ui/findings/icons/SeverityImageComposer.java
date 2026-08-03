@@ -29,7 +29,7 @@ public class SeverityImageComposer {
             Display display = Display.getDefault();
             Image compositeImage = createFullBadgeImage(display, fileNode);
             if (compositeImage != null) {
-                System.out.println("[SEVERITY-COMPOSER] Created full composite image with severity icons");
+                
             }
             return compositeImage;
         } catch (Exception e) {
@@ -144,7 +144,7 @@ public class SeverityImageComposer {
             }
 
             gc.dispose();
-            System.out.println("[SEVERITY-COMPOSER] Created composite image: " + width + "x" + iconSize);
+            
             return compositeImage;
 
         } catch (Exception e) {
@@ -220,7 +220,7 @@ public class SeverityImageComposer {
             }
 
             gc.dispose();
-            System.out.println("[SEVERITY-COMPOSER] Created full badge image: " + totalWidth + "x" + iconSize);
+            
             return compositeImage;
 
         } catch (Exception e) {

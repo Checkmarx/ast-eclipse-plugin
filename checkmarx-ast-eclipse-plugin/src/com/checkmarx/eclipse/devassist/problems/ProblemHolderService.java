@@ -1,4 +1,4 @@
-﻿package com.checkmarx.eclipse.devassist.problems;
+package com.checkmarx.eclipse.devassist.problems;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -80,7 +80,7 @@ public class ProblemHolderService {
 	/**
 	 * Get all cached issues across all files.
 	 *
-	 * @return Map of file path â†’ issues
+	 * @return Map of file path → issues
 	 */
 	public Map<String, List<ScanIssue>> getAllScanIssues() {
 
@@ -202,10 +202,10 @@ public class ProblemHolderService {
 			IEventBroker eventBroker = PluginUtils.getEventBroker();
 			if (eventBroker != null) {
 				Map<String, List<ScanIssue>> allIssues = getAllScanIssues();
-				System.out.println(LOG_TAG + " [EVENT-BROKER] Publishing issues update: " + allIssues.size() + " files");
+				
 				eventBroker.post(ISSUES_UPDATED_TOPIC, allIssues);
 			} else {
-				System.err.println(LOG_TAG + " [EVENT-BROKER] âœ— EventBroker not available");
+				System.err.println(LOG_TAG + " [EVENT-BROKER] ✗ EventBroker not available");
 			}
 		} catch (Exception e) {
 			System.err.println(LOG_TAG + " [EVENT-BROKER] Error publishing event: " + e.getMessage());
