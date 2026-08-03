@@ -1,4 +1,4 @@
-﻿package com.checkmarx.eclipse.devassist.basescanner;
+﻿package com.checkmarx.eclipse.devassist.common;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -6,7 +6,7 @@ import java.util.List;
 import com.checkmarx.eclipse.devassist.backend.DevAssistScanStateHolder;
 import com.checkmarx.eclipse.devassist.backend.ScannerRegistry;
 import com.checkmarx.eclipse.devassist.backend.ScannerRegistry.ScannerType;
-import com.checkmarx.eclipse.devassist.common.ScannerFactory;
+import com.checkmarx.eclipse.devassist.basescanner.ScannerService;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.utils.CxLogger;
 
@@ -81,11 +81,12 @@ public class ScanManager {
 
 		// 3. Get all scanners that support this file
 		System.out.println(LOG_TAG + " [STEP 3/5] Getting applicable scanners...");
-		List<ScannerService> applicableScanners = factory.getAllSupportedScanners(filePath);
+		List<ScannerService<?>> applicableScanners = factory.getAllSupportedScanners(filePath);
 
 		System.out.println(LOG_TAG + " âœ“ Found " + applicableScanners.size() + " applicable scanners:");
-		for (ScannerService scanner : applicableScanners) {
-			System.out.println(LOG_TAG + "   - " + scanner.getDisplayName());
+		for (ScannerService<?> scanner : applicableScanners) {
+			String displayName = scanner.getConfig() != null ? scanner.getConfig().getEngineName() : "Unknown";
+			System.out.println(LOG_TAG + "   - " + displayName);
 		}
 
 		if (applicableScanners.isEmpty()) {
@@ -100,18 +101,20 @@ public class ScanManager {
 		List<ScanIssue> allIssues = new ArrayList<>();
 		int scannerIndex = 1;
 
-		for (ScannerService scanner : applicableScanners) {
+		for (ScannerService<?> scanner : applicableScanners) {
+			String displayName = scanner.getConfig() != null ? scanner.getConfig().getEngineName() : "Unknown";
 			try {
 				System.out.println(LOG_TAG + "   [" + scannerIndex + "/" + applicableScanners.size() + "] Executing "
-						+ scanner.getDisplayName() + "...");
+						+ displayName + "...");
 
-				List<ScanIssue> scannerResults = scanner.scan(filePath);
+				var scanResult = scanner.scan(filePath);
+				List<ScanIssue> scannerResults = scanResult != null ? scanResult.getIssues() : null;
 
 				if (scannerResults == null) {
 					System.out.println(
-							LOG_TAG + "   âš ï¸  WARNING: " + scanner.getDisplayName() + " returned NULL results!");
+							LOG_TAG + "   âš ï¸  WARNING: " + displayName + " returned NULL results!");
 				} else {
-					System.out.println(LOG_TAG + "   âœ“ " + scanner.getDisplayName() + " returned "
+					System.out.println(LOG_TAG + "   âœ“ " + displayName + " returned "
 							+ scannerResults.size() + " issues");
 					for (ScanIssue issue : scannerResults) {
 						System.out.println(
@@ -122,7 +125,7 @@ public class ScanManager {
 
 			} catch (Exception e) {
 				// Log but continue with other scanners
-				System.err.println(LOG_TAG + "   âœ— ERROR in " + scanner.getDisplayName() + ": " + e.getMessage());
+				System.err.println(LOG_TAG + "   âœ— ERROR in " + displayName + ": " + e.getMessage());
 				e.printStackTrace();
 			}
 			scannerIndex++;
@@ -154,18 +157,19 @@ public class ScanManager {
 
 		CxLogger.info(LOG_TAG + " Starting " + scannerType.getDisplayName() + " scan: " + filePath);
 
-		ScannerService scanner = factory.getScannerForFile(filePath, scannerType);
+		ScannerService<?> scanner = factory.getScannerForFile(filePath, scannerType);
 		if (scanner == null) {
-			CxLogger.warning(LOG_TAG + " " + scannerType.getDisplayName() + " does not support file: " + filePath);
+			CxLogger.warning(LOG_TAG + " Scanner does not support file: " + filePath);
 			return List.of();
 		}
 
 		try {
-			List<ScanIssue> results = scanner.scan(filePath);
-			CxLogger.info(LOG_TAG + " âœ“ " + scannerType.getDisplayName() + " found " + results.size() + " issues");
+			var scanResult = scanner.scan(filePath);
+			List<ScanIssue> results = scanResult != null ? scanResult.getIssues() : List.of();
+			CxLogger.info(LOG_TAG + " Found " + results.size() + " issues");
 			return results;
 		} catch (Exception e) {
-			CxLogger.error(LOG_TAG + " " + scannerType.getDisplayName() + " scan failed: " + e.getMessage(), e);
+			CxLogger.error(LOG_TAG + " Scan failed: " + e.getMessage(), e);
 			throw e;
 		}
 	}

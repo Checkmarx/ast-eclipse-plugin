@@ -8,7 +8,6 @@ import com.checkmarx.eclipse.devassist.backend.ScannerRegistry;
 import com.checkmarx.eclipse.devassist.backend.ScannerRegistry.ScannerType;
 import com.checkmarx.eclipse.devassist.basescanner.ScannerService;
 import com.checkmarx.eclipse.utils.CxLogger;
-import org.eclipse.core.resources.IProject;
 
 /**
  * Factory for selecting appropriate scanners by file type.
@@ -48,8 +47,8 @@ public class ScannerFactory {
 	 * @param filePath File to scan
 	 * @return List of applicable scanners (empty if none match)
 	 */
-	public List<ScannerService> getAllSupportedScanners(String filePath) {
-		List<ScannerService> supported = new ArrayList<>();
+	public List<ScannerService<?>> getAllSupportedScanners(String filePath) {
+		List<ScannerService<?>> supported = new ArrayList<>();
 
 		CxLogger.info(LOG_TAG + " Finding scanners for: " + filePath);
 
@@ -62,7 +61,7 @@ public class ScannerFactory {
 			}
 
 			// Get scanner from registry
-			ScannerService scanner = getScannerService(type);
+			ScannerService<?> scanner = getScannerService(type);
 			if (scanner == null) {
 				CxLogger.warning(LOG_TAG + " Scanner not initialized: " + type);
 				continue;
@@ -93,7 +92,7 @@ public class ScannerFactory {
 	 * @param type Scanner type to retrieve
 	 * @return Scanner if enabled and supports file, null otherwise
 	 */
-	public ScannerService getScannerForFile(String filePath, ScannerType type) {
+	public ScannerService<?> getScannerForFile(String filePath, ScannerType type) {
 		if (filePath == null || type == null) {
 			return null;
 		}
@@ -105,7 +104,7 @@ public class ScannerFactory {
 		}
 
 		// Get scanner from registry
-		ScannerService scanner = getScannerService(type);
+		ScannerService<?> scanner = getScannerService(type);
 		if (scanner == null) {
 			CxLogger.warning(LOG_TAG + " Scanner not initialized: " + type);
 			return null;
@@ -128,10 +127,10 @@ public class ScannerFactory {
 	 * @param type Scanner type
 	 * @return Scanner instance, or null if not available
 	 */
-	private ScannerService getScannerService(ScannerType type) {
+	private ScannerService<?> getScannerService(ScannerType type) {
 		try {
 			Object scanner = registry.getScannerService(type);
-			return scanner instanceof ScannerService ? (ScannerService) scanner : null;
+			return scanner instanceof ScannerService ? (ScannerService<?>) scanner : null;
 		} catch (Exception e) {
 			CxLogger.warning(LOG_TAG + " Error getting scanner for type " + type + ": " + e.getMessage());
 			return null;

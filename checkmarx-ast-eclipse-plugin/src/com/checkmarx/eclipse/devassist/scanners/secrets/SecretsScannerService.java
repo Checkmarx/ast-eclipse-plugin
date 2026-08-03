@@ -2,10 +2,14 @@ package com.checkmarx.eclipse.devassist.scanners.secrets;
 
 import com.checkmarx.ast.secretsrealtime.SecretsRealtimeResults;
 import com.checkmarx.ast.wrapper.CxException;
+import com.checkmarx.eclipse.devassist.basescanner.BaseScannerService;
 import com.checkmarx.eclipse.devassist.common.ScanResult;
+import com.checkmarx.eclipse.devassist.common.ScannerConfig;
 import com.checkmarx.eclipse.devassist.factory.CxWrapperFactory;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.backend.DevAssistUtils;
+import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
 import com.checkmarx.eclipse.utils.CxLogger;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.jface.text.Document;
@@ -23,12 +27,12 @@ import java.util.stream.Collectors;
 
 /**
  * Realtime Secrets scanner service for Eclipse.
- * 
+ *
  * Manages temporary directory creation, file hashing, file exclusion filtering,
- * execution of Checkmarx Secrets real-time scans via CxWrapperFactory, and updating 
+ * execution of Checkmarx Secrets real-time scans via CxWrapperFactory, and updating
  * line numbers for ignored secrets.
  */
-public class SecretsScannerService {
+public class SecretsScannerService extends BaseScannerService<SecretsRealtimeResults> {
 
     private static final String LOG_TAG = "[SECRETS-SERVICE]";
     private static final String SECRETS_DIR = "CxSecrets";
@@ -40,14 +44,22 @@ public class SecretsScannerService {
             "Gemfile", "Cargo.toml", "composer.json", "package-lock.json", "yarn.lock"
     );
 
-    private final IProject project;
-
     public SecretsScannerService(IProject project) {
-        this.project = project;
+        super(project, createConfig());
     }
 
-    public String getScannerName() {
-        return "SECRETS";
+    /**
+     * Create default Secrets scanner configuration.
+     */
+    public static ScannerConfig createConfig() {
+        return ScannerConfig.builder()
+                .engineName(ScanEngine.SECRETS.name())
+                .configSection(DevAssistConstants.SECRETS_REALTIME_SCANNER)
+                .activateKey(DevAssistConstants.ACTIVATE_SECRETS_REALTIME_SCANNER)
+                .enabledMessage(DevAssistConstants.SECRETS_REALTIME_SCANNER_START)
+                .disabledMessage(DevAssistConstants.SECRETS_REALTIME_SCANNER_DISABLED)
+                .errorMessage(DevAssistConstants.ERROR_SECRETS_REALTIME_SCANNER)
+                .build();
     }
 
     /**
@@ -75,20 +87,12 @@ public class SecretsScannerService {
                normalized.contains("/.checkmarxIgnoredTempList");
     }
 
-    /**
-     * Checks if the given file is eligible for Secrets scanning.
-     */
-    public boolean shouldScanFile(String filePath) {
-        if (filePath == null || filePath.isEmpty()) {
-            return false;
-        }
-        String normalized = filePath.replace("\\", "/");
-        if (normalized.contains("/node_modules/")) {
-            return false;
-        }
+    @Override
+    protected boolean isFileTypeSupported(String filePath) {
         return !isExcludedFileForSecretsScanning(filePath);
     }
 
+    @Override
     public void close() throws Exception {
         // No resources to release
     }
@@ -97,12 +101,12 @@ public class SecretsScannerService {
      * Primary scan method. Converts editor/document contents to an isolated temporary file
      * and executes the real-time Secrets scan via CxWrapperFactory.
      */
-    public SecretsScanResultAdaptor scan(String filePath, IDocument document, IProject proj) {
+    public ScanResult<SecretsRealtimeResults> scan(String filePath, IDocument document, IProject proj) {
         if (!shouldScanFile(filePath)) {
             return null;
         }
 
-        Path tempSubFolder = getTempSubFolderPath(filePath);
+        Path tempSubFolder = getTempSubFolderPathAsPath(filePath);
 
         synchronized (SCAN_LOCK) {
             try {
@@ -152,14 +156,14 @@ public class SecretsScannerService {
     }
 
     /**
-     * Compatibility method matching ScannerService interface returning issue lists.
+     * Compatibility method matching ScannerService interface.
      */
-    public List<ScanIssue> scan(String filePath) throws Exception {
+    @Override
+    public ScanResult<SecretsRealtimeResults> scan(String filePath) {
         if (!shouldScanFile(filePath)) {
-            return List.of();
+            return null;
         }
-        ScanResult<SecretsRealtimeResults> result = scan(filePath, new Document(), project);
-        return result != null ? result.getIssues() : List.of();
+        return scan(filePath, new Document(), project);
     }
 
     /**
@@ -189,7 +193,7 @@ public class SecretsScannerService {
     /**
      * Resolves a unique subfolder path for storing the temporary file.
      */
-    private Path getTempSubFolderPath(String originalFilePath) {
+    private Path getTempSubFolderPathAsPath(String originalFilePath) {
         Path baseTempPath = getSecureTempDirectory();
         String safeFileName = toSafeTempFileName(originalFilePath);
         return baseTempPath.resolve(safeFileName);
@@ -239,13 +243,17 @@ public class SecretsScannerService {
         return Paths.get(tempOSPath, SECRETS_DIR).toAbsolutePath().normalize();
     }
 
-    private void createTempFolder(Path tempDir) throws IOException {
+    protected void createTempFolder(Path tempDir) {
         if (!Files.exists(tempDir)) {
-            Files.createDirectories(tempDir);
+            try {
+                Files.createDirectories(tempDir);
+            } catch (IOException e) {
+                CxLogger.warning(LOG_TAG + " Failed to create temp folder: " + e.getMessage());
+            }
         }
     }
 
-    private void deleteTempFolder(Path tempDir) {
+    protected void deleteTempFolder(Path tempDir) {
         if (tempDir == null || !Files.exists(tempDir)) {
             return;
         }

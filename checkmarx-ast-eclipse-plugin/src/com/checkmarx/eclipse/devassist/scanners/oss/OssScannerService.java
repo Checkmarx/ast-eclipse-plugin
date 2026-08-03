@@ -1,16 +1,14 @@
 package com.checkmarx.eclipse.devassist.scanners.oss;
 
 import com.checkmarx.ast.ossrealtime.OssRealtimeResults;
-import com.checkmarx.ast.wrapper.CxException;
+import com.checkmarx.eclipse.devassist.basescanner.BaseScannerService;
 import com.checkmarx.eclipse.devassist.common.ScanResult;
+import com.checkmarx.eclipse.devassist.common.ScannerConfig;
 import com.checkmarx.eclipse.devassist.factory.CxWrapperFactory;
-import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
-import com.checkmarx.eclipse.devassist.backend.DevAssistUtils;
+import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
 import com.checkmarx.eclipse.utils.CxLogger;
-import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
-import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.jface.text.Document;
 import org.eclipse.jface.text.IDocument;
 
@@ -30,69 +28,38 @@ import java.util.stream.Collectors;
  *
  * Adapted to mirror JetBrains scanner service features.
  */
-public class OssScannerService {
+public class OssScannerService extends BaseScannerService<OssRealtimeResults> {
 
 	private static final String LOG_TAG = "[OSS-SERVICE]";
 	private static final String OSS_DIR = "CxOSS";
 	private static final Object SCAN_LOCK = new Object();
 
-	private static final List<String> MANIFEST_FILE_PATTERNS = List.of(			
-           "**/Directory.Packages.props",
-            "**/packages.config",
-            "**/pom.xml",
-            "**/package.json",
-            "**/requirements.txt",
-            "**/go.mod",
-            "**/*.csproj",
-            "**/build.gradle",
-            "**/build.gradle.kts",
-            "**/yarn.lock",
-            "**/*.sbt",
-            "**/Gemfile",
-            "**/bower.json",
-            "**/requirement-*.txt",
-            "**/requirements-*.txt",
-            "**/Setup.py",
-            "**/Setup.cfg",
-            "**/pyproject.toml",
-            "**/poetry.lock",
-            "**/Package.swift",
-            "**/Package.resolved",
-            "**/composer.json",
-            "**/composer.lock",
-            "**/*.podspec.json",
-            "**/*.podspec",
-            "**/Podfile",
-            "**/Podfile.lock",
-            "**/Cartfile.resolved",
-            "**/Gemfile.lock",
-            "**/Gemfile",
-            "**/cpanfile.snapshot",
-            "**/cpanfile",
-            "**/pubspec.lock"
-            
-	);
-
-	private final IProject project;
-
 	public OssScannerService(IProject project) {
-		this.project = project;
-	}
-
-	public String getScannerName() {
-		return "OSS";
+		super(project, createConfig());
 	}
 
 	/**
-	 * Checks whether the supplied file path matches any of the manifest glob patterns.
+	 * Create default OSS scanner configuration.
 	 */
-	public boolean isFileTypeSupported(String filePath) {
+	public static ScannerConfig createConfig() {
+		return ScannerConfig.builder()
+				.engineName(ScanEngine.OSS.name())
+				.configSection(DevAssistConstants.OSS_REALTIME_SCANNER)
+				.activateKey(DevAssistConstants.ACTIVATE_OSS_REALTIME_SCANNER)
+				.enabledMessage(DevAssistConstants.OSS_REALTIME_SCANNER_START)
+				.disabledMessage(DevAssistConstants.OSS_REALTIME_SCANNER_DISABLED)
+				.errorMessage(DevAssistConstants.ERROR_OSS_REALTIME_SCANNER)
+				.build();
+	}
+
+	@Override
+	protected boolean isFileTypeSupported(String filePath) {
 		if (filePath == null) {
 			return false;
 		}
 
 		Path path = Paths.get(filePath);
-		List<PathMatcher> pathMatchers = MANIFEST_FILE_PATTERNS.stream()
+		List<PathMatcher> pathMatchers = DevAssistConstants.MANIFEST_FILE_PATTERNS.stream()
 				.map(p -> FileSystems.getDefault().getPathMatcher("glob:" + p))
 				.collect(Collectors.toList());
 
@@ -104,25 +71,20 @@ public class OssScannerService {
 		return false;
 	}
 
-	/**
-	 * Determines if a given file should be scanned by the OSS scanner.
-	 */
-	public boolean shouldScanFile(String filePath) {
-		if (filePath == null || filePath.isEmpty()) {
-			return false;
-		}
-		String normalized = filePath.replace("\\", "/");
-		return !normalized.contains("/node_modules/") && isFileTypeSupported(filePath);
-	}
-
+	@Override
 	public void close() throws Exception {
 		// No resources to close
+	}
+
+	@Override
+	public com.checkmarx.eclipse.devassist.common.ScanResult<OssRealtimeResults> scan(String filePath) {
+		return scanWithDocument(filePath, new Document());
 	}
 
 	/**
 	 * Primary scan method - gets file content, isolates into temp folder with companion files, and executes scan.
 	 */
-	public ScanResult<OssRealtimeResults> scan(String filePath, IDocument document, IProject proj) {
+	public ScanResult<OssRealtimeResults> scanWithDocument(String filePath, IDocument document) {
 		if (!shouldScanFile(filePath)) {
 			return null;
 		}
@@ -133,7 +95,7 @@ public class OssScannerService {
 			return null;
 		}
 
-		Path tempSubFolder = getTempSubFolderPath(filePath);
+		Path tempSubFolder = getTempSubFolderPathAsPath(filePath);
 
 		synchronized (SCAN_LOCK) {
 			try {
@@ -148,7 +110,6 @@ public class OssScannerService {
 				saveCompanionFile(tempSubFolder, filePath);
 
 				CxLogger.info(LOG_TAG + " Starting Realtime OSS Scan on File: " + filePath);
-//				String ignoreFilePath = getIgnoreFilePath(proj);
 
 				OssRealtimeResults scanResults = CxWrapperFactory.build().ossRealtimeScan(mainTempPath.get(), "");
 				if (scanResults == null) {
@@ -156,9 +117,6 @@ public class OssScannerService {
 				}
 
 				OssScanResultAdaptor scanResultAdaptor = new OssScanResultAdaptor(scanResults, filePath);
-
-				// Performs secondary scan if needed to keep line numbers updated for ignored packages
-//				updateIgnoredFileDataOnLatestResult(mainTempPath.get(), proj, filePath);
 
 				return scanResultAdaptor;
 
@@ -170,17 +128,6 @@ public class OssScannerService {
 				deleteTempFolder(tempSubFolder);
 			}
 		}
-	}
-
-	/**
-	 * Compatibility method matching ScannerService interface returning issue lists.
-	 */
-	public List<ScanIssue> scan(String filePath) throws Exception {
-		if (!shouldScanFile(filePath)) {
-			return List.of();
-		}
-		ScanResult<OssRealtimeResults> result = scan(filePath, new Document(), project);
-		return result != null ? result.getIssues() : List.of();
 	}
 
 	/**
@@ -270,7 +217,7 @@ public class OssScannerService {
 	/**
 	 * Resolves temporary sub-folder path allocated for the file scan.
 	 */
-	private Path getTempSubFolderPath(String filePath) {
+	private Path getTempSubFolderPathAsPath(String filePath) {
 		String baseTempPath = System.getProperty("java.io.tmpdir");
 		Path baseDir = Paths.get(baseTempPath).resolve(OSS_DIR);
 		String relativePath = Paths.get(filePath).getFileName().toString();
@@ -306,13 +253,17 @@ public class OssScannerService {
 		}
 	}
 
-	private void createTempFolder(Path tempDir) throws IOException {
-		if (!Files.exists(tempDir)) {
-			Files.createDirectories(tempDir);
+	protected void createTempFolder(Path tempDir) {
+		try {
+			if (!Files.exists(tempDir)) {
+				Files.createDirectories(tempDir);
+			}
+		} catch (IOException e) {
+			CxLogger.warning(LOG_TAG + " Failed to create temporary folder: " + e.getMessage());
 		}
 	}
 
-	private void deleteTempFolder(Path tempDir) {
+	protected void deleteTempFolder(Path tempDir) {
 		if (tempDir == null || !Files.exists(tempDir)) {
 			return;
 		}
