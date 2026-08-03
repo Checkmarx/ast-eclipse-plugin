@@ -9,11 +9,6 @@
                 id="com.checkmarx.eclipse.properties.preferencespage"
                 name="Checkmarx One">
         </page>
-        <page
-                class="com.checkmarx.eclipse.devassist.prefs.CheckmarxPreferencePage"
-                id="com.checkmarx.eclipse.devassist.prefs.checkmarxpreferencepage"
-                name="Checkmarx Scanner Configuration">
-        </page>
     </extension>
     <extension
           point="org.eclipse.ui.views">
@@ -35,15 +30,6 @@
              name="Checkmarx One Assist Findings"
              restorable="true">
        </view>
-       <view
-             category="com.checkmarx.eclipse"
-             class="com.checkmarx.eclipse.devassist.ui.findings.ignored.CxIgnoredProblemsView"
-             icon="platform:/plugin/com.checkmarx.eclipse.plugin/icons/severity/low_16.svg"
-             id="com.checkmarx.eclipse.devassist.ui.findings.ignored.CxIgnoredProblemsView"
-             inject="true"
-             name="Checkmarx Ignored Problems"
-             restorable="true">
-       </view>
        <category
              id="com.checkmarx.eclipse"
              name="Checkmarx">
@@ -61,12 +47,6 @@
             </view>
             <view
                     id="com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView"
-                    relative="org.eclipse.ui.views.ProblemView"
-                    relationship="stacked"
-                    ratio="0.5">
-            </view>
-            <view
-                    id="com.checkmarx.eclipse.devassist.ui.findings.ignored.CxIgnoredProblemsView"
                     relative="org.eclipse.ui.views.ProblemView"
                     relationship="stacked"
                     ratio="0.5">
@@ -189,15 +169,5 @@
             presentationLayer="1">
         </specification>
     </extension>
-
-    <!-- Universal hover for all languages (Java, Python, C++, etc) -->
-	<extension point="org.eclipse.ui.editors.textHovers">
-	    <hover
-	        id="com.checkmarx.eclipse.hover.universal"
-	        label="Checkmarx Findings Hover"
-	        description="Displays Checkmarx vulnerability details"
-	        class="com.checkmarx.eclipse.devassist.ui.findings.editor.CxFindingsHover">
-	    </hover>
-	</extension>
 
 </plugin>

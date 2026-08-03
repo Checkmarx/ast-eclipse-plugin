@@ -33,18 +33,6 @@ public class GlobalScannerController {
 	// Listeners notified when scanner state changes
 	private final List<ScannerStateListener> stateListeners = new ArrayList<>();
 
-	// State manager for persistence
-	private final com.checkmarx.eclipse.devassist.state.ScannerStateManager stateManager =
-		new com.checkmarx.eclipse.devassist.state.ScannerStateManager();
-
-	// Preference change listener to reload state when preferences are saved
-	private final org.eclipse.jface.util.IPropertyChangeListener prefChangeListener =
-		event -> {
-			if ("scannerPreferencesChanged".equals(event.getProperty())) {
-				reloadStateFromPreferences();
-			}
-		};
-
 	/**
 	 * Get the global singleton instance.
 	 * Lazily creates on first access.
@@ -54,68 +42,8 @@ public class GlobalScannerController {
 	public synchronized static GlobalScannerController getInstance() {
 		if (instance == null) {
 			instance = new GlobalScannerController();
-			instance.initializeDefaults();
-			instance.registerPreferenceListener();
 		}
 		return instance;
-	}
-
-	/**
-	 * Initialize scanner state from preferences.
-	 */
-	private void initializeDefaults() {
-		CxLogger.info(LOG_TAG + " Initializing scanner state from preferences");
-
-		com.checkmarx.eclipse.devassist.state.ScannerState state = stateManager.loadState();
-
-		for (ScannerType type : ScannerType.values()) {
-			com.checkmarx.eclipse.devassist.model.ScanEngine engine = typeToEngine(type);
-			if (engine != null) {
-				boolean enabled = state.isEnabled(engine);
-				scannerState.put(type, enabled);
-				String status = enabled ? "enabled" : "disabled";
-				CxLogger.info(LOG_TAG + " " + type.getDisplayName() + " " + status);
-			}
-		}
-	}
-
-	/**
-	 * Register listener for preference changes.
-	 * When preferences are saved, reload scanner state from preferences.
-	 */
-	private void registerPreferenceListener() {
-		try {
-			com.checkmarx.eclipse.Activator.getDefault().getPreferenceStore()
-				.addPropertyChangeListener(prefChangeListener);
-			CxLogger.info(LOG_TAG + " Preference listener registered");
-		} catch (Exception e) {
-			CxLogger.warning(LOG_TAG + " Failed to register preference listener: " + e.getMessage());
-		}
-	}
-
-	/**
-	 * Reload scanner state from preferences.
-	 * Called when preferences are saved to pick up any changes.
-	 */
-	private void reloadStateFromPreferences() {
-		CxLogger.info(LOG_TAG + " Reloading scanner state from preferences");
-
-		com.checkmarx.eclipse.devassist.state.ScannerState state = stateManager.loadState();
-
-		for (ScannerType type : ScannerType.values()) {
-			com.checkmarx.eclipse.devassist.model.ScanEngine engine = typeToEngine(type);
-			if (engine != null) {
-				boolean enabled = state.isEnabled(engine);
-				boolean wasEnabled = scannerState.getOrDefault(type, true);
-
-				if (enabled != wasEnabled) {
-					scannerState.put(type, enabled);
-					String status = enabled ? "enabled" : "disabled";
-					CxLogger.info(LOG_TAG + " Updated " + type.getDisplayName() + " to " + status);
-					notifyScannerStateChanged(type, enabled);
-				}
-			}
-		}
 	}
 
 	/**
@@ -132,10 +60,6 @@ public class GlobalScannerController {
 
 		if (wasDisabled) {
 			CxLogger.info(LOG_TAG + " Enabled scanner: " + type.getDisplayName());
-			com.checkmarx.eclipse.devassist.model.ScanEngine engine = typeToEngine(type);
-			if (engine != null) {
-				stateManager.setScannerEnabled(engine, true);
-			}
 			notifyScannerStateChanged(type, true);
 		}
 	}
@@ -154,10 +78,6 @@ public class GlobalScannerController {
 
 		if (wasEnabled) {
 			CxLogger.info(LOG_TAG + " Disabled scanner: " + type.getDisplayName());
-			com.checkmarx.eclipse.devassist.model.ScanEngine engine = typeToEngine(type);
-			if (engine != null) {
-				stateManager.setScannerEnabled(engine, false);
-			}
 			notifyScannerStateChanged(type, false);
 		}
 	}
@@ -271,27 +191,6 @@ public class GlobalScannerController {
 			.append(ScannerType.values().length);
 
 		return sb.toString();
-	}
-
-	/**
-	 * Convert ScannerType to ScanEngine enum.
-	 * Used for bridging between global controller and state manager.
-	 *
-	 * @param type Scanner type
-	 * @return Corresponding ScanEngine, or null if no mapping exists
-	 */
-	private com.checkmarx.eclipse.devassist.model.ScanEngine typeToEngine(ScannerType type) {
-		if (type == null) {
-			return null;
-		}
-
-		return switch (type) {
-			case ASCA -> com.checkmarx.eclipse.devassist.model.ScanEngine.ASCA;
-			case OSS -> com.checkmarx.eclipse.devassist.model.ScanEngine.OSS;
-			case SECRETS -> com.checkmarx.eclipse.devassist.model.ScanEngine.SECRETS;
-			case IAC -> com.checkmarx.eclipse.devassist.model.ScanEngine.IAC;
-			case CONTAINERS -> com.checkmarx.eclipse.devassist.model.ScanEngine.CONTAINERS;
-		};
 	}
 
 	/**

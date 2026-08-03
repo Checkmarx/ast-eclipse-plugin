@@ -8,7 +8,6 @@ import org.eclipse.ui.PlatformUI;
 
 import com.checkmarx.eclipse.utils.CxLogger;
 import com.checkmarx.eclipse.devassist.ui.findings.realtime.CheckmarxEditorListener;
-import com.checkmarx.eclipse.devassist.ui.findings.realtime.FindingsEditorHoverListener;
 import com.checkmarx.eclipse.devassist.backend.GlobalScannerController;
 import com.checkmarx.eclipse.devassist.backend.listener.ProjectLifecycleListener;
 
@@ -16,7 +15,6 @@ public class PluginStartup implements IStartup {
 
 	private static final String VIEW_ID = "com.checkmarx.eclipse.views.CheckmarxView";
 	private static final String FINDINGS_VIEW_ID = "com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView";
-	private static FindingsEditorHoverListener hoverListener; // Keep strong reference to prevent GC
 	private static CheckmarxEditorListener realtimeScanListener; // Keep strong reference to prevent GC
 	private static ProjectLifecycleListener projectListener; // Keep strong reference to prevent GC
 
@@ -37,10 +35,6 @@ public class PluginStartup implements IStartup {
 					if (page != null && page.findView(FINDINGS_VIEW_ID) == null) {
 						page.showView(FINDINGS_VIEW_ID);
 					}
-
-					// Register listener for custom hover on findings annotations
-					hoverListener = new FindingsEditorHoverListener();
-					window.getPartService().addPartListener(hoverListener);
 
 					// Register listener for real-time scanning with debounce
 					realtimeScanListener = new CheckmarxEditorListener();
