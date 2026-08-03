@@ -2814,11 +2814,16 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	@Override
 	public void handleEvent(org.osgi.service.event.Event arg0) {
 		String currentApiKey = Preferences.STORE.getString(Preferences.API_KEY);
-		if (!currentApiKey.isEmpty() && !isPluginDraw) {
+		// A key merely being present isn't enough - it may have been typed into the
+		// Checkmarx One preference field and saved via Apply/OK without ever being tested,
+		// so only a server-validated key (see Preferences.CREDENTIALS_VALIDATED) counts as
+		// actually connected here.
+		boolean authenticated = PluginUtils.areCredentialsDefined();
+		if (authenticated && !isPluginDraw) {
 			drawPluginPanel();
 		} else {
 			// If credentials changed reload projects, branches and scans from new tenant
-			if (currentApiKey.isEmpty()) {
+			if (!authenticated) {
 				updateStartScanButton(false);
 				drawMissingCredentialsPanel();
 				//Dispose toolbar

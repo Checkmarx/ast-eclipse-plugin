@@ -151,12 +151,15 @@ public class PluginUtils {
 	}
 	
 	/**
-	 * Check if checkmarx credentials are defined in the Preferences
-	 * 
+	 * Check if checkmarx credentials are defined in the Preferences AND have actually been
+	 * validated against the server - a key that was typed into the Checkmarx One preference
+	 * page and saved via Apply/OK without ever being tested does not count, so views gated on
+	 * this don't show "connected" content for an untested (possibly wrong) key.
+	 *
 	 * @return
 	 */
 	public static boolean areCredentialsDefined() {
-		return StringUtils.isNotBlank(Preferences.getApiKey());
+		return StringUtils.isNotBlank(Preferences.getApiKey()) && Preferences.isCredentialsValidated();
 	}
 	
 	/**

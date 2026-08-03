@@ -148,6 +148,12 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 		connectionButton.setEnabled(!apiKey.getStringValue().trim().isEmpty());
 		textControl.addModifyListener(e -> {
 		    connectionButton.setEnabled(!textControl.getText().trim().isEmpty());
+
+		    // Any edit means whatever gets saved next (even via Apply/OK without ever
+		    // clicking Test Connection) hasn't been checked against the server, so it must
+		    // not keep looking "connected" on the strength of a previous, different key's
+		    // validation.
+		    Preferences.setCredentialsValidated(false);
 		});
 		connectionButton.addSelectionListener(new SelectionAdapter() {
 
@@ -241,6 +247,12 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 //				textControl.setText("");
 //				connectionLabel.setText("");
 				getFieldEditorParent().layout();
+
+				// Redraws the missing-credentials panel in CheckmarxView/CxFindingsView right
+				// away. Without this, they only learn credentials are gone once performOk()
+				// runs (i.e. the user clicks OK/Apply) - if they instead Cancel or just close
+				// the dialog after Logout, both views kept showing stale "connected" content.
+				PluginUtils.getEventBroker().post(PluginConstants.TOPIC_APPLY_SETTINGS, PluginConstants.EMPTY_STRING);
 			}
 		});
 
@@ -284,6 +296,7 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 			// anything else gated on login) actually sees it.
 			Preferences.STORE.setValue(Preferences.API_KEY, apiKey_str);
 			Preferences.STORE.setValue(Preferences.ADDITIONAL_OPTIONS, additionalParams_str);
+			Preferences.setCredentialsValidated(true);
 
 			// Trigger the same initial OSS/IaC/container workspace scan that runs for
 			// already-open projects at plugin launch (PluginStartup.initializeBackendScanners()).
