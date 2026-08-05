@@ -163,7 +163,7 @@ public class ResultPublisher {
 					ScannerRegistry registry = (ScannerRegistry) project.getSessionProperty(
 						new QualifiedName("com.checkmarx.eclipse.plugin", "scanner-registry"));
 					DevAssistScanStateHolder stateHolder = (DevAssistScanStateHolder) project.getSessionProperty(
-						new QualifiedName("com.checkmarx.eclipse.plugin", "scan-state-holder"));
+						new QualifiedName("com.checkmarx.eclipse.plugin", "state-holder"));
 					ProblemHolderService problemHolder = (ProblemHolderService) project.getSessionProperty(
 						new QualifiedName("com.checkmarx.eclipse.plugin", "problem-holder"));
 
@@ -177,8 +177,10 @@ public class ResultPublisher {
 
 					// Build ProblemHelper.Builder with file context and scan issues
 					String filePath = file.getLocation().toOSString();
+					org.eclipse.jface.text.IDocument document = getDocumentForFile(file);
 					ProblemHelper.Builder builder = ProblemHelper.builder(file, project)
 						.filePath(filePath)
+						.document(document)
 						.scanIssueList(scanIssues)
 						.problemHolderService(problemHolder)
 						.problemDecorator(new ProblemDecorator());
@@ -202,6 +204,43 @@ public class ResultPublisher {
 
 		} catch (Exception e) {
 			CxLogger.warning(LOG_TAG + " Error: " + e.getMessage());
+		}
+	}
+
+	/**
+	 * Get the IDocument for a file, preferring the live editor's document (so unsaved
+	 * edits are reflected) and falling back to reading the file's on-disk content.
+	 *
+	 * ScanIssueProcessor requires a non-null document to validate that an issue's line
+	 * number is within range (getNumberOfLines()); without it every issue is rejected.
+	 *
+	 * @param file File to get the document for
+	 * @return IDocument, or null if it could not be obtained
+	 */
+	private static org.eclipse.jface.text.IDocument getDocumentForFile(IFile file) {
+		try {
+			IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
+			if (page != null) {
+				org.eclipse.ui.IEditorPart editor = page.findEditor(new org.eclipse.ui.part.FileEditorInput(file));
+				if (editor instanceof org.eclipse.ui.texteditor.ITextEditor) {
+					org.eclipse.ui.texteditor.ITextEditor textEditor = (org.eclipse.ui.texteditor.ITextEditor) editor;
+					org.eclipse.jface.text.IDocument doc = textEditor.getDocumentProvider().getDocument(textEditor.getEditorInput());
+					if (doc != null) {
+						return doc;
+					}
+				}
+			}
+		} catch (Exception e) {
+			CxLogger.warning(LOG_TAG + " Could not get document from editor: " + e.getMessage());
+		}
+
+		try {
+			org.eclipse.jface.text.Document doc = new org.eclipse.jface.text.Document();
+			doc.set(new String(file.getContents().readAllBytes()));
+			return doc;
+		} catch (Exception e) {
+			CxLogger.warning(LOG_TAG + " Could not create document from file: " + e.getMessage());
+			return null;
 		}
 	}
 

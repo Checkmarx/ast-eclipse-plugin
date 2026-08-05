@@ -68,7 +68,9 @@ public class AscaScannerService extends BaseScannerService<ScanResult> {
 
 	@Override
 	public com.checkmarx.eclipse.devassist.common.ScanResult<ScanResult> scan(String filePath) {
-		com.checkmarx.eclipse.devassist.common.ScanResult<Object> result = scanWithDocument(filePath, new Document());
+		IDocument liveDocument = com.checkmarx.eclipse.devassist.utils.DevAssistUtils.getLiveDocumentForFile(filePath);
+		com.checkmarx.eclipse.devassist.common.ScanResult<Object> result = scanWithDocument(filePath,
+				liveDocument != null ? liveDocument : new Document());
 		return (com.checkmarx.eclipse.devassist.common.ScanResult<ScanResult>) (com.checkmarx.eclipse.devassist.common.ScanResult<?>) result;
 	}
 
