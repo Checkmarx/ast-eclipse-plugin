@@ -24,6 +24,8 @@ public class CheckmarxDocumentListener implements IDocumentListener {
 	private final IFile file;
 	private final String fileName;
 	private final DevAssistScanScheduler scheduler;
+	private volatile boolean skipNextChange = false;
+	private volatile long lastRescheduleTime = 0;
 
 	/**
 	 * Create a document listener for a specific file.
@@ -59,6 +61,19 @@ public class CheckmarxDocumentListener implements IDocumentListener {
 	@Override
 	public void documentChanged(DocumentEvent event) {
 		try {
+			// Skip rescheduling if this is a programmatic change (e.g., annotation updates)
+			if (skipNextChange) {
+				skipNextChange = false;
+				return;
+			}
+
+			// Prevent StackOverflowError from rapid recursive reschedules
+			long now = System.currentTimeMillis();
+			if (now - lastRescheduleTime < 100) {
+				return;
+			}
+			lastRescheduleTime = now;
+
 			// Reschedule the debounced scan job via scheduler
 			// This cancels the previous job (if still scheduled) and starts a new 1-second timer
 			if (scheduler != null && file != null) {
@@ -71,6 +86,10 @@ public class CheckmarxDocumentListener implements IDocumentListener {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+	}
+
+	public void setSkipNextChange(boolean skip) {
+		this.skipNextChange = skip;
 	}
 
 	/**

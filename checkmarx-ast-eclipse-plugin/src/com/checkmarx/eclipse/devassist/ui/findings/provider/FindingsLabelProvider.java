@@ -1,4 +1,4 @@
-﻿package com.checkmarx.eclipse.devassist.ui.findings.provider;
+package com.checkmarx.eclipse.devassist.ui.findings.provider;
 
 import java.util.Map;
 import org.eclipse.jface.viewers.DelegatingStyledCellLabelProvider;
@@ -107,10 +107,6 @@ public class FindingsLabelProvider extends DelegatingStyledCellLabelProvider {
             Map<String, Long> counts = fileNode.getProblemCount();
 
             if (counts != null && !counts.isEmpty()) {
-            	// CRITICAL FIX: Reset clipping so SWT allows drawing outside the text area
-                org.eclipse.swt.graphics.Rectangle oldClipping = event.gc.getClipping();
-                event.gc.setClipping((org.eclipse.swt.graphics.Rectangle) null);
-                try {
                 // Determine exactly where the file label ends horizontally
                 Point textSize = event.gc.textExtent(fileNode.getFileName());
                 
@@ -134,28 +130,35 @@ public class FindingsLabelProvider extends DelegatingStyledCellLabelProvider {
                             
                             // Draw Count Number tightly next to the shield
                             String countStr = String.valueOf(count);
-                            
+
                             // Match text color dynamically (Use foreground selection color if item is highlighted)
-                         // Match text color dynamically (Use foreground selection color if item is highlighted)
                             if ((event.detail & SWT.SELECTED) != 0) {
                                 event.gc.setForeground(event.display.getSystemColor(SWT.COLOR_LIST_SELECTION_TEXT));
                             } else {
-                                // Falls back to standard list item text color cleanly across dark/light themes
                                 event.gc.setForeground(event.display.getSystemColor(SWT.COLOR_LIST_FOREGROUND));
                             }
-                            
+
+                            // Make count text bold
+                            org.eclipse.swt.graphics.Font originalFont = event.gc.getFont();
+                            org.eclipse.swt.graphics.FontData[] fontData = originalFont.getFontData();
+                            for (org.eclipse.swt.graphics.FontData fd : fontData) {
+                                fd.setStyle(fd.getStyle() | SWT.BOLD);
+                            }
+                            org.eclipse.swt.graphics.Font boldFont = new org.eclipse.swt.graphics.Font(event.display, fontData);
+                            event.gc.setFont(boldFont);
+
                             event.gc.drawString(countStr, currentX, textY, true);
+
+                            // Restore original font
+                            event.gc.setFont(originalFont);
+                            boldFont.dispose();
                             
                             // Advance cursor layout pointer to the next shield group block
                             currentX += event.gc.textExtent(countStr).x + BETWEEN_BADGE_SPACING;
                         }
                     }
                 }
-            } finally {
-                // Restore original clipping area
-                event.gc.setClipping(oldClipping);
             }
         }
     }
-}
 }
