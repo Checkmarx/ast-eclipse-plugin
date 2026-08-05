@@ -7,10 +7,16 @@ import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.PlatformUI;
 
 import com.checkmarx.eclipse.utils.CxLogger;
+import com.checkmarx.eclipse.devassist.ui.findings.realtime.CheckmarxEditorListener;
+import com.checkmarx.eclipse.devassist.backend.GlobalScannerController;
+import com.checkmarx.eclipse.devassist.backend.listener.ProjectLifecycleListener;
 
 public class PluginStartup implements IStartup {
 
 	private static final String VIEW_ID = "com.checkmarx.eclipse.views.CheckmarxView";
+	private static final String FINDINGS_VIEW_ID = "com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView";
+	private static CheckmarxEditorListener realtimeScanListener; // Keep strong reference to prevent GC
+	private static ProjectLifecycleListener projectListener; // Keep strong reference to prevent GC
 
 	@Override
 	public void earlyStartup() {
@@ -19,13 +25,50 @@ public class PluginStartup implements IStartup {
 				IWorkbenchWindow window = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
 				if (window != null) {
 					IWorkbenchPage page = window.getActivePage();
+
+					// Show Checkmarx One view if not already visible
 					if (page != null && page.findView(VIEW_ID) == null) {
 						page.showView(VIEW_ID);
 					}
+
+					// Show Checkmarx Findings view if not already visible
+					if (page != null && page.findView(FINDINGS_VIEW_ID) == null) {
+						page.showView(FINDINGS_VIEW_ID);
+					}
+
+					// Register listener for real-time scanning with debounce
+					realtimeScanListener = new CheckmarxEditorListener();
+					window.getPartService().addPartListener(realtimeScanListener);
+
+					// Initialize backend scanner infrastructure
+					initializeBackendScanners();
 				}
 			} catch (PartInitException e) {
-				CxLogger.error("Failed to open Checkmarx One view on startup: " + e.getMessage(), e);
+				CxLogger.error("Failed to open Checkmarx views on startup: " + e.getMessage(), e);
+			} catch (Exception e) {
+				CxLogger.error("Error during plugin startup: " + e.getMessage(), e);
 			}
 		});
+	}
+
+	/**
+	 * Initialize backend scanner infrastructure.
+	 *
+	 * Creates and registers:
+	 * - GlobalScannerController (application-level singleton)
+	 * - ProjectLifecycleListener (project open/close listener)
+	 *
+	 * This enables real-time scanning on file modifications.
+	 */
+	private void initializeBackendScanners() {
+		try {
+			GlobalScannerController controller = GlobalScannerController.getInstance();
+			CxLogger.info(controller.getStateReport());
+
+			projectListener = new ProjectLifecycleListener();
+			projectListener.register();
+		} catch (Exception e) {
+			CxLogger.error("Error initializing backend scanners: " + e.getMessage(), e);
+		}
 	}
 }

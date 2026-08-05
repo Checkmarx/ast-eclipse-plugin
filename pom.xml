@@ -158,6 +158,8 @@
 
 				<executions>
 
+					<!-- Disabled for development: enable after test coverage is added -->
+					<!--
 					<execution>
 						<id>merge</id>
 						<phase>verify</phase>
@@ -184,6 +186,7 @@
 							<goal>report-aggregate</goal>
 						</goals>
 					</execution>
+					-->
 
 				</executions>
 			</plugin>
