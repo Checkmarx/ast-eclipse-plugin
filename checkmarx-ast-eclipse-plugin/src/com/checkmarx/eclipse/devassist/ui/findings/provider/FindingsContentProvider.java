@@ -30,41 +30,18 @@ public class FindingsContentProvider implements ITreeContentProvider {
         if (inputElement instanceof Map) {
             @SuppressWarnings("unchecked")
             Map<String, List<ScanIssue>> map = (Map<String, List<ScanIssue>>) inputElement;
-
-            
-            
-            
-
-            Object[] elements = map.entrySet().stream()
+            return map.entrySet().stream()
                     .map(entry -> {
                         String fileName = getFileName(entry.getKey());
                         Image fileIcon = getFileIcon(fileName);
-                        List<ScanIssue> issues = entry.getValue();
-
-                        
-                        
-                        
-
-                        // Calculate and log severity counts
-                        java.util.Map<String, Long> counts = new java.util.HashMap<>();
-                        for (ScanIssue issue : issues) {
-                            String severity = issue.getSeverity();
-                            counts.put(severity, counts.getOrDefault(severity, 0L) + 1);
-                        }
-
                         return new FileNodeLabel(
                                 fileName,
                                 entry.getKey(),
-                                issues,
+                                entry.getValue(),
                                 fileIcon);
                     })
                     .toArray();
-
-            
-            
-            return elements;
         }
-
         return new Object[0];
     }
 
@@ -84,7 +61,6 @@ public class FindingsContentProvider implements ITreeContentProvider {
                 }
             }
         } catch (Exception e) {
-            
         }
 
         return null;
@@ -134,4 +110,3 @@ public class FindingsContentProvider implements ITreeContentProvider {
         // Cleanup if needed
     }
 }
-

@@ -33,10 +33,7 @@ public class IconRegistry {
         CRITICAL("critical"),
         HIGH("high"),
         MEDIUM("medium"),
-        LOW("low"),
-        UNKNOWN("unknown"),
-        OK("ok"),
-        IGNORED("ignored");
+        LOW("low");
 
         private final String name;
 
@@ -66,9 +63,6 @@ public class IconRegistry {
         registerIcon("high_16", "icons/severity/high_16.svg");
         registerIcon("medium_16", "icons/severity/medium_16.svg");
         registerIcon("low_16", "icons/severity/low_16.svg");
-        registerIcon("unknown_16", "icons/severity/unknown_16.svg");
-        registerIcon("ok_16", "icons/severity/ok_16.svg");
-        registerIcon("ignored_16", "icons/severity/ignored_16.svg");
 
         // Register medium icons (20px)
         registerIcon("malicious_20", "icons/severity/malicious_20.svg");
@@ -76,9 +70,6 @@ public class IconRegistry {
         registerIcon("high_20", "icons/severity/high_20.svg");
         registerIcon("medium_20", "icons/severity/medium_20.svg");
         registerIcon("low_20", "icons/severity/low_20.svg");
-        registerIcon("unknown_20", "icons/severity/unknown_20.svg");
-        registerIcon("ok_20", "icons/severity/ok_20.svg");
-        registerIcon("ignored_20", "icons/severity/ignored_20.svg");
 
         // Register base icons
         registerIcon("malicious", "icons/severity/malicious.svg");
@@ -86,9 +77,6 @@ public class IconRegistry {
         registerIcon("high", "icons/severity/high.svg");
         registerIcon("medium", "icons/severity/medium.svg");
         registerIcon("low", "icons/severity/low.svg");
-        registerIcon("unknown", "icons/severity/unknown.svg");
-        registerIcon("ok", "icons/severity/ok.svg");
-        registerIcon("ignored", "icons/severity/ignored.svg");
     }
 
     private static void registerIcon(String key, String path) {
@@ -98,7 +86,6 @@ public class IconRegistry {
 
     /**
      * Get icon for a severity level and size.
-     * Normalizes severity to match SeverityLevel enum values, then converts to lowercase for icon lookup.
      *
      * @param severity Severity level (case-insensitive)
      * @param size     Icon size
@@ -109,9 +96,7 @@ public class IconRegistry {
             return null;
         }
 
-        // Normalize severity to SeverityLevel format, then convert to lowercase for icon key
-        String normalized = com.checkmarx.eclipse.devassist.backend.DevAssistUtils.normalizeSeverity(severity);
-        String key = normalized.toLowerCase() + size.getSuffix();
+        String key = severity.toLowerCase() + size.getSuffix();
         return imageRegistry.get(key);
     }
 

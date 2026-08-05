@@ -28,13 +28,8 @@ public class SeverityImageComposer {
         try {
             Display display = Display.getDefault();
             Image compositeImage = createFullBadgeImage(display, fileNode);
-            if (compositeImage != null) {
-                
-            }
             return compositeImage;
         } catch (Exception e) {
-            System.err.println("[SEVERITY-COMPOSER] Error creating full composite image: " + e.getMessage());
-            e.printStackTrace();
             return null;
         }
     }
@@ -68,7 +63,6 @@ public class SeverityImageComposer {
 
             return compositeImage;
         } catch (Exception e) {
-            System.err.println("[SEVERITY-COMPOSER] Error creating composite image: " + e.getMessage());
             return null;
         }
     }
@@ -144,12 +138,9 @@ public class SeverityImageComposer {
             }
 
             gc.dispose();
-            
             return compositeImage;
 
         } catch (Exception e) {
-            System.err.println("[SEVERITY-COMPOSER] Error creating badge image: " + e.getMessage());
-            e.printStackTrace();
             return null;
         }
     }
@@ -220,12 +211,9 @@ public class SeverityImageComposer {
             }
 
             gc.dispose();
-            
             return compositeImage;
 
         } catch (Exception e) {
-            System.err.println("[SEVERITY-COMPOSER] Error creating full badge image: " + e.getMessage());
-            e.printStackTrace();
             return null;
         }
     }

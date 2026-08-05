@@ -48,7 +48,8 @@ public class FileNodeLabel {
         for (ScanIssue issue : issues) {
             String severity = issue.getSeverity();
             if (severity != null) {
-                counts.put(severity, counts.getOrDefault(severity, 0L) + 1);
+                String normalizedSeverity = severity.toLowerCase();
+                counts.put(normalizedSeverity, counts.getOrDefault(normalizedSeverity, 0L) + 1);
             }
         }
 
