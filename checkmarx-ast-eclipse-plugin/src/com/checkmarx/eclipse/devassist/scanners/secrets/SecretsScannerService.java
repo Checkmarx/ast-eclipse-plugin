@@ -163,7 +163,8 @@ public class SecretsScannerService extends BaseScannerService<SecretsRealtimeRes
         if (!shouldScanFile(filePath)) {
             return null;
         }
-        return scan(filePath, new Document(), project);
+        IDocument liveDocument = com.checkmarx.eclipse.devassist.utils.DevAssistUtils.getLiveDocumentForFile(filePath);
+        return scan(filePath, liveDocument != null ? liveDocument : new Document(), project);
     }
 
     /**

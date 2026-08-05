@@ -285,7 +285,8 @@ public class ContainerScannerService extends BaseScannerService<ContainersRealti
         if (!shouldScanFile(filePath)) {
             return null;
         }
-        return scan(filePath, null, project);
+        IDocument liveDocument = DevAssistUtils.getLiveDocumentForFile(filePath);
+        return scan(filePath, liveDocument, project);
     }
 
     @Override

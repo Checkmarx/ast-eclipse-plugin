@@ -72,62 +72,68 @@ public class ScanManager {
 		
 
 		// 2. Check if file changed since last scan
-		
+		// NOTE: hasChanged() atomically marks the file as "in-flight" when it returns true.
+		// We MUST call stateHolder.markScanComplete(filePath) once we're done (success or
+		// failure) or every subsequent edit will be permanently BLOCKED as "already in-flight".
 		if (!stateHolder.hasChanged(filePath, currentStateHash)) {
-			
-			return List.of();
-		}
-		
 
-		// 3. Get all scanners that support this file
-		
-		List<ScannerService<?>> applicableScanners = factory.getAllSupportedScanners(filePath);
-
-		
-		for (ScannerService<?> scanner : applicableScanners) {
-			String displayName = scanner.getConfig() != null ? scanner.getConfig().getEngineName() : "Unknown";
-			
-		}
-
-		if (applicableScanners.isEmpty()) {
-			
-			// Still update state to avoid re-checking unsupported files
-			stateHolder.updateStateHash(filePath, currentStateHash);
 			return List.of();
 		}
 
-		// 4. Execute all scanners and merge results
+		try {
+			// 3. Get all scanners that support this file
 
-		List<ScanIssue> allIssues = new ArrayList<>();
-		int scannerIndex = 1;
-		int successfulScanners = 0;
+			List<ScannerService<?>> applicableScanners = factory.getAllSupportedScanners(filePath);
 
-		for (ScannerService<?> scanner : applicableScanners) {
-			String displayName = scanner.getConfig() != null ? scanner.getConfig().getEngineName() : "Unknown";
-			try {
-				var scanResult = scanner.scan(filePath);
-				List<ScanIssue> scannerResults = scanResult != null ? scanResult.getIssues() : null;
 
-				if (scannerResults != null) {
-					for (ScanIssue issue : scannerResults) {
-					}
-					allIssues.addAll(scannerResults);
-				}
-				successfulScanners++;
+			for (ScannerService<?> scanner : applicableScanners) {
+				String displayName = scanner.getConfig() != null ? scanner.getConfig().getEngineName() : "Unknown";
 
-			} catch (Exception e) {
-				e.printStackTrace();
 			}
-			scannerIndex++;
-		}
 
-		// 5. Update state hash only if at least one scanner succeeded
-		// If all scanners failed, don't update hash so file will be re-scanned on next change
-		if (successfulScanners > 0) {
-			stateHolder.updateStateHash(filePath, currentStateHash);
-		}
+			if (applicableScanners.isEmpty()) {
 
-		return allIssues;
+				// Still update state to avoid re-checking unsupported files
+				stateHolder.updateStateHash(filePath, currentStateHash);
+				return List.of();
+			}
+
+			// 4. Execute all scanners and merge results
+
+			List<ScanIssue> allIssues = new ArrayList<>();
+			int scannerIndex = 1;
+			int successfulScanners = 0;
+
+			for (ScannerService<?> scanner : applicableScanners) {
+				String displayName = scanner.getConfig() != null ? scanner.getConfig().getEngineName() : "Unknown";
+				try {
+					var scanResult = scanner.scan(filePath);
+					List<ScanIssue> scannerResults = scanResult != null ? scanResult.getIssues() : null;
+
+					if (scannerResults != null) {
+						for (ScanIssue issue : scannerResults) {
+						}
+						allIssues.addAll(scannerResults);
+					}
+					successfulScanners++;
+
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+				scannerIndex++;
+			}
+
+			// 5. Update state hash only if at least one scanner succeeded
+			// If all scanners failed, don't update hash so file will be re-scanned on next change
+			if (successfulScanners > 0) {
+				stateHolder.updateStateHash(filePath, currentStateHash);
+			}
+
+			return allIssues;
+		} finally {
+			// Always release the in-flight marker so the next edit can trigger a scan.
+			stateHolder.markScanComplete(filePath);
+		}
 	}
 
 	/**

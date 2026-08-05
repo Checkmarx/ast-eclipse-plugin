@@ -6,7 +6,17 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
 
+import org.eclipse.core.resources.IFile;
+import org.eclipse.jface.text.IDocument;
 import org.eclipse.jgit.annotations.NonNull;
+import org.eclipse.swt.widgets.Display;
+import org.eclipse.ui.IEditorPart;
+import org.eclipse.ui.IEditorReference;
+import org.eclipse.ui.IWorkbench;
+import org.eclipse.ui.IWorkbenchPage;
+import org.eclipse.ui.IWorkbenchWindow;
+import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.texteditor.ITextEditor;
 
 import com.checkmarx.eclipse.devassist.backend.SeverityLevel;
 import com.checkmarx.eclipse.utils.CxLogger;
@@ -179,5 +189,70 @@ public class DevAssistUtils {
 			return filePath.substring(lastDot + 1).toLowerCase();
 		}
 		return null;
+	}
+
+	/**
+	 * Get the live IDocument for a file if it is currently open in an editor.
+	 *
+	 * CRITICAL: Every scanner's scan(String filePath) previously passed a brand-new
+	 * empty Document, which forced getFileContent() to fall back to reading the file
+	 * from disk. This meant real-time scans always scanned the last SAVED content,
+	 * never the current unsaved edit - causing results to lag one edit/save behind.
+	 *
+	 * Runs the editor lookup on the UI thread (via syncExec) since scan() is invoked
+	 * from a background Job thread and Workbench/editor APIs are not thread-safe.
+	 *
+	 * @param filePath Absolute OS file path to look up
+	 * @return the live IDocument if the file is open in a text editor, else null
+	 */
+	public static IDocument getLiveDocumentForFile(String filePath) {
+		if (filePath == null || filePath.isBlank()) {
+			return null;
+		}
+
+		final IDocument[] result = new IDocument[1];
+		try {
+			Display display = Display.getDefault();
+			if (display == null || display.isDisposed()) {
+				return null;
+			}
+
+			display.syncExec(() -> {
+				try {
+					IWorkbench workbench = PlatformUI.getWorkbench();
+					if (workbench == null || workbench.isClosing()) {
+						return;
+					}
+					for (IWorkbenchWindow window : workbench.getWorkbenchWindows()) {
+						for (IWorkbenchPage page : window.getPages()) {
+							for (IEditorReference ref : page.getEditorReferences()) {
+								IEditorPart editor = ref.getEditor(false);
+								if (!(editor instanceof ITextEditor)) {
+									continue;
+								}
+								ITextEditor textEditor = (ITextEditor) editor;
+								try {
+									IFile file = textEditor.getEditorInput().getAdapter(IFile.class);
+									if (file != null && file.getLocation() != null
+											&& file.getLocation().toOSString().equals(filePath)) {
+										result[0] = textEditor.getDocumentProvider()
+												.getDocument(textEditor.getEditorInput());
+										return;
+									}
+								} catch (Exception e) {
+									// Skip editors we can't inspect
+								}
+							}
+						}
+					}
+				} catch (Exception e) {
+					CxLogger.warning(LOG_TAG + " Error resolving live document for: " + filePath + " - " + e.getMessage());
+				}
+			});
+		} catch (Exception e) {
+			CxLogger.warning(LOG_TAG + " Error in getLiveDocumentForFile: " + e.getMessage());
+		}
+
+		return result[0];
 	}
 }

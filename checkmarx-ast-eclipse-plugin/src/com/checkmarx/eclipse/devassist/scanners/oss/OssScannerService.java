@@ -78,7 +78,8 @@ public class OssScannerService extends BaseScannerService<OssRealtimeResults> {
 
 	@Override
 	public com.checkmarx.eclipse.devassist.common.ScanResult<OssRealtimeResults> scan(String filePath) {
-		return scanWithDocument(filePath, new Document());
+		IDocument liveDocument = com.checkmarx.eclipse.devassist.utils.DevAssistUtils.getLiveDocumentForFile(filePath);
+		return scanWithDocument(filePath, liveDocument != null ? liveDocument : new Document());
 	}
 
 	/**
