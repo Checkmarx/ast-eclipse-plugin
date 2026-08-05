@@ -1433,13 +1433,14 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 
         // ✅ Verify treeViewer control before manipulating UI
         if (treeViewer != null && treeViewer.getControl() != null && !treeViewer.getControl().isDisposed()) {
-            
+
             treeViewer.setInput(filteredIssues);
-            
+
             treeViewer.expandAll();
         }
 
-        
+        // Update view title with problem count
+        setPartName("Checkmarx One Assist Findings " + totalAfter);
     }
 
     /**
