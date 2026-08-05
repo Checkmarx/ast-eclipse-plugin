@@ -9,6 +9,7 @@ public class Location {
 	private int line;
 	private int startIndex;
 	private int endIndex;
+	private boolean isAbsoluteOffset = false;
 
 	public Location() {
 	}
@@ -17,6 +18,13 @@ public class Location {
 		this.line = line;
 		this.startIndex = startIndex;
 		this.endIndex = endIndex;
+	}
+
+	public Location(int line, int startIndex, int endIndex, boolean isAbsoluteOffset) {
+		this.line = line;
+		this.startIndex = startIndex;
+		this.endIndex = endIndex;
+		this.isAbsoluteOffset = isAbsoluteOffset;
 	}
 
 	public int getLine() {
@@ -41,5 +49,13 @@ public class Location {
 
 	public void setEndIndex(int endIndex) {
 		this.endIndex = endIndex;
+	}
+
+	public boolean isAbsoluteOffset() {
+		return isAbsoluteOffset;
+	}
+
+	public void setAbsoluteOffset(boolean absoluteOffset) {
+		isAbsoluteOffset = absoluteOffset;
 	}
 }

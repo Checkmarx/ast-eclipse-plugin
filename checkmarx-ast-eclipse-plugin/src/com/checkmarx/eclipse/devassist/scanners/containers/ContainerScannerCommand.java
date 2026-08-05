@@ -1,6 +1,7 @@
 package com.checkmarx.eclipse.devassist.scanners.containers;
 
 import com.checkmarx.ast.containersrealtime.ContainersRealtimeResults;
+import com.checkmarx.eclipse.devassist.basescanner.BaseScannerCommand;
 import com.checkmarx.eclipse.devassist.common.ScanResult;
 import com.checkmarx.eclipse.utils.CxLogger;
 import org.eclipse.core.resources.IProject;
@@ -11,12 +12,12 @@ import java.util.Objects;
 /**
  * Container Scanner Command that manages the lifecycle of container realtime scanning in Eclipse.
  * Coordinates execution, file eligibility validation, and disposal for a given workspace project.
+ * Extends BaseScannerCommand for consistent registration lifecycle.
  */
-public class ContainerScannerCommand {
+public class ContainerScannerCommand extends BaseScannerCommand {
 
     private static final String LOG_TAG = "[CONTAINER-COMMAND]";
 
-    private final IProject project;
     private final ContainerScannerService containerScannerService;
     private boolean isInitialized = false;
 
@@ -36,15 +37,16 @@ public class ContainerScannerCommand {
      * @param containerScannerService custom or pre-configured scanner service
      */
     public ContainerScannerCommand(IProject project, ContainerScannerService containerScannerService) {
-        this.project = project;
+        super(project, ContainerScannerService.createConfig());
         this.containerScannerService = containerScannerService;
-        initializeScanner();
+        CxLogger.info(LOG_TAG + " Created for project: " + project.getName());
     }
 
     /**
-     * Initializes the scanner, invoked during or after registration of the command.
+     * Initializes the scanner, invoked when scanner is registered.
      */
-    public synchronized void initializeScanner() {
+    @Override
+    public void initializeScanner() {
         if (!isInitialized) {
             this.isInitialized = true;
             String projectName = Objects.nonNull(project) ? project.getName() : "Unknown";
@@ -90,6 +92,7 @@ public class ContainerScannerCommand {
      * Disposes underlying resources and cleans up temporary structures.
      * Automatically called when the project or plugin context is closed/unloaded.
      */
+    @Override
     public void dispose() {
         try {
             if (containerScannerService != null) {
@@ -101,5 +104,6 @@ public class ContainerScannerCommand {
         } catch (Exception e) {
             CxLogger.warning(LOG_TAG + " Error disposing Container Scanner Command: " + e.getMessage());
         }
+        super.dispose();
     }
 }

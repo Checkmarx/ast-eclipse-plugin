@@ -22,6 +22,7 @@ import com.checkmarx.eclipse.devassist.model.ScanIssue;
 public class FindingsEditorOverlay {
 
     // These match the annotation types defined in plugin.xml
+    private static final String ANNOTATION_TYPE_MALICIOUS = "com.checkmarx.eclipse.findings.malicious";
     private static final String ANNOTATION_TYPE_CRITICAL = "com.checkmarx.eclipse.findings.critical";
     private static final String ANNOTATION_TYPE_HIGH = "com.checkmarx.eclipse.findings.high";
     private static final String ANNOTATION_TYPE_MEDIUM = "com.checkmarx.eclipse.findings.medium";
@@ -113,6 +114,7 @@ public class FindingsEditorOverlay {
 
     /**
      * Get annotation type based on severity level.
+     * Maps all problem severities to their corresponding annotation types.
      */
     private static String getAnnotationTypeForSeverity(String severity) {
         if (severity == null) {
@@ -120,6 +122,8 @@ public class FindingsEditorOverlay {
         }
 
         switch (severity.toLowerCase()) {
+            case "malicious":
+                return ANNOTATION_TYPE_MALICIOUS;
             case "critical":
             case "high":
                 return ANNOTATION_TYPE_CRITICAL;

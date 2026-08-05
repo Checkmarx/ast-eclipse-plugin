@@ -8,7 +8,6 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.IRegion;
 import org.eclipse.jface.text.source.Annotation;
-import org.eclipse.jface.text.source.AnnotationModel;
 import org.eclipse.jface.text.source.IAnnotationModel;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPage;
@@ -53,43 +52,38 @@ public class ProblemDecorator {
 			return;
 		}
 		if (scanIssues == null) {
-			return;
-		}
-		if (scanIssues.isEmpty()) {
-			return;
+			scanIssues = List.of();
 		}
 
 		// **FIX: Use getLocation() (absolute path) for consistency with RealTimeScanJob and ResultPublisher**
 		// This ensures fileAnnotations map keys match the same path format used throughout the codebase
 		String filePath = file.getLocation().toOSString();
-		
 
 		try {
 			// Find open editor for this file
-			
 			ITextEditor editor = findOpenEditor(file);
 			if (editor == null) {
-				
-				CxLogger.info(LOG_TAG + " ✗ No open editor for: " + filePath);
+				CxLogger.info(LOG_TAG + "No open editor for: " + filePath);
 				return;
 			}
-			
 
 			// Get annotation model from editor
-			
 			IAnnotationModel annotationModel = editor.getDocumentProvider()
 				.getAnnotationModel(editor.getEditorInput());
 
 			if (annotationModel == null) {
-				
-				CxLogger.warning(LOG_TAG + " ✗ No annotation model available");
+				CxLogger.warning(LOG_TAG + "No annotation model available");
 				return;
 			}
-			
 
-			// Remove previous annotations for this file
-			
+			// Remove previous annotations for this file (BEFORE isEmpty check)
+			// This ensures stale annotations are cleared even if file is now clean
 			clearAnnotations(filePath, annotationModel);
+
+			// Early return if no issues to add
+			if (scanIssues.isEmpty()) {
+				return;
+			}
 
 			// Add new annotations for each issue
 			List<Annotation> annotations = new java.util.ArrayList<>();
@@ -127,9 +121,9 @@ public class ProblemDecorator {
 
 							// Add annotation to model for display
 							annotationModel.addAnnotation(annotation, pos);
-							CxLogger.info(LOG_TAG + "   ✓ Annotation added to model");
+							CxLogger.info(LOG_TAG + "Annotation added to model");
 						} else {
-							CxLogger.warning(LOG_TAG + "   ✗ FAILED: Invalid position (offset=" +
+							CxLogger.warning(LOG_TAG + "FAILED: Invalid position (offset=" +
 								(pos != null ? pos.getOffset() : "null") + ", length=" +
 								(pos != null ? pos.getLength() : "null") + ")");
 						}
@@ -145,7 +139,7 @@ public class ProblemDecorator {
 			fileAnnotations.put(filePath, annotations);
 
 			CxLogger.info(LOG_TAG + " ══════════════════════════════════════════════════");
-			CxLogger.info(LOG_TAG + " ✓ COMPLETE: Added " + annotations.size() +
+			CxLogger.info(LOG_TAG + "COMPLETE: Added " + annotations.size() +
 				" annotations to editor");
 			CxLogger.info(LOG_TAG + " ══════════════════════════════════════════════════");
 
@@ -312,7 +306,7 @@ public class ProblemDecorator {
 				return null;
 			}
 
-			CxLogger.info(LOG_TAG + "   [OSS] ✓ Decorating first line: [" + lineOffset +
+			CxLogger.info(LOG_TAG + "   [OSS]  Decorating first line: [" + lineOffset +
 				"-" + (lineOffset + decorationLength) + "] = " + decorationLength + " chars");
 
 			return new org.eclipse.jface.text.Position(lineOffset, decorationLength);
@@ -355,10 +349,11 @@ public class ProblemDecorator {
 	            int lineLength = lineInfo.getLength();
 
 	            int trimIndent = getLeadingWhitespaceOffset(document, lineOffset, lineLength);
-	            boolean isLineRelative = (rawStart == 0 && line > 0) || (rawEnd < 100 && rawEnd - rawStart < 100);
+	            // Use explicit flag from Location instead of inferring from magnitude
+	            boolean isAbsoluteOffset = location.isAbsoluteOffset();
 
-	            int charStart = isLineRelative ? (lineOffset + rawStart) : rawStart;
-	            int charEnd = isLineRelative ? (lineOffset + rawEnd) : rawEnd;
+	            int charStart = isAbsoluteOffset ? rawStart : (lineOffset + rawStart);
+	            int charEnd = isAbsoluteOffset ? rawEnd : (lineOffset + rawEnd);
 
 	            // If start points to the beginning of the line, shift past leading whitespace
 	            if (charStart <= lineOffset) {
@@ -443,7 +438,7 @@ public class ProblemDecorator {
 				}
 				fileAnnotations.remove(filePath);
 
-				CxLogger.info(LOG_TAG + " ✓ Cleared " + previousAnnotations.size() +
+				CxLogger.info(LOG_TAG + " Cleared " + previousAnnotations.size() +
 					" previous annotations");
 			}
 		} catch (Exception e) {
@@ -538,7 +533,7 @@ public class ProblemDecorator {
 				clearAnnotations(filePath, annotationModel);
 			}
 
-			CxLogger.info(LOG_TAG + " ✓ Decorations cleared");
+			CxLogger.info(LOG_TAG + " Decorations cleared");
 
 		} catch (Exception e) {
 			CxLogger.warning(LOG_TAG + " Error clearing decorations: " +
@@ -562,10 +557,10 @@ public class ProblemDecorator {
 	/**
 	 * Highlight a line and add gutter icon for a problem.
 	 *
-	 * Called by ScanIssueProcessor during per-issue processing.
-	 * Integrates with the existing decoration system.
+	 * Delegates to the decorateEditor() path which handles annotation creation
+	 * and display in the editor's gutter and line highlighting.
 	 *
-	 * @param problemHelper Problem helper with context (currently unused, for JetBrains API alignment)
+	 * @param problemHelper Problem helper with context (used to locate the file being edited)
 	 * @param scanIssue Scan issue to highlight
 	 * @param isProblem Whether this is a problem (not just note)
 	 * @param problemLineNumber Line number to highlight
@@ -576,9 +571,19 @@ public class ProblemDecorator {
 		boolean isProblem,
 		int problemLineNumber) {
 
+		if (!isProblem || scanIssue == null) {
+			return;
+		}
+
 		try {
-			CxLogger.info(LOG_TAG + " highlightLineAddGutterIconForProblem called for line: " +
-				problemLineNumber + " issue: " + scanIssue.getTitle());
+			// Get the file from problem helper and decorate it
+			// Wrap single issue in a list and delegate to decorateEditor()
+			IFile file = problemHelper.getFile();
+			if (file != null && file.exists()) {
+				decorateEditor(file, List.of(scanIssue));
+			} else {
+				CxLogger.warning(LOG_TAG + " Cannot decorate: file not found or null");
+			}
 		} catch (Exception e) {
 			CxLogger.error(LOG_TAG + " Error in highlightLineAddGutterIconForProblem: " + e.getMessage(), e);
 		}

@@ -16,6 +16,7 @@ public abstract class BaseScannerCommand implements ScannerCommand {
 	private static final String LOG_TAG = "[SCANNER-COMMAND]";
 	public ScannerConfig config;
 	protected IProject project;
+	private boolean isRegistered = false;
 
 	/**
 	 * Create a scanner command with configuration.
@@ -44,6 +45,7 @@ public abstract class BaseScannerCommand implements ScannerCommand {
 		}
 		CxLogger.info(config.getEnabledMessage() + ":" + project.getName());
 		initializeScanner();
+		isRegistered = true;
 	}
 
 	/**
@@ -58,6 +60,7 @@ public abstract class BaseScannerCommand implements ScannerCommand {
 			return;
 		}
 		CxLogger.info(config.getDisabledMessage() + ":" + project.getName());
+		isRegistered = false;
 	}
 
 	/**
@@ -73,7 +76,7 @@ public abstract class BaseScannerCommand implements ScannerCommand {
 	 * @param project is required
 	 */
 	private boolean isScannerRegisteredAlready(IProject project) {
-		return project != null && project.isOpen();
+		return isRegistered;
 	}
 
 	/**

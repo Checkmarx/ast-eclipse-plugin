@@ -145,7 +145,6 @@ public class RealTimeScanJob extends Job {
 				if (registry == null) {
 					
 					registry = new com.checkmarx.eclipse.devassist.backend.ScannerRegistry(project);
-					registry.registerAllScanners();
 					project.setSessionProperty(registryKey, registry);
 					
 				}

@@ -8,7 +8,7 @@ import com.checkmarx.eclipse.devassist.common.ScannerConfig;
 import com.checkmarx.eclipse.devassist.factory.CxWrapperFactory;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
-import com.checkmarx.eclipse.devassist.backend.DevAssistUtils;
+import com.checkmarx.eclipse.devassist.utils.DevAssistUtils;
 import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
 import com.checkmarx.eclipse.utils.CxLogger;
 import org.apache.commons.lang3.tuple.Pair;

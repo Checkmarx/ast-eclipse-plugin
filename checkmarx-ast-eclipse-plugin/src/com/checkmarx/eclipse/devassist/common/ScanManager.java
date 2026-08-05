@@ -97,37 +97,35 @@ public class ScanManager {
 		}
 
 		// 4. Execute all scanners and merge results
-		
+
 		List<ScanIssue> allIssues = new ArrayList<>();
 		int scannerIndex = 1;
+		int successfulScanners = 0;
 
 		for (ScannerService<?> scanner : applicableScanners) {
 			String displayName = scanner.getConfig() != null ? scanner.getConfig().getEngineName() : "Unknown";
 			try {
-				
-
 				var scanResult = scanner.scan(filePath);
 				List<ScanIssue> scannerResults = scanResult != null ? scanResult.getIssues() : null;
 
-				if (scannerResults == null) {
-					
-				} else {
-					
+				if (scannerResults != null) {
 					for (ScanIssue issue : scannerResults) {
 					}
 					allIssues.addAll(scannerResults);
 				}
+				successfulScanners++;
 
 			} catch (Exception e) {
-				// Log but continue with other scanners
-				System.err.println(LOG_TAG + "   ✗ ERROR in " + displayName + ": " + e.getMessage());
 				e.printStackTrace();
 			}
 			scannerIndex++;
 		}
 
-		// 5. Update state hash to mark as scanned
-		stateHolder.updateStateHash(filePath, currentStateHash);
+		// 5. Update state hash only if at least one scanner succeeded
+		// If all scanners failed, don't update hash so file will be re-scanned on next change
+		if (successfulScanners > 0) {
+			stateHolder.updateStateHash(filePath, currentStateHash);
+		}
 
 		return allIssues;
 	}
