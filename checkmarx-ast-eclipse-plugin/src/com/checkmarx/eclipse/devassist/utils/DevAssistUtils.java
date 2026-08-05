@@ -18,6 +18,10 @@ import com.checkmarx.eclipse.utils.CxLogger;
 public class DevAssistUtils {
 	private static final String LOG_TAG = "[DEV-ASSIST-UTILS]";
 
+	public static final String DOCKERFILE = "dockerfile";
+	public static final String DOCKER_COMPOSE = "docker-compose";
+	public static final String HELM = "helm";
+
 	private DevAssistUtils() {
 		// Private constructor to prevent instantiation
 	}
@@ -85,7 +89,6 @@ public class DevAssistUtils {
 		if (severity == null || severity.isEmpty()) {
 			return "Unknown";
 		}
-
 		String upper = severity.toUpperCase();
 		switch (upper) {
 		case "MALICIOUS":
@@ -156,7 +159,7 @@ public class DevAssistUtils {
 		}
 		String fileExtension = getFileExtension(filePath);
 		return Objects.nonNull(fileExtension)
-				&& DevAssistConstants.CONTAINER_HELM_EXTENSION.contains(fileExtension.toLowerCase());
+				&&  DevAssistConstants.CONTAINER_HELM_EXTENSION.contains(fileExtension.toLowerCase());
 	}
 
 	/**

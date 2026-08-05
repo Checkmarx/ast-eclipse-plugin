@@ -173,12 +173,14 @@ public class ScanIssueProcessor {
 
 	/**
 	 * Check if severity indicates a reportable problem.
+	 * Matches severity table in ProblemDecorator.mapSeverityToAnnotationType().
 	 *
 	 * @param severity Severity string (lowercase)
-	 * @return true if problem, false if info/note
+	 * @return true if problem, false if info/note/unknown/ok/ignored
 	 */
 	private boolean isProblem(String severity) {
-		return severity.equals("critical") ||
+		return severity.equals("malicious") ||
+			severity.equals("critical") ||
 			severity.equals("high") ||
 			severity.equals("medium") ||
 			severity.equals("low");

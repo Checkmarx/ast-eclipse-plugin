@@ -31,6 +31,7 @@ public class ProjectLifecycleListener implements IResourceChangeListener {
 	private static final QualifiedName REGISTRY_KEY = new QualifiedName(PLUGIN_ID, "scanner-registry");
 	private static final QualifiedName PROBLEM_HOLDER_KEY = new QualifiedName(PLUGIN_ID, "problem-holder");
 	private static final QualifiedName STATE_HOLDER_KEY = new QualifiedName(PLUGIN_ID, "state-holder");
+	private static final QualifiedName WORKSPACE_SCAN_JOB_KEY = new QualifiedName(PLUGIN_ID, "workspace-scan-job");
 
 	private final List<String> initializedProjects = new ArrayList<>();
 
@@ -133,7 +134,6 @@ public class ProjectLifecycleListener implements IResourceChangeListener {
 			}
 			
 			ScannerRegistry registry = new ScannerRegistry(project);
-			registry.registerAllScanners();
 			project.setSessionProperty(REGISTRY_KEY, registry);
 
 			ProblemHolderService problemHolder = new ProblemHolderService();
@@ -160,6 +160,17 @@ public class ProjectLifecycleListener implements IResourceChangeListener {
 		CxLogger.info(LOG_TAG + " ✓ Project closing: " + project.getName());
 
 		try {
+			// Cancel any in-flight workspace scan job
+			try {
+				Job scanJob = (Job) project.getSessionProperty(WORKSPACE_SCAN_JOB_KEY);
+				if (scanJob != null && scanJob.getState() != Job.NONE) {
+					scanJob.cancel();
+					CxLogger.info(LOG_TAG + " ✓ Cancelled workspace scan job for " + project.getName());
+				}
+			} catch (Exception e) {
+				CxLogger.warning(LOG_TAG + " Error cancelling scan job: " + e.getMessage());
+			}
+
 			try {
 				ScannerRegistry registry = (ScannerRegistry) project.getSessionProperty(REGISTRY_KEY);
 				if (registry != null) {
@@ -213,11 +224,24 @@ public class ProjectLifecycleListener implements IResourceChangeListener {
 	            try {
 	                monitor.beginTask("Scanning manifest, IaC, and container files...", 3);
 
+	                // Check if job was cancelled or project closed before starting
+	                if (monitor.isCanceled() || !project.isOpen()) {
+	                    return Status.CANCEL_STATUS;
+	                }
+
 	                scanManifestFiles(project);
 	                monitor.worked(1);
 
+	                if (monitor.isCanceled() || !project.isOpen()) {
+	                    return Status.CANCEL_STATUS;
+	                }
+
 	                scanIacFiles(project);
 	                monitor.worked(1);
+
+	                if (monitor.isCanceled() || !project.isOpen()) {
+	                    return Status.CANCEL_STATUS;
+	                }
 
 	                scanContainerFiles(project);
 	                monitor.worked(1);
@@ -232,6 +256,13 @@ public class ProjectLifecycleListener implements IResourceChangeListener {
 	            }
 	        }
 	    };
+
+	    try {
+	        // Store job reference in session property so onProjectClose() can cancel it
+	        project.setSessionProperty(WORKSPACE_SCAN_JOB_KEY, scanJob);
+	    } catch (Exception e) {
+	        CxLogger.warning(LOG_TAG + " Error storing workspace scan job: " + e.getMessage());
+	    }
 
 	    // Run as a background job so it doesn't block the IDE
 	    scanJob.setPriority(Job.BUILD);

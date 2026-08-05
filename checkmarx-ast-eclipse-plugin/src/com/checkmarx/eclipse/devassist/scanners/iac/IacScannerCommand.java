@@ -1,6 +1,7 @@
 package com.checkmarx.eclipse.devassist.scanners.iac;
 
 import com.checkmarx.ast.iacrealtime.IacRealtimeResults;
+import com.checkmarx.eclipse.devassist.basescanner.BaseScannerCommand;
 import com.checkmarx.eclipse.devassist.common.ScanResult;
 import com.checkmarx.eclipse.utils.CxLogger;
 import org.eclipse.core.resources.IProject;
@@ -11,19 +12,18 @@ import org.eclipse.jface.text.IDocument;
  *
  * Manages the lifecycle of IaC realtime scanning in Eclipse, integrating with
  * the scanner registry system to handle enabling/disabling of IaC scanning.
+ * Extends BaseScannerCommand for consistent registration lifecycle.
  */
-public class IacScannerCommand {
+public class IacScannerCommand extends BaseScannerCommand {
 
     private static final String LOG_TAG = "[IAC-COMMAND]";
 
-    private final IProject project;
     private final IacScannerService scannerService;
 
     public IacScannerCommand(IProject project, IacScannerService scannerService) {
-        this.project = project;
+        super(project, IacScannerService.createConfig());
         this.scannerService = scannerService;
         CxLogger.info(LOG_TAG + " Created for project: " + project.getName());
-        initializeScanner();
     }
 
     public IacScannerCommand(IProject project) {
@@ -31,11 +31,12 @@ public class IacScannerCommand {
     }
 
     /**
-     * Initializes the scanner, invoked after creation / registration of the scanner.
+     * Initializes the scanner, invoked when scanner is registered.
+     * IaC scans are triggered on demand via editor file changes rather than bulk project scans.
      */
+    @Override
     public void initializeScanner() {
-        // Intentionally empty - mirrors JetBrains implementation where IaC scans
-        // are triggered on demand via editor file changes rather than bulk project scans.
+        CxLogger.info(LOG_TAG + " Initialized for project: " + project.getName());
     }
 
     /**
@@ -63,6 +64,7 @@ public class IacScannerCommand {
      * Disposes the scanner and releases associated resources.
      * Triggered when project is closed or scanner is unregistered.
      */
+    @Override
     public void dispose() {
         try {
             scannerService.close();
@@ -70,5 +72,6 @@ public class IacScannerCommand {
         } catch (Exception e) {
             CxLogger.warning(LOG_TAG + " Error disposing: " + e.getMessage());
         }
+        super.dispose();
     }
 }

@@ -1,6 +1,7 @@
 package com.checkmarx.eclipse.devassist.ui.findings.model;
 
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.utils.DevAssistUtils;
 import org.eclipse.swt.graphics.Image;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +38,7 @@ public class FileNodeLabel {
 
     /**
      * Calculate problem counts grouped by severity.
+     * Severity keys are normalized to lowercase for consistent lookups.
      */
     private static Map<String, Long> calculateProblemCount(List<ScanIssue> issues) {
         Map<String, Long> counts = new HashMap<>();
@@ -48,6 +50,7 @@ public class FileNodeLabel {
         for (ScanIssue issue : issues) {
             String severity = issue.getSeverity();
             if (severity != null) {
+                // Normalize severity to lowercase for consistent map keys
                 String normalizedSeverity = severity.toLowerCase();
                 counts.put(normalizedSeverity, counts.getOrDefault(normalizedSeverity, 0L) + 1);
             }

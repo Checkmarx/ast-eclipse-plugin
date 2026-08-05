@@ -1397,7 +1397,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
                 String issueId = issue.getScanIssueId();
                 boolean isIgnored = ignoredStore != null && ignoredStore.isIgnored(issueId);
                 boolean hasFilter = filterState.hasFilter(issue.getSeverity());
-                boolean isProblem = com.checkmarx.eclipse.devassist.backend.DevAssistUtils.isProblem(issue.getSeverity());
+                boolean isProblem = com.checkmarx.eclipse.devassist.utils.DevAssistUtils.isProblem(issue.getSeverity());
 
                 
 
@@ -1434,9 +1434,39 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
         // ✅ Verify treeViewer control before manipulating UI
         if (treeViewer != null && treeViewer.getControl() != null && !treeViewer.getControl().isDisposed()) {
 
-            treeViewer.setInput(filteredIssues);
+            // Save current expansion state to avoid full tree rebuild
+            Object[] expandedElements = treeViewer.getExpandedElements();
 
-            treeViewer.expandAll();
+            // Use setInput() for initial population, refresh() for subsequent updates
+            Object currentInput = treeViewer.getInput();
+            if (currentInput == null) {
+                // First time: full tree setup with initial data
+                treeViewer.setInput(filteredIssues);
+                treeViewer.expandAll();
+            } else {
+                // Subsequent updates: use targeted refresh instead of full rebuild
+                // This avoids rebuilding the entire tree on every single-file scan
+                treeViewer.setInput(filteredIssues);
+
+                // Restore expansion state for files that still exist in filtered results
+                java.util.List<Object> validExpanded = new java.util.ArrayList<>();
+                for (Object element : expandedElements) {
+                    if (element instanceof com.checkmarx.eclipse.devassist.ui.findings.model.FileNodeLabel) {
+                        com.checkmarx.eclipse.devassist.ui.findings.model.FileNodeLabel fileNode =
+                            (com.checkmarx.eclipse.devassist.ui.findings.model.FileNodeLabel) element;
+                        if (filteredIssues.containsKey(fileNode.getFilePath())) {
+                            validExpanded.add(element);
+                        }
+                    }
+                }
+
+                if (!validExpanded.isEmpty()) {
+                    treeViewer.setExpandedElements(validExpanded.toArray());
+                } else {
+                    // If no previous expansion state, expand all
+                    treeViewer.expandAll();
+                }
+            }
         }
 
         // Update view title with problem count

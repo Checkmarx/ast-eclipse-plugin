@@ -1,11 +1,13 @@
 package com.checkmarx.eclipse.devassist.scanners.oss;
 
-import com.checkmarx.ast.ossrealtime.OssRealtimeResults;
-import com.checkmarx.eclipse.devassist.problems.ProblemHolderService;
-import com.checkmarx.eclipse.devassist.common.ScanResult;
-import com.checkmarx.eclipse.devassist.model.ScanIssue;
-import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
-import com.checkmarx.eclipse.utils.CxLogger;
+import java.nio.file.FileSystems;
+import java.nio.file.PathMatcher;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
+
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
@@ -18,41 +20,41 @@ import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jface.text.Document;
 import org.eclipse.jface.text.IDocument;
 
-import java.nio.file.FileSystems;
-import java.nio.file.PathMatcher;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
+import com.checkmarx.ast.ossrealtime.OssRealtimeResults;
+import com.checkmarx.eclipse.devassist.basescanner.BaseScannerCommand;
+import com.checkmarx.eclipse.devassist.common.ScanResult;
+import com.checkmarx.eclipse.devassist.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.problems.ProblemHolderService;
+import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
+import com.checkmarx.eclipse.utils.CxLogger;
 
 /**
  * Command for coordinating OSS scanner operations in Eclipse.
  *
  * Manages the lifecycle and initialization of OSS scanning:
+ * - Extends BaseScannerCommand for consistent registration lifecycle
  * - Traverses project workspace files recursively upon initialization
  * - Executes background job scans on supported manifest files
  * - Publishes findings via ProblemHolderService
  */
-public class OssScannerCommand {
+public class OssScannerCommand extends BaseScannerCommand {
 
     private static final String LOG_TAG = "[OSS-COMMAND]";
 
     public final OssScannerService ossScannerService;
-    private final IProject project;
 
     public OssScannerCommand(IProject project) {
+        super(project, OssScannerService.createConfig());
         this.ossScannerService = new OssScannerService(project);
-        this.project = project;
         CxLogger.info(LOG_TAG + " Created for project: " + project.getName());
-        initializeScanner();
     }
 
     /**
-     * Initializes the scanner, invoked after creation.
+     * Initializes the scanner, invoked when scanner is registered.
      * Launches a background Eclipse Job to scan all manifest files in the project workspace.
      */
-    protected void initializeScanner() {
+    @Override
+    public void initializeScanner() {
         Job scanJob = new Job("Starting Checkmarx OSS Real-time Scan") {
             @Override
             protected IStatus run(IProgressMonitor monitor) {
@@ -163,6 +165,7 @@ public class OssScannerCommand {
     /**
      * Disposes the scanner and releases resources.
      */
+    @Override
     public void dispose() {
         try {
             ossScannerService.close();
@@ -170,5 +173,6 @@ public class OssScannerCommand {
         } catch (Exception e) {
             CxLogger.warning(LOG_TAG + " Error disposing: " + e.getMessage());
         }
+        super.dispose();
     }
 }

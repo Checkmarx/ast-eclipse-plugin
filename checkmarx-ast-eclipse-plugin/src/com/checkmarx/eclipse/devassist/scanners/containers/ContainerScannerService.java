@@ -2,7 +2,7 @@ package com.checkmarx.eclipse.devassist.scanners.containers;
 
 import com.checkmarx.ast.containersrealtime.ContainersRealtimeResults;
 import com.checkmarx.eclipse.devassist.basescanner.BaseScannerService;
-import com.checkmarx.eclipse.devassist.backend.DevAssistUtils;
+import com.checkmarx.eclipse.devassist.utils.DevAssistUtils;
 import com.checkmarx.eclipse.devassist.common.ScannerConfig;
 import com.checkmarx.eclipse.devassist.factory.CxWrapperFactory;
 import com.checkmarx.eclipse.devassist.common.ScanResult;

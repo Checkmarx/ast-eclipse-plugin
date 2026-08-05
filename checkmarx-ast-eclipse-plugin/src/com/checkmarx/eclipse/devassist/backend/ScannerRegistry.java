@@ -41,34 +41,6 @@ public class ScannerRegistry {
 		CxLogger.info(LOG_TAG + " Created for project: " + project.getName());
 	}
 
-	/**
-	 * Initialize all available scanners.
-	 *
-	 * Called when project opens. Scanners are created but not yet active;
-	 * activation is controlled by GlobalScannerController.
-	 */
-	public void registerAllScanners() {
-		if (disposed) {
-			CxLogger.warning(LOG_TAG + " Registry is disposed, cannot register scanners");
-			return;
-		}
-
-		CxLogger.info(LOG_TAG + " Registering all scanners for: " + project.getName());
-
-		// Scanners will be created lazily via getScannerService()
-		// For now, just initialize placeholders to track scanner types
-		ScannerType[] scannerTypes = {
-			ScannerType.OSS,
-			ScannerType.SECRETS,
-			ScannerType.CONTAINERS,
-			ScannerType.IAC,
-			ScannerType.ASCA
-		};
-
-		for (ScannerType type : scannerTypes) {
-			CxLogger.info(LOG_TAG + " âœ“ Scanner registered: " + type);
-		}
-	}
 
 	/**
 	 * Deregister and dispose all scanners (on project close).
@@ -82,7 +54,7 @@ public class ScannerRegistry {
 				if (scanner instanceof AutoCloseable) {
 					((AutoCloseable) scanner).close();
 				}
-				CxLogger.info(LOG_TAG + " âœ“ Disposed scanner: " + type);
+				CxLogger.info(LOG_TAG + "Disposed scanner: " + type);
 			} catch (Exception e) {
 				CxLogger.warning(LOG_TAG + " Error disposing scanner " + type + ": " +
 					e.getMessage());
@@ -147,13 +119,13 @@ public class ScannerRegistry {
 			}
 
 			if (scanner != null) {
-				CxLogger.info(LOG_TAG + " ✓ Successfully created scanner: " + type.getDisplayName());
+				CxLogger.info(LOG_TAG + "Successfully created scanner: " + type.getDisplayName());
 			} else {
-				CxLogger.warning(LOG_TAG + " ⚠ Scanner returned null: " + type.getDisplayName());
+				CxLogger.warning(LOG_TAG + "Scanner returned null: " + type.getDisplayName());
 			}
 			return scanner;
 		} catch (Exception e) {
-			CxLogger.error(LOG_TAG + " ✗ Error creating scanner " + type.getDisplayName() + ": " + e.getMessage(), e);
+			CxLogger.error(LOG_TAG + "Error creating scanner " + type.getDisplayName() + ": " + e.getMessage(), e);
 			e.printStackTrace();
 			return null;
 		}
