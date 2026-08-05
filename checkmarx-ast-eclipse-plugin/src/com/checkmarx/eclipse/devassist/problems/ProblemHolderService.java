@@ -44,7 +44,21 @@ public class ProblemHolderService {
      * @return the instance of this service for the given project.
      */
 	public static ProblemHolderService getInstance(IProject project) {
-        return ProblemHolderService.getInstance(project);
+		if (project == null) {
+			return null;
+		}
+		try {
+			org.eclipse.core.runtime.QualifiedName key = new org.eclipse.core.runtime.QualifiedName(
+				"com.checkmarx.eclipse.plugin", "problem-holder-service");
+			ProblemHolderService instance = (ProblemHolderService) project.getSessionProperty(key);
+			if (instance == null) {
+				instance = new ProblemHolderService();
+				project.setSessionProperty(key, instance);
+			}
+			return instance;
+		} catch (Exception e) {
+			return new ProblemHolderService();
+		}
     }
 
 	/**
