@@ -4,6 +4,7 @@ import java.util.concurrent.CompletableFuture;
 
 import org.eclipse.jface.preference.FieldEditor;
 import org.eclipse.jface.preference.FieldEditorPreferencePage;
+import org.eclipse.jface.preference.PreferenceDialog;
 import org.eclipse.jface.preference.StringFieldEditor;
 import org.eclipse.jface.util.PropertyChangeEvent;
 import org.eclipse.swt.SWT;
@@ -21,19 +22,38 @@ import org.eclipse.ui.IWorkbenchPreferencePage;
 
 import com.checkmarx.eclipse.Activator;
 import com.checkmarx.eclipse.runner.Authenticator;
+import com.checkmarx.eclipse.runner.TenantSettingsProvider;
 import com.checkmarx.eclipse.utils.CxLogger;
 import com.checkmarx.eclipse.utils.PluginConstants;
 import com.checkmarx.eclipse.utils.PluginUtils;
+import com.checkmarx.eclipse.views.ui.WelcomeDialog;
+import com.checkmarx.eclipse.devassist.configuration.McpInstallService;
+import com.checkmarx.eclipse.devassist.backend.listener.ProjectLifecycleListener;
+import com.checkmarx.eclipse.startup.PluginStartup;
 import org.eclipse.swt.widgets.Link;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.browser.IWorkbenchBrowserSupport;
 import org.eclipse.ui.PartInitException;
+import org.eclipse.ui.dialogs.PreferencesUtil;
 
 import java.net.MalformedURLException;
 import java.net.URL;
 
 
 public class PreferencesPage extends FieldEditorPreferencePage implements IWorkbenchPreferencePage {
+
+	// Captured once the fields are loaded, so performOk() can tell whether THIS
+	// page's own settings actually changed. Needed because Eclipse's shared
+	// Preferences dialog calls performOk() on every page the user visited during
+	// the session - not just the one they edited - so simply opening/looking at
+	// "Checkmarx One" while really only changing "Checkmarx Scanner Configuration"
+	// (Realtime Scanners) would otherwise still unconditionally fire
+	// TOPIC_APPLY_SETTINGS below and refresh the unrelated Checkmarx One scan view.
+	private StringFieldEditor apiKeyField;
+	private StringFieldEditor additionalParamsField;
+	private String initialApiKey;
+	private String initialAdditionalOptions;
+
 	public PreferencesPage() {
 		super(GRID);
 		Activator.getDefault().getPreferenceStore().addPropertyChangeListener(this::handlePropertyChange);
@@ -69,14 +89,21 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 		topComposite.setLayout(parentLayout);
 
 		StringFieldEditor apiKey = new StringFieldEditor(Preferences.API_KEY, PluginConstants.PREFERENCES_API_KEY, topComposite);
+		apiKeyField = apiKey;
 		addField(apiKey);
 		Text textControl = apiKey.getTextControl(topComposite);
 		textControl.setEchoChar('*');
 
 		StringFieldEditor additionalParams = new StringFieldEditor(Preferences.ADDITIONAL_OPTIONS,
 		        PluginConstants.PREFERENCES_ADDITIONAL_OPTIONS, StringFieldEditor.UNLIMITED, StringFieldEditor.VALIDATE_ON_KEY_STROKE, topComposite);
+		additionalParamsField = additionalParams;
 		addField(additionalParams);
-		 
+
+		// Baseline for the change-detection guard in performOk() - captured now that
+		// both fields have loaded their values from the preference store.
+		initialApiKey = apiKey.getStringValue();
+		initialAdditionalOptions = additionalParams.getStringValue();
+
         //set the width for API Key text field
 		GridData gridData = new GridData(SWT.BEGINNING, SWT.CENTER, true, false);
 		gridData.widthHint = 500; // Some width
@@ -94,14 +121,14 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 		cliHelp.setLayoutData(linkGridData);
 		cliHelp.addSelectionListener(new SelectionAdapter() {
 		    @Override
-		    public void widgetSelected(SelectionEvent e) {		      
+		    public void widgetSelected(SelectionEvent e) {
 		            IWorkbenchBrowserSupport browserSupport = PlatformUI.getWorkbench().getBrowserSupport();
 		            try {
 						browserSupport.getExternalBrowser().openURL(new URL(e.text));
 					} catch (PartInitException | MalformedURLException e1) {
 						CxLogger.error("Failed to open CLI help documentation link.", e1);
 						e1.printStackTrace();
-					}		        
+					}
 		    }
 		});
 
@@ -112,11 +139,21 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
                 new GridData(SWT.FILL, SWT.CENTER, true, false)
         );
 
+		// Holds the Logout button reference so the Connect handler (defined before the
+		// Logout button is created below) can disable/enable it during the connect flow.
+		final Button[] logoutButtonHolder = new Button[1];
+
 		Button connectionButton = new Button(topComposite, SWT.PUSH);
 		connectionButton.setText(PluginConstants.PREFERENCES_TEST_CONNECTION);
 		connectionButton.setEnabled(!apiKey.getStringValue().trim().isEmpty());
 		textControl.addModifyListener(e -> {
 		    connectionButton.setEnabled(!textControl.getText().trim().isEmpty());
+
+		    // Any edit means whatever gets saved next (even via Apply/OK without ever
+		    // clicking Test Connection) hasn't been checked against the server, so it must
+		    // not keep looking "connected" on the strength of a previous, different key's
+		    // validation.
+		    Preferences.setCredentialsValidated(false);
 		});
 		connectionButton.addSelectionListener(new SelectionAdapter() {
 
@@ -128,6 +165,14 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 				connectionButton.setEnabled(false);
 				connectionLabel.setText(PluginConstants.PREFERENCES_VALIDATING_STATE);
 				getFieldEditorParent().layout();
+
+				// Disable Logout for the duration of the connect/validate flow so a user can't
+				// interrupt it mid-flight (e.g. closing the dialog or logging out) in a way that
+				// leaves the flow half-finished and the welcome dialog never shown.
+				if (logoutButtonHolder[0] != null && !logoutButtonHolder[0].isDisposed()) {
+					logoutButtonHolder[0].setEnabled(false);
+				}
+
 				CompletableFuture.supplyAsync(() -> {
 					try {
 						return Authenticator.INSTANCE.doAuthentication(
@@ -137,10 +182,98 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 						return t.getMessage();
 					}
 				}).thenAccept((result) -> Display.getDefault().syncExec(() -> {
-					connectionLabel.setText(mapAuthResult(result));
-					getFieldEditorParent().layout();
-					connectionButton.setEnabled(true);
+					// Guard every widget touch below: if the preferences dialog was closed
+					// while this connect/validate call was in flight, these are disposed.
+					// Previously an unguarded call here threw and aborted this whole runnable,
+					// which is why the welcome dialog never appeared after closing the dialog.
+					if (!connectionButton.isDisposed()) {
+						connectionButton.setEnabled(true);
+					}
+
+					// Show welcome dialog on successful authentication. The "Validating..."
+					// message is left on screen (not switched to "Connected") until the
+					// welcome dialog is actually about to appear, so the label never claims
+					// success before the user sees the welcome page.
+					if (result != null && result.contains(PluginConstants.AUTH_SUCCESS_PATTERN)) {
+						// Trigger MCP auto-installation after successful authentication
+						CxLogger.info("[PREFS] Authentication successful, triggering MCP auto-install...");
+						McpInstallService.attemptAutoInstall(apiKey_str, additionalParams_str);
+
+						// Fetch MCP enabled status from server asynchronously
+						CompletableFuture.supplyAsync(() -> {
+							try {
+								return TenantSettingsProvider.INSTANCE.isAiMcpServerEnabled(
+										apiKey_str, additionalParams_str);
+							} catch (Exception ex) {
+								CxLogger.error("Failed to fetch MCP status", ex);
+								return false;
+							}
+						}).thenAccept((mcpEnabled) -> Display.getDefault().syncExec(() -> {
+							if (!connectionLabel.isDisposed()) {
+								connectionLabel.setText(mapAuthResult(result));
+							}
+							if (!getFieldEditorParent().isDisposed()) {
+								getFieldEditorParent().layout();
+							}
+							showWelcomeDialog(mcpEnabled, logoutButtonHolder[0], apiKey_str, additionalParams_str);
+						}));
+					} else {
+						// Authentication failed - the flow ends here with no welcome dialog,
+						// so show the failure message right away and restore Logout.
+						if (!connectionLabel.isDisposed()) {
+							connectionLabel.setText(mapAuthResult(result));
+						}
+						if (!getFieldEditorParent().isDisposed()) {
+							getFieldEditorParent().layout();
+						}
+						if (logoutButtonHolder[0] != null && !logoutButtonHolder[0].isDisposed()) {
+							logoutButtonHolder[0].setEnabled(true);
+						}
+					}
 				}));
+			}
+		});
+
+		addField(space());
+
+		Button logoutButton = new Button(topComposite, SWT.PUSH);
+		logoutButtonHolder[0] = logoutButton;
+		logoutButton.setText("Logout");
+		logoutButton.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				Preferences.clearApiKey();
+				apiKey.setStringValue("");
+//				textControl.setText("");
+//				connectionLabel.setText("");
+				getFieldEditorParent().layout();
+
+				// Redraws the missing-credentials panel in CheckmarxView/CxFindingsView right
+				// away. Without this, they only learn credentials are gone once performOk()
+				// runs (i.e. the user clicks OK/Apply) - if they instead Cancel or just close
+				// the dialog after Logout, both views kept showing stale "connected" content.
+				PluginUtils.getEventBroker().post(PluginConstants.TOPIC_APPLY_SETTINGS, PluginConstants.EMPTY_STRING);
+			}
+		});
+
+		addField(space());
+
+		Link realtimeScannersLink = new Link(getFieldEditorParent(), SWT.NONE);
+		realtimeScannersLink.setText("<a>Go to Realtime Scanners</a>");
+		realtimeScannersLink.setLayoutData(new GridData(SWT.BEGINNING, SWT.CENTER, true, false));
+		realtimeScannersLink.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				PreferenceDialog dialog = PreferencesUtil.createPreferenceDialogOn(
+					getShell(),
+					"com.checkmarx.eclipse.devassist.prefs.checkmarxpreferencepage",
+					null,
+					null
+				);
+				if (dialog != null) {
+					CxPreferencesDialogSizing.applyTo(dialog);
+					dialog.open();
+				}
 			}
 		});
 	}
@@ -154,6 +287,48 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 		return result;
 	}
 
+	private void showWelcomeDialog(boolean mcpEnabled, Button logoutButton, String apiKey_str, String additionalParams_str) {
+		try {
+			// The key was only just validated by "Test Connection" - it isn't persisted
+			// to the store until the user clicks OK/Apply on this dialog, which they may
+			// never do once they see the Welcome page. Persist it now so
+			// isUserAuthenticated() (checked by ProjectLifecycleListener below, and by
+			// anything else gated on login) actually sees it.
+			Preferences.STORE.setValue(Preferences.API_KEY, apiKey_str);
+			Preferences.STORE.setValue(Preferences.ADDITIONAL_OPTIONS, additionalParams_str);
+			Preferences.setCredentialsValidated(true);
+
+			// Trigger the same initial OSS/IaC/container workspace scan that runs for
+			// already-open projects at plugin launch (PluginStartup.initializeBackendScanners()).
+			// A project that was already open before this login never gets that scan
+			// otherwise, since ProjectLifecycleListener only scans a project when it
+			// *opens* while the user is authenticated - re-run it now that login succeeded.
+			ProjectLifecycleListener projectListener = PluginStartup.getProjectListener();
+			if (projectListener != null) {
+				CxLogger.info("[PREFS] Login succeeded - triggering workspace OSS/IaC/container scan...");
+				projectListener.scanAlreadyOpenProjects();
+			}
+
+			WelcomeDialog dlg = new WelcomeDialog(
+				Display.getDefault().getActiveShell(),
+				mcpEnabled);
+
+			// Re-enable Logout right as the welcome dialog is about to appear, so it stays
+			// disabled for the entire connect/validate flow and only becomes usable once
+			// that flow has visibly completed.
+			if (logoutButton != null && !logoutButton.isDisposed()) {
+				logoutButton.setEnabled(true);
+			}
+
+			dlg.open();
+		} catch (Exception ex) {
+			CxLogger.error("Failed to show welcome dialog", ex);
+			if (logoutButton != null && !logoutButton.isDisposed()) {
+				logoutButton.setEnabled(true);
+			}
+		}
+	}
+
 	private FieldEditor space() {
 		return new LabelFieldEditor("", getFieldEditorParent());
 	}
@@ -163,7 +338,22 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 		boolean ok = super.performOk();
 
 		if (ok) {
-			PluginUtils.getEventBroker().post(PluginConstants.TOPIC_APPLY_SETTINGS, PluginConstants.EMPTY_STRING);
+			// Only notify listeners (e.g. the Checkmarx One scan view refresh) if this
+			// page's own settings actually changed in this session. Without this guard,
+			// merely having visited this page in the same Preferences dialog session as
+			// the unrelated "Checkmarx Scanner Configuration" (Realtime Scanners) page -
+			// a sibling top-level page in the same tree - is enough for Eclipse to call
+			// this performOk() too when the user only meant to save realtime scanner
+			// settings, spuriously refreshing the Checkmarx One scan window.
+			String currentApiKey = apiKeyField != null ? apiKeyField.getStringValue() : null;
+			String currentAdditionalOptions = additionalParamsField != null ? additionalParamsField.getStringValue() : null;
+			boolean settingsActuallyChanged =
+					!java.util.Objects.equals(currentApiKey, initialApiKey)
+					|| !java.util.Objects.equals(currentAdditionalOptions, initialAdditionalOptions);
+
+			if (settingsActuallyChanged) {
+				PluginUtils.getEventBroker().post(PluginConstants.TOPIC_APPLY_SETTINGS, PluginConstants.EMPTY_STRING);
+			}
 		}
 
 		return ok;

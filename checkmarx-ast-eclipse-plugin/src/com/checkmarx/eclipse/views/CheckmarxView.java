@@ -174,6 +174,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	private static List<LearnMore> learnMoreData;
 
 	Font boldFont, titleFont;
+	Color logoColor;
 
 	UISynchronizeImpl sync;
 	private Composite resultViewComposite;
@@ -236,6 +237,10 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 
 		if (titleFont != null && !titleFont.isDisposed()) {
 			titleFont.dispose();
+		}
+
+		if (logoColor != null && !logoColor.isDisposed()) {
+			logoColor.dispose();
 		}
 
 		if (pluginEventBus != null) {
@@ -565,6 +570,14 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		// Define bold font for labels
 		Display display = parent.getShell().getDisplay();
 		FontData systemFontData = display.getSystemFont().getFontData()[0];
+
+		if (boldFont != null && !boldFont.isDisposed()) {
+			boldFont.dispose();
+		}
+		if (titleFont != null && !titleFont.isDisposed()) {
+			titleFont.dispose();
+		}
+
 		boldFont = new Font(display, systemFontData.getName(), systemFontData.getHeight(), SWT.BOLD);
 		titleFont = new Font(display, systemFontData.getName(), systemFontData.getHeight() + 2, SWT.BOLD);
 
@@ -604,7 +617,12 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		GridData gd_clogo = new GridData(SWT.RIGHT, SWT.LEFT, false, false, 1, 1);
 		gd_clogo.widthHint = 18;
 		clogo.setLayoutData(gd_clogo);
-		clogo.setForeground(new Color(display, new RGB(243, 106, 34)));
+
+		if (logoColor != null && !logoColor.isDisposed()) {
+			logoColor.dispose();
+		}
+		logoColor = new Color(display, new RGB(243, 106, 34));
+		clogo.setForeground(logoColor);
 		clogo.setText(">_");
 		clogo.setLeftMargin(0);
 		clogo.setRightMargin(0);

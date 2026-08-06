@@ -7,6 +7,7 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.dialogs.PreferencesUtil;
 
 import com.checkmarx.eclipse.enums.ActionName;
+import com.checkmarx.eclipse.properties.CxPreferencesDialogSizing;
 import com.checkmarx.eclipse.utils.PluginConstants;
 import com.checkmarx.eclipse.views.DisplayModel;
 
@@ -30,8 +31,9 @@ public class ActionOpenPreferencesPage extends CxBaseAction {
 			@Override
 			public void run() {
 				PreferenceDialog pref = PreferencesUtil.createPreferenceDialogOn(shell, PREFERENCE_PAGE_ID, null, null);
-				
+
 				if (pref != null) {
+					CxPreferencesDialogSizing.applyTo(pref);
 					pref.open();
 				}
 			}
@@ -39,7 +41,7 @@ public class ActionOpenPreferencesPage extends CxBaseAction {
 
 		openPreferencesPageAction.setId(ActionName.PREFERENCES.name());
 		openPreferencesPageAction.setText(PluginConstants.TOOLBAR_ACTION_PREFERENCES);
-		
+
 		return openPreferencesPageAction;
 	}
 

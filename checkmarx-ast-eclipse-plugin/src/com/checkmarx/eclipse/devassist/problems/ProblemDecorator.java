@@ -15,6 +15,7 @@ import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.texteditor.ITextEditor;
 
 import com.checkmarx.eclipse.devassist.ui.findings.editor.FindingsAnnotation;
+import com.checkmarx.eclipse.devassist.ignore.IgnoreEntry;
 import com.checkmarx.eclipse.devassist.model.Location;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.utils.CxLogger;
@@ -36,6 +37,11 @@ public class ProblemDecorator {
 
 	// Track annotations we've created so we can remove them later
 	private static final Map<String, List<Annotation>> fileAnnotations =
+		new HashMap<>();
+
+	// Separate tracking map for "ignored" gutter annotations, so clearing/redrawing the
+	// active-issue annotations (above) never wipes the ignored ones and vice versa.
+	private static final Map<String, List<Annotation>> fileIgnoredAnnotations =
 		new HashMap<>();
 
 	/**
@@ -147,6 +153,94 @@ public class ProblemDecorator {
 			CxLogger.warning(LOG_TAG + " Error decorating editor: " +
 				e.getMessage());
 			e.printStackTrace();
+		}
+	}
+
+	/**
+	 * Render "ignored" gutter annotations for findings the user has explicitly ignored.
+	 *
+	 * Uses its own tracking map (fileIgnoredAnnotations) so it never interferes with the
+	 * active-issue annotations painted by decorateEditor(): a file can show both active
+	 * findings and (separately marked) ignored ones at the same time.
+	 *
+	 * @param file File that was scanned
+	 * @param ignoredEntriesForFile Ignore entries with an active reference to this file
+	 */
+	public static void decorateIgnoredEditor(IFile file, List<IgnoreEntry> ignoredEntriesForFile) {
+		if (file == null) {
+			return;
+		}
+		if (ignoredEntriesForFile == null) {
+			ignoredEntriesForFile = List.of();
+		}
+
+		String filePath = file.getLocation().toOSString();
+
+		try {
+			ITextEditor editor = findOpenEditor(file);
+			if (editor == null) {
+				return;
+			}
+
+			IAnnotationModel annotationModel = editor.getDocumentProvider()
+				.getAnnotationModel(editor.getEditorInput());
+			if (annotationModel == null) {
+				return;
+			}
+
+			clearAnnotationsFromMap(fileIgnoredAnnotations, filePath, annotationModel);
+
+			if (ignoredEntriesForFile.isEmpty()) {
+				return;
+			}
+
+			IDocument document = editor.getDocumentProvider().getDocument(editor.getEditorInput());
+			if (document == null) {
+				return;
+			}
+
+			List<Annotation> annotations = new java.util.ArrayList<>();
+			for (IgnoreEntry entry : ignoredEntriesForFile) {
+				for (IgnoreEntry.FileReference ref : entry.getFiles()) {
+					if (!ref.isActive() || !filePath.replace('\\', '/').equals(ref.getPath())) {
+						continue;
+					}
+					org.eclipse.jface.text.Position pos = positionForLine(document, ref.getLine());
+					if (pos == null) {
+						continue;
+					}
+					FindingsAnnotation annotation = new FindingsAnnotation(
+						"com.checkmarx.eclipse.findings.ignored",
+						entry.getTitle(),
+						entry.getDescription());
+					annotationModel.addAnnotation(annotation, pos);
+					annotations.add(annotation);
+				}
+			}
+
+			fileIgnoredAnnotations.put(filePath, annotations);
+			CxLogger.info(LOG_TAG + " Added " + annotations.size() + " ignored annotations for: " + filePath);
+
+		} catch (Exception e) {
+			CxLogger.warning(LOG_TAG + " Error decorating ignored editor: " + e.getMessage());
+		}
+	}
+
+	/**
+	 * Compute a Position covering the (trimmed) content of a 1-based line number.
+	 * Shared fallback logic used both for ignored-entry markers and (via calculateRange)
+	 * for active issues without a precise character range.
+	 */
+	private static org.eclipse.jface.text.Position positionForLine(IDocument document, int line1Based) {
+		try {
+			int line = Math.max(0, Math.min(line1Based - 1, document.getNumberOfLines() - 1));
+			IRegion lineInfo = document.getLineInformation(line);
+			int trimIndent = getLeadingWhitespaceOffset(document, lineInfo.getOffset(), lineInfo.getLength());
+			int startOffset = lineInfo.getOffset() + trimIndent;
+			int length = Math.max(1, lineInfo.getLength() - trimIndent);
+			return new org.eclipse.jface.text.Position(startOffset, length);
+		} catch (Exception e) {
+			return null;
 		}
 	}
 
@@ -429,14 +523,26 @@ public class ProblemDecorator {
 	 */
 	private static void clearAnnotations(String filePath,
 		IAnnotationModel annotationModel) {
+		clearAnnotationsFromMap(fileAnnotations, filePath, annotationModel);
+	}
+
+	/**
+	 * Clear previously tracked annotations for a file from the given tracking map.
+	 *
+	 * @param trackingMap Map to remove/clear from (fileAnnotations or fileIgnoredAnnotations)
+	 * @param filePath File path
+	 * @param annotationModel Annotation model
+	 */
+	private static void clearAnnotationsFromMap(Map<String, List<Annotation>> trackingMap, String filePath,
+		IAnnotationModel annotationModel) {
 
 		try {
-			List<Annotation> previousAnnotations = fileAnnotations.get(filePath);
+			List<Annotation> previousAnnotations = trackingMap.get(filePath);
 			if (previousAnnotations != null) {
 				for (Annotation annotation : previousAnnotations) {
 					annotationModel.removeAnnotation(annotation);
 				}
-				fileAnnotations.remove(filePath);
+				trackingMap.remove(filePath);
 
 				CxLogger.info(LOG_TAG + " Cleared " + previousAnnotations.size() +
 					" previous annotations");

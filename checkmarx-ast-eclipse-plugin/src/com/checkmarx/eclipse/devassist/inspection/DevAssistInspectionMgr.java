@@ -12,6 +12,7 @@ import org.eclipse.jface.text.IDocument;
 import com.checkmarx.eclipse.devassist.basescanner.ScannerService;
 import com.checkmarx.eclipse.devassist.common.ScanManager;
 import com.checkmarx.eclipse.devassist.backend.ScannerRegistry;
+import com.checkmarx.eclipse.devassist.ignore.IgnoreManager;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.problems.ProblemBuilder;
 import com.checkmarx.eclipse.devassist.problems.ProblemDecorator;
@@ -85,20 +86,28 @@ public class DevAssistInspectionMgr extends ScanManager {
 				CxLogger.info(LOG_TAG + " Using pre-scanned issues for file: " + problemHelper.getFile().getName());
 			}
 
-			if (allScanIssues.isEmpty()) {
-				CxLogger.info(LOG_TAG + " No scan issues found for: " +
+			// Keep ignored-entry line numbers in sync with this FULL (unfiltered) result,
+			// then exclude ignored issues from everything downstream (findings list,
+			// problem descriptors, active-issue decoration) - mirrors JetBrains, where
+			// ignored findings are excluded upstream rather than shown grayed out.
+			IgnoreManager.getInstance().reconcileLineNumbers(problemHelper.getFilePath(), allScanIssues);
+			List<ScanIssue> activeScanIssues = IgnoreManager.getInstance().filterActive(allScanIssues);
+
+			if (activeScanIssues.isEmpty()) {
+				CxLogger.info(LOG_TAG + " No active scan issues found for: " +
 					problemHelper.getFile().getName());
-				decorateUIForIgnoreVulnerability(problemHelper.getFile(), allScanIssues);
+				ProblemDecorator.clearDecorations(problemHelper.getFile());
+				decorateUIForIgnoreVulnerability(problemHelper.getFile());
 				return new ProblemDescriptor[0];
 			}
 
 			// Ensure helper has the issues (in case they were pre-populated)
-			problemHelperBuilder.scanIssueList(allScanIssues);
+			problemHelperBuilder.scanIssueList(activeScanIssues);
 			ProblemHelper helperWithIssues = problemHelperBuilder.build();
 
 			// Cache issues
 			helperWithIssues.getProblemHolderService().addScanIssues(
-				problemHelper.getFilePath(), allScanIssues);
+				problemHelper.getFilePath(), activeScanIssues);
 
 			// Create problems with decoration
 			List<ProblemDescriptor> allProblems = createProblemDescriptorsWithDecoration(helperWithIssues);
@@ -232,12 +241,12 @@ public class DevAssistInspectionMgr extends ScanManager {
 			.problemDecorator(this.problemDecorator)
 			.build();
 
-		// Get cached issues
+		// Get cached issues (already ignore-filtered - see startScanAndCreateProblemDescriptors)
 		List<ScanIssue> scanIssueList = problemHolderService.getScanIssuesByFile(filePath);
 		if (scanIssueList.isEmpty()) {
 			CxLogger.warning(LOG_TAG + " No cached issues for: " + filePath);
 			resetEditorAndResults(file.getProject(), filePath);
-			decorateUIForIgnoreVulnerability(file, scanIssueList);
+			decorateUIForIgnoreVulnerability(file);
 			return new ProblemDescriptor[0];
 		}
 
@@ -245,7 +254,8 @@ public class DevAssistInspectionMgr extends ScanManager {
 		List<ProblemDescriptor> cachedDescriptors = problemHolderService.getProblemDescriptors(filePath);
 		if (cachedDescriptors.isEmpty()) {
 			CxLogger.warning(LOG_TAG + " No cached problem descriptors for: " + filePath);
-			decorateUIForIgnoreVulnerability(file, scanIssueList);
+			ProblemDecorator.clearDecorations(file);
+			decorateUIForIgnoreVulnerability(file);
 			return new ProblemDescriptor[0];
 		}
 
@@ -268,21 +278,25 @@ public class DevAssistInspectionMgr extends ScanManager {
 	public void decorateUI(IDocument document, IFile file, List<ScanIssue> scanIssueList) {
 		try {
 			ProblemDecorator.decorateEditor(file, scanIssueList);
+			decorateUIForIgnoreVulnerability(file);
 		} catch (Exception e) {
 			CxLogger.error(LOG_TAG + " Error decorating UI: " + e.getMessage(), e);
 		}
 	}
 
 	/**
-	 * Decorate UI for ignored vulnerabilities (empty if none ignored).
+	 * Paint the "ignored" gutter icon for every finding the user has ignored in this file.
+	 * Independent of the active-issue list: queries IgnoreManager directly by file path,
+	 * so it correctly redraws ignored markers even when there are zero active issues left.
 	 *
 	 * @param file File to decorate
-	 * @param scanIssueList Issues (may be empty)
 	 */
-	public void decorateUIForIgnoreVulnerability(IFile file, List<ScanIssue> scanIssueList) {
+	public void decorateUIForIgnoreVulnerability(IFile file) {
 		try {
-			CxLogger.info(LOG_TAG + " decorateUIForIgnoreVulnerability called for: " + file.getName());
-			// TODO: Integrate with IgnoredProblemsStore when available
+			String filePath = file.getLocation().toOSString();
+			List<com.checkmarx.eclipse.devassist.ignore.IgnoreEntry> ignoredEntries =
+				IgnoreManager.getInstance().getIgnoredEntriesForFile(filePath);
+			ProblemDecorator.decorateIgnoredEditor(file, ignoredEntries);
 		} catch (Exception e) {
 			CxLogger.error(LOG_TAG + " Error in decorateUIForIgnoreVulnerability: " + e.getMessage(), e);
 		}

@@ -140,6 +140,7 @@ public class IacScanResultAdaptor implements ScanResult<IacRealtimeResults> {
 		scanIssue.setFilePath(filePath);
 		scanIssue.setScanEngine(ScanEngine.IAC);
 		scanIssue.setProblematicLineNumber(firstLine);
+		scanIssue.setSimilarityId(firstIssue.getSimilarityId());
 
 		String scanIssueId = generateUniqueId(firstIssue, firstLine);
 		scanIssue.setScanIssueId(scanIssueId);

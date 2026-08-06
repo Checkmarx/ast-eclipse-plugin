@@ -61,9 +61,23 @@ public class PluginConstants {
 	/******************************** PREFERENCES ********************************/
 	public static final String PREFERENCES_API_KEY = "API key:";
 	public static final String PREFERENCES_ADDITIONAL_OPTIONS = "Additional Params:";
-	public static final String PREFERENCES_TEST_CONNECTION = "Test Connection";
+	public static final String PREFERENCES_TEST_CONNECTION = "Connect to Checkmarx";
 	public static final String PREFERENCES_VALIDATING_STATE = "Validating...";
-	
+
+	/******************************** WELCOME DIALOG ********************************/
+	public static final String WELCOME_TITLE = "Welcome to Checkmarx";
+	public static final String WELCOME_SUBTITLE = "Checkmarx offers immediate threat detection and assists you in preventing vulnerabilities before they arise.";
+	public static final String WELCOME_ASSIST_TITLE = "Code Smarter with Checkmarx One Assist";
+	public static final String WELCOME_ASSIST_FEATURE_1 = "Get instant security feedback as you code.";
+	public static final String WELCOME_ASSIST_FEATURE_2 = "See suggested fixes for vulnerabilities across open source, config, and code.";
+	public static final String WELCOME_ASSIST_FEATURE_3 = "Fix faster with intelligent, context-aware remediation inside your IDE.";
+	public static final String WELCOME_MAIN_FEATURE_1 = "Run SAST, SCA, IaC, Containers and Secrets scans.";
+	public static final String WELCOME_MAIN_FEATURE_2 = "Create a new Checkmarx branch from your local workspace.";
+	public static final String WELCOME_MAIN_FEATURE_3 = "Preview or rescan before committing.";
+	public static final String WELCOME_MAIN_FEATURE_4 = "Triage & fix issues directly in the editor.";
+	public static final String WELCOME_CLOSE_BUTTON = "Close";
+	public static final String WELCOME_MCP_INSTALLED_INFO = "Checkmarx MCP Installed automatically - no need for manual integration";
+
 	/******************************** TOPICS ********************************/
 	public static final String TOPIC_APPLY_SETTINGS = "ApplySettings";
 	

@@ -44,12 +44,11 @@ import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.ui.findings.model.ScanDetailWithPath;
 import com.checkmarx.eclipse.Activator;
 import com.checkmarx.eclipse.devassist.model.Location;
-import com.checkmarx.eclipse.devassist.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.problems.ProblemHolderService;
 import com.checkmarx.eclipse.devassist.ui.findings.actions.VulnerabilityFilterAction;
 import com.checkmarx.eclipse.devassist.ui.findings.actions.VulnerabilityFilterState;
-import com.checkmarx.eclipse.devassist.ui.findings.ignored.IgnoredProblemsStore;
-import com.checkmarx.eclipse.devassist.ui.findings.ignored.IgnoredProblemsStore.IgnoredProblemsListener;
+import com.checkmarx.eclipse.devassist.ignore.IgnoreManager;
+import com.checkmarx.eclipse.devassist.ignore.IgnoreFileManager.IgnoreListener;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
@@ -66,7 +65,7 @@ import org.eclipse.swt.widgets.Control;
  * Manages a tree view of vulnerabilities with filtering and navigation capabilities.
  * Uses {@link TreeViewer} for flexible tree rendering with custom providers.
  */
-public class CxFindingsView extends ViewPart implements IgnoredProblemsListener {
+public class CxFindingsView extends ViewPart implements IgnoreListener {
 
     public static final String ID = "com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView";
     private org.osgi.service.event.EventHandler eventHandler;
@@ -74,7 +73,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 
     private TreeViewer treeViewer;
     private Map<String, List<ScanIssue>> currentIssues = new HashMap<>();
-    private IgnoredProblemsStore ignoredStore;
+    private final IgnoreManager ignoreManager = IgnoreManager.getInstance();
     Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell();
     public static final Image FINDINGS_PROMOTIONAL_CUBE = createScaledImage("/icons/cx-one-assist-cube.png", 240);
 
@@ -99,8 +98,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
         subscribeToEventBroker();
 
         // Register ignored problems listener
-        ignoredStore = IgnoredProblemsStore.getInstance();
-        ignoredStore.addListener(this);
+        ignoreManager.addListener(this);
 
         // Initial render check
         refreshViewMode();
@@ -347,11 +345,8 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
             }
         }
 
-        // 2. Unsubscribe from IgnoredProblemsStore
-        if (ignoredStore != null) {
-            // If your IgnoredProblemsStore supports removing listeners, call it here:
-            // ignoredStore.removeListener(this);
-        }
+        // 2. Unsubscribe from IgnoreManager
+        ignoreManager.removeListener(this);
 
         super.dispose();
     }
@@ -379,8 +374,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 
             subscribeToEventBroker();
 
-            ignoredStore = IgnoredProblemsStore.getInstance();
-            ignoredStore.addListener(this);
+            ignoreManager.addListener(this);
 
             drawFindingsPanel(parentComposite);
 
@@ -618,33 +612,12 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 
     /**
      * Ignore this specific finding and remove from the Findings View.
-     * The finding is added to the IgnoredProblemsStore and appears in the Ignored Problems Window.
+     * The finding is added to the ignore store and appears in the Ignored Findings view.
      */
     private void ignoreThisFinding(ScanIssue issue) {
-
         try {
-            // Verify store is initialized
-            if (ignoredStore == null) {
-                System.err.println("[FINDINGS] ERROR: IgnoredProblemsStore is NULL!");
-                showErrorNotification("Error: IgnoredProblemsStore not initialized");
-                return;
-            }
-
-            
-
-            // Add to ignored store with full finding details for display in Ignored Problems View
-            ignoredStore.ignoreProblem(issue);
-            
-
-            // Check if it was actually added
-            boolean isIgnored = ignoredStore.isIgnored(issue.getScanIssueId());
-
-            // Refresh the tree to remove the ignored finding
-            
+            ignoreManager.addIgnoredEntry(issue);
             refreshTreeWithFilter();
-            
-
-            
         } catch (Exception e) {
             System.err.println("[FINDINGS] ✗ Error ignoring finding: " + e.getMessage());
             e.printStackTrace();
@@ -653,36 +626,14 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
     }
 
     /**
-     * Ignore all findings of the same type/package.
-     * For OSS: ignores all findings with the same package version
-     * For CONTAINERS: ignores all findings with the same image tag
+     * Ignore all findings that share the same stable identity as issue (e.g. same OSS
+     * package+version across all files, or same rule/secret/rule-in-this-file for
+     * file-scoped engines). Delegates the matching itself to IgnoreManager.
      */
     private void ignoreAllOfType(ScanIssue issue) {
-        
         try {
-            int ignoredCount = 0;
-            String typeIdentifier = issue.getPackageVersion() != null ? issue.getPackageVersion() : issue.getImageTag();
-
-            // Iterate through all current issues and ignore matching ones
-            for (List<ScanIssue> issues : currentIssues.values()) {
-                for (ScanIssue currentIssue : issues) {
-                    // Match by same type/package/image
-                    if (currentIssue.getScanEngine() == issue.getScanEngine()) {
-                        String currentTypeIdentifier = currentIssue.getPackageVersion() != null ?
-                                currentIssue.getPackageVersion() : currentIssue.getImageTag();
-
-                        if (typeIdentifier != null && typeIdentifier.equals(currentTypeIdentifier)) {
-                            ignoredStore.ignoreProblem(currentIssue);
-                            ignoredCount++;
-                        }
-                    }
-                }
-            }
-
-            
+            ignoreManager.addAllIgnoredEntry(issue, currentIssues);
             refreshTreeWithFilter();
-            
-            
         } catch (Exception e) {
             System.err.println("[FINDINGS] ✗ Error ignoring findings of type: " + e.getMessage());
             e.printStackTrace();
@@ -1325,18 +1276,17 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
             }
         });
 
-        // Menu Item 4: Ignore All of This Type (for OSS and CONTAINERS)
-        if (issue.getScanEngine() == ScanEngine.OSS || issue.getScanEngine() == ScanEngine.CONTAINERS) {
-            org.eclipse.swt.widgets.MenuItem ignoreAllItem = new org.eclipse.swt.widgets.MenuItem(menu, SWT.PUSH);
-            ignoreAllItem.setText("Ignore All of This Type");
-            ignoreAllItem.addSelectionListener(new org.eclipse.swt.events.SelectionAdapter() {
-                @Override
-                public void widgetSelected(org.eclipse.swt.events.SelectionEvent e) {
-                    
-                    ignoreAllOfType(issue);
-                }
-            });
-        }
+        // Menu Item 4: Ignore All of This Type (across all engines - matching is delegated
+        // to IgnoreManager's stable per-engine key, so this isn't restricted to OSS/CONTAINERS)
+        org.eclipse.swt.widgets.MenuItem ignoreAllItem = new org.eclipse.swt.widgets.MenuItem(menu, SWT.PUSH);
+        ignoreAllItem.setText("Ignore All of This Type");
+        ignoreAllItem.addSelectionListener(new org.eclipse.swt.events.SelectionAdapter() {
+            @Override
+            public void widgetSelected(org.eclipse.swt.events.SelectionEvent e) {
+
+                ignoreAllOfType(issue);
+            }
+        });
 
         // Separator
         new org.eclipse.swt.widgets.MenuItem(menu, SWT.SEPARATOR);
@@ -1394,8 +1344,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
                     continue;
                 }
 
-                String issueId = issue.getScanIssueId();
-                boolean isIgnored = ignoredStore != null && ignoredStore.isIgnored(issueId);
+                boolean isIgnored = ignoreManager.isIgnored(issue);
                 boolean hasFilter = filterState.hasFilter(issue.getSeverity());
                 boolean isProblem = com.checkmarx.eclipse.devassist.utils.DevAssistUtils.isProblem(issue.getSeverity());
 
@@ -1532,11 +1481,10 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
     }
 
     /**
-     * Listener implementation: called when ignored problems are restored or cleared.
+     * Listener implementation: called when the ignore store is updated (ignore/revive).
      */
     @Override
-    public void onIgnoredProblemsChanged() {
-        
+    public void onIgnoreUpdated() {
         if (treeViewer != null && treeViewer.getControl() != null && !treeViewer.getControl().isDisposed()) {
             treeViewer.getControl().getDisplay().asyncExec(this::refreshTreeWithFilter);
         }

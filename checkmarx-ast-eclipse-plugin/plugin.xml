@@ -9,6 +9,11 @@
                 id="com.checkmarx.eclipse.properties.preferencespage"
                 name="Checkmarx One">
         </page>
+        <page
+                class="com.checkmarx.eclipse.devassist.prefs.CheckmarxPreferencePage"
+                id="com.checkmarx.eclipse.devassist.prefs.checkmarxpreferencepage"
+                name="Checkmarx Developer Assist">
+        </page>
     </extension>
     <extension
           point="org.eclipse.ui.views">
@@ -28,6 +33,15 @@
              id="com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView"
              inject="true"
              name="Checkmarx One Assist Findings"
+             restorable="true">
+       </view>
+       <view
+             category="com.checkmarx.eclipse"
+             class="com.checkmarx.eclipse.devassist.ui.findings.ignored.CxIgnoredFindingsView"
+             icon="platform:/plugin/com.checkmarx.eclipse.plugin/icons/severity/ignored_16.svg"
+             id="com.checkmarx.eclipse.devassist.ui.findings.ignored.CxIgnoredFindingsView"
+             inject="true"
+             name="Checkmarx Ignored Findings"
              restorable="true">
        </view>
        <category

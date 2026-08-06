@@ -71,4 +71,12 @@ public class PluginStartup implements IStartup {
 			CxLogger.error("Error initializing backend scanners: " + e.getMessage(), e);
 		}
 	}
+
+	/**
+	 * Get the project lifecycle listener singleton
+	 * @return the registered ProjectLifecycleListener, or null if not yet initialized
+	 */
+	public static ProjectLifecycleListener getProjectListener() {
+		return projectListener;
+	}
 }
