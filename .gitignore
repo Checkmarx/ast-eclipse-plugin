@@ -1,9 +1,11 @@
-/target/
-/bin/
+target/
+bin/
 .DS_Store
-/.metadata/
+.metadata/
 .idea/
 .vs/
+.tycho-consumer-pom.xml
 *.jar
 !checkmarx-ast-eclipse-plugin/lib/*.jar
 !devassist-lib/lib/*.jar
+!common-lib/lib/*.jar
