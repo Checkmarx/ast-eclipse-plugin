@@ -9,7 +9,7 @@ import com.checkmarx.eclipse.devassist.common.ScanResult;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
-import com.checkmarx.eclipse.utils.CxLogger;
+import com.checkmarx.eclipse.common.utils.CxLogger;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.jface.text.IDocument;
 

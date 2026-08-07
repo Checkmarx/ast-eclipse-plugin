@@ -32,7 +32,7 @@ import org.mockito.stubbing.Answer;
 import com.checkmarx.ast.results.result.Data;
 import com.checkmarx.ast.results.result.Node;
 import com.checkmarx.ast.results.result.Result;
-import com.checkmarx.eclipse.enums.Severity;
+import com.checkmarx.eclipse.common.enums.Severity;
 import com.checkmarx.eclipse.properties.Preferences;
 import com.checkmarx.eclipse.utils.PluginConstants;
 import com.checkmarx.eclipse.utils.PluginUtils;

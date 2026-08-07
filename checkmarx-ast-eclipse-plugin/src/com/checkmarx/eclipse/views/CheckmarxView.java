@@ -89,11 +89,12 @@ import com.checkmarx.ast.results.result.PackageData;
 import com.checkmarx.ast.results.result.Result;
 import com.checkmarx.ast.scan.Scan;
 import com.checkmarx.ast.wrapper.CxException;
+import com.checkmarx.eclipse.common.events.SettingsTopics;
 import com.checkmarx.eclipse.Activator;
 import com.checkmarx.eclipse.enums.ActionName;
-import com.checkmarx.eclipse.enums.Severity;
+import com.checkmarx.eclipse.common.enums.Severity;
 import com.checkmarx.eclipse.properties.Preferences;
-import com.checkmarx.eclipse.utils.CxLogger;
+import com.checkmarx.eclipse.common.utils.CxLogger;
 import com.checkmarx.eclipse.utils.NotificationPopUpUI;
 import com.checkmarx.eclipse.utils.PluginConstants;
 import com.checkmarx.eclipse.utils.PluginUtils;
@@ -223,7 +224,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		currentProjectId = globalSettings.getProjectId();
 		currentBranch = globalSettings.getBranch();
 		currentScanId = globalSettings.getScanId();
-		PluginUtils.getEventBroker().subscribe(PluginConstants.TOPIC_APPLY_SETTINGS, this);
+		PluginUtils.getEventBroker().subscribe(SettingsTopics.TOPIC_APPLY_SETTINGS, this);
 	}
 
 	@Override

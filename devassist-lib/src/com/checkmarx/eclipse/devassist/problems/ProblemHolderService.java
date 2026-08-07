@@ -10,10 +10,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.e4.core.services.events.IEventBroker;
+import org.eclipse.ui.PlatformUI;
 
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
-import com.checkmarx.eclipse.utils.CxLogger;
-import com.checkmarx.eclipse.utils.PluginUtils;
+import com.checkmarx.eclipse.common.utils.CxLogger;
 
 /**
  * In-memory cache for scan results (ScanIssue), keyed by file path.
@@ -213,7 +213,7 @@ public class ProblemHolderService {
 	 */
 	private void publishIssuesUpdated() {
 		try {
-			IEventBroker eventBroker = PluginUtils.getEventBroker();
+			IEventBroker eventBroker = (IEventBroker) PlatformUI.getWorkbench().getService(IEventBroker.class);
 			if (eventBroker != null) {
 				Map<String, List<ScanIssue>> allIssues = getAllScanIssues();
 				

@@ -64,9 +64,6 @@ public class PluginConstants {
 	public static final String PREFERENCES_TEST_CONNECTION = "Test Connection";
 	public static final String PREFERENCES_VALIDATING_STATE = "Validating...";
 	
-	/******************************** TOPICS ********************************/
-	public static final String TOPIC_APPLY_SETTINGS = "ApplySettings";
-	
 	/******************************** PROBLEMS VIEW ********************************/
 	public static final String PROBLEM_SOURCE_ID = "CheckmarxEclipsePlugin";
 	

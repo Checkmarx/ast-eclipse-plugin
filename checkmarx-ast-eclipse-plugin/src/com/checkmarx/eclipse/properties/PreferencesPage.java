@@ -2,6 +2,8 @@ package com.checkmarx.eclipse.properties;
 
 import java.util.concurrent.CompletableFuture;
 
+import com.checkmarx.eclipse.common.events.SettingsTopics;
+
 import org.eclipse.jface.preference.FieldEditor;
 import org.eclipse.jface.preference.FieldEditorPreferencePage;
 import org.eclipse.jface.preference.StringFieldEditor;
@@ -21,7 +23,7 @@ import org.eclipse.ui.IWorkbenchPreferencePage;
 
 import com.checkmarx.eclipse.Activator;
 import com.checkmarx.eclipse.runner.Authenticator;
-import com.checkmarx.eclipse.utils.CxLogger;
+import com.checkmarx.eclipse.common.utils.CxLogger;
 import com.checkmarx.eclipse.utils.PluginConstants;
 import com.checkmarx.eclipse.utils.PluginUtils;
 import org.eclipse.swt.widgets.Link;
@@ -163,7 +165,7 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 		boolean ok = super.performOk();
 
 		if (ok) {
-			PluginUtils.getEventBroker().post(PluginConstants.TOPIC_APPLY_SETTINGS, PluginConstants.EMPTY_STRING);
+			PluginUtils.getEventBroker().post(SettingsTopics.TOPIC_APPLY_SETTINGS, PluginConstants.EMPTY_STRING);
 		}
 
 		return ok;

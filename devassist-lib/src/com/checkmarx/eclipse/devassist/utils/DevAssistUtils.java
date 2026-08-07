@@ -19,7 +19,7 @@ import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.texteditor.ITextEditor;
 
 import com.checkmarx.eclipse.devassist.backend.SeverityLevel;
-import com.checkmarx.eclipse.utils.CxLogger;
+import com.checkmarx.eclipse.common.utils.CxLogger;
 
 /**
  * Utility class for DevAssist operations. Provides methods for encoding, decoding,

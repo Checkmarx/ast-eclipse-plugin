@@ -26,7 +26,7 @@ import com.checkmarx.eclipse.enums.ActionName;
 import com.checkmarx.eclipse.views.DataProvider;
 
 import com.checkmarx.eclipse.enums.PluginListenerType;
-import com.checkmarx.eclipse.enums.Severity;
+import com.checkmarx.eclipse.common.enums.Severity;
 import com.checkmarx.eclipse.views.DisplayModel;
 import com.checkmarx.eclipse.views.PluginListenerDefinition;
 import com.checkmarx.eclipse.views.actions.ToolBarActions;

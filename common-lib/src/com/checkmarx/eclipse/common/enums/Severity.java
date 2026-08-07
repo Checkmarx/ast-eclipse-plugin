@@ -1,7 +1,7 @@
-package com.checkmarx.eclipse.enums;
+package com.checkmarx.eclipse.common.enums;
 
 public enum Severity {
-	
+
 	CRITICAL,
 	HIGH,
 	MEDIUM,
@@ -10,7 +10,7 @@ public enum Severity {
 	GROUP_BY_SEVERITY,
 	GROUP_BY_QUERY_NAME,
 	GROUP_BY_STATE_NAME;
-	
+
 	public static Severity getSeverity(String severity) {
 		return Severity.valueOf(severity);
 	}

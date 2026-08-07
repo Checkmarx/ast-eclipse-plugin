@@ -6,7 +6,7 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.jface.text.IDocument;
 
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
-import com.checkmarx.eclipse.utils.CxLogger;
+import com.checkmarx.eclipse.common.utils.CxLogger;
 
 /**
  * Processor that validates individual scan issues and creates problem descriptors.

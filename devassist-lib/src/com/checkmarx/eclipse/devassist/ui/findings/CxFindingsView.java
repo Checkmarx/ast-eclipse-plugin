@@ -33,16 +33,16 @@ import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.ImageData;
+import org.eclipse.ui.plugin.AbstractUIPlugin;
+import org.apache.commons.lang3.StringUtils;
 
 import com.checkmarx.eclipse.devassist.ui.findings.provider.FindingsContentProvider;
 import com.checkmarx.eclipse.devassist.ui.findings.provider.FindingsLabelProvider;
-import com.checkmarx.eclipse.utils.PluginConstants;
-import com.checkmarx.eclipse.utils.PluginUtils;
-import com.checkmarx.eclipse.views.CheckmarxView;
-import com.checkmarx.eclipse.views.actions.ActionOpenPreferencesPage;
+import com.checkmarx.eclipse.common.events.SettingsTopics;
+import com.checkmarx.eclipse.common.properties.SharedPreferences;
+import com.checkmarx.eclipse.devassist.backend.Constants;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.ui.findings.model.ScanDetailWithPath;
-import com.checkmarx.eclipse.Activator;
 import com.checkmarx.eclipse.devassist.model.Location;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.problems.ProblemHolderService;
@@ -77,6 +77,8 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
     private IgnoredProblemsStore ignoredStore;
     Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell();
     public static final Image FINDINGS_PROMOTIONAL_CUBE = createScaledImage("/icons/cx-one-assist-cube.png", 240);
+    private static final Image CHECKMARX_OPEN_SETTINGS_LOGO =
+            AbstractUIPlugin.imageDescriptorFromPlugin(Constants.MAIN_PLUGIN_ID, "/icons/checkmarx-80.png").createImage();
 
     public CxFindingsView() {
         super();
@@ -112,7 +114,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
       * if it is larger than that width.
       */
      private static Image createScaledImage(String path, int maxWidth) {
-       Image original = Activator.getImageDescriptor(path).createImage();
+       Image original = AbstractUIPlugin.imageDescriptorFromPlugin(Constants.MAIN_PLUGIN_ID, path).createImage();
        if (original.getBounds().width <= maxWidth) {
          return original;
        }
@@ -135,7 +137,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
             return;
         }
 
-        if (!PluginUtils.areCredentialsDefined()) {
+        if (StringUtils.isBlank(SharedPreferences.getApiKey())) {
             drawMissingCredentialsPanel(parentComposite);
         } else {
             loadCachedIssues();
@@ -188,12 +190,12 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
         // Logo
         final Label cxLogo = new Label(openSettingsComposite, SWT.NONE);
         cxLogo.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, true, false));
-        cxLogo.setImage(CheckmarxView.CHECKMARX_OPEN_SETTINGS_LOGO);
+        cxLogo.setImage(CHECKMARX_OPEN_SETTINGS_LOGO);
 
         // Open Settings Button
         Button btn = new Button(openSettingsComposite, SWT.NONE);
         btn.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, true, false));
-        btn.setText(PluginConstants.BTN_OPEN_SETTINGS);
+        btn.setText(Constants.BTN_OPEN_SETTINGS);
 
         btn.addListener(SWT.Selection, event -> {            
             PreferenceDialog pref = PreferencesUtil.createPreferenceDialogOn(
@@ -255,7 +257,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
         Label descriptionLabel = new Label(promotionalComposite, SWT.WRAP);
         GridData descriptionData = new GridData(SWT.LEFT, SWT.CENTER, true, false);
         descriptionLabel.setLayoutData(descriptionData);
-        descriptionLabel.setText(PluginConstants.FINDINGS_PROMO_DESCRIPTION);
+        descriptionLabel.setText(Constants.FINDINGS_PROMO_DESCRIPTION);
 
         // SWT.WRAP labels need an explicit widthHint to wrap and left-align under the image
         // instead of growing to one unbroken line. The pane has no real bounds yet at this
@@ -319,7 +321,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
                         refreshViewMode();
                     });
                 };
-                eventBroker.subscribe(PluginConstants.TOPIC_APPLY_SETTINGS, settingsEventHandler);
+                eventBroker.subscribe(SettingsTopics.TOPIC_APPLY_SETTINGS, settingsEventHandler);
             }
         } catch (Exception e) {
             System.err.println("[FINDINGS] Error subscribing to IEventBroker: " + e.getMessage());
@@ -458,13 +460,17 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
         // Add spacing before preferences button
         toolbar.add(new org.eclipse.jface.action.Separator("\t"));
 
-        // Preferences action (same implementation as CheckmarxView)
-        Action openPreferencesPageAction =
-            new ActionOpenPreferencesPage(
-                null,
-                treeViewer,
-                PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell())
-            .createAction();
+        // Preferences action: opens the same preference page as the main results view
+        Action openPreferencesPageAction = new Action() {
+            @Override
+            public void run() {
+                PreferenceDialog pref = PreferencesUtil.createPreferenceDialogOn(
+                        shell, "com.checkmarx.eclipse.properties.preferencespage", null, null);
+                if (pref != null) {
+                    pref.open();
+                }
+            }
+        };
 
         // Toolbar preferences button
         Action toolbarPreferencesAction =

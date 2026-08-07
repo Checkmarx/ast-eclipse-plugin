@@ -3,9 +3,9 @@ package com.checkmarx.eclipse.devassist.factory;
 import com.checkmarx.ast.wrapper.CxConfig;
 import com.checkmarx.ast.wrapper.CxException;
 import com.checkmarx.ast.wrapper.CxWrapper;
-import com.checkmarx.eclipse.utils.CxLogger;
-import com.checkmarx.eclipse.utils.PluginConstants;
-import com.checkmarx.eclipse.properties.Preferences;
+import com.checkmarx.eclipse.common.properties.SharedPreferences;
+import com.checkmarx.eclipse.common.utils.CxLogger;
+import com.checkmarx.eclipse.devassist.backend.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,15 +32,15 @@ public class CxWrapperFactory {
         Logger log = LoggerFactory.getLogger(CxWrapperFactory.class.getName());
 
         CxConfig.CxConfigBuilder builder = CxConfig.builder()
-                .apiKey(Preferences.getApiKey())
-                .additionalParameters(Preferences.getAdditionalOptions());
+                .apiKey(SharedPreferences.getApiKey())
+                .additionalParameters(SharedPreferences.getAdditionalOptions());
 
         CxConfig config = builder.build();
 
         try {
             cxWrapper = new CxWrapper(config, log);
         } catch (IOException e) {
-            CxLogger.error(String.format(PluginConstants.ERROR_BUILDING_CX_WRAPPER, e.getMessage()), e);
+            CxLogger.error(String.format(Constants.ERROR_BUILDING_CX_WRAPPER, e.getMessage()), e);
             throw new Exception(e);
         }
 

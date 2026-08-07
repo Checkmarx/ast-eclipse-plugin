@@ -3,7 +3,7 @@ package com.checkmarx.eclipse.devassist.scanners.secrets;
 import com.checkmarx.ast.secretsrealtime.SecretsRealtimeResults;
 import com.checkmarx.eclipse.devassist.basescanner.BaseScannerCommand;
 import com.checkmarx.eclipse.devassist.common.ScanResult;
-import com.checkmarx.eclipse.utils.CxLogger;
+import com.checkmarx.eclipse.common.utils.CxLogger;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.jface.text.IDocument;
 

@@ -10,7 +10,7 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 
 import com.checkmarx.eclipse.runner.Authenticator;
-import com.checkmarx.eclipse.utils.CxLogger;
+import com.checkmarx.eclipse.common.utils.CxLogger;
 import com.checkmarx.eclipse.utils.PluginConstants;
 
 public class AuthButtonFieldEditor extends StringButtonFieldEditor {

@@ -8,7 +8,7 @@ import com.checkmarx.eclipse.devassist.backend.ScannerRegistry;
 import com.checkmarx.eclipse.devassist.backend.ScannerRegistry.ScannerType;
 import com.checkmarx.eclipse.devassist.basescanner.ScannerService;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
-import com.checkmarx.eclipse.utils.CxLogger;
+import com.checkmarx.eclipse.common.utils.CxLogger;
 
 /**
  * Orchestrates the scanning process for a file.

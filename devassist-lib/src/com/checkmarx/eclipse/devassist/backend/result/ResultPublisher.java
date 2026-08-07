@@ -13,7 +13,7 @@ import com.checkmarx.eclipse.devassist.problems.ProblemDecorator;
 import com.checkmarx.eclipse.devassist.problems.ProblemHelper;
 import com.checkmarx.eclipse.devassist.problems.ProblemHolderService;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
-import com.checkmarx.eclipse.utils.CxLogger;
+import com.checkmarx.eclipse.common.utils.CxLogger;
 import java.util.List;
 
 /**

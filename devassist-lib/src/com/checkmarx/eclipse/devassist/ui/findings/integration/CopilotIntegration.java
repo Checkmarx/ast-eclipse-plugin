@@ -20,8 +20,8 @@ import org.eclipse.core.runtime.IStatus;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.checkmarx.eclipse.Activator;
-import com.checkmarx.eclipse.utils.CxLogger;
+import com.checkmarx.eclipse.common.utils.CxLogger;
+import com.checkmarx.eclipse.devassist.backend.Constants;
 
 /**
  * Integration with GitHub Copilot for Eclipse.
@@ -358,7 +358,7 @@ public class CopilotIntegration {
             Display.getDefault().asyncExec(() -> {
                 IStatus status = new Status(
                     severity,
-                    Activator.PLUGIN_ID,
+                    Constants.MAIN_PLUGIN_ID,
                     title + "\n" + message
                 );
                 StatusManager.getManager().handle(status, StatusManager.SHOW | StatusManager.LOG);

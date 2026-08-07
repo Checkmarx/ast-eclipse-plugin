@@ -1,4 +1,4 @@
-package com.checkmarx.eclipse.utils;
+package com.checkmarx.eclipse.common.utils;
 
 import org.eclipse.core.runtime.ILog;
 import org.eclipse.core.runtime.Platform;
@@ -8,7 +8,7 @@ import org.osgi.framework.FrameworkUtil;
 
 /**
  * Class responsible to add entries to Eclipse Error Log perspective
- * 
+ *
  * @author HugoMa
  *
  */
@@ -16,38 +16,38 @@ public class CxLogger {
 
 	private static final Bundle BUNDLE = FrameworkUtil.getBundle(CxLogger.class);
 	private static final ILog LOGGER = Platform.getLog(BUNDLE);
-	
+
 	/**
 	 * Add entry as error
-	 * 
+	 *
 	 * @param msg
 	 * @param e
 	 */
 	public static void error(String msg, Exception e) {
 		log(Status.ERROR, msg, e);
 	}
-	
+
 	/**
 	 * Add entry as warning
-	 * 
+	 *
 	 * @param msg
 	 */
 	public static void warning(String msg) {
 		log(Status.WARNING, msg, null);
 	}
-	
+
 	/**
 	 * Add entry as info
-	 * 
+	 *
 	 * @param msg
 	 */
 	public static void info(String msg) {
 		log(Status.INFO, msg, null);
 	}
-	
+
 	/**
 	 * Add entry to Error Log
-	 * 
+	 *
 	 * @param status
 	 * @param msg
 	 * @param e

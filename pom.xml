@@ -11,6 +11,7 @@
 
 
 	<modules>
+		<module>common-lib</module>
 		<module>devassist-lib</module>
 		<module>checkmarx-ast-eclipse-plugin</module>
 		<module>com.checkmarx.eclipse.feature</module>
@@ -131,7 +132,7 @@
 				<version>${tycho.version}</version>
 				<configuration>
 					<executionEnvironment>JavaSE-17</executionEnvironment>
-					<pomDependencies>ignore</pomDependencies>
+					<pomDependencies>consider</pomDependencies>
 					<environments>
 						<environment>
 							<os>linux</os>

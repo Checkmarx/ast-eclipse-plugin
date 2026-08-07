@@ -1,0 +1,9 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Checkmarx Common Library
+Bundle-SymbolicName: com.checkmarx.eclipse.common
+Bundle-Version: 1.0.0.202608071052
+Bundle-Vendor: Checkmarx
+Require-Bundle: org.eclipse.core.runtime
+Require-Capability: osgi.ee;filter:="(&(osgi.ee=JavaSE)(version=17))"
+

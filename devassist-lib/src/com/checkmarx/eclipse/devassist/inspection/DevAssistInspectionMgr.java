@@ -19,7 +19,7 @@ import com.checkmarx.eclipse.devassist.problems.ProblemDescriptor;
 import com.checkmarx.eclipse.devassist.problems.ProblemHelper;
 import com.checkmarx.eclipse.devassist.problems.ProblemHolderService;
 import com.checkmarx.eclipse.devassist.problems.ScanIssueProcessor;
-import com.checkmarx.eclipse.utils.CxLogger;
+import com.checkmarx.eclipse.common.utils.CxLogger;
 
 /**
  * Main orchestrator for inspection workflow.

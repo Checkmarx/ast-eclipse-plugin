@@ -2,7 +2,7 @@ package com.checkmarx.eclipse.devassist.ui.findings.marker;
 
 import org.eclipse.core.resources.IMarker;
 
-import com.checkmarx.eclipse.enums.Severity;
+import com.checkmarx.eclipse.common.enums.Severity;
 import com.checkmarx.eclipse.devassist.model.Location;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;

@@ -8,7 +8,7 @@ import org.eclipse.core.resources.IProject;
 
 import com.checkmarx.eclipse.devassist.problems.ProblemHelper;
 import com.checkmarx.eclipse.devassist.ui.findings.realtime.RealTimeScanJob;
-import com.checkmarx.eclipse.utils.CxLogger;
+import com.checkmarx.eclipse.common.utils.CxLogger;
 
 /**
  * Scheduler that wraps and coordinates RealTimeScanJob for background file scanning.

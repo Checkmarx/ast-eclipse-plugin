@@ -7,7 +7,7 @@ import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.model.Vulnerability;
 import com.checkmarx.eclipse.devassist.utils.DevAssistUtils;
-import com.checkmarx.eclipse.utils.CxLogger;
+import com.checkmarx.eclipse.common.utils.CxLogger;
 import java.util.*;
 import java.util.stream.Collectors;
 

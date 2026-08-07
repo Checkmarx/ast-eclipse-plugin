@@ -5,7 +5,7 @@ import org.eclipse.swt.graphics.Image;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 
-import com.checkmarx.eclipse.Activator;
+import com.checkmarx.eclipse.devassist.backend.Constants;
 
 /**
  * Registry for managing Checkmarx severity icons.
@@ -80,8 +80,8 @@ public class IconRegistry {
     }
 
     private static void registerIcon(String key, String path) {
-        AbstractUIPlugin.imageDescriptorFromPlugin(Activator.PLUGIN_ID, path);
-        imageRegistry.put(key, AbstractUIPlugin.imageDescriptorFromPlugin(Activator.PLUGIN_ID, path));
+        AbstractUIPlugin.imageDescriptorFromPlugin(Constants.MAIN_PLUGIN_ID, path);
+        imageRegistry.put(key, AbstractUIPlugin.imageDescriptorFromPlugin(Constants.MAIN_PLUGIN_ID, path));
     }
 
     /**

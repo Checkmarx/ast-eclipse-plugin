@@ -4,8 +4,7 @@ Bundle-Name: Checkmarx Results Viewer
 Bundle-SymbolicName: com.checkmarx.eclipse.plugin;singleton:=true
 Bundle-Version: 1.0.0.qualifier
 Bundle-Vendor: Checkmarx
-Require-Bundle: com.checkmarx.eclipse.devassist,
- org.eclipse.ui,
+Require-Bundle: org.eclipse.ui,
  org.eclipse.ui.workbench.texteditor,
  org.eclipse.ui.editors,
  org.eclipse.core.runtime,
@@ -21,7 +20,9 @@ Require-Bundle: com.checkmarx.eclipse.devassist,
  org.apache.commons.lang3,
  org.eclipse.mylyn.commons.ui,
  org.eclipse.mylyn.commons.core,
- jakarta.inject.jakarta.inject-api;bundle-version="2.0.1"
+ jakarta.inject.jakarta.inject-api;bundle-version="2.0.1",
+ com.checkmarx.eclipse.common,
+ com.checkmarx.eclipse.devassist
 Automatic-Module-Name: com.checkmarx.eclipse
 Bundle-RequiredExecutionEnvironment: JavaSE-17
 Import-Package: org.eclipse.core.resources,
@@ -44,3 +45,4 @@ Bundle-ClassPath: .,
  lib/ast-cli-java-wrapper-2.4.24.jar,
  lib/org.eclipse.mylyn.commons.ui_4.9.0.v20251121-0615.jar,
  lib/org-eclipse-mylyn-commons-core.jar
+ 

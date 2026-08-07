@@ -17,7 +17,7 @@ import com.checkmarx.eclipse.devassist.backend.ScannerRegistry;
 import com.checkmarx.eclipse.devassist.backend.result.ResultPublisher;
 import com.checkmarx.eclipse.devassist.common.ScanManager;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
-import com.checkmarx.eclipse.utils.CxLogger;
+import com.checkmarx.eclipse.common.utils.CxLogger;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
@@ -152,7 +152,7 @@ public class ProjectLifecycleListener implements IResourceChangeListener {
 	}
 
 	private boolean isUserAuthenticated() {
-		String apiKey = com.checkmarx.eclipse.properties.Preferences.getApiKey();
+		String apiKey = com.checkmarx.eclipse.common.properties.SharedPreferences.getApiKey();
 		return apiKey != null && !apiKey.trim().isEmpty();
 	}
 
