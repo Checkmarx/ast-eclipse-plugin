@@ -4,7 +4,8 @@ Bundle-Name: Checkmarx Results Viewer
 Bundle-SymbolicName: com.checkmarx.eclipse.plugin;singleton:=true
 Bundle-Version: 1.0.0.qualifier
 Bundle-Vendor: Checkmarx
-Require-Bundle: org.eclipse.ui,
+Require-Bundle: com.checkmarx.eclipse.devassist,
+ org.eclipse.ui,
  org.eclipse.ui.workbench.texteditor,
  org.eclipse.ui.editors,
  org.eclipse.core.runtime,
@@ -20,8 +21,7 @@ Require-Bundle: org.eclipse.ui,
  org.apache.commons.lang3,
  org.eclipse.mylyn.commons.ui,
  org.eclipse.mylyn.commons.core,
- jakarta.inject.jakarta.inject-api;bundle-version="2.0.1",
- com.checkmarx.eclipse.devassist
+ jakarta.inject.jakarta.inject-api;bundle-version="2.0.1"
 Automatic-Module-Name: com.checkmarx.eclipse
 Bundle-RequiredExecutionEnvironment: JavaSE-17
 Import-Package: org.eclipse.core.resources,
@@ -29,7 +29,10 @@ Import-Package: org.eclipse.core.resources,
 Bundle-ActivationPolicy: lazy
 Bundle-Activator: com.checkmarx.eclipse.Activator
 Export-Package: com.checkmarx.ast.asca,
- com.checkmarx.ast.wrapper
+ com.checkmarx.ast.wrapper,
+ com.checkmarx.eclipse.enums,
+ com.checkmarx.eclipse.properties,
+ com.checkmarx.eclipse.utils
 Bundle-ClassPath: .,
  lib/slf4j-simple-2.0.17.jar,
  lib/slf4j-reload4j-2.0.17.jar,
