@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <units size='1'>
-  <unit id='com.checkmarx.eclipse.common' version='1.0.0.202608071052' singleton='false' generation='2'>
-    <update id='com.checkmarx.eclipse.common' range='[0.0.0,1.0.0.202608071052)' severity='0'/>
+  <unit id='com.checkmarx.eclipse.common' version='1.0.0.202608071258' singleton='false' generation='2'>
+    <update id='com.checkmarx.eclipse.common' range='[0.0.0,1.0.0.202608071258)' severity='0'/>
     <properties size='6'>
       <property name='org.eclipse.equinox.p2.name' value='Checkmarx Common Library'/>
       <property name='org.eclipse.equinox.p2.provider' value='Checkmarx'/>
@@ -11,9 +11,9 @@
       <property name='maven-type' value='eclipse-plugin'/>
     </properties>
     <provides size='4'>
-      <provided namespace='org.eclipse.equinox.p2.iu' name='com.checkmarx.eclipse.common' version='1.0.0.202608071052'/>
-      <provided namespace='osgi.bundle' name='com.checkmarx.eclipse.common' version='1.0.0.202608071052'/>
-      <provided namespace='osgi.identity' name='com.checkmarx.eclipse.common' version='1.0.0.202608071052'>
+      <provided namespace='org.eclipse.equinox.p2.iu' name='com.checkmarx.eclipse.common' version='1.0.0.202608071258'/>
+      <provided namespace='osgi.bundle' name='com.checkmarx.eclipse.common' version='1.0.0.202608071258'/>
+      <provided namespace='osgi.identity' name='com.checkmarx.eclipse.common' version='1.0.0.202608071258'>
         <properties size='1'>
           <property name='type' value='osgi.bundle'/>
         </properties>
@@ -27,20 +27,20 @@
           com.checkmarx.eclipse.common
         </description>
       </requiredProperties>
-      <required namespace='org.eclipse.equinox.p2.iu' name='com.checkmarx.eclipse.common.source' range='[1.0.0.202608071052,1.0.0.202608071052]' optional='true'>
+      <required namespace='org.eclipse.equinox.p2.iu' name='com.checkmarx.eclipse.common.source' range='[1.0.0.202608071258,1.0.0.202608071258]' optional='true'>
         <filter>
           (org.eclipse.update.install.sources=true)
         </filter>
       </required>
     </requires>
     <artifacts size='1'>
-      <artifact classifier='osgi.bundle' id='com.checkmarx.eclipse.common' version='1.0.0.202608071052'/>
+      <artifact classifier='osgi.bundle' id='com.checkmarx.eclipse.common' version='1.0.0.202608071258'/>
     </artifacts>
     <touchpoint id='org.eclipse.equinox.p2.osgi' version='1.0.0'/>
     <touchpointData size='1'>
       <instructions size='1'>
         <instruction key='manifest'>
-          Bundle-SymbolicName: com.checkmarx.eclipse.common&#xA;Bundle-Version: 1.0.0.202608071052&#xA;
+          Bundle-SymbolicName: com.checkmarx.eclipse.common&#xA;Bundle-Version: 1.0.0.202608071258&#xA;
         </instruction>
       </instructions>
     </touchpointData>
