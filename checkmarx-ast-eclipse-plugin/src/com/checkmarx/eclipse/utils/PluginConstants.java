@@ -21,6 +21,7 @@ public class PluginConstants {
 	public static final String BFL_NOT_FOUND = "Best fix Location not available for given results";
 	public static final String TOOLBAR_ACTION_PREFERENCES = "Preferences";
 	public static final String TOOLBAR_ACTION_CLEAR_RESULTS = "Clear results section";
+	public static final String FINDINGS_PROMO_DESCRIPTION = "Checkmarx AI (Cx Assist) provides real-time threat detection and helps you avoid vulnerabilities before they happen.";
 
 	
 	/******************************** LOG VIEW: ERRORS ********************************/
@@ -62,9 +63,6 @@ public class PluginConstants {
 	public static final String PREFERENCES_ADDITIONAL_OPTIONS = "Additional Params:";
 	public static final String PREFERENCES_TEST_CONNECTION = "Test Connection";
 	public static final String PREFERENCES_VALIDATING_STATE = "Validating...";
-	
-	/******************************** TOPICS ********************************/
-	public static final String TOPIC_APPLY_SETTINGS = "ApplySettings";
 	
 	/******************************** PROBLEMS VIEW ********************************/
 	public static final String PROBLEM_SOURCE_ID = "CheckmarxEclipsePlugin";

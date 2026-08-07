@@ -1,0 +1,12 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Checkmarx Common Library
+Bundle-SymbolicName: com.checkmarx.eclipse.common
+Bundle-Version: 1.0.0.qualifier
+Bundle-Vendor: Checkmarx
+Require-Bundle: org.eclipse.core.runtime
+Bundle-RequiredExecutionEnvironment: JavaSE-17
+Export-Package: com.checkmarx.eclipse.common.enums,
+ com.checkmarx.eclipse.common.events,
+ com.checkmarx.eclipse.common.properties,
+ com.checkmarx.eclipse.common.utils
