@@ -21,15 +21,6 @@
              name="Checkmarx One Scan"
              restorable="true">
        </view>
-       <view
-             category="com.checkmarx.eclipse"
-             class="com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView"
-             icon="platform:/plugin/com.checkmarx.eclipse.plugin/icons/severity/critical_16.svg"
-             id="com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView"
-             inject="true"
-             name="Checkmarx One Assist Findings"
-             restorable="true">
-       </view>
        <category
              id="com.checkmarx.eclipse"
              name="Checkmarx">
@@ -45,129 +36,11 @@
                     relationship="right"
                     ratio="0.5">
             </view>
-            <view
-                    id="com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView"
-                    relative="org.eclipse.ui.views.ProblemView"
-                    relationship="stacked"
-                    ratio="0.5">
-            </view>
         </perspectiveExtension>
     </extension>
 
     <extension point="org.eclipse.ui.startup">
         <startup class="com.checkmarx.eclipse.startup.PluginStartup"/>
-    </extension>
-
-    <!-- Annotation types for custom Findings Window editor decorations (gutter icons + underlines) -->
-    <extension point="org.eclipse.ui.editors.annotationTypes">
-        <type
-            name="com.checkmarx.eclipse.findings.malicious"
-            super="org.eclipse.ui.workbench.texteditor.error">
-        </type>
-        <type
-            name="com.checkmarx.eclipse.findings.critical"
-            super="org.eclipse.ui.workbench.texteditor.error">
-        </type>
-        <type
-            name="com.checkmarx.eclipse.findings.high"
-            super="org.eclipse.ui.workbench.texteditor.error">
-        </type>
-        <type
-            name="com.checkmarx.eclipse.findings.medium"
-            super="org.eclipse.ui.workbench.texteditor.warning">
-        </type>
-        <type
-            name="com.checkmarx.eclipse.findings.low"
-            super="org.eclipse.ui.workbench.texteditor.info">
-        </type>
-        <type
-            name="com.checkmarx.eclipse.findings.unknown"
-            super="org.eclipse.ui.workbench.texteditor.info">
-        </type>
-        <type
-            name="com.checkmarx.eclipse.findings.ok"
-            super="org.eclipse.ui.workbench.texteditor.info">
-        </type>
-        <type
-            name="com.checkmarx.eclipse.findings.ignored"
-            super="org.eclipse.ui.workbench.texteditor.info">
-        </type>
-    </extension>
-
-    <!-- Gutter icon + squiggly underline specifications for Findings annotations -->
-    <extension point="org.eclipse.ui.editors.markerAnnotationSpecification">
-        <specification
-            annotationType="com.checkmarx.eclipse.findings.malicious"
-            label="Checkmarx Malicious Finding"
-            icon="icons/severity/malicious_16.svg"
-            textStylePreferenceValue="SQUIGGLES"
-            verticalRulerPreferenceValue="true"
-            overviewRulerPreferenceValue="true"
-            presentationLayer="8">
-        </specification>
-        <specification
-            annotationType="com.checkmarx.eclipse.findings.critical"
-            label="Checkmarx Critical Finding"
-            icon="icons/severity/critical_16.svg"
-            textStylePreferenceValue="SQUIGGLES"
-            verticalRulerPreferenceValue="true"
-            overviewRulerPreferenceValue="true"
-            presentationLayer="7">
-        </specification>
-        <specification
-            annotationType="com.checkmarx.eclipse.findings.high"
-            label="Checkmarx High Finding"
-            icon="icons/severity/high_16.svg"
-            textStylePreferenceValue="SQUIGGLES"
-            verticalRulerPreferenceValue="true"
-            overviewRulerPreferenceValue="true"
-            presentationLayer="6">
-        </specification>
-        <specification
-            annotationType="com.checkmarx.eclipse.findings.medium"
-            label="Checkmarx Medium Finding"
-            icon="icons/severity/medium_16.svg"
-            textStylePreferenceValue="SQUIGGLES"
-            verticalRulerPreferenceValue="true"
-            overviewRulerPreferenceValue="true"
-            presentationLayer="5">
-        </specification>
-        <specification
-            annotationType="com.checkmarx.eclipse.findings.low"
-            label="Checkmarx Low Finding"
-            icon="icons/severity/low_16.svg"
-            textStylePreferenceValue="SQUIGGLES"
-            verticalRulerPreferenceValue="true"
-            overviewRulerPreferenceValue="true"
-            presentationLayer="4">
-        </specification>
-        <specification
-            annotationType="com.checkmarx.eclipse.findings.unknown"
-            label="Checkmarx Unknown Finding"
-            icon="icons/severity/unknown_16.svg"
-            textStylePreferenceValue="SQUIGGLES"
-            verticalRulerPreferenceValue="true"
-            overviewRulerPreferenceValue="true"
-            presentationLayer="3">
-        </specification>
-        <specification
-            annotationType="com.checkmarx.eclipse.findings.ok"
-            label="Checkmarx OK Finding"
-            icon="icons/severity/ok_16.svg"
-            textStylePreferenceValue="SQUIGGLES"
-            verticalRulerPreferenceValue="true"
-            overviewRulerPreferenceValue="true"
-            presentationLayer="2">
-        </specification>
-        <specification
-            annotationType="com.checkmarx.eclipse.findings.ignored"
-            label="Checkmarx Ignored Finding"
-            icon="icons/severity/ignored_16.svg"
-            textStylePreferenceValue="SQUIGGLES"
-            verticalRulerPreferenceValue="true"
-            overviewRulerPreferenceValue="true"
-            presentationLayer="1">
-        </specification>
     </extension>
 
 </plugin>

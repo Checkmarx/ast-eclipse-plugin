@@ -12,6 +12,7 @@
 
 	<modules>
 		<module>checkmarx-ast-eclipse-plugin</module>
+		<module>devassist-lib</module>
 		<module>com.checkmarx.eclipse.feature</module>
 		<module>com.checkmarx.eclipse.site</module>
 		<module>checkmarx-ast-eclipse-plugin-tests</module>
