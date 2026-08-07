@@ -69,7 +69,7 @@
         <specification
             annotationType="com.checkmarx.eclipse.findings.malicious"
             label="Checkmarx Malicious Finding"
-            icon="icons/high_16.svg"
+            icon="icons/malicious_16.svg"
             textStylePreferenceValue="SQUIGGLES"
             verticalRulerPreferenceValue="true"
             overviewRulerPreferenceValue="true"
@@ -78,7 +78,7 @@
         <specification
             annotationType="com.checkmarx.eclipse.findings.critical"
             label="Checkmarx Critical Finding"
-            icon="icons/high_16.svg"
+            icon="icons/critical_16.svg"
             textStylePreferenceValue="SQUIGGLES"
             verticalRulerPreferenceValue="true"
             overviewRulerPreferenceValue="true"
@@ -87,7 +87,7 @@
         <specification
             annotationType="com.checkmarx.eclipse.findings.high"
             label="Checkmarx High Finding"
-            icon="icons/severity-high.png"
+            icon="icons/high_16.png"
             textStylePreferenceValue="SQUIGGLES"
             verticalRulerPreferenceValue="true"
             overviewRulerPreferenceValue="true"
