@@ -40,7 +40,7 @@ import com.checkmarx.eclipse.views.DisplayModel;
 import com.checkmarx.eclipse.views.GlobalSettings;
 import com.checkmarx.eclipse.views.PluginListenerDefinition;
 import com.google.common.eventbus.EventBus;
-import com.checkmarx.eclipse.utils.CxLogger;
+import com.checkmarx.eclipse.common.utils.CxLogger;
 import com.checkmarx.eclipse.utils.NotificationPopUpUI;
 import com.checkmarx.eclipse.utils.PluginConstants;
 import com.checkmarx.eclipse.utils.PluginUtils;

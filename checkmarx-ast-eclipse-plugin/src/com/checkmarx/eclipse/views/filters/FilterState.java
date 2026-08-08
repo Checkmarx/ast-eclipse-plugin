@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.checkmarx.eclipse.enums.Severity;
+import com.checkmarx.eclipse.common.enums.Severity;
 import com.checkmarx.eclipse.enums.State;
 import com.checkmarx.eclipse.views.GlobalSettings;
 

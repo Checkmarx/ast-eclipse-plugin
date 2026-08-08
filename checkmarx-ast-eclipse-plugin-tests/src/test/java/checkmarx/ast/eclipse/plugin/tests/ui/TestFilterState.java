@@ -17,7 +17,7 @@ import org.eclipse.swtbot.swt.finder.widgets.SWTBotTreeItem;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import com.checkmarx.eclipse.enums.Severity;
+import com.checkmarx.eclipse.common.enums.Severity;
 import com.checkmarx.eclipse.enums.State;
 import com.checkmarx.eclipse.views.actions.ToolBarActions;
 

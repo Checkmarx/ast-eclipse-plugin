@@ -24,7 +24,8 @@ import org.apache.commons.lang3.StringUtils;
 import com.checkmarx.ast.results.result.Node;
 import com.checkmarx.ast.results.result.Result;
 import com.checkmarx.eclipse.enums.ActionName;
-import com.checkmarx.eclipse.enums.Severity;
+import com.checkmarx.eclipse.common.enums.Severity;
+import com.checkmarx.eclipse.common.utils.CxLogger;
 import com.checkmarx.eclipse.properties.Preferences;
 import com.checkmarx.eclipse.views.DataProvider;
 import com.checkmarx.eclipse.views.DisplayModel;
@@ -52,7 +53,7 @@ public class PluginUtils {
 			DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(PARAM_TIMESTAMP_PATTERN).withZone(ZoneId.systemDefault());
 			parsedDate = dateTimeFormatter.format(instant);
 		} catch (Exception e) {
-			System.out.println(e);
+			
 			return timestamp;
 		}
 

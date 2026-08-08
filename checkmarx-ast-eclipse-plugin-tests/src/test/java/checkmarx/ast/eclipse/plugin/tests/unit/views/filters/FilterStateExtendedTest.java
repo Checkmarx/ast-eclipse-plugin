@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.MockitoAnnotations;
 
-import com.checkmarx.eclipse.enums.Severity;
+import com.checkmarx.eclipse.common.enums.Severity;
 import com.checkmarx.eclipse.enums.State;
 import com.checkmarx.eclipse.views.GlobalSettings;
 import com.checkmarx.eclipse.views.filters.FilterState;

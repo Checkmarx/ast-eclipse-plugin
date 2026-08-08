@@ -3,7 +3,7 @@ package checkmarx.ast.eclipse.plugin.tests.unit.views.filters;
 import com.checkmarx.eclipse.views.filters.ActionFilters;
 import com.checkmarx.eclipse.enums.ActionName;
 import com.checkmarx.eclipse.enums.PluginListenerType;
-import com.checkmarx.eclipse.enums.Severity;
+import com.checkmarx.eclipse.common.enums.Severity;
 import com.checkmarx.eclipse.views.DataProvider;
 import com.checkmarx.eclipse.views.PluginListenerDefinition;
 import com.google.common.eventbus.EventBus;
