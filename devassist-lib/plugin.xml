@@ -87,7 +87,7 @@
         <specification
             annotationType="com.checkmarx.eclipse.findings.high"
             label="Checkmarx High Finding"
-            icon="icons/high_16.png"
+            icon="icons/high_16.svg"
             textStylePreferenceValue="SQUIGGLES"
             verticalRulerPreferenceValue="true"
             overviewRulerPreferenceValue="true"
@@ -96,7 +96,7 @@
         <specification
             annotationType="com.checkmarx.eclipse.findings.medium"
             label="Checkmarx Medium Finding"
-            icon="icons/severity-medium.png"
+            icon="icons/medium_16.svg"
             textStylePreferenceValue="SQUIGGLES"
             verticalRulerPreferenceValue="true"
             overviewRulerPreferenceValue="true"
@@ -105,7 +105,7 @@
         <specification
             annotationType="com.checkmarx.eclipse.findings.low"
             label="Checkmarx Low Finding"
-            icon="icons/severity-low.png"
+            icon="icons/low_16.png"
             textStylePreferenceValue="SQUIGGLES"
             verticalRulerPreferenceValue="true"
             overviewRulerPreferenceValue="true"
@@ -114,7 +114,7 @@
         <specification
             annotationType="com.checkmarx.eclipse.findings.unknown"
             label="Checkmarx Unknown Finding"
-            icon="icons/CxFlatLogo16x16.png"
+            icon="icons/unknown_16.png"
             textStylePreferenceValue="SQUIGGLES"
             verticalRulerPreferenceValue="true"
             overviewRulerPreferenceValue="true"
@@ -123,7 +123,7 @@
         <specification
             annotationType="com.checkmarx.eclipse.findings.ok"
             label="Checkmarx OK Finding"
-            icon="icons/CxFlatLogo16x16.png"
+            icon="icons/ok_16.png"
             textStylePreferenceValue="SQUIGGLES"
             verticalRulerPreferenceValue="true"
             overviewRulerPreferenceValue="true"
@@ -132,7 +132,7 @@
         <specification
             annotationType="com.checkmarx.eclipse.findings.ignored"
             label="Checkmarx Ignored Finding"
-            icon="icons/CxFlatLogo16x16.png"
+            icon="icons/ignored_16.png"
             textStylePreferenceValue="SQUIGGLES"
             verticalRulerPreferenceValue="true"
             overviewRulerPreferenceValue="true"
