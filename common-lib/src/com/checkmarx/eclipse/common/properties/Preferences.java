@@ -5,6 +5,7 @@ import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.ui.preferences.ScopedPreferenceStore;
 
 import com.checkmarx.eclipse.common.listener.IAuthenticationSuccessHandler;
+import com.checkmarx.eclipse.common.listener.ISettingsChangeNotifier;
 
 public class Preferences {
 
@@ -20,6 +21,9 @@ public class Preferences {
 
     // Handler for post-authentication UI setup (registered by devassist-lib)
     private static IAuthenticationSuccessHandler authSuccessHandler;
+
+    // Notifier for settings changes (registered by main plugin)
+    private static ISettingsChangeNotifier settingsChangeNotifier;
 
     private Preferences() {
     }
@@ -60,5 +64,13 @@ public class Preferences {
 
     public static IAuthenticationSuccessHandler getAuthenticationSuccessHandler() {
         return authSuccessHandler;
+    }
+
+    public static void setSettingsChangeNotifier(ISettingsChangeNotifier notifier) {
+        settingsChangeNotifier = notifier;
+    }
+
+    public static ISettingsChangeNotifier getSettingsChangeNotifier() {
+        return settingsChangeNotifier;
     }
 }

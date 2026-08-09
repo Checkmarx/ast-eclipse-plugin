@@ -20,8 +20,7 @@ Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.jdt.ui,
  org.eclipse.ui,
  org.eclipse.ui.workbench.texteditor,
- org.eclipse.ui.editors,
- lib/ast-cli-java-wrapper-2.4.24.jar
+ org.eclipse.ui.editors
 Bundle-RequiredExecutionEnvironment: JavaSE-17
 Export-Package: com.checkmarx.eclipse.common.enums,
  com.checkmarx.eclipse.common.events,

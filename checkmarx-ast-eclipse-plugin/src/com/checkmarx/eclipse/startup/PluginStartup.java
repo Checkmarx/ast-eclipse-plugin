@@ -8,11 +8,17 @@ import org.eclipse.ui.PlatformUI;
 
 import com.checkmarx.eclipse.common.utils.CxLogger;
 import com.checkmarx.eclipse.common.listener.IProjectLifecycleListener;
+import com.checkmarx.eclipse.common.properties.Preferences;
 import com.checkmarx.eclipse.devassist.ui.findings.realtime.CheckmarxEditorListener;
 import com.checkmarx.eclipse.devassist.backend.GlobalScannerController;
 import com.checkmarx.eclipse.devassist.backend.listener.ProjectLifecycleListener;
 
 public class PluginStartup implements IStartup {
+
+	static {
+		// Register settings change notifier for PreferencesPage
+		Preferences.setSettingsChangeNotifier(new SettingsChangeNotifier());
+	}
 
 	private static final String VIEW_ID = "com.checkmarx.eclipse.views.CheckmarxView";
 	private static final String FINDINGS_VIEW_ID = "com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView";

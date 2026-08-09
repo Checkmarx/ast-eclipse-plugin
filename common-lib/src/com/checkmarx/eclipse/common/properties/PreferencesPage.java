@@ -30,10 +30,9 @@ import org.eclipse.ui.dialogs.PreferencesUtil;
 import com.checkmarx.eclipse.common.utils.PluginConstants;
 import com.checkmarx.eclipse.common.listener.IProjectLifecycleListener;
 import com.checkmarx.eclipse.common.listener.IAuthenticationSuccessHandler;
+import com.checkmarx.eclipse.common.listener.ISettingsChangeNotifier;
 import com.checkmarx.eclipse.common.runner.Authenticator;
 import com.checkmarx.eclipse.common.runner.TenantSettingsProvider;
-import com.checkmarx.eclipse.startup.PluginStartup;
-import com.checkmarx.eclipse.utils.PluginUtils;
 import com.checkmarx.eclipse.common.utils.CxLogger;
 
 public class PreferencesPage extends FieldEditorPreferencePage implements IWorkbenchPreferencePage {
@@ -263,7 +262,11 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 				// away. Without this, they only learn credentials are gone once performOk()
 				// runs (i.e. the user clicks OK/Apply) - if they instead Cancel or just close
 				// the dialog after Logout, both views kept showing stale "connected" content.
-				PluginUtils.getEventBroker().post(PluginConstants.TOPIC_APPLY_SETTINGS, PluginConstants.EMPTY_STRING);
+				// Notify main plugin that settings have changed
+				ISettingsChangeNotifier notifier = Preferences.getSettingsChangeNotifier();
+				if (notifier != null) {
+					notifier.notifySettingsApplied();
+				}
 			}
 		});
 
@@ -319,7 +322,11 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 					|| !java.util.Objects.equals(currentAdditionalOptions, initialAdditionalOptions);
 
 			if (settingsActuallyChanged) {
-				PluginUtils.getEventBroker().post(PluginConstants.TOPIC_APPLY_SETTINGS, PluginConstants.EMPTY_STRING);
+				// Notify main plugin that settings have changed
+				ISettingsChangeNotifier notifier = Preferences.getSettingsChangeNotifier();
+				if (notifier != null) {
+					notifier.notifySettingsApplied();
+				}
 			}
 		}
 
