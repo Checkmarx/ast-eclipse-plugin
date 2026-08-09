@@ -28,13 +28,12 @@ import org.eclipse.ui.browser.IWorkbenchBrowserSupport;
 import org.eclipse.ui.dialogs.PreferencesUtil;
 
 import com.checkmarx.eclipse.common.utils.PluginConstants;
-import com.checkmarx.eclipse.devassist.backend.listener.ProjectLifecycleListener;
-import com.checkmarx.eclipse.devassist.configuration.McpInstallService;
+import com.checkmarx.eclipse.common.listener.IProjectLifecycleListener;
 import com.checkmarx.eclipse.runner.Authenticator;
 import com.checkmarx.eclipse.common.runner.TenantSettingsProvider;
 import com.checkmarx.eclipse.startup.PluginStartup;
 import com.checkmarx.eclipse.utils.PluginUtils;
-import com.checkmarx.eclipse.utils.common.CxLogger;
+import com.checkmarx.eclipse.common.utils.CxLogger;
 import com.checkmarx.eclipse.views.ui.WelcomeDialog;
 
 public class PreferencesPage extends FieldEditorPreferencePage implements IWorkbenchPreferencePage {
@@ -193,10 +192,6 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 					// welcome dialog is actually about to appear, so the label never claims
 					// success before the user sees the welcome page.
 					if (result != null && result.contains(PluginConstants.AUTH_SUCCESS_PATTERN)) {
-						// Trigger MCP auto-installation after successful authentication
-						CxLogger.info("[PREFS] Authentication successful, triggering MCP auto-install...");
-						McpInstallService.attemptAutoInstall(apiKey_str, additionalParams_str);
-
 						// Fetch MCP enabled status from server asynchronously
 						CompletableFuture.supplyAsync(() -> {
 							try {
@@ -299,7 +294,7 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 			// A project that was already open before this login never gets that scan
 			// otherwise, since ProjectLifecycleListener only scans a project when it
 			// *opens* while the user is authenticated - re-run it now that login succeeded.
-			ProjectLifecycleListener projectListener = PluginStartup.getProjectListener();
+			IProjectLifecycleListener projectListener = PluginStartup.getProjectListener();
 			if (projectListener != null) {
 				CxLogger.info("[PREFS] Login succeeded - triggering workspace OSS/IaC/container scan...");
 				projectListener.scanAlreadyOpenProjects();

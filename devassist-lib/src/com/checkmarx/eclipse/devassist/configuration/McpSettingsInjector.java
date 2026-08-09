@@ -12,7 +12,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
-import com.checkmarx.eclipse.utils.CxLogger;
+import com.checkmarx.eclipse.common.utils.CxLogger;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 

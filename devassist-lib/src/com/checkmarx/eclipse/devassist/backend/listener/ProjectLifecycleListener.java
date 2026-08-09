@@ -18,12 +18,13 @@ import com.checkmarx.eclipse.devassist.backend.result.ResultPublisher;
 import com.checkmarx.eclipse.devassist.common.ScanManager;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.common.utils.CxLogger;
+import com.checkmarx.eclipse.common.listener.IProjectLifecycleListener;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
 
-public class ProjectLifecycleListener implements IResourceChangeListener {
+public class ProjectLifecycleListener implements IResourceChangeListener, IProjectLifecycleListener {
 
 	private static final String LOG_TAG = "[PROJECT-LISTENER]";
 	private static final String PLUGIN_ID = "com.checkmarx.eclipse.plugin";

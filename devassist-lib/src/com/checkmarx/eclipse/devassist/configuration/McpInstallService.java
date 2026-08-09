@@ -21,9 +21,23 @@ import com.checkmarx.eclipse.common.utils.CxLogger;
 public final class McpInstallService {
 
 	private static final String LOG_TAG = "[MCP-INSTALL]";
+	private static boolean authListenerRegistered = false;
 
 	private McpInstallService() {
 		// Utility class
+	}
+
+	static {
+		// Register authentication listener on class load
+		registerAuthenticationListener();
+	}
+
+	private static void registerAuthenticationListener() {
+		if (!authListenerRegistered) {
+			Preferences.STORE.addPropertyChangeListener(new AuthenticationListener());
+			authListenerRegistered = true;
+			CxLogger.info(LOG_TAG + " Authentication listener registered");
+		}
 	}
 
 	/**

@@ -3,7 +3,7 @@ package com.checkmarx.eclipse.devassist.factory;
 import com.checkmarx.ast.wrapper.CxConfig;
 import com.checkmarx.ast.wrapper.CxException;
 import com.checkmarx.ast.wrapper.CxWrapper;
-import com.checkmarx.eclipse.common.properties.SharedPreferences;
+import com.checkmarx.eclipse.common.properties.Preferences;
 import com.checkmarx.eclipse.common.utils.CxLogger;
 import com.checkmarx.eclipse.devassist.backend.Constants;
 import org.slf4j.Logger;
@@ -32,8 +32,8 @@ public class CxWrapperFactory {
         Logger log = LoggerFactory.getLogger(CxWrapperFactory.class.getName());
 
         CxConfig.CxConfigBuilder builder = CxConfig.builder()
-                .apiKey(SharedPreferences.getApiKey())
-                .additionalParameters(SharedPreferences.getAdditionalOptions());
+                .apiKey(Preferences.getApiKey())
+                .additionalParameters(Preferences.getAdditionalOptions());
 
         CxConfig config = builder.build();
 

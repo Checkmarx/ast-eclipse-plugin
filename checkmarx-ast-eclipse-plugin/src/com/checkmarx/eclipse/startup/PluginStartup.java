@@ -7,6 +7,7 @@ import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.PlatformUI;
 
 import com.checkmarx.eclipse.common.utils.CxLogger;
+import com.checkmarx.eclipse.common.listener.IProjectLifecycleListener;
 import com.checkmarx.eclipse.devassist.ui.findings.realtime.CheckmarxEditorListener;
 import com.checkmarx.eclipse.devassist.backend.GlobalScannerController;
 import com.checkmarx.eclipse.devassist.backend.listener.ProjectLifecycleListener;
@@ -16,7 +17,7 @@ public class PluginStartup implements IStartup {
 	private static final String VIEW_ID = "com.checkmarx.eclipse.views.CheckmarxView";
 	private static final String FINDINGS_VIEW_ID = "com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView";
 	private static CheckmarxEditorListener realtimeScanListener; // Keep strong reference to prevent GC
-	private static ProjectLifecycleListener projectListener; // Keep strong reference to prevent GC
+	private static IProjectLifecycleListener projectListener; // Keep strong reference to prevent GC
 
 	@Override
 	public void earlyStartup() {
@@ -49,6 +50,15 @@ public class PluginStartup implements IStartup {
 				CxLogger.error("Error during plugin startup: " + e.getMessage(), e);
 			}
 		});
+	}
+
+	/**
+	 * Get the project lifecycle listener.
+	 *
+	 * @return the registered ProjectLifecycleListener, or null if not yet initialized
+	 */
+	public static IProjectLifecycleListener getProjectListener() {
+		return projectListener;
 	}
 
 	/**
