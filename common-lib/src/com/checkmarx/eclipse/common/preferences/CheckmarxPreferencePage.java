@@ -11,8 +11,10 @@ import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.*;
-import org.eclipse.ui.preferences.ScopedPreferenceStore;
-import org.eclipse.core.runtime.preferences.InstanceScope;
+
+import com.checkmarx.eclipse.common.utils.CxLogger;
+import com.checkmarx.eclipse.common.listener.ISettingsChangeNotifier;
+import com.checkmarx.eclipse.common.properties.Preferences;
 
 /**
  * Preference page for configuring Checkmarx scanner settings.
@@ -50,12 +52,7 @@ public class CheckmarxPreferencePage extends PreferencePage implements IWorkbenc
 
 	public CheckmarxPreferencePage() {
 		super();
-		// Pass the Bundle-SymbolicName of the plugin storing the preferences
-        IPreferenceStore store = new ScopedPreferenceStore(
-            InstanceScope.INSTANCE, 
-            "com.checkmarx.eclipse.plugin" // Replace with exact Bundle-SymbolicName from MANIFEST.MF
-        );
-        setPreferenceStore(store);
+		setPreferenceStore(com.checkmarx.eclipse.common.properties.Preferences.STORE);
 	}
 
 	@Override
@@ -198,19 +195,50 @@ public class CheckmarxPreferencePage extends PreferencePage implements IWorkbenc
 
 	@Override
     public boolean performOk() {
-        // Save current UI control state into PreferenceStore
         IPreferenceStore store = getPreferenceStore();
-        store.setValue(PREF_ASCA_ENABLED, ascaCheckbox.getSelection());
-        store.setValue(PREF_OSS_ENABLED, ossCheckbox.getSelection());
-        store.setValue(PREF_SECRETS_ENABLED, secretsCheckbox.getSelection());
-        store.setValue(PREF_CONTAINERS_ENABLED, containersCheckbox.getSelection());
-        store.setValue(PREF_IAC_ENABLED, iacCheckbox.getSelection());
 
-        if (containersToolCombo.getText() != null) {
-            store.setValue(PREF_CONTAINERS_TOOL, containersToolCombo.getText());
+        // Get current UI selections
+        boolean ascaSelected = ascaCheckbox.getSelection();
+        boolean ossSelected = ossCheckbox.getSelection();
+        boolean secretsSelected = secretsCheckbox.getSelection();
+        boolean containersSelected = containersCheckbox.getSelection();
+        boolean iacSelected = iacCheckbox.getSelection();
+        String containersTool = containersToolCombo.getText();
+
+        // Step 1: Save current UI state to preference store
+        store.setValue(PREF_ASCA_ENABLED, ascaSelected);
+        store.setValue(PREF_OSS_ENABLED, ossSelected);
+        store.setValue(PREF_SECRETS_ENABLED, secretsSelected);
+        store.setValue(PREF_CONTAINERS_ENABLED, containersSelected);
+        store.setValue(PREF_IAC_ENABLED, iacSelected);
+        if (containersTool != null) {
+            store.setValue(PREF_CONTAINERS_TOOL, containersTool);
         }
 
-        // Trigger change event for listeners
+        // Diagnostic: Verify what was saved
+        CxLogger.info("[PREFS-PAGE] Saved to preference store: ASCA=" + ascaSelected + ", OSS=" + ossSelected +
+                     ", SECRETS=" + secretsSelected + ", CONTAINERS=" + containersSelected + ", IAC=" + iacSelected);
+
+        // Step 2: Save as user preferences (mirrors JetBrains apply() method)
+        // This preserves user's choices if features toggle on/off later
+        Preferences.setUserPreferences(ascaSelected, ossSelected, secretsSelected,
+                                      containersSelected, iacSelected);
+        CxLogger.info("[PREFS-PAGE] Saved as user preferences");
+
+        // Step 3: Notify listeners (e.g., GlobalScannerController) about preference changes
+        // The listener will update GlobalScannerController based on new preferences
+        // This decouples CheckmarxPreferencePage from devassist-lib modules
+        ISettingsChangeNotifier notifier = Preferences.getSettingsChangeNotifier();
+        if (notifier != null) {
+            try {
+                notifier.notifySettingsApplied();
+                CxLogger.info("[PREFS] Notified settings change listeners");
+            } catch (Exception e) {
+                CxLogger.warning("[PREFS] Failed to notify settings change: " + e.getMessage());
+            }
+        }
+
+        // Step 4: Trigger change event for listeners
         store.firePropertyChangeEvent("scannerPreferencesChanged", null, null);
 
         return super.performOk();
