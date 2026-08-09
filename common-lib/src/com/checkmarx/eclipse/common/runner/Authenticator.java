@@ -1,4 +1,4 @@
-package com.checkmarx.eclipse.runner;
+package com.checkmarx.eclipse.common.runner;
 
 import java.io.IOException;
 import org.slf4j.Logger;
@@ -8,7 +8,7 @@ import com.checkmarx.ast.wrapper.CxConfig;
 import com.checkmarx.ast.wrapper.CxException;
 import com.checkmarx.ast.wrapper.CxWrapper;
 import com.checkmarx.eclipse.common.utils.CxLogger;
-import com.checkmarx.eclipse.utils.PluginConstants;
+import com.checkmarx.eclipse.common.utils.PluginConstants;
 
 public class Authenticator {
 	   private final Logger log;

@@ -27,7 +27,7 @@ import org.junit.jupiter.api.Test;
 
 import com.checkmarx.eclipse.enums.ActionName;
 import com.checkmarx.eclipse.common.enums.Severity;
-import com.checkmarx.eclipse.utils.PluginConstants;
+import com.checkmarx.eclipse.common.utils.PluginConstants;
 import com.checkmarx.eclipse.views.actions.ToolBarActions;
 
 import checkmarx.ast.eclipse.plugin.tests.common.Environment;

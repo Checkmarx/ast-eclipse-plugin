@@ -1,4 +1,4 @@
-package com.checkmarx.eclipse.properties;
+package com.checkmarx.eclipse.common.properties;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
@@ -9,9 +9,9 @@ import org.eclipse.swt.custom.CLabel;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 
-import com.checkmarx.eclipse.runner.Authenticator;
+import com.checkmarx.eclipse.common.runner.Authenticator;
 import com.checkmarx.eclipse.common.utils.CxLogger;
-import com.checkmarx.eclipse.utils.PluginConstants;
+import com.checkmarx.eclipse.common.utils.PluginConstants;
 
 public class AuthButtonFieldEditor extends StringButtonFieldEditor {
 

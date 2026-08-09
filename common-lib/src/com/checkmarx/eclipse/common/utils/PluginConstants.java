@@ -1,4 +1,4 @@
-package com.checkmarx.eclipse.utils;
+package com.checkmarx.eclipse.common.utils;
 
 public class PluginConstants {
 	public static final String EMPTY_STRING = "";

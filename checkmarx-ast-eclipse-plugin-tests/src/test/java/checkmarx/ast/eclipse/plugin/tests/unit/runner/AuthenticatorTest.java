@@ -15,7 +15,7 @@ import com.checkmarx.ast.wrapper.CxException;
 import com.checkmarx.ast.wrapper.CxWrapper;
 import com.checkmarx.eclipse.runner.Authenticator;
 import com.checkmarx.eclipse.common.utils.CxLogger;
-import com.checkmarx.eclipse.utils.PluginConstants;
+import com.checkmarx.eclipse.common.utils.PluginConstants;
 
 class AuthenticatorTest {
 

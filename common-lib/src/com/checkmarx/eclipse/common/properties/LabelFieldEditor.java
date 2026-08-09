@@ -1,4 +1,4 @@
-package com.checkmarx.eclipse.properties;
+package com.checkmarx.eclipse.common.properties;
 
 import org.eclipse.jface.preference.FieldEditor;
 import org.eclipse.swt.layout.GridData;
