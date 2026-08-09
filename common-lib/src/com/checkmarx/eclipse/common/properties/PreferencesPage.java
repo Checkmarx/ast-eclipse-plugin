@@ -29,12 +29,12 @@ import org.eclipse.ui.dialogs.PreferencesUtil;
 
 import com.checkmarx.eclipse.common.utils.PluginConstants;
 import com.checkmarx.eclipse.common.listener.IProjectLifecycleListener;
-import com.checkmarx.eclipse.runner.Authenticator;
+import com.checkmarx.eclipse.common.listener.IAuthenticationSuccessHandler;
+import com.checkmarx.eclipse.common.runner.Authenticator;
 import com.checkmarx.eclipse.common.runner.TenantSettingsProvider;
 import com.checkmarx.eclipse.startup.PluginStartup;
 import com.checkmarx.eclipse.utils.PluginUtils;
 import com.checkmarx.eclipse.common.utils.CxLogger;
-import com.checkmarx.eclipse.views.ui.WelcomeDialog;
 
 public class PreferencesPage extends FieldEditorPreferencePage implements IWorkbenchPreferencePage {
 
@@ -192,6 +192,15 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 					// welcome dialog is actually about to appear, so the label never claims
 					// success before the user sees the welcome page.
 					if (result != null && result.contains(PluginConstants.AUTH_SUCCESS_PATTERN)) {
+						// The key was only just validated by "Test Connection" - it isn't persisted
+						// to the store until the user clicks OK/Apply on this dialog, which they may
+						// never do once they see the Welcome page. Persist it now so
+						// isUserAuthenticated() (checked by ProjectLifecycleListener, and by
+						// anything else gated on login) actually sees it.
+						Preferences.STORE.setValue(Preferences.API_KEY, apiKey_str);
+						Preferences.STORE.setValue(Preferences.ADDITIONAL_OPTIONS, additionalParams_str);
+						Preferences.setCredentialsValidated(true);
+
 						// Fetch MCP enabled status from server asynchronously
 						CompletableFuture.supplyAsync(() -> {
 							try {
@@ -208,7 +217,16 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 							if (!getFieldEditorParent().isDisposed()) {
 								getFieldEditorParent().layout();
 							}
-							showWelcomeDialog(mcpEnabled, logoutButtonHolder[0], apiKey_str, additionalParams_str);
+							// Delegate to handler registered by devassist-lib (if available)
+							IAuthenticationSuccessHandler handler = Preferences.getAuthenticationSuccessHandler();
+							if (handler != null) {
+								handler.onAuthenticationSuccess(mcpEnabled, logoutButtonHolder[0], apiKey_str, additionalParams_str);
+							} else {
+								CxLogger.warning("[PREFS] No authentication success handler registered - welcome dialog skipped");
+								if (logoutButtonHolder[0] != null && !logoutButtonHolder[0].isDisposed()) {
+									logoutButtonHolder[0].setEnabled(true);
+								}
+							}
 						}));
 					} else {
 						// Authentication failed - the flow ends here with no welcome dialog,
@@ -276,48 +294,6 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 			return PluginConstants.AUTH_SUCCESS_DISPLAY;
 		}
 		return result;
-	}
-
-	private void showWelcomeDialog(boolean mcpEnabled, Button logoutButton, String apiKey_str, String additionalParams_str) {
-		try {
-			// The key was only just validated by "Test Connection" - it isn't persisted
-			// to the store until the user clicks OK/Apply on this dialog, which they may
-			// never do once they see the Welcome page. Persist it now so
-			// isUserAuthenticated() (checked by ProjectLifecycleListener below, and by
-			// anything else gated on login) actually sees it.
-			Preferences.STORE.setValue(Preferences.API_KEY, apiKey_str);
-			Preferences.STORE.setValue(Preferences.ADDITIONAL_OPTIONS, additionalParams_str);
-			Preferences.setCredentialsValidated(true);
-
-			// Trigger the same initial OSS/IaC/container workspace scan that runs for
-			// already-open projects at plugin launch (PluginStartup.initializeBackendScanners()).
-			// A project that was already open before this login never gets that scan
-			// otherwise, since ProjectLifecycleListener only scans a project when it
-			// *opens* while the user is authenticated - re-run it now that login succeeded.
-			IProjectLifecycleListener projectListener = PluginStartup.getProjectListener();
-			if (projectListener != null) {
-				CxLogger.info("[PREFS] Login succeeded - triggering workspace OSS/IaC/container scan...");
-				projectListener.scanAlreadyOpenProjects();
-			}
-
-			WelcomeDialog dlg = new WelcomeDialog(
-				Display.getDefault().getActiveShell(),
-				mcpEnabled);
-
-			// Re-enable Logout right as the welcome dialog is about to appear, so it stays
-			// disabled for the entire connect/validate flow and only becomes usable once
-			// that flow has visibly completed.
-			if (logoutButton != null && !logoutButton.isDisposed()) {
-				logoutButton.setEnabled(true);
-			}
-
-			dlg.open();
-		} catch (Exception ex) {
-			CxLogger.error("Failed to show welcome dialog", ex);
-			if (logoutButton != null && !logoutButton.isDisposed()) {
-				logoutButton.setEnabled(true);
-			}
-		}
 	}
 
 	private FieldEditor space() {

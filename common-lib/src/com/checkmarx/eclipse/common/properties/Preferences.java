@@ -4,6 +4,8 @@ import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.ui.preferences.ScopedPreferenceStore;
 
+import com.checkmarx.eclipse.common.listener.IAuthenticationSuccessHandler;
+
 public class Preferences {
 
     public static final String QUALIFIER = "com.checkmarx.eclipse";
@@ -15,6 +17,9 @@ public class Preferences {
     public static final String CREDENTIALS_VALIDATED = "credentialsValidated";
 
     public static final ScopedPreferenceStore STORE = new ScopedPreferenceStore(InstanceScope.INSTANCE, QUALIFIER);
+
+    // Handler for post-authentication UI setup (registered by devassist-lib)
+    private static IAuthenticationSuccessHandler authSuccessHandler;
 
     private Preferences() {
     }
@@ -47,5 +52,13 @@ public class Preferences {
 
     public static void setCredentialsValidated(boolean validated) {
         STORE.setValue(CREDENTIALS_VALIDATED, validated);
+    }
+
+    public static void setAuthenticationSuccessHandler(IAuthenticationSuccessHandler handler) {
+        authSuccessHandler = handler;
+    }
+
+    public static IAuthenticationSuccessHandler getAuthenticationSuccessHandler() {
+        return authSuccessHandler;
     }
 }

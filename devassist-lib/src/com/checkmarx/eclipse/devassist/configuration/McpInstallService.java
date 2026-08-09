@@ -28,15 +28,20 @@ public final class McpInstallService {
 	}
 
 	static {
-		// Register authentication listener on class load
-		registerAuthenticationListener();
+		// Register authentication handlers on class load
+		registerAuthenticationHandlers();
 	}
 
-	private static void registerAuthenticationListener() {
+	private static void registerAuthenticationHandlers() {
 		if (!authListenerRegistered) {
+			// Register listener for MCP auto-install on API key change
 			Preferences.STORE.addPropertyChangeListener(new AuthenticationListener());
+
+			// Register handler for post-authentication UI (welcome dialog, workspace scan)
+			Preferences.setAuthenticationSuccessHandler(new AuthenticationSuccessHandler());
+
 			authListenerRegistered = true;
-			CxLogger.info(LOG_TAG + " Authentication listener registered");
+			CxLogger.info(LOG_TAG + " Authentication handlers registered");
 		}
 	}
 
