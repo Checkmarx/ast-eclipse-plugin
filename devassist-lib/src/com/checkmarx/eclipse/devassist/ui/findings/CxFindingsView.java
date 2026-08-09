@@ -39,7 +39,7 @@ import org.apache.commons.lang3.StringUtils;
 import com.checkmarx.eclipse.devassist.ui.findings.provider.FindingsContentProvider;
 import com.checkmarx.eclipse.devassist.ui.findings.provider.FindingsLabelProvider;
 import com.checkmarx.eclipse.common.events.SettingsTopics;
-import com.checkmarx.eclipse.common.properties.SharedPreferences;
+import com.checkmarx.eclipse.common.properties.Preferences;
 import com.checkmarx.eclipse.devassist.backend.Constants;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.ui.findings.model.ScanDetailWithPath;
@@ -137,7 +137,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
             return;
         }
 
-        if (StringUtils.isBlank(SharedPreferences.getApiKey())) {
+        if (StringUtils.isBlank(Preferences.getApiKey())) {
             drawMissingCredentialsPanel(parentComposite);
         } else {
             loadCachedIssues();

@@ -1,5 +1,7 @@
 package com.checkmarx.eclipse.common.utils;
 
+import com.checkmarx.eclipse.common.events.SettingsTopics;
+
 public class PluginConstants {
 	public static final String EMPTY_STRING = "";
 	public static final String SAST = "sast";
@@ -63,6 +65,7 @@ public class PluginConstants {
 	public static final String PREFERENCES_ADDITIONAL_OPTIONS = "Additional Params:";
 	public static final String PREFERENCES_TEST_CONNECTION = "Test Connection";
 	public static final String PREFERENCES_VALIDATING_STATE = "Validating...";
+	public static final String TOPIC_APPLY_SETTINGS = SettingsTopics.TOPIC_APPLY_SETTINGS;
 	
 	/******************************** PROBLEMS VIEW ********************************/
 	public static final String PROBLEM_SOURCE_ID = "CheckmarxEclipsePlugin";

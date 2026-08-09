@@ -1,8 +1,9 @@
 package com.checkmarx.eclipse.devassist.state;
 
+import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.jface.preference.IPreferenceStore;
+import org.eclipse.ui.preferences.ScopedPreferenceStore;
 
-import com.checkmarx.eclipse.Activator;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
 
 /**
@@ -11,6 +12,7 @@ import com.checkmarx.eclipse.devassist.model.ScanEngine;
  */
 public class ScannerStateManager {
 
+	private static final String PLUGIN_ID = "com.checkmarx.eclipse.plugin"; // Replace with your exact Bundle-SymbolicName if different
 	private static final String KEY_PREFIX = "scanner.";
 	private static final String KEY_ENABLED_SUFFIX = ".enabled";
 	private static final String KEY_FREQUENCY = "scan.frequency";
@@ -18,7 +20,7 @@ public class ScannerStateManager {
 	private final IPreferenceStore prefs;
 
 	public ScannerStateManager() {
-		this.prefs = Activator.getDefault().getPreferenceStore();
+		this.prefs = new ScopedPreferenceStore(InstanceScope.INSTANCE, PLUGIN_ID);
 	}
 
 	public ScannerStateManager(IPreferenceStore prefs) {

@@ -3,16 +3,10 @@ Bundle-ManifestVersion: 2
 Bundle-Name: DevAssist Library
 Bundle-SymbolicName: com.checkmarx.eclipse.devassist;singleton:=true
 Bundle-Version: 1.0.0.qualifier
+Bundle-Activator: com.checkmarx.eclipse.devassist.Activator
+Bundle-ActivationPolicy: lazy
 Bundle-RequiredExecutionEnvironment: JavaSE-17
-Bundle-ClassPath: .,
- lib/ast-cli-java-wrapper-2.4.24.jar,
- lib/jackson-core-2.21.4.jar,
- lib/jackson-databind-2.21.5.jar,
- lib/jackson-annotations-2.21.jar,
- lib/slf4j-api-2.0.17.jar,
- lib/slf4j-simple-2.0.17.jar,
- lib/slf4j-reload4j-2.0.17.jar,
- lib/commons-lang3-3.18.0.jar
+Bundle-ClassPath: .
 Require-Bundle: com.checkmarx.eclipse.common,
  org.eclipse.ui,
  org.eclipse.ui.workbench,
@@ -26,7 +20,8 @@ Require-Bundle: com.checkmarx.eclipse.common,
  org.eclipse.jface.text,
  org.eclipse.swt,
  org.eclipse.jgit,
- org.eclipse.e4.core.services
+ org.eclipse.e4.core.services,
+ org.eclipse.e4.ui.css.swt.theme
 Import-Package: org.osgi.service.event;version="1.4.1"
 Export-Package: com.checkmarx.eclipse.devassist.backend,
  com.checkmarx.eclipse.devassist.backend.listener,

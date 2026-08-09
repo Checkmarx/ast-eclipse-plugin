@@ -4,10 +4,10 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Display;
 
 import com.checkmarx.eclipse.common.listener.IAuthenticationSuccessHandler;
+import com.checkmarx.eclipse.common.listener.IWorkspaceScanService;
+import com.checkmarx.eclipse.common.properties.Preferences;
 import com.checkmarx.eclipse.common.utils.CxLogger;
-import com.checkmarx.eclipse.devassist.backend.listener.ProjectLifecycleListener;
 import com.checkmarx.eclipse.devassist.ui.preferences.WelcomeDialog;
-import com.checkmarx.eclipse.startup.PluginStartup;
 
 /**
  * Handles post-authentication UI and backend setup in devassist-lib.
@@ -26,15 +26,12 @@ public class AuthenticationSuccessHandler implements IAuthenticationSuccessHandl
 		try {
 			Button logout = (Button) logoutButton;
 
-			// Trigger the same initial OSS/IaC/container workspace scan that runs for
-			// already-open projects at plugin launch (PluginStartup.initializeBackendScanners()).
-			// A project that was already open before this login never gets that scan
-			// otherwise, since ProjectLifecycleListener only scans a project when it
-			// *opens* while the user is authenticated - re-run it now that login succeeded.
-			ProjectLifecycleListener projectListener = (ProjectLifecycleListener) PluginStartup.getProjectListener();
-			if (projectListener != null) {
-				CxLogger.info(LOG_TAG + " Triggering workspace OSS/IaC/container scan...");
-				projectListener.scanAlreadyOpenProjects();
+			// Trigger workspace scan via service (avoids importing PluginStartup in devassist-lib)
+			IWorkspaceScanService scanService = Preferences.getWorkspaceScanService();
+			if (scanService != null) {
+				scanService.scanWorkspace();
+			} else {
+				CxLogger.warning(LOG_TAG + " Workspace scan service not available");
 			}
 
 			// Show welcome dialog with MCP status

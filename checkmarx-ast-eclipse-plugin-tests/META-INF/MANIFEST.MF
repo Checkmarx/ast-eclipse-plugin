@@ -14,3 +14,4 @@ Require-Bundle:
 Bundle-RequiredExecutionEnvironment: JavaSE-17
 Bundle-ClassPath: .,lib/mockito-core-5.14.2.jar,lib/powermock-core-*.jar, lib/byte-buddy-1.17.8.jar, lib/byte-buddy-agent-1.17.8.jar
 Automatic-Module-Name: com.checkmarx.ast.eclipse.tests
+Import-Package: com.checkmarx.eclipse.common.runner

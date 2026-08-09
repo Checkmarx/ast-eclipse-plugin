@@ -1,9 +1,13 @@
 package com.checkmarx.eclipse.devassist.ui.preferences;
 
 import org.eclipse.e4.core.services.events.IEventBroker;
+import org.eclipse.e4.ui.css.swt.theme.ITheme;
+import org.eclipse.e4.ui.css.swt.theme.IThemeEngine;
 import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
 import org.eclipse.jface.dialogs.TitleAreaDialog;
 import org.eclipse.jface.resource.ImageDescriptor;
+import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.services.IServiceLocator;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Font;
@@ -170,7 +174,8 @@ public class WelcomeDialog extends TitleAreaDialog {
 	private Image loadScannerImage() {
 		String path = isDarkTheme() ? SCANNER_IMAGE_PATH_DARK : SCANNER_IMAGE_PATH;
 		try {
-			ImageDescriptor descriptor = AbstractUIPlugin.imageDescriptorFromPlugin(Activator.PLUGIN_ID, path);
+			// devassist-lib bundle symbolic name
+			ImageDescriptor descriptor = AbstractUIPlugin.imageDescriptorFromPlugin("com.checkmarx.eclipse.devassist", path);
 			if (descriptor != null) {
 				return descriptor.createImage();
 			}
@@ -226,7 +231,12 @@ public class WelcomeDialog extends TitleAreaDialog {
 	 */
 	private void registerThemeChangeListener() {
 		try {
-			themeEventBroker = PluginUtils.getEventBroker();
+			// Get event broker from OSGi service registry via PlatformUI
+			Object serviceLocator = PlatformUI.getWorkbench();
+			if (serviceLocator instanceof IServiceLocator) {
+				themeEventBroker = ((IServiceLocator) serviceLocator).getService(IEventBroker.class);
+			}
+
 			if (themeEventBroker != null) {
 				themeChangeHandler = event -> Display.getDefault().asyncExec(this::refreshScannerImageForThemeChange);
 				themeEventBroker.subscribe(IThemeEngine.Events.THEME_CHANGED, themeChangeHandler);

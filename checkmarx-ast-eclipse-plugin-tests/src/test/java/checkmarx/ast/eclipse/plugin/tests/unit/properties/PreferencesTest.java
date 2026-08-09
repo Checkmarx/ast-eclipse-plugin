@@ -14,7 +14,7 @@ import org.mockito.MockedStatic;
 import org.mockito.MockitoAnnotations;
 
 import com.checkmarx.eclipse.Activator;
-import com.checkmarx.eclipse.properties.Preferences;
+import com.checkmarx.eclipse.common.properties.Preferences;
 
 class PreferencesTest {
 

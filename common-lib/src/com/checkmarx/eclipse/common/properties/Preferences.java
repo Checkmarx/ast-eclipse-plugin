@@ -6,6 +6,7 @@ import org.eclipse.ui.preferences.ScopedPreferenceStore;
 
 import com.checkmarx.eclipse.common.listener.IAuthenticationSuccessHandler;
 import com.checkmarx.eclipse.common.listener.ISettingsChangeNotifier;
+import com.checkmarx.eclipse.common.listener.IWorkspaceScanService;
 
 public class Preferences {
 
@@ -24,6 +25,9 @@ public class Preferences {
 
     // Notifier for settings changes (registered by main plugin)
     private static ISettingsChangeNotifier settingsChangeNotifier;
+
+    // Service for triggering workspace scans (registered by main plugin)
+    private static IWorkspaceScanService workspaceScanService;
 
     private Preferences() {
     }
@@ -72,5 +76,13 @@ public class Preferences {
 
     public static ISettingsChangeNotifier getSettingsChangeNotifier() {
         return settingsChangeNotifier;
+    }
+
+    public static void setWorkspaceScanService(IWorkspaceScanService service) {
+        workspaceScanService = service;
+    }
+
+    public static IWorkspaceScanService getWorkspaceScanService() {
+        return workspaceScanService;
     }
 }

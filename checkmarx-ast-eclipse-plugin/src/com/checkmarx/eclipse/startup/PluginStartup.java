@@ -16,8 +16,9 @@ import com.checkmarx.eclipse.devassist.backend.listener.ProjectLifecycleListener
 public class PluginStartup implements IStartup {
 
 	static {
-		// Register settings change notifier for PreferencesPage
+		// Register services for PreferencesPage
 		Preferences.setSettingsChangeNotifier(new SettingsChangeNotifier());
+		Preferences.setWorkspaceScanService(new WorkspaceScanService());
 	}
 
 	private static final String VIEW_ID = "com.checkmarx.eclipse.views.CheckmarxView";

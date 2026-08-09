@@ -34,7 +34,7 @@ import com.checkmarx.ast.results.result.Node;
 import com.checkmarx.ast.results.result.Result;
 import com.checkmarx.eclipse.common.enums.Severity;
 import com.checkmarx.eclipse.common.utils.PluginConstants;
-import com.checkmarx.eclipse.properties.Preferences;
+import com.checkmarx.eclipse.common.properties.Preferences;
 import com.checkmarx.eclipse.utils.PluginUtils;
 import com.checkmarx.eclipse.views.DataProvider;
 import com.checkmarx.eclipse.views.DisplayModel;
