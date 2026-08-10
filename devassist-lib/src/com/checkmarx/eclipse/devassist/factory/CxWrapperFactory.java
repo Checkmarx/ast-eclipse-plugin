@@ -3,7 +3,7 @@ package com.checkmarx.eclipse.devassist.factory;
 import com.checkmarx.ast.wrapper.CxConfig;
 import com.checkmarx.ast.wrapper.CxException;
 import com.checkmarx.ast.wrapper.CxWrapper;
-import com.checkmarx.eclipse.common.properties.Preferences;
+import com.checkmarx.eclipse.common.preferences.Preferences;
 import com.checkmarx.eclipse.common.utils.CxLogger;
 import com.checkmarx.eclipse.devassist.backend.Constants;
 import org.slf4j.Logger;

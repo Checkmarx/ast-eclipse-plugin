@@ -19,7 +19,6 @@ import org.eclipse.ui.dialogs.PreferencesUtil;
 
 import com.checkmarx.eclipse.common.utils.CxLogger;
 import com.checkmarx.eclipse.common.listener.ISettingsChangeNotifier;
-import com.checkmarx.eclipse.common.properties.Preferences;
 
 /**
  * Preference page for configuring Checkmarx scanner settings.
@@ -56,7 +55,7 @@ public class CheckmarxPreferencePage extends PreferencePage implements IWorkbenc
 
 	public CheckmarxPreferencePage() {
 		super();
-		setPreferenceStore(com.checkmarx.eclipse.common.properties.Preferences.STORE);
+		setPreferenceStore(com.checkmarx.eclipse.common.preferences.Preferences.STORE);
 	}
 
 	@Override

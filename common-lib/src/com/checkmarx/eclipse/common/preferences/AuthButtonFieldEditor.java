@@ -1,4 +1,4 @@
-package com.checkmarx.eclipse.common.properties;
+package com.checkmarx.eclipse.common.preferences;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;

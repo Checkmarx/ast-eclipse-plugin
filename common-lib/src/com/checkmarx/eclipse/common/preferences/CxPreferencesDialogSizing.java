@@ -1,11 +1,9 @@
-package com.checkmarx.eclipse.common.properties;
+package com.checkmarx.eclipse.common.preferences;
 
 import org.eclipse.jface.preference.PreferenceDialog;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.widgets.Shell;
-
-import com.checkmarx.eclipse.common.preferences.CheckmarxPreferencePage;
 
 
 /**

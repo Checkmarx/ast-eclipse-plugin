@@ -2,7 +2,7 @@ package com.checkmarx.eclipse.devassist.configuration;
 
 import java.util.concurrent.CompletableFuture;
 
-import com.checkmarx.eclipse.common.properties.Preferences;
+import com.checkmarx.eclipse.common.preferences.Preferences;
 import com.checkmarx.eclipse.common.runner.TenantSettingsProvider;
 import com.checkmarx.eclipse.common.utils.CxLogger;
 

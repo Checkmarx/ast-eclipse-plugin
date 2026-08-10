@@ -3,7 +3,7 @@ package com.checkmarx.eclipse.devassist.configuration;
 import org.eclipse.jface.util.IPropertyChangeListener;
 import org.eclipse.jface.util.PropertyChangeEvent;
 
-import com.checkmarx.eclipse.common.properties.Preferences;
+import com.checkmarx.eclipse.common.preferences.Preferences;
 import com.checkmarx.eclipse.common.utils.CxLogger;
 
 /**

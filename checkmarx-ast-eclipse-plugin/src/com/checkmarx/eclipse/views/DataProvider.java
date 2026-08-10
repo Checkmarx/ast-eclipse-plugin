@@ -30,7 +30,7 @@ import com.checkmarx.ast.scan.Scan;
 import com.checkmarx.ast.wrapper.CxConfig;
 import com.checkmarx.ast.wrapper.CxException;
 import com.checkmarx.ast.wrapper.CxWrapper;
-import com.checkmarx.eclipse.common.properties.Preferences;
+import com.checkmarx.eclipse.common.preferences.Preferences;
 import com.checkmarx.eclipse.common.runner.Authenticator;
 import com.checkmarx.eclipse.common.utils.CxLogger;
 import com.checkmarx.eclipse.common.utils.PluginConstants;

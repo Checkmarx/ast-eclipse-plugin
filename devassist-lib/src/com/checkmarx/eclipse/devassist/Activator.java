@@ -3,7 +3,7 @@ package com.checkmarx.eclipse.devassist;
 import org.eclipse.core.runtime.Plugin;
 import org.osgi.framework.BundleContext;
 
-import com.checkmarx.eclipse.common.properties.Preferences;
+import com.checkmarx.eclipse.common.preferences.Preferences;
 import com.checkmarx.eclipse.common.utils.CxLogger;
 import com.checkmarx.eclipse.devassist.backend.GlobalScannerController;
 import com.checkmarx.eclipse.devassist.backend.ScannerPreferencesListener;

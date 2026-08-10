@@ -1,4 +1,4 @@
-package com.checkmarx.eclipse.common.properties;
+package com.checkmarx.eclipse.common.preferences;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;

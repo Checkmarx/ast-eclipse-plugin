@@ -1,4 +1,4 @@
-package com.checkmarx.eclipse.common.properties;
+package com.checkmarx.eclipse.common.preferences;
 
 import java.net.MalformedURLException;
 import java.net.URL;

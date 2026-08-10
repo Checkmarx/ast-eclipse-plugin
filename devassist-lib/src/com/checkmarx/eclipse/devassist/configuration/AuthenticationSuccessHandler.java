@@ -5,7 +5,7 @@ import org.eclipse.swt.widgets.Display;
 
 import com.checkmarx.eclipse.common.listener.IAuthenticationSuccessHandler;
 import com.checkmarx.eclipse.common.listener.IWorkspaceScanService;
-import com.checkmarx.eclipse.common.properties.Preferences;
+import com.checkmarx.eclipse.common.preferences.Preferences;
 import com.checkmarx.eclipse.common.utils.CxLogger;
 import com.checkmarx.eclipse.devassist.ui.preferences.WelcomeDialog;
 

@@ -1,7 +1,7 @@
 package com.checkmarx.eclipse.devassist.backend;
 
 import com.checkmarx.eclipse.common.listener.ISettingsChangeNotifier;
-import com.checkmarx.eclipse.common.properties.Preferences;
+import com.checkmarx.eclipse.common.preferences.Preferences;
 import com.checkmarx.eclipse.common.utils.CxLogger;
 import com.checkmarx.eclipse.devassist.backend.ScannerRegistry.ScannerType;
 

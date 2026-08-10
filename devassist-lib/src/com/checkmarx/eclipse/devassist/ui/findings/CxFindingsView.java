@@ -40,7 +40,7 @@ import com.checkmarx.eclipse.devassist.ui.findings.provider.FindingsContentProvi
 import com.checkmarx.eclipse.devassist.ui.findings.provider.FindingsLabelProvider;
 import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
 import com.checkmarx.eclipse.common.events.SettingsTopics;
-import com.checkmarx.eclipse.common.properties.Preferences;
+import com.checkmarx.eclipse.common.preferences.Preferences;
 import com.checkmarx.eclipse.devassist.backend.Constants;
 import com.checkmarx.eclipse.devassist.backend.listener.CheckmarxDocumentListener;
 import com.checkmarx.eclipse.devassist.backend.listener.RealTimeScanJob;
