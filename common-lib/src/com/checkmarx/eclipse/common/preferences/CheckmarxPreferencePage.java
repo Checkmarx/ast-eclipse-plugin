@@ -3,14 +3,19 @@ package com.checkmarx.eclipse.common.preferences;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPreferencePage;
 
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jface.preference.IPreferenceStore;
+import org.eclipse.jface.preference.PreferenceDialog;
 import org.eclipse.jface.preference.PreferencePage;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.StyleRange;
 import org.eclipse.swt.custom.StyledText;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.*;
+import org.eclipse.ui.dialogs.PreferencesUtil;
 
 import com.checkmarx.eclipse.common.utils.CxLogger;
 import com.checkmarx.eclipse.common.listener.ISettingsChangeNotifier;
@@ -33,13 +38,12 @@ public class CheckmarxPreferencePage extends PreferencePage implements IWorkbenc
     // Controls
     private Label assistMessageLabel;
     private Button ascaCheckbox;
-    private Label ascaInstallationMsg;
     private Button ossCheckbox;
     private Button secretsCheckbox;
     private Button containersCheckbox;
     private Button iacCheckbox;
     private Combo containersToolCombo;
-    private Label mcpStatusLabel;
+    private boolean loggedIn;
 
     public static final String DEVASSIST_PLUGIN_REALTIME_SCANNERS_OSS_TITLE= "Checkmarx Developer Assist Open Source Realtime Scanner (OSS-Realtime): Activate OSS-Realtime";
 	public static final String DEVASSIST_PLUGIN_REALTIME_SCANNERS_SECRETS_TITLE="Checkmarx Developer Assist Secret Detection Realtime Scanner: Activate Secret Detection Realtime";
@@ -57,6 +61,11 @@ public class CheckmarxPreferencePage extends PreferencePage implements IWorkbenc
 
 	@Override
     protected Control createContents(Composite parent) {
+        loggedIn = StringUtils.isNotBlank(Preferences.getApiKey());
+        if (!loggedIn) {
+            return createLoggedOutContent(parent);
+        }
+
         Composite mainPanel = new Composite(parent, SWT.NONE);
         GridLayout layout = new GridLayout(1, false);
         layout.verticalSpacing = 8;
@@ -118,6 +127,38 @@ public class CheckmarxPreferencePage extends PreferencePage implements IWorkbenc
         return mainPanel;
     }
 
+	/**
+	 * Shown instead of the scanner checkboxes when the user isn't logged in - there
+	 * is nothing meaningful to configure until credentials are set in "Checkmarx One".
+	 */
+	private Control createLoggedOutContent(Composite parent) {
+        Composite composite = new Composite(parent, SWT.NONE);
+        GridLayout layout = new GridLayout(1, false);
+        layout.marginTop = 20;
+        composite.setLayout(layout);
+        composite.setLayoutData(new GridData(GridData.FILL_BOTH));
+
+        Label message = new Label(composite, SWT.WRAP);
+        message.setText("Log in to Checkmarx One to configure Realtime Scanners.");
+        message.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+
+        Link goToLoginLink = new Link(composite, SWT.NONE);
+        goToLoginLink.setText("<a>Go to Checkmarx One preferences</a>");
+        goToLoginLink.setLayoutData(new GridData(SWT.BEGINNING, SWT.CENTER, true, false));
+        goToLoginLink.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                PreferenceDialog dialog = PreferencesUtil.createPreferenceDialogOn(
+                        parent.getShell(), "com.checkmarx.eclipse.properties.preferencespage", null, null);
+                if (dialog != null) {
+                    dialog.open();
+                }
+            }
+        });
+
+        return composite;
+    }
+
 	private Composite createIndentComposite(Composite parent) {
         Composite comp = new Composite(parent, SWT.NONE);
         GridLayout layout = new GridLayout(1, false);
@@ -146,6 +187,10 @@ public class CheckmarxPreferencePage extends PreferencePage implements IWorkbenc
 
     @Override
     protected void performDefaults() {
+        if (!loggedIn) {
+            super.performDefaults();
+            return;
+        }
         IPreferenceStore store = getPreferenceStore();
         ascaCheckbox.setSelection(store.getDefaultBoolean(PREF_ASCA_ENABLED));
         ossCheckbox.setSelection(store.getDefaultBoolean(PREF_OSS_ENABLED));
@@ -195,6 +240,9 @@ public class CheckmarxPreferencePage extends PreferencePage implements IWorkbenc
 
 	@Override
     public boolean performOk() {
+        if (!loggedIn) {
+            return super.performOk();
+        }
         IPreferenceStore store = getPreferenceStore();
 
         // Get current UI selections

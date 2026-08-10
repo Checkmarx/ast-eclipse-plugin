@@ -7,7 +7,7 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 
 import com.checkmarx.eclipse.devassist.problems.ProblemHelper;
-import com.checkmarx.eclipse.devassist.ui.findings.realtime.RealTimeScanJob;
+import com.checkmarx.eclipse.devassist.backend.listener.RealTimeScanJob;
 import com.checkmarx.eclipse.common.utils.CxLogger;
 
 /**

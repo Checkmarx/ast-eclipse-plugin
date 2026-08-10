@@ -4,6 +4,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.concurrent.CompletableFuture;
 
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jface.preference.FieldEditor;
 import org.eclipse.jface.preference.FieldEditorPreferencePage;
 import org.eclipse.jface.preference.PreferenceDialog;
@@ -28,7 +29,6 @@ import org.eclipse.ui.browser.IWorkbenchBrowserSupport;
 import org.eclipse.ui.dialogs.PreferencesUtil;
 
 import com.checkmarx.eclipse.common.utils.PluginConstants;
-import com.checkmarx.eclipse.common.listener.IProjectLifecycleListener;
 import com.checkmarx.eclipse.common.listener.IAuthenticationSuccessHandler;
 import com.checkmarx.eclipse.common.listener.ISettingsChangeNotifier;
 import com.checkmarx.eclipse.common.runner.Authenticator;
@@ -48,6 +48,7 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 	private StringFieldEditor additionalParamsField;
 	private String initialApiKey;
 	private String initialAdditionalOptions;
+	private Link realtimeScannersLink;
 
 	public PreferencesPage() {
 		super(GRID);
@@ -56,7 +57,29 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 	}
 
 	private void handlePropertyChange(PropertyChangeEvent event) {
+		refreshRealtimeScannersLink();
+	}
 
+	/**
+	 * Shows the "Go to Realtime Scanners" link only while the user is logged in -
+	 * the page it opens has no meaningful content to configure otherwise.
+	 */
+	private void refreshRealtimeScannersLink() {
+		if (realtimeScannersLink != null && !realtimeScannersLink.isDisposed()) {
+			boolean isLoggedIn = StringUtils.isNotBlank(Preferences.getApiKey());
+			
+			realtimeScannersLink.setVisible(isLoggedIn);
+			
+			if (realtimeScannersLink.getLayoutData() instanceof GridData) {
+				((GridData) realtimeScannersLink.getLayoutData()).exclude = !isLoggedIn;
+			}
+
+			// Re-layout the parent so other controls adjust dynamically
+			Composite parent = realtimeScannersLink.getParent();
+			if (parent != null && !parent.isDisposed()) {
+				parent.layout(true, true);
+			}
+		}
 	}
 
 	@Override
@@ -199,6 +222,14 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 						Preferences.STORE.setValue(Preferences.API_KEY, apiKey_str);
 						Preferences.STORE.setValue(Preferences.ADDITIONAL_OPTIONS, additionalParams_str);
 						Preferences.setCredentialsValidated(true);
+						refreshRealtimeScannersLink();
+
+						// Notify views (CheckmarxView/CxFindingsView) that credentials are now available
+						// so they can switch from the credentials panel to the actual work views
+						ISettingsChangeNotifier notifier = Preferences.getSettingsChangeNotifier();
+						if (notifier != null) {
+							notifier.notifySettingsApplied();
+						}
 
 						// Fetch MCP enabled status from server asynchronously
 						CompletableFuture.supplyAsync(() -> {
@@ -256,6 +287,7 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 				apiKey.setStringValue("");
 //				textControl.setText("");
 //				connectionLabel.setText("");
+				refreshRealtimeScannersLink();
 				getFieldEditorParent().layout();
 
 				// Redraws the missing-credentials panel in CheckmarxView/CxFindingsView right
@@ -272,9 +304,13 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 
 		addField(space());
 
-		Link realtimeScannersLink = new Link(getFieldEditorParent(), SWT.NONE);
+		realtimeScannersLink = new Link(getFieldEditorParent(), SWT.NONE);
 		realtimeScannersLink.setText("<a>Go to Realtime Scanners</a>");
 		realtimeScannersLink.setLayoutData(new GridData(SWT.BEGINNING, SWT.CENTER, true, false));
+
+		// Call refresh after setting the LayoutData
+		refreshRealtimeScannersLink();
+
 		realtimeScannersLink.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent e) {

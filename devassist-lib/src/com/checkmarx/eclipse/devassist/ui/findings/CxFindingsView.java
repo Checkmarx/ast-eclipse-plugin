@@ -41,6 +41,8 @@ import com.checkmarx.eclipse.devassist.ui.findings.provider.FindingsLabelProvide
 import com.checkmarx.eclipse.common.events.SettingsTopics;
 import com.checkmarx.eclipse.common.properties.Preferences;
 import com.checkmarx.eclipse.devassist.backend.Constants;
+import com.checkmarx.eclipse.devassist.backend.listener.CheckmarxDocumentListener;
+import com.checkmarx.eclipse.devassist.backend.listener.RealTimeScanJob;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.ui.findings.model.ScanDetailWithPath;
 import com.checkmarx.eclipse.devassist.model.Location;
@@ -818,8 +820,8 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
             
 
             // Create a scan job for this file
-            com.checkmarx.eclipse.devassist.ui.findings.realtime.RealTimeScanJob scanJob =
-                new com.checkmarx.eclipse.devassist.ui.findings.realtime.RealTimeScanJob(file, fileName);
+            RealTimeScanJob scanJob =
+                new RealTimeScanJob(file, fileName);
 
             
 
@@ -838,8 +840,8 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
                     // Ignore if scheduler not available
                 }
             }
-            com.checkmarx.eclipse.devassist.ui.findings.realtime.CheckmarxDocumentListener docListener =
-                new com.checkmarx.eclipse.devassist.ui.findings.realtime.CheckmarxDocumentListener(fileName, scanJob, file, scheduler);
+            CheckmarxDocumentListener docListener =
+                new CheckmarxDocumentListener(fileName, scanJob, file, scheduler);
 
             // Register the document listener
             document.addDocumentListener(docListener);
