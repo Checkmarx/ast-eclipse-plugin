@@ -250,9 +250,6 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	public void createPartControl(Composite parent) {
 		this.parent = parent;
 
-		// Clear vulnerabilities from Problems View
-		PluginUtils.clearVulnerabilitiesFromProblemsView();
-
 		if (PluginUtils.areCredentialsDefined()) {
 			drawPluginPanel();
 		} else {

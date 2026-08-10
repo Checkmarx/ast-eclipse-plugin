@@ -9,6 +9,7 @@ import java.util.Objects;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jgit.annotations.NonNull;
+import org.eclipse.swt.dnd.Transfer;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IEditorReference;
@@ -18,7 +19,12 @@ import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.texteditor.ITextEditor;
 
+import org.eclipse.swt.dnd.Clipboard;
+import org.eclipse.swt.dnd.TextTransfer;
 import com.checkmarx.eclipse.devassist.backend.SeverityLevel;
+import com.checkmarx.eclipse.devassist.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.model.Vulnerability;
+import com.checkmarx.eclipse.devassist.remediation.NotificationPopup;
 import com.checkmarx.eclipse.common.utils.CxLogger;
 
 /**
@@ -255,4 +261,83 @@ public class DevAssistUtils {
 
 		return result[0];
 	}
+	
+	public static String getAgentName() {
+		// TODO Auto-generated method stub
+		return DevAssistConstants.CX_AGENT_NAME;
+	}
+	/**
+     * Returns the vulnerability details for the given vulnerability id.
+     *
+     * @param scanIssue       scan issue containing vulnerabilities details
+     * @param vulnerabilityId - vulnerability id
+     * @return Vulnerability - vulnerability details
+     */
+    public static Vulnerability getVulnerabilityDetails(ScanIssue scanIssue, String vulnerabilityId) {
+        if (Objects.isNull(scanIssue.getVulnerabilities()) || scanIssue.getVulnerabilities().isEmpty()) {
+            CxLogger.warning(String.format("No vulnerabilities found in scan issue object for scan engine: %s.", scanIssue.getScanEngine().name()));
+            return null;
+        }
+        return scanIssue.getVulnerabilities().stream()
+                .filter(vulnerability -> vulnerability.getVulnerabilityId().equals(vulnerabilityId))
+                .findFirst()
+                .orElse(null);
+    }
+    
+	/**
+	 * Copies text to the system clipboard.
+	 *
+	 * @param text the text to copy
+	 * @return true if successful, false otherwise
+	 */
+	public static boolean copyToClipboard(String text) {
+		try {
+			Display display = Display.getDefault();
+			display.syncExec(() -> {
+				Clipboard clipboard = new Clipboard(display);
+				try {
+					clipboard.setContents(new Object[] { text }, new Transfer[] { TextTransfer.getInstance() });
+				} finally {
+					clipboard.dispose();
+				}
+			});
+			CxLogger.info("CX#: Content copied to clipboard");
+			return true;
+		} catch (Exception e) {
+			CxLogger.error("CX#: Failed to copy to clipboard: " + e.getMessage(), e);
+			return false;
+		}
+	}
+    
+    
+    /**
+     * Copies the given text to the system clipboard and shows a standard
+     * Eclipse notification popup confirming the action.
+     */
+	public static boolean copyToClipboardWithNotification(String notificationMessage, String notificationTitle) {
+		try {
+			Display display = Display.getCurrent() != null ? Display.getCurrent() : Display.getDefault();
+
+			// 1. Copy to clipboard
+			Clipboard clipboard = new Clipboard(display);
+			try {
+				clipboard.setContents(new Object[] { notificationMessage },
+						new Transfer[] { TextTransfer.getInstance() });
+			} finally {
+				clipboard.dispose();
+			}
+
+			// 2. Show notification (must run on UI thread)
+			display.asyncExec(() -> {
+				NotificationPopup popup = new NotificationPopup(display, notificationTitle,
+						notificationMessage);
+				popup.open();
+			});
+			return true;
+		} catch (Exception e) {
+			CxLogger.error(LOG_TAG + " Error copying to clipboard: " + e.getMessage(), e);
+			return false;
+		}
+	}
 }
+

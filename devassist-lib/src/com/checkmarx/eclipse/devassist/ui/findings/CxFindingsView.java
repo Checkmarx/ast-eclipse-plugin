@@ -38,6 +38,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import com.checkmarx.eclipse.devassist.ui.findings.provider.FindingsContentProvider;
 import com.checkmarx.eclipse.devassist.ui.findings.provider.FindingsLabelProvider;
+import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
 import com.checkmarx.eclipse.common.events.SettingsTopics;
 import com.checkmarx.eclipse.common.properties.Preferences;
 import com.checkmarx.eclipse.devassist.backend.Constants;
@@ -48,6 +49,7 @@ import com.checkmarx.eclipse.devassist.ui.findings.model.ScanDetailWithPath;
 import com.checkmarx.eclipse.devassist.model.Location;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.problems.ProblemHolderService;
+import com.checkmarx.eclipse.devassist.remediation.RemediationManager;
 import com.checkmarx.eclipse.devassist.ui.findings.actions.VulnerabilityFilterAction;
 import com.checkmarx.eclipse.devassist.ui.findings.actions.VulnerabilityFilterState;
 import com.checkmarx.eclipse.devassist.ui.findings.ignored.IgnoredProblemsStore;
@@ -573,43 +575,8 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
             Location loc = issue.getLocations().get(0);
             details.append("Location: Line ").append(loc.getLine()).append(", Col ").append(loc.getStartIndex()).append("\n");
         }
-        details.append("====================================\n");
 
         
-    }
-
-    /**
-     * Fix issue with AI Assist.
-     */
-    private void fixWithAIAssist(ScanIssue issue) {
-       
-        try {
-            // Build remediation prompt based on engine type
-            String prompt = com.checkmarx.eclipse.devassist.ui.findings.integration.RemediationPromptBuilder
-                    .buildRemediationPrompt(issue);
-
-            if (prompt == null || prompt.isEmpty()) {
-                
-                showErrorNotification("Failed to build prompt for this issue type");
-                return;
-            }
-
-            // Send to Copilot via integration
-            
-            boolean success = com.checkmarx.eclipse.devassist.ui.findings.integration.CopilotIntegration
-                    .sendPromptToCopilot(prompt);
-
-            if (success) {
-                
-            } else {
-                
-            }
-
-        } catch (Exception e) {
-            
-            e.printStackTrace();
-            showErrorNotification("Error: " + e.getMessage());
-        }
     }
 
     /**
@@ -1305,9 +1272,8 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
         viewDetailsItem.setText("View Details");
         viewDetailsItem.addSelectionListener(new org.eclipse.swt.events.SelectionAdapter() {
             @Override
-            public void widgetSelected(org.eclipse.swt.events.SelectionEvent e) {
-                
-                showIssueDetails(issue);
+            public void widgetSelected(org.eclipse.swt.events.SelectionEvent e) {                
+            	new RemediationManager().viewDetails(issue, DevAssistConstants.QUICK_FIX);
             }
         });
 
@@ -1317,8 +1283,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
         fixWithAIItem.addSelectionListener(new org.eclipse.swt.events.SelectionAdapter() {
             @Override
             public void widgetSelected(org.eclipse.swt.events.SelectionEvent e) {
-                
-                fixWithAIAssist(issue);
+            	new RemediationManager().fixWithCxOneAssist(issue, DevAssistConstants.QUICK_FIX);
             }
         });
 
