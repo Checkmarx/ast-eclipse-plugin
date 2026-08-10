@@ -11,7 +11,7 @@
       </category>
       <view
             id="com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView"
-            name="Checkmarx Findings"
+            name="Checkmarx One Assist Findings"
             icon="icons/CxFlatLogo16x16.png"
             category="com.checkmarx.eclipse.devassist.category"
             class="com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView"

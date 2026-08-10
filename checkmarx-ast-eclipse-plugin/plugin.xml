@@ -5,7 +5,7 @@
     <extension
             point="org.eclipse.ui.preferencePages">
         <page
-                class="com.checkmarx.eclipse.common.properties.PreferencesPage"
+                class="com.checkmarx.eclipse.common.preferences.PreferencesPage"
                 id="com.checkmarx.eclipse.properties.preferencespage"
                 name="Checkmarx One">
         </page>
