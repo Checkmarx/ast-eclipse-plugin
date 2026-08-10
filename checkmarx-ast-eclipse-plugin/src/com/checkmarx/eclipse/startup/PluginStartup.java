@@ -17,7 +17,7 @@ public class PluginStartup implements IStartup {
 
 	static {
 		// Register services for PreferencesPage
-		Preferences.setSettingsChangeNotifier(new SettingsChangeNotifier());
+		Preferences.addSettingsChangeNotifier(new SettingsChangeNotifier());
 		Preferences.setWorkspaceScanService(new WorkspaceScanService());
 	}
 

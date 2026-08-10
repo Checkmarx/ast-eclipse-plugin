@@ -25,7 +25,7 @@ public class Activator extends Plugin {
 			// Step 1: Register scanner preferences listener
 			// Bridges CheckmarxPreferencePage changes to GlobalScannerController
 			ScannerPreferencesListener preferencesListener = new ScannerPreferencesListener();
-			Preferences.setSettingsChangeNotifier(preferencesListener);
+			Preferences.addSettingsChangeNotifier(preferencesListener);
 			CxLogger.info("[DEVASSIST] Registered ScannerPreferencesListener");
 
 			// Step 2: Initialize GlobalScannerController with current preferences

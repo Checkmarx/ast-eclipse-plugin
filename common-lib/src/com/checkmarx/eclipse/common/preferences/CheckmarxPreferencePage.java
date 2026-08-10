@@ -276,8 +276,7 @@ public class CheckmarxPreferencePage extends PreferencePage implements IWorkbenc
         // Step 3: Notify listeners (e.g., GlobalScannerController) about preference changes
         // The listener will update GlobalScannerController based on new preferences
         // This decouples CheckmarxPreferencePage from devassist-lib modules
-        ISettingsChangeNotifier notifier = Preferences.getSettingsChangeNotifier();
-        if (notifier != null) {
+        for (ISettingsChangeNotifier notifier : Preferences.getSettingsChangeNotifiers()) {
             try {
                 notifier.notifySettingsApplied();
                 CxLogger.info("[PREFS] Notified settings change listeners");

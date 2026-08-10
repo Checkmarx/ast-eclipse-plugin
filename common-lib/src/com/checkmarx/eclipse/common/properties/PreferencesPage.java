@@ -226,8 +226,7 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 
 						// Notify views (CheckmarxView/CxFindingsView) that credentials are now available
 						// so they can switch from the credentials panel to the actual work views
-						ISettingsChangeNotifier notifier = Preferences.getSettingsChangeNotifier();
-						if (notifier != null) {
+						for (ISettingsChangeNotifier notifier : Preferences.getSettingsChangeNotifiers()) {
 							notifier.notifySettingsApplied();
 						}
 
@@ -295,8 +294,7 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 				// runs (i.e. the user clicks OK/Apply) - if they instead Cancel or just close
 				// the dialog after Logout, both views kept showing stale "connected" content.
 				// Notify main plugin that settings have changed
-				ISettingsChangeNotifier notifier = Preferences.getSettingsChangeNotifier();
-				if (notifier != null) {
+				for (ISettingsChangeNotifier notifier : Preferences.getSettingsChangeNotifiers()) {
 					notifier.notifySettingsApplied();
 				}
 			}
@@ -359,8 +357,7 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 
 			if (settingsActuallyChanged) {
 				// Notify main plugin that settings have changed
-				ISettingsChangeNotifier notifier = Preferences.getSettingsChangeNotifier();
-				if (notifier != null) {
+				for (ISettingsChangeNotifier notifier : Preferences.getSettingsChangeNotifiers()) {
 					notifier.notifySettingsApplied();
 				}
 			}

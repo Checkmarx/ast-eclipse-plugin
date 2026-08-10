@@ -1,5 +1,8 @@
 package com.checkmarx.eclipse.common.properties;
 
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.ui.preferences.ScopedPreferenceStore;
@@ -39,8 +42,11 @@ public class Preferences {
     // Handler for post-authentication UI setup (registered by devassist-lib)
     private static IAuthenticationSuccessHandler authSuccessHandler;
 
-    // Notifier for settings changes (registered by main plugin)
-    private static ISettingsChangeNotifier settingsChangeNotifier;
+    // Notifiers for settings changes (registered by main plugin and devassist-lib).
+    // A List is used because both bundles register their own notifier for different
+    // purposes (UI panel refresh vs. scanner-state sync); a single-slot field would
+    // let one registration silently overwrite the other.
+    private static final List<ISettingsChangeNotifier> settingsChangeNotifiers = new CopyOnWriteArrayList<>();
 
     // Service for triggering workspace scans (registered by main plugin)
     private static IWorkspaceScanService workspaceScanService;
@@ -86,12 +92,12 @@ public class Preferences {
         return authSuccessHandler;
     }
 
-    public static void setSettingsChangeNotifier(ISettingsChangeNotifier notifier) {
-        settingsChangeNotifier = notifier;
+    public static void addSettingsChangeNotifier(ISettingsChangeNotifier notifier) {
+        settingsChangeNotifiers.add(notifier);
     }
 
-    public static ISettingsChangeNotifier getSettingsChangeNotifier() {
-        return settingsChangeNotifier;
+    public static List<ISettingsChangeNotifier> getSettingsChangeNotifiers() {
+        return settingsChangeNotifiers;
     }
 
     public static void setWorkspaceScanService(IWorkspaceScanService service) {
