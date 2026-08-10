@@ -10,7 +10,7 @@ public class Constants {
 
 	// UI strings
 	public static final String BTN_OPEN_SETTINGS = "Open Settings";
-	public static final String FINDINGS_PROMO_DESCRIPTION = "Checkmarx AI (Cx Assist) provides real-time threat detection and helps you avoid vulnerabilities before they happen.";
+	public static final String FINDINGS_PROMO_DESCRIPTION = "Checkmarx Developer Assist stops vulnerabilities where your code is written, with fixes you can actually trust.";
 
 	// Log messages
 	public static final String ERROR_BUILDING_CX_WRAPPER = "An error occurred while instantiating a CxWrapper: %s";
