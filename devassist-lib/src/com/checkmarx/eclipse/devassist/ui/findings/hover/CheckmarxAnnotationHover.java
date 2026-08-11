@@ -423,24 +423,12 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
               .append("</div>");
         }
 
-        // Action buttons (clickable)
-        sb.append("<div style='margin-top:8px;border-top:1px solid #ddd;padding-top:6px;'>");
-        sb.append("<button style='")
-          .append("background-color:#f0f0f0;border:1px solid #999;padding:3px 8px;margin-right:4px;")
-          .append("font-size:10px;cursor:pointer;border-radius:3px;")
-          .append("' onclick='location.href=\"action:fix\"'>Fix with AI</button>");
-        sb.append("<button style='")
-          .append("background-color:#f0f0f0;border:1px solid #999;padding:3px 8px;margin-right:4px;")
-          .append("font-size:10px;cursor:pointer;border-radius:3px;")
-          .append("' onclick='location.href=\"action:details\"'>Details</button>");
-        sb.append("<button style='")
-          .append("background-color:#f0f0f0;border:1px solid #999;padding:3px 8px;margin-right:4px;")
-          .append("font-size:10px;cursor:pointer;border-radius:3px;")
-          .append("' onclick='location.href=\"action:ignore\"'>Ignore</button>");
-        sb.append("<button style='")
-          .append("background-color:#f0f0f0;border:1px solid #999;padding:3px 8px;")
-          .append("font-size:10px;cursor:pointer;border-radius:3px;")
-          .append("' onclick='location.href=\"action:copy\"'>Copy</button>");
+        // Action links (clickable)
+        sb.append("<div style='margin-top:6px;border-top:1px solid #ddd;padding-top:4px;font-size:10px;'>");
+        sb.append("<a href='action:fix' style='color:#0066cc;text-decoration:underline;cursor:pointer;margin-right:8px;'>Fix</a>");
+        sb.append("<a href='action:details' style='color:#0066cc;text-decoration:underline;cursor:pointer;margin-right:8px;'>Details</a>");
+        sb.append("<a href='action:ignore' style='color:#0066cc;text-decoration:underline;cursor:pointer;margin-right:8px;'>Ignore</a>");
+        sb.append("<a href='action:copy' style='color:#0066cc;text-decoration:underline;cursor:pointer;'>Copy</a>");
         sb.append("</div>");
 
         sb.append("</div>");
