@@ -196,14 +196,45 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
         @Override
         public IInformationControl doCreateInformationControl(Shell parent) {
             if (BrowserInformationControl.isAvailable(parent)) {
-                return new BrowserInformationControl(parent, JFaceResources.DIALOG_FONT, true) {
+                BrowserInformationControl control = new BrowserInformationControl(parent, JFaceResources.DIALOG_FONT, true) {
                     @Override
                     public void setSizeConstraints(int maxWidth, int maxHeight) {
                         super.setSizeConstraints(Math.max(maxWidth, MIN_POPUP_WIDTH), Math.max(maxHeight, MIN_POPUP_HEIGHT));
                     }
                 };
+                setupActionHandler(control);
+                return control;
             }
             return new DefaultInformationControl(parent, true);
+        }
+
+        private void setupActionHandler(BrowserInformationControl control) {
+            try {
+                java.lang.reflect.Field browserField = BrowserInformationControl.class.getDeclaredField("fBrowser");
+                browserField.setAccessible(true);
+                org.eclipse.swt.browser.Browser browser = (org.eclipse.swt.browser.Browser) browserField.get(control);
+                if (browser != null && !browser.isDisposed()) {
+                    browser.addLocationListener(new LocationListener() {
+                        @Override
+                        public void changing(LocationEvent event) {
+                            if (event.location.startsWith("action:")) {
+                                event.doit = false;
+                            }
+                        }
+
+                        @Override
+                        public void changed(LocationEvent event) {
+                            if (event.location.startsWith("action:")) {
+                                event.doit = false;
+                                String action = event.location.substring(7);
+                                handleHoverAction(action);
+                            }
+                        }
+                    });
+                }
+            } catch (Exception e) {
+                CxLogger.error("Failed to setup action handler for hover buttons", e);
+            }
         }
     }
 
