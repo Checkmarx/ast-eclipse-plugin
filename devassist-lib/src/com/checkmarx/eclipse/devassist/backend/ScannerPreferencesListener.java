@@ -87,8 +87,11 @@ public class ScannerPreferencesListener implements ISettingsChangeNotifier {
                 ScannerMarkerPurger.purgeScanner(type);
             }
 
-            // Enable (single or multiple at once): trigger one consolidated scan.
+            // Enable (single or multiple at once): clear state cache and trigger one consolidated scan.
             if (!newlyEnabled.isEmpty()) {
+                CxLogger.info(LOG_TAG + " Clearing state cache for newly enabled scanners: " + newlyEnabled);
+                ScanStateCacheClearer.clearForScanners(newlyEnabled);
+
                 CxLogger.info(LOG_TAG + " Triggering consolidated scan for newly enabled scanners: " + newlyEnabled);
                 IWorkspaceScanService scanService = Preferences.getWorkspaceScanService();
                 if (scanService != null) {
