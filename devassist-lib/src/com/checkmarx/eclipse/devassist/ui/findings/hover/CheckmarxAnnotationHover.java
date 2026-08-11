@@ -31,6 +31,9 @@ import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.editors.text.EditorsUI;
 import org.eclipse.ui.texteditor.MarkerAnnotation;
 
+import org.eclipse.swt.browser.LocationEvent;
+import org.eclipse.swt.browser.LocationListener;
+
 import com.checkmarx.eclipse.common.utils.CxLogger;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.ui.findings.editor.FindingsAnnotation;
@@ -112,7 +115,7 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
         public IInformationControl doCreateInformationControl(Shell parent) {
             String tooltipAffordance = EditorsUI.getTooltipAffordanceString();
             if (BrowserInformationControl.isAvailable(parent)) {
-                return new BrowserInformationControl(parent, JFaceResources.DIALOG_FONT, tooltipAffordance) {
+                BrowserInformationControl control = new BrowserInformationControl(parent, JFaceResources.DIALOG_FONT, tooltipAffordance) {
                     @Override
                     public IInformationControlCreator getInformationPresenterControlCreator() {
                         return presenterControlCreator;
@@ -123,6 +126,8 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
                         super.setSizeConstraints(Math.max(maxWidth, MIN_POPUP_WIDTH), Math.max(maxHeight, MIN_POPUP_HEIGHT));
                     }
                 };
+                setupActionHandler(control);
+                return control;
             }
             return new DefaultInformationControl(parent, tooltipAffordance) {
                 @Override
@@ -130,6 +135,55 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
                     return presenterControlCreator;
                 }
             };
+        }
+
+        private void setupActionHandler(BrowserInformationControl control) {
+            try {
+                java.lang.reflect.Field browserField = BrowserInformationControl.class.getDeclaredField("fBrowser");
+                browserField.setAccessible(true);
+                org.eclipse.swt.browser.Browser browser = (org.eclipse.swt.browser.Browser) browserField.get(control);
+                if (browser != null && !browser.isDisposed()) {
+                    browser.addLocationListener(new LocationListener() {
+                        @Override
+                        public void changing(LocationEvent event) {
+                            if (event.location.startsWith("action:")) {
+                                event.doit = false;
+                            }
+                        }
+
+                        @Override
+                        public void changed(LocationEvent event) {
+                            if (event.location.startsWith("action:")) {
+                                event.doit = false;
+                                String action = event.location.substring(7);
+                                handleHoverAction(action);
+                            }
+                        }
+                    });
+                }
+            } catch (Exception e) {
+                CxLogger.error("Failed to setup action handler for hover buttons", e);
+            }
+        }
+    }
+
+    private static void handleHoverAction(String action) {
+        CxLogger.info("[HOVER] Action button clicked: " + action);
+        switch (action) {
+            case "fix":
+                CxLogger.info("[HOVER] Fix with AI action triggered");
+                break;
+            case "details":
+                CxLogger.info("[HOVER] View Details action triggered");
+                break;
+            case "ignore":
+                CxLogger.info("[HOVER] Ignore action triggered");
+                break;
+            case "copy":
+                CxLogger.info("[HOVER] Copy Details action triggered");
+                break;
+            default:
+                CxLogger.info("[HOVER] Unknown action: " + action);
         }
     }
 
@@ -369,13 +423,24 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
               .append("</div>");
         }
 
-        // Action links (informational - actual actions via Ctrl+1 Quick Fix)
-        sb.append("<div style='margin-top:6px;border-top:1px solid #ddd;padding-top:4px;font-size:10px;'>");
-        sb.append("<span style='color:#0066cc;cursor:pointer;'>Fix with DevAssist</span> | ");
-        sb.append("<span style='color:#0066cc;cursor:pointer;'>View Details</span> | ");
-        sb.append("<span style='color:#0066cc;cursor:pointer;'>Ignore</span> | ");
-        sb.append("<span style='color:#0066cc;cursor:pointer;'>Copy Details</span>");
-        sb.append("<br/><i style='color:#999;margin-top:4px;display:block;'>Press Ctrl+1 for Quick Fix actions</i>");
+        // Action buttons (clickable)
+        sb.append("<div style='margin-top:8px;border-top:1px solid #ddd;padding-top:6px;'>");
+        sb.append("<button style='")
+          .append("background-color:#f0f0f0;border:1px solid #999;padding:3px 8px;margin-right:4px;")
+          .append("font-size:10px;cursor:pointer;border-radius:3px;")
+          .append("' onclick='location.href=\"action:fix\"'>Fix with AI</button>");
+        sb.append("<button style='")
+          .append("background-color:#f0f0f0;border:1px solid #999;padding:3px 8px;margin-right:4px;")
+          .append("font-size:10px;cursor:pointer;border-radius:3px;")
+          .append("' onclick='location.href=\"action:details\"'>Details</button>");
+        sb.append("<button style='")
+          .append("background-color:#f0f0f0;border:1px solid #999;padding:3px 8px;margin-right:4px;")
+          .append("font-size:10px;cursor:pointer;border-radius:3px;")
+          .append("' onclick='location.href=\"action:ignore\"'>Ignore</button>");
+        sb.append("<button style='")
+          .append("background-color:#f0f0f0;border:1px solid #999;padding:3px 8px;")
+          .append("font-size:10px;cursor:pointer;border-radius:3px;")
+          .append("' onclick='location.href=\"action:copy\"'>Copy</button>");
         sb.append("</div>");
 
         sb.append("</div>");
