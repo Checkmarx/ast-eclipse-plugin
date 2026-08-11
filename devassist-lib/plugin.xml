@@ -19,6 +19,68 @@
       </view>
    </extension>
 
+   <!-- Marker Type Declaration: makes the Checkmarx problem marker an official
+        Eclipse "problem" marker, enabling Quick Fix (Ctrl+1) integration and
+        collision-free coexistence with JDT/other linters' markers on the same line. -->
+   <extension
+         id="com.checkmarx.eclipse.plugin.checkmarxProblemMarker"
+         name="Checkmarx Finding"
+         point="org.eclipse.core.resources.markers">
+      <super type="org.eclipse.core.resources.problemmarker"/>
+      <super type="org.eclipse.core.resources.textmarker"/>
+      <persistent value="true"/>
+   </extension>
+
+   <!-- Marker Resolution Generator Registration: supplies the Quick Fix (Ctrl+1)
+        actions for Checkmarx findings. -->
+   <extension
+         point="org.eclipse.ui.ide.markerResolution">
+      <markerResolutionGenerator
+            markerType="com.checkmarx.eclipse.plugin.checkmarxProblemMarker"
+            class="com.checkmarx.eclipse.devassist.ui.findings.resolution.CheckmarxMarkerResolutionGenerator">
+      </markerResolutionGenerator>
+   </extension>
+
+   <!-- Line Hover (Java editor): org.eclipse.ui.editors.textHovers does NOT
+        exist as a real Eclipse Platform extension point - text hovers are
+        wired programmatically per-editor via SourceViewerConfiguration and
+        cannot be injected into an editor a plugin doesn't own through a
+        generic mechanism. JDT's own Java editor exposes the ONLY documented,
+        public extension point for contributing an additional hover into an
+        editor this plugin doesn't control: org.eclipse.jdt.ui.javaEditorTextHovers
+        (the same point JDT itself uses for its Javadoc/Problem/BestMatch
+        hovers - see org.eclipse.jdt.ui's own plugin.xml). JDT stacks multiple
+        <hover> contributions rather than replacing a single slot, so this
+        adds alongside JDT's existing hovers without hiding them.
+        CheckmarxAnnotationHover implements org.eclipse.jdt.ui's
+        IJavaEditorTextHover (required by JDT's hover framework, which casts
+        contributed classes to this type), so org.eclipse.jdt.ui is a hard
+        (non-optional) Require-Bundle dependency in MANIFEST.MF - this plugin
+        now requires the JDT UI tooling to be installed.
+        Coverage: .java files only. Other file types (Dockerfile, YAML, JSON,
+        etc.) have no equivalent public extension point in stock Eclipse and
+        fall back to Eclipse's built-in default marker hover (shows
+        IMarker.MESSAGE and aggregates "Multiple markers at this line"
+        automatically - no custom code needed, nothing is hidden).
+        IMPORTANT - NOT VERIFIED YET: JDT gates which contributed hovers are
+        actually shown via user preferences (Preferences > Java > Editor >
+        Hovers), keyed by this hover's id, with an enabled/modifier-key state
+        loaded from a preference store. Registering this extension makes the
+        hover available/selectable in that preference page, but does NOT by
+        itself guarantee the hover is active by default for a fresh install -
+        this must be confirmed in a running Eclipse instance before this can
+        be considered "working out of the box" rather than "available to
+        enable". -->
+   <extension
+         point="org.eclipse.jdt.ui.javaEditorTextHovers">
+      <hover
+            id="com.checkmarx.eclipse.devassist.hover.checkmarxAnnotationHover"
+            class="com.checkmarx.eclipse.devassist.ui.findings.hover.CheckmarxAnnotationHover"
+            label="Checkmarx Finding"
+            description="Shows Checkmarx finding details, alongside other issues on the same line">
+      </hover>
+   </extension>
+
    <!-- Annotation Types Extension Point (for in-editor vulnerability markers/highlights) -->
    <extension
          point="org.eclipse.ui.editors.annotationTypes">

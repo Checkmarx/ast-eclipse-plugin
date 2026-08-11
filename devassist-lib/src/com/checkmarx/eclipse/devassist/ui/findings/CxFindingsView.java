@@ -1148,15 +1148,28 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
             return null;
         }
 
+        // Match by the stable, unique scan issue ID (stored via MarkerIssueMapper)
+        // rather than line+title, so multiple distinct findings on the same line
+        // - including same-titled findings from different scan engines - each get
+        // and keep their own independent marker instead of being deduplicated
+        // against each other.
+        String issueId = issue.getScanIssueId();
         int issueLine = issue.getLocations().get(0).getLine();
         String issueTitle = issue.getTitle();
 
         try {
             IMarker[] markers = file.findMarkers("com.checkmarx.eclipse.plugin.checkmarxProblemMarker", true, org.eclipse.core.resources.IResource.DEPTH_ZERO);
             for (IMarker marker : markers) {
+                if (issueId != null && !issueId.isEmpty()) {
+                    String markerIssueId = marker.getAttribute("cx.issueId", "");
+                    if (issueId.equals(markerIssueId)) {
+                        return marker;
+                    }
+                    continue;
+                }
+                // Fallback for findings without a scanIssueId: previous line+title heuristic.
                 int markerLine = marker.getAttribute(org.eclipse.core.resources.IMarker.LINE_NUMBER, -1);
                 if (markerLine == issueLine) {
-                    // Optional: also match by message prefix for better accuracy
                     String markerMsg = marker.getAttribute(org.eclipse.core.resources.IMarker.MESSAGE, "");
                     if (issueTitle == null || issueTitle.isEmpty() || markerMsg.contains(issueTitle)) {
                         return marker;
@@ -1164,7 +1177,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
                 }
             }
         } catch (Exception e) {
-            
+
         }
 
         return null;

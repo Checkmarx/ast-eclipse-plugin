@@ -70,6 +70,7 @@ public final class DevAssistConstants {
 	public static final String VIEW_DETAILS_FIX_NAME = "View details";
 	public static final String IGNORE_THIS_VULNERABILITY_FIX_NAME = "Ignore this vulnerability";
 	public static final String IGNORE_ALL_OF_THIS_TYPE_FIX_NAME = "Ignore all of this type";
+	public static final String COPY_DETAILS_FIX_NAME = "Copy finding details";
 
 	// Manifest file patterns
 	public static final List<String> MANIFEST_FILE_PATTERNS = List.of(

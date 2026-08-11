@@ -31,8 +31,10 @@ import com.checkmarx.eclipse.devassist.model.ScanIssue;
  */
 public class ViewFindingDetailsResolution implements IMarkerResolution2 {
 
+    private final Image icon;
+
     public ViewFindingDetailsResolution(IMarker marker) {
-        // Constructor parameter kept for instantiation, marker details retrieved from run() parameter
+        this.icon = ResolutionIconHelper.severityIconForMarker(marker);
     }
 
     @Override
@@ -47,8 +49,7 @@ public class ViewFindingDetailsResolution implements IMarkerResolution2 {
 
     @Override
     public Image getImage() {
-        // Optional: Return an icon. For now, use default
-        return null;
+        return icon;
     }
 
     @Override
