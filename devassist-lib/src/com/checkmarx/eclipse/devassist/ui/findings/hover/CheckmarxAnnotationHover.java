@@ -33,6 +33,7 @@ import org.eclipse.ui.texteditor.MarkerAnnotation;
 
 import com.checkmarx.eclipse.common.utils.CxLogger;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.ui.findings.editor.FindingsAnnotation;
 import com.checkmarx.eclipse.devassist.ui.findings.marker.MarkerIssueMapper;
 import com.checkmarx.eclipse.devassist.utils.HtmlEscapeUtil;
 
@@ -282,13 +283,30 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
                     }
                 }
 
+                // Handle FindingsAnnotation (custom Checkmarx annotations from scan decorator)
+                if (annotation instanceof FindingsAnnotation) {
+                    FindingsAnnotation findingsAnn = (FindingsAnnotation) annotation;
+                    String title = findingsAnn.getTitle();
+                    if (title != null && !title.isEmpty()) {
+                        String description = findingsAnn.getDescription();
+                        String sectionHtml = buildHtmlForFinding(title, description);
+                        checkmarxSections.add(sectionHtml);
+                        CxLogger.info("[HOVER] Found FindingsAnnotation: " + title);
+                        continue;
+                    }
+                }
+
                 String message = annotation.getText();
                 if (message != null && !message.isEmpty()) {
                     otherMessages.add(message);
                 }
             }
 
+            CxLogger.info("[HOVER] Line " + (lineNumber + 1) + ": Found " + checkmarxSections.size()
+                + " Checkmarx section(s), " + otherMessages.size() + " other message(s)");
+
             if (checkmarxSections.isEmpty() && otherMessages.isEmpty()) {
+                CxLogger.info("[HOVER] No content to display, returning null");
                 return null;
             }
 
@@ -322,13 +340,46 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
         try {
             ScanIssue issue = MarkerIssueMapper.fromMarker(marker);
             if (issue == null) {
+                CxLogger.info("[HOVER] Marker " + markerId + ": Failed to extract ScanIssue from marker");
                 return "";
             }
-            return "<div>" + CheckmarxProblemDescriptionFormatter.formatDescriptionHtml(issue) + "</div>";
+            String html = "<div>" + CheckmarxProblemDescriptionFormatter.formatDescriptionHtml(issue) + "</div>";
+            CxLogger.info("[HOVER] Marker " + markerId + ": Built HTML section for issue: " + issue.getTitle());
+            return html;
         } catch (Exception e) {
             CxLogger.error("CheckmarxAnnotationHover: failed to build hover content for marker " + markerId, e);
             return "";
         }
+    }
+
+    private String buildHtmlForFinding(String title, String description) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("<div style='padding:4px;'>");
+
+        // Title
+        sb.append("<b style='color:#e84c3d;font-size:12px;'>")
+          .append(HtmlEscapeUtil.escape(title))
+          .append("</b>");
+        sb.append("<br/>");
+
+        // Description
+        if (description != null && !description.isEmpty()) {
+            sb.append("<div style='margin:4px 0;color:#333;font-size:11px;'>")
+              .append(HtmlEscapeUtil.escape(description))
+              .append("</div>");
+        }
+
+        // Action links (informational - actual actions via Ctrl+1 Quick Fix)
+        sb.append("<div style='margin-top:6px;border-top:1px solid #ddd;padding-top:4px;font-size:10px;'>");
+        sb.append("<span style='color:#0066cc;cursor:pointer;'>Fix with DevAssist</span> | ");
+        sb.append("<span style='color:#0066cc;cursor:pointer;'>View Details</span> | ");
+        sb.append("<span style='color:#0066cc;cursor:pointer;'>Ignore</span> | ");
+        sb.append("<span style='color:#0066cc;cursor:pointer;'>Copy Details</span>");
+        sb.append("<br/><i style='color:#999;margin-top:4px;display:block;'>Press Ctrl+1 for Quick Fix actions</i>");
+        sb.append("</div>");
+
+        sb.append("</div>");
+        return sb.toString();
     }
 
     private boolean isCheckmarxMarker(IMarker marker) {
