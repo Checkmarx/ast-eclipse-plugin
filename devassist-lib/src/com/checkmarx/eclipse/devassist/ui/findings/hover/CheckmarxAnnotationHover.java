@@ -148,7 +148,7 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
                         @Override
                         public void changing(LocationEvent event) {
                             CxLogger.info("[HOVER] LocationListener.changing: " + event.location);
-                            if (event.location.startsWith("action:")) {
+                            if (event.location.contains("#action:")) {
                                 CxLogger.info("[HOVER] Blocking action URL: " + event.location);
                                 event.doit = false;
                             }
@@ -157,9 +157,11 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
                         @Override
                         public void changed(LocationEvent event) {
                             CxLogger.info("[HOVER] LocationListener.changed: " + event.location);
-                            if (event.location.startsWith("action:")) {
+                            int actionIndex = event.location.indexOf("#action:");
+                            if (actionIndex >= 0) {
                                 event.doit = false;
-                                String action = event.location.substring(7);
+                                String action = event.location.substring(actionIndex + 8); // +8 for "#action:"
+                                CxLogger.info("[HOVER] Extracted action: " + action);
                                 handleHoverAction(action);
                             }
                         }
@@ -226,7 +228,7 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
                         @Override
                         public void changing(LocationEvent event) {
                             CxLogger.info("[HOVER] LocationListener.changing: " + event.location);
-                            if (event.location.startsWith("action:")) {
+                            if (event.location.contains("#action:")) {
                                 CxLogger.info("[HOVER] Blocking action URL: " + event.location);
                                 event.doit = false;
                             }
@@ -235,9 +237,11 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
                         @Override
                         public void changed(LocationEvent event) {
                             CxLogger.info("[HOVER] LocationListener.changed: " + event.location);
-                            if (event.location.startsWith("action:")) {
+                            int actionIndex = event.location.indexOf("#action:");
+                            if (actionIndex >= 0) {
                                 event.doit = false;
-                                String action = event.location.substring(7);
+                                String action = event.location.substring(actionIndex + 8); // +8 for "#action:"
+                                CxLogger.info("[HOVER] Extracted action: " + action);
                                 handleHoverAction(action);
                             }
                         }
@@ -468,12 +472,12 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
               .append("</div>");
         }
 
-        // Action links (clickable) - use onclick with window.location to trigger LocationListener
+        // Action links (clickable) - use fragment identifier that LocationListener can intercept
         sb.append("<div style='margin-top:6px;border-top:1px solid #ddd;padding-top:4px;font-size:10px;'>");
-        sb.append("<a href='#' onclick=\"window.location='action:fix'; return false;\" style='color:#0066cc;text-decoration:underline;cursor:pointer;margin-right:8px;'>Fix</a>");
-        sb.append("<a href='#' onclick=\"window.location='action:details'; return false;\" style='color:#0066cc;text-decoration:underline;cursor:pointer;margin-right:8px;'>Details</a>");
-        sb.append("<a href='#' onclick=\"window.location='action:ignore'; return false;\" style='color:#0066cc;text-decoration:underline;cursor:pointer;margin-right:8px;'>Ignore</a>");
-        sb.append("<a href='#' onclick=\"window.location='action:copy'; return false;\" style='color:#0066cc;text-decoration:underline;cursor:pointer;'>Copy</a>");
+        sb.append("<a href='#action:fix' style='color:#0066cc;text-decoration:underline;cursor:pointer;margin-right:8px;'>Fix</a>");
+        sb.append("<a href='#action:details' style='color:#0066cc;text-decoration:underline;cursor:pointer;margin-right:8px;'>Details</a>");
+        sb.append("<a href='#action:ignore' style='color:#0066cc;text-decoration:underline;cursor:pointer;margin-right:8px;'>Ignore</a>");
+        sb.append("<a href='#action:copy' style='color:#0066cc;text-decoration:underline;cursor:pointer;'>Copy</a>");
         sb.append("</div>");
 
         sb.append("</div>");
