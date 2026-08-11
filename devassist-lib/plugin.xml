@@ -81,6 +81,29 @@
       </hover>
    </extension>
 
+   <!-- Line Hover (all other text-based editors): org.eclipse.jdt.ui.javaEditorTextHovers
+        above only reaches JDT's own Java editor. Every other file type this plugin
+        scans (pom.xml, package.json, secrets.py, Dockerfiles, ...) that has no
+        dedicated editor of its own falls back to the Platform's Generic Editor
+        (org.eclipse.ui.genericeditor.GenericEditor), which has its own, separate
+        hover extension point. CheckmarxAnnotationHover's content is already
+        marker/annotation-based (not JDT-specific), so the same class is reused
+        here unchanged. Unlike the JDT extension point, the Generic Editor combines
+        all matching hoverProviders automatically (see CompositeTextHover) - no
+        per-hover preference toggle needed for this one to show up.
+        contentType="org.eclipse.core.runtime.text" is the Platform's base "Text"
+        content type; org.eclipse.core.runtime.xml, .properties, and most
+        language-specific content types declare it as their base-type, so this
+        applies broadly rather than needing one registration per file type. -->
+   <extension
+         point="org.eclipse.ui.genericeditor.hoverProviders">
+      <hoverProvider
+            id="com.checkmarx.eclipse.devassist.hover.checkmarxGenericHoverProvider"
+            class="com.checkmarx.eclipse.devassist.ui.findings.hover.CheckmarxAnnotationHover"
+            contentType="org.eclipse.core.runtime.text">
+      </hoverProvider>
+   </extension>
+
    <!-- Annotation Types Extension Point (for in-editor vulnerability markers/highlights) -->
    <extension
          point="org.eclipse.ui.editors.annotationTypes">
