@@ -392,6 +392,24 @@ public class CheckmarxEditorListener implements IPartListener2 {
 	public void partInputChanged(IWorkbenchPartReference partRef) {}
 
 	/**
+	 * Trigger an immediate rescan of every currently open editor with real-time
+	 * scanning set up.
+	 *
+	 * Called when scanner preferences change (e.g. ASCA/Secrets enabled) so files
+	 * already open in editors are re-scanned right away, instead of waiting for
+	 * the next keystroke or editor activation.
+	 */
+	public void rescanOpenEditors() {
+		for (RealTimeScanJob scanJob : activeScanJobs.values()) {
+			try {
+				scanJob.reschedule(0);
+			} catch (Exception e) {
+				System.err.println("[REALTIME] Error rescheduling scan job on preference change: " + e.getMessage());
+			}
+		}
+	}
+
+	/**
 	 * Get the number of active listeners (for testing/debugging).
 	 */
 	public int getActiveListenerCount() {

@@ -22,7 +22,7 @@ public class MarkerIssueMapper {
     private static final String ATTR_REMEDIATION = "cx.remediation";
     private static final String ATTR_RULE_ID = "cx.ruleId";
     private static final String ATTR_FILE_PATH = "cx.filePath";
-    private static final String ATTR_SCAN_ENGINE = "cx.scanEngine";
+    public static final String ATTR_SCAN_ENGINE = "cx.scanEngine";
 
     /**
      * Reconstruct a ScanIssue from marker attributes.

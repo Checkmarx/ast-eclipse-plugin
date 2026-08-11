@@ -185,6 +185,39 @@ public class ProblemHolderService {
 	}
 
 	/**
+	 * Remove cached scan issues for a scanner across ALL files in this project.
+	 * Used when a scanner is disabled and its findings must be purged immediately.
+	 *
+	 * @param scannerType Name of the scanner engine (e.g., "ASCA", "OSS", "IAC")
+	 * @return the file paths that had at least one issue removed, so callers can
+	 *         refresh editor decorations/markers for those files
+	 */
+	public List<String> removeAllIssuesForScanner(String scannerType) {
+		List<String> affectedFiles = new ArrayList<>();
+		if (scannerType == null) {
+			return affectedFiles;
+		}
+
+		for (Map.Entry<String, List<ScanIssue>> entry : fileToScanIssues.entrySet()) {
+			boolean hasMatch = entry.getValue().stream()
+				.anyMatch(issue -> issue.getScanEngine() != null && issue.getScanEngine().name().equals(scannerType));
+			if (hasMatch) {
+				affectedFiles.add(entry.getKey());
+			}
+		}
+
+		for (String filePath : affectedFiles) {
+			removeScanIssuesByFileAndScanner(scannerType, filePath);
+		}
+
+		if (!affectedFiles.isEmpty()) {
+			publishIssuesUpdated();
+		}
+
+		return affectedFiles;
+	}
+
+	/**
 	 * Clear all caches (on project close).
 	 */
 	public void clearAll() {

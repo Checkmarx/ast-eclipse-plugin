@@ -19,4 +19,15 @@ public interface IProjectLifecycleListener {
 	 * are scanned with the newly authenticated credentials.
 	 */
 	void scanAlreadyOpenProjects();
+
+	/**
+	 * Re-runs the workspace file scan (manifest/IaC/container patterns) for every
+	 * open project, regardless of whether it was already initialized.
+	 *
+	 * Unlike {@link #scanAlreadyOpenProjects()}, which only initializes projects
+	 * that haven't been set up yet, this forces a fresh scan of already-initialized
+	 * projects too. Used when scanner preferences change (e.g. a scanner is enabled)
+	 * and previously-scanned projects need to be rescanned with the new scanner set.
+	 */
+	void rescanAllOpenProjects();
 }

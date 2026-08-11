@@ -3,6 +3,9 @@ package com.checkmarx.eclipse.common.preferences;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.ui.preferences.ScopedPreferenceStore;

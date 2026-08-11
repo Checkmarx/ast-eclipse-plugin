@@ -69,6 +69,15 @@ public class PluginStartup implements IStartup {
 	}
 
 	/**
+	 * Get the real-time editor listener that tracks per-file scan jobs.
+	 *
+	 * @return the registered CheckmarxEditorListener, or null if not yet initialized
+	 */
+	public static CheckmarxEditorListener getRealtimeScanListener() {
+		return realtimeScanListener;
+	}
+
+	/**
 	 * Initialize backend scanner infrastructure.
 	 *
 	 * Creates and registers:

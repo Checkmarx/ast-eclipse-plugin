@@ -66,6 +66,32 @@ public class ProjectLifecycleListener implements IResourceChangeListener, IProje
 	}
 
 	/**
+	 * Re-runs the workspace file scan for every open project, even ones already
+	 * initialized. Called when scanner preferences change so newly-enabled scanners
+	 * immediately produce results for files already covered by the workspace scan
+	 * (manifests, IaC, container files), instead of waiting for the next project
+	 * open/close event.
+	 */
+	@Override
+	public void rescanAllOpenProjects() {
+		try {
+			IProject[] projects = ResourcesPlugin.getWorkspace().getRoot().getProjects();
+			for (IProject project : projects) {
+				if (!project.isOpen()) {
+					continue;
+				}
+				if (isInitialized(project)) {
+					startWorkspaceFileScanning(project);
+				} else {
+					onProjectOpen(project);
+				}
+			}
+		} catch (Exception e) {
+			CxLogger.error(LOG_TAG + " Error rescanning open projects: " + e.getMessage(), e);
+		}
+	}
+
+	/**
 	 * Scans the workspace and initializes any projects that are already open.
 	 */
 	private void initExistingProjects() {

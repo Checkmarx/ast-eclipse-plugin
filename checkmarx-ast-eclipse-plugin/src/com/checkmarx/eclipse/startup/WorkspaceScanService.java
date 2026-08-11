@@ -3,6 +3,7 @@ package com.checkmarx.eclipse.startup;
 import com.checkmarx.eclipse.common.listener.IWorkspaceScanService;
 import com.checkmarx.eclipse.common.listener.IProjectLifecycleListener;
 import com.checkmarx.eclipse.common.utils.CxLogger;
+import com.checkmarx.eclipse.devassist.backend.listener.CheckmarxEditorListener;
 
 /**
  * Triggers workspace scans after authentication.
@@ -20,9 +21,15 @@ public class WorkspaceScanService implements IWorkspaceScanService {
 			IProjectLifecycleListener projectListener = PluginStartup.getProjectListener();
 			if (projectListener != null) {
 				CxLogger.info(LOG_TAG + " Triggering workspace OSS/IaC/container scan...");
-				projectListener.scanAlreadyOpenProjects();
+				projectListener.rescanAllOpenProjects();
 			} else {
 				CxLogger.warning(LOG_TAG + " Project lifecycle listener not initialized");
+			}
+
+			CheckmarxEditorListener editorListener = PluginStartup.getRealtimeScanListener();
+			if (editorListener != null) {
+				CxLogger.info(LOG_TAG + " Triggering rescan of open editors for real-time scanners...");
+				editorListener.rescanOpenEditors();
 			}
 		} catch (Exception e) {
 			CxLogger.error(LOG_TAG + " Failed to trigger workspace scan: " + e.getMessage(), e);
