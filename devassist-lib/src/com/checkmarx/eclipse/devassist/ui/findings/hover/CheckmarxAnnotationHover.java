@@ -143,16 +143,20 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
                 browserField.setAccessible(true);
                 org.eclipse.swt.browser.Browser browser = (org.eclipse.swt.browser.Browser) browserField.get(control);
                 if (browser != null && !browser.isDisposed()) {
+                    CxLogger.info("[HOVER] HoverControlCreator: Setting up LocationListener for action buttons");
                     browser.addLocationListener(new LocationListener() {
                         @Override
                         public void changing(LocationEvent event) {
+                            CxLogger.info("[HOVER] LocationListener.changing: " + event.location);
                             if (event.location.startsWith("action:")) {
+                                CxLogger.info("[HOVER] Blocking action URL: " + event.location);
                                 event.doit = false;
                             }
                         }
 
                         @Override
                         public void changed(LocationEvent event) {
+                            CxLogger.info("[HOVER] LocationListener.changed: " + event.location);
                             if (event.location.startsWith("action:")) {
                                 event.doit = false;
                                 String action = event.location.substring(7);
@@ -160,9 +164,12 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
                             }
                         }
                     });
+                    CxLogger.info("[HOVER] LocationListener added successfully to HoverControlCreator");
+                } else {
+                    CxLogger.info("[HOVER] HoverControlCreator: Browser is null or disposed");
                 }
             } catch (Exception e) {
-                CxLogger.error("Failed to setup action handler for hover buttons", e);
+                CxLogger.error("Failed to setup action handler for hover buttons (HoverControlCreator)", e);
             }
         }
     }
@@ -214,16 +221,20 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
                 browserField.setAccessible(true);
                 org.eclipse.swt.browser.Browser browser = (org.eclipse.swt.browser.Browser) browserField.get(control);
                 if (browser != null && !browser.isDisposed()) {
+                    CxLogger.info("[HOVER] PresenterControlCreator: Setting up LocationListener for action buttons");
                     browser.addLocationListener(new LocationListener() {
                         @Override
                         public void changing(LocationEvent event) {
+                            CxLogger.info("[HOVER] LocationListener.changing: " + event.location);
                             if (event.location.startsWith("action:")) {
+                                CxLogger.info("[HOVER] Blocking action URL: " + event.location);
                                 event.doit = false;
                             }
                         }
 
                         @Override
                         public void changed(LocationEvent event) {
+                            CxLogger.info("[HOVER] LocationListener.changed: " + event.location);
                             if (event.location.startsWith("action:")) {
                                 event.doit = false;
                                 String action = event.location.substring(7);
@@ -231,9 +242,12 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
                             }
                         }
                     });
+                    CxLogger.info("[HOVER] LocationListener added successfully to PresenterControlCreator");
+                } else {
+                    CxLogger.info("[HOVER] PresenterControlCreator: Browser is null or disposed");
                 }
             } catch (Exception e) {
-                CxLogger.error("Failed to setup action handler for hover buttons", e);
+                CxLogger.error("Failed to setup action handler for hover buttons (PresenterControlCreator)", e);
             }
         }
     }
@@ -454,12 +468,12 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
               .append("</div>");
         }
 
-        // Action links (clickable)
+        // Action links (clickable) - use onclick with window.location to trigger LocationListener
         sb.append("<div style='margin-top:6px;border-top:1px solid #ddd;padding-top:4px;font-size:10px;'>");
-        sb.append("<a href='action:fix' style='color:#0066cc;text-decoration:underline;cursor:pointer;margin-right:8px;'>Fix</a>");
-        sb.append("<a href='action:details' style='color:#0066cc;text-decoration:underline;cursor:pointer;margin-right:8px;'>Details</a>");
-        sb.append("<a href='action:ignore' style='color:#0066cc;text-decoration:underline;cursor:pointer;margin-right:8px;'>Ignore</a>");
-        sb.append("<a href='action:copy' style='color:#0066cc;text-decoration:underline;cursor:pointer;'>Copy</a>");
+        sb.append("<a href='#' onclick=\"window.location='action:fix'; return false;\" style='color:#0066cc;text-decoration:underline;cursor:pointer;margin-right:8px;'>Fix</a>");
+        sb.append("<a href='#' onclick=\"window.location='action:details'; return false;\" style='color:#0066cc;text-decoration:underline;cursor:pointer;margin-right:8px;'>Details</a>");
+        sb.append("<a href='#' onclick=\"window.location='action:ignore'; return false;\" style='color:#0066cc;text-decoration:underline;cursor:pointer;margin-right:8px;'>Ignore</a>");
+        sb.append("<a href='#' onclick=\"window.location='action:copy'; return false;\" style='color:#0066cc;text-decoration:underline;cursor:pointer;'>Copy</a>");
         sb.append("</div>");
 
         sb.append("</div>");
