@@ -84,7 +84,6 @@ public class ResultPublisher {
 				return;
 			}
 
-			// JetBrains Pattern: Remove old engine results, then merge new results
 			// This triggers the message bus pattern:
 			// 1. removeScanIssuesByFileAndScanner() removes old results for THIS engine
 			// 2. mergeScanIssues() stores new results in cache
