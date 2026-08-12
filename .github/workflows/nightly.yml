@@ -5,8 +5,15 @@ on:
     branches:
       - main
 
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions: {}
+
 jobs:
   set_tag:
+    name: Generate Release Tag
     runs-on: cx-public-ubuntu-x64
     outputs:
       tag_name: ${{ steps.tagname.outputs.tag_name }}
@@ -15,11 +22,13 @@ jobs:
         run: echo "tag_name=2.0.0" >> "$GITHUB_OUTPUT"
         id: tagname
       - name: Print tagname
-        run: echo "created tag ${{ steps.tagname.outputs.tag_name }}"
+        env:
+          TAG_NAME: ${{ steps.tagname.outputs.tag_name }}
+        run: echo "created tag $TAG_NAME"
   nightly:
     needs: set_tag
-    uses: Checkmarx/ast-eclipse-plugin/.github/workflows/release.yml@main
+    uses: Checkmarx/ast-eclipse-plugin/.github/workflows/release.yml@main # zizmor: ignore[unpinned-uses]
     with:
       tag: ${{ needs.set_tag.outputs.tag_name }}
       rbranch: "nightly"
-    secrets: inherit
+    secrets: inherit  # zizmor: ignore[secrets-inherit]
