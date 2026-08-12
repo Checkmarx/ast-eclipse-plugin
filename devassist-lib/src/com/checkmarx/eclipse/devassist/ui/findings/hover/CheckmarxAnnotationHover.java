@@ -453,39 +453,18 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
                     renderedIssueIds.add(scanIssue.getScanIssueId());
                 }
 
-                // Only iterate vulnerabilities for ASCA and IAC engines
-                // Other engines (OSS, SECRETS, CONTAINERS) use root ScanIssue attributes
-                boolean displayedVulnerabilities = false;
-                com.checkmarx.eclipse.devassist.model.ScanEngine engine = scanIssue.getScanEngine();
-                boolean shouldIterateVulnerabilities = (engine != null &&
-                    (engine == com.checkmarx.eclipse.devassist.model.ScanEngine.ASCA ||
-                     engine == com.checkmarx.eclipse.devassist.model.ScanEngine.IAC));
-
+                // Use consolidated formatter for both ASCA/IAC (iterates vulnerabilities)
+                // and other engines (uses root ScanIssue attributes)
                 try {
-                    List<?> vulnerabilities = scanIssue.getVulnerabilities();
-                    if (shouldIterateVulnerabilities && vulnerabilities != null && !vulnerabilities.isEmpty()) {
-                        for (Object vulnObj : vulnerabilities) {
-                            String vulnHtml = buildHtmlForVulnerability(vulnObj);
-                            if (!vulnHtml.isEmpty()) {
-                                checkmarxSections.add(vulnHtml);
-                                displayedVulnerabilities = true;
-                            }
-                        }
-                        CxLogger.info("[HOVER] ASCA/IAC: Found " + vulnerabilities.size() + " vulnerabilities to display");
+                    String sectionHtml = CheckmarxProblemDescriptionFormatter.formatDescriptionHtml(scanIssue, true);
+                    if (!sectionHtml.isEmpty()) {
+                        checkmarxSections.add("<div>" + sectionHtml + "</div>");
+                        com.checkmarx.eclipse.devassist.model.ScanEngine engine = scanIssue.getScanEngine();
+                        String engineName = (engine != null) ? engine.toString() : "UNKNOWN";
+                        CxLogger.info("[HOVER] " + engineName + ": Rendered ScanIssue via formatter - " + scanIssue.getTitle());
                     }
                 } catch (Exception e) {
-                    CxLogger.info("[HOVER] getVulnerabilities() error: " + e.getMessage());
-                }
-
-                // Always use fallback for non-ASCA/IAC engines, or if no vulnerabilities were found
-                if (!displayedVulnerabilities) {
-                    String title = findingsAnn.getTitle();
-                    if (title != null && !title.isEmpty()) {
-                        String sectionHtml = buildHtmlForFinding(title, findingsAnn.getDescription());
-                        checkmarxSections.add(sectionHtml);
-                        String engineName = (engine != null) ? engine.toString() : "UNKNOWN";
-                        CxLogger.info("[HOVER] " + engineName + ": Using root ScanIssue attributes - " + title);
-                    }
+                    CxLogger.error("[HOVER] Error formatting FindingsAnnotation: " + e.getMessage(), e);
                 }
             }
 
@@ -579,42 +558,14 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
             }
             currentFinding = issue;
             CxLogger.info("[HOVER] Captured ScanIssue for action handlers from marker: " + issue.getTitle());
-            String html = "<div>" + CheckmarxProblemDescriptionFormatter.formatDescriptionHtml(issue) + "</div>";
+            // Use consolidated formatter with clickable actions enabled (same as FindingsAnnotation path)
+            String html = "<div>" + CheckmarxProblemDescriptionFormatter.formatDescriptionHtml(issue, true) + "</div>";
             CxLogger.info("[HOVER] Marker " + markerId + ": Built HTML section for issue: " + issue.getTitle());
             return html;
         } catch (Exception e) {
             CxLogger.error("CheckmarxAnnotationHover: failed to build hover content for marker " + markerId, e);
             return "";
         }
-    }
-
-    private String buildHtmlForFinding(String title, String description) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("<div style='padding:4px;'>");
-
-        // Title
-        sb.append("<b style='color:#e84c3d;font-size:12px;'>")
-          .append(HtmlEscapeUtil.escape(title))
-          .append("</b>");
-        sb.append("<br/>");
-
-        // Description
-        if (description != null && !description.isEmpty()) {
-            sb.append("<div style='margin:4px 0;color:#333;font-size:11px;'>")
-              .append(HtmlEscapeUtil.escape(description))
-              .append("</div>");
-        }
-
-        // Action links (clickable) - use fragment identifier that LocationListener can intercept
-        sb.append("<div style='margin-top:6px;border-top:1px solid #ddd;padding-top:4px;font-size:10px;'>");
-        sb.append("<a href='#action:fix' style='color:#0066cc;text-decoration:underline;cursor:pointer;margin-right:8px;'>Fix</a>");
-        sb.append("<a href='#action:details' style='color:#0066cc;text-decoration:underline;cursor:pointer;margin-right:8px;'>Details</a>");
-        sb.append("<a href='#action:ignore' style='color:#0066cc;text-decoration:underline;cursor:pointer;margin-right:8px;'>Ignore</a>");
-        sb.append("<a href='#action:copy' style='color:#0066cc;text-decoration:underline;cursor:pointer;'>Copy</a>");
-        sb.append("</div>");
-
-        sb.append("</div>");
-        return sb.toString();
     }
 
     private boolean isCheckmarxMarker(IMarker marker) {
@@ -634,71 +585,5 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
         } catch (Exception e) {
             return false;
         }
-    }
-
-    private String buildHtmlForVulnerability(Object vulnerability) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("<div style='padding:4px;'>");
-
-        String title = "";
-        String description = "";
-
-        try {
-            // Try to get title
-            java.lang.reflect.Method getTitleMethod = vulnerability.getClass().getMethod("getTitle");
-            Object titleObj = getTitleMethod.invoke(vulnerability);
-            if (titleObj != null) {
-                title = titleObj.toString();
-            }
-
-            // Try to get description
-            java.lang.reflect.Method getDescMethod = vulnerability.getClass().getMethod("getDescription");
-            Object descObj = getDescMethod.invoke(vulnerability);
-            if (descObj != null) {
-                description = descObj.toString();
-            }
-
-            // If no title, try actualValue (for IaC)
-            if (title.isEmpty()) {
-                try {
-                    java.lang.reflect.Method getActualValueMethod = vulnerability.getClass().getMethod("getActualValue");
-                    Object actualValueObj = getActualValueMethod.invoke(vulnerability);
-                    if (actualValueObj != null) {
-                        title = actualValueObj.toString();
-                    }
-                } catch (Exception ignored) {}
-            }
-        } catch (Exception e) {
-            CxLogger.info("[HOVER] Error extracting vulnerability fields: " + e.getMessage());
-            return "";
-        }
-
-        if (title.isEmpty()) {
-            return "";
-        }
-
-        sb.append("<b style='color:#e84c3d;font-size:12px;'>")
-          .append(HtmlEscapeUtil.escape(title))
-          .append("</b>");
-        sb.append("<br/>");
-
-        if (!description.isEmpty()) {
-            sb.append("<div style='margin:4px 0;color:#333;font-size:11px;'>")
-              .append(HtmlEscapeUtil.escape(description))
-              .append("</div>");
-        }
-
-        sb.append("<span style='font-size:9px;color:#999;'> Checkmarx vulnerability</span>");
-
-        // Action links (clickable)
-        sb.append("<div style='margin-top:6px;border-top:1px solid #ddd;padding-top:4px;font-size:10px;'>");
-        sb.append("<a href='#action:fix' style='color:#0066cc;text-decoration:underline;cursor:pointer;margin-right:8px;'>Fix</a>");
-        sb.append("<a href='#action:details' style='color:#0066cc;text-decoration:underline;cursor:pointer;margin-right:8px;'>Details</a>");
-        sb.append("<a href='#action:ignore' style='color:#0066cc;text-decoration:underline;cursor:pointer;margin-right:8px;'>Ignore</a>");
-        sb.append("<a href='#action:copy' style='color:#0066cc;text-decoration:underline;cursor:pointer;'>Copy</a>");
-        sb.append("</div>");
-
-        sb.append("</div>");
-        return sb.toString();
     }
 }

@@ -57,5 +57,6 @@ Export-Package: com.checkmarx.eclipse.common.enums,
  com.checkmarx.ast.utils,
  com.fasterxml.jackson.annotation,
  com.fasterxml.jackson.core,
+ com.fasterxml.jackson.core.type,
  com.fasterxml.jackson.databind,
  org.slf4j

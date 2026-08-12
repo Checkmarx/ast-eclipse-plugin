@@ -83,6 +83,8 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
     public static final Image FINDINGS_PROMOTIONAL_CUBE = createScaledImage("/icons/cx-one-assist-cube.png", 240);
     private static final Image CHECKMARX_OPEN_SETTINGS_LOGO =
             AbstractUIPlugin.imageDescriptorFromPlugin(Constants.MAIN_PLUGIN_ID, "/icons/checkmarx-80.png").createImage();
+    private static final Image STAR_ICON =
+            AbstractUIPlugin.imageDescriptorFromPlugin(Constants.MAIN_PLUGIN_ID, "/icons/severity/star-action.svg").createImage();
 
     public CxFindingsView() {
         super();
@@ -1279,20 +1281,11 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
         
 
         org.eclipse.swt.widgets.Menu menu = new org.eclipse.swt.widgets.Menu(treeViewer.getTree());
-
-        // Menu Item 1: View Details
-        org.eclipse.swt.widgets.MenuItem viewDetailsItem = new org.eclipse.swt.widgets.MenuItem(menu, SWT.PUSH);
-        viewDetailsItem.setText("View Details");
-        viewDetailsItem.addSelectionListener(new org.eclipse.swt.events.SelectionAdapter() {
-            @Override
-            public void widgetSelected(org.eclipse.swt.events.SelectionEvent e) {                
-            	new RemediationManager().viewDetails(issue, DevAssistConstants.QUICK_FIX);
-            }
-        });
-
-        // Menu Item 2: Fix with AI Assist
+        
+        // Menu Item 1: Fix with AI Assist
         org.eclipse.swt.widgets.MenuItem fixWithAIItem = new org.eclipse.swt.widgets.MenuItem(menu, SWT.PUSH);
-        fixWithAIItem.setText("Fix with AI Assist");
+        fixWithAIItem.setImage(STAR_ICON);
+        fixWithAIItem.setText(DevAssistConstants.FIX_WITH_CXONE_ASSIST);
         fixWithAIItem.addSelectionListener(new org.eclipse.swt.events.SelectionAdapter() {
             @Override
             public void widgetSelected(org.eclipse.swt.events.SelectionEvent e) {
@@ -1300,9 +1293,21 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
             }
         });
 
+        // Menu Item 2: View Details
+        org.eclipse.swt.widgets.MenuItem viewDetailsItem = new org.eclipse.swt.widgets.MenuItem(menu, SWT.PUSH);
+        viewDetailsItem.setImage(STAR_ICON);
+        viewDetailsItem.setText(DevAssistConstants.VIEW_DETAILS_FIX_NAME);
+        viewDetailsItem.addSelectionListener(new org.eclipse.swt.events.SelectionAdapter() {
+            @Override
+            public void widgetSelected(org.eclipse.swt.events.SelectionEvent e) {                
+            	new RemediationManager().viewDetails(issue, DevAssistConstants.QUICK_FIX);
+            }
+        });
+
         // Menu Item 3: Ignore This Finding
         org.eclipse.swt.widgets.MenuItem ignoreItem = new org.eclipse.swt.widgets.MenuItem(menu, SWT.PUSH);
-        ignoreItem.setText("Ignore This Finding");
+        ignoreItem.setImage(STAR_ICON);
+        ignoreItem.setText(DevAssistConstants.IGNORE_THIS_VULNERABILITY_FIX_NAME);
         ignoreItem.addSelectionListener(new org.eclipse.swt.events.SelectionAdapter() {
             @Override
             public void widgetSelected(org.eclipse.swt.events.SelectionEvent e) {
@@ -1314,7 +1319,8 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
         // Menu Item 4: Ignore All of This Type (for OSS and CONTAINERS)
         if (issue.getScanEngine() == ScanEngine.OSS || issue.getScanEngine() == ScanEngine.CONTAINERS) {
             org.eclipse.swt.widgets.MenuItem ignoreAllItem = new org.eclipse.swt.widgets.MenuItem(menu, SWT.PUSH);
-            ignoreAllItem.setText("Ignore All of This Type");
+            ignoreAllItem.setImage(STAR_ICON);
+            ignoreAllItem.setText(DevAssistConstants.IGNORE_ALL_OF_THIS_TYPE_FIX_NAME);
             ignoreAllItem.addSelectionListener(new org.eclipse.swt.events.SelectionAdapter() {
                 @Override
                 public void widgetSelected(org.eclipse.swt.events.SelectionEvent e) {

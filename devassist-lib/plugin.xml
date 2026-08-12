@@ -12,7 +12,7 @@
       <view
             id="com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView"
             name="Checkmarx One Assist Findings"
-            icon="icons/CxFlatLogo16x16.png"
+            icon="icons/checkmarx-plugin-13_dark.png"
             category="com.checkmarx.eclipse.devassist.category"
             class="com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView"
             restorable="true">
