@@ -1,36 +1,67 @@
 package com.checkmarx.eclipse.devassist.configuration;
 
-import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Base64;
 import java.util.LinkedHashMap;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+
+import org.eclipse.core.runtime.preferences.IEclipsePreferences;
+import org.eclipse.core.runtime.preferences.InstanceScope;
+import org.osgi.service.prefs.BackingStoreException;
 
 import com.checkmarx.eclipse.common.utils.CxLogger;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
- * Injects Checkmarx MCP server configuration into GitHub Copilot's MCP settings file.
+ * Injects Checkmarx MCP server configuration into GitHub Copilot for Eclipse.
  *
+ * <p>
+ * GitHub Copilot for Eclipse (https://github.com/microsoft/copilot-for-eclipse)
+ * reads its MCP server list from an Eclipse {@code IEclipsePreferences} node
+ * scoped to its UI bundle ({@code com.microsoft.copilot.eclipse.ui}), under the
+ * preference key {@code "mcp"} (see {@code LanguageServerSettingManager
+ * #syncMcpRegistrationConfiguration}, which calls
+ * {@code preferenceStore.getString(Constants.MCP)}). The value is a JSON string
+ * containing either {@code {"servers": {...}}} or a bare
+ * {@code {"name": {...}}} map, using the same schema as VS Code's
+ * {@code mcp.json} (the plugin embeds the same Copilot language server used by
+ * VS Code). At the time of writing, Copilot for Eclipse does not yet read a
+ * file-based {@code mcp.json} (that support is still an open, unmerged
+ * proposal - microsoft/copilot-for-eclipse#127/#128), so the preference store
+ * is the only mechanism that actually works against released builds.
+ *
+ * <p>
+ * Writing directly to this preference node (rather than through Copilot's own
+ * API, which this plugin does not depend on) is safe and immediate: Copilot's
+ * own {@code ScopedPreferenceStore} listens on the same underlying node, so our
+ * write is picked up live and re-synced to the language server without
+ * requiring a restart.
+ *
+ * <p>
  * Responsible for:
- * - Reading/writing the Copilot MCP config file (~/github-copilot/intellij/mcp.json)
- * - Merging/removing Checkmarx MCP server entry
- * - Token validation and URL derivation
- * - Logging all operations with aggressive debug info
+ * <ul>
+ * <li>Merging/removing the Checkmarx MCP server entry in Copilot's "mcp"
+ * preference, preserving any other servers already configured there</li>
+ * <li>Token validation and URL derivation</li>
+ * <li>Logging all operations with aggressive debug info</li>
+ * </ul>
  */
 public final class McpSettingsInjector {
 
 	private static final String LOG_TAG = "[MCP-INJECTOR]";
 	private static final ObjectMapper MAPPER = new ObjectMapper();
 	private static final String FALLBACK_BASE = "https://ast-master-components.dev.cxast.net";
-	private static final String SERVER_KEY = "checkmarx-mcp";
+	private static final String SERVER_KEY = "checkmarx";
+	public static final String MCP_ENDPOINT = "/api/security-mcp/mcp";
+
+	/** Bundle symbolic name of GitHub Copilot for Eclipse's UI plugin. */
+	private static final String COPILOT_UI_BUNDLE_ID = "com.microsoft.copilot.eclipse.ui";
+
+	/** Preference key Copilot reads its MCP server JSON from (Constants.MCP). */
+	private static final String MCP_PREFERENCE_KEY = "mcp";
 
 	private McpSettingsInjector() {
 		// Utility class
@@ -58,16 +89,15 @@ public final class McpSettingsInjector {
 			String baseUrl = deriveBaseUrlFromIssuer(issuer);
 			CxLogger.info(LOG_TAG + " Derived base URL: " + baseUrl);
 
-			String mcpUrl = baseUrl + "/api/security-mcp/mcp";
+			String mcpUrl = baseUrl + MCP_ENDPOINT;
 			CxLogger.info(LOG_TAG + " MCP URL: " + mcpUrl);
 
-			Path cfg = resolveCopilotMcpConfigPath();
-			CxLogger.info(LOG_TAG + " Copilot MCP config path: " + cfg.toAbsolutePath());
+			CxLogger.info(LOG_TAG + " Copilot MCP preference node: " + COPILOT_UI_BUNDLE_ID + " / " + MCP_PREFERENCE_KEY);
 
-			boolean changed = mergeCheckmarxServer(cfg, mcpUrl, token);
+			boolean changed = mergeCheckmarxServer(mcpUrl, token);
 
 			if (changed) {
-				CxLogger.info(LOG_TAG + " ✓ MCP configuration installed/updated successfully");
+				CxLogger.info(LOG_TAG + " MCP configuration installed/updated successfully");
 			} else {
 				CxLogger.info(LOG_TAG + " MCP configuration unchanged (already up-to-date)");
 			}
@@ -89,13 +119,10 @@ public final class McpSettingsInjector {
 		CxLogger.info(LOG_TAG + " Starting MCP uninstallation...");
 
 		try {
-			Path cfg = resolveCopilotMcpConfigPath();
-			CxLogger.info(LOG_TAG + " Copilot MCP config path: " + cfg.toAbsolutePath());
-
-			boolean removed = removeCheckmarxServer(cfg);
+			boolean removed = removeCheckmarxServer();
 
 			if (removed) {
-				CxLogger.info(LOG_TAG + " ✓ Checkmarx MCP entry removed successfully");
+				CxLogger.info(LOG_TAG + " Checkmarx MCP entry removed successfully");
 			} else {
 				CxLogger.info(LOG_TAG + " No Checkmarx MCP entry found to remove");
 			}
@@ -108,69 +135,26 @@ public final class McpSettingsInjector {
 	}
 
 	/**
-	 * Resolves the platform-specific Copilot MCP configuration file path.
-	 *
-	 * Uses Eclipse-specific subdirectory to avoid conflicts with JetBrains IDEs:
-	 * Windows: %LOCALAPPDATA%/github-copilot/eclipse/mcp.json
-	 * macOS/Linux: ~/.config/github-copilot/eclipse/mcp.json
+	 * Merges the Checkmarx server entry into Copilot's "mcp" preference, keeping
+	 * any other servers already present. Returns true if the preference value was
+	 * modified, false if content unchanged.
 	 */
-	private static Path resolveCopilotMcpConfigPath() {
-		String os = System.getProperty("os.name").toLowerCase(Locale.ENGLISH);
-		String home = System.getProperty("user.home");
+	private static boolean mergeCheckmarxServer(String url, String token) throws BackingStoreException {
+		IEclipsePreferences node = InstanceScope.INSTANCE.getNode(COPILOT_UI_BUNDLE_ID);
 
-		CxLogger.info(LOG_TAG + " Resolving MCP config path for OS: " + os);
-		CxLogger.info(LOG_TAG + " Using Eclipse-specific path (not JetBrains 'intellij' folder)");
-
-		if (os.contains("win")) {
-			String localAppData = System.getenv("LOCALAPPDATA");
-			if (localAppData == null || localAppData.isBlank()) {
-				throw new IllegalStateException("%LOCALAPPDATA% environment variable not set on Windows");
-			}
-			Path path = Paths.get(localAppData, "github-copilot", "eclipse", "mcp.json");
-			CxLogger.info(LOG_TAG + " Windows config path: " + path.toAbsolutePath());
-			return path;
-		}
-
-		// macOS and Linux
-		String xdgConfig = System.getenv("XDG_CONFIG_HOME");
-		if (xdgConfig != null && !xdgConfig.isBlank()) {
-			Path path = Paths.get(xdgConfig, "github-copilot", "eclipse", "mcp.json");
-			CxLogger.info(LOG_TAG + " XDG_CONFIG_HOME path: " + path.toAbsolutePath());
-			return path;
-		}
-
-		// Fallback to ~/.config
-		Path path = Paths.get(home, ".config", "github-copilot", "eclipse", "mcp.json");
-		CxLogger.info(LOG_TAG + " Fallback config path: " + path.toAbsolutePath());
-		return path;
-	}
-
-	/**
-	 * Merges Checkmarx server entry into MCP config file.
-	 * Returns true if file was modified, false if content unchanged.
-	 */
-	@SuppressWarnings("unchecked")
-	private static boolean mergeCheckmarxServer(Path configPath, String url, String token) throws Exception {
-		CxLogger.info(LOG_TAG + " Reading existing MCP config...");
-		Map<String, Object> root = readJson(configPath);
-
-		Map<String, Object> servers = (Map<String, Object>) root
-				.getOrDefault("servers", new LinkedHashMap<>());
+		CxLogger.info(LOG_TAG + " Reading existing Copilot MCP preference...");
+		Map<String, Object> servers = readServers(node);
 
 		Map<String, Object> headers = new LinkedHashMap<>();
 		headers.put("cx-origin", "eclipse-plugin");
 		headers.put("Authorization", token);
 
 		Map<String, Object> serverEntry = new LinkedHashMap<>();
+		serverEntry.put("type", "http");
 		serverEntry.put("url", url);
+		serverEntry.put("headers", headers);
 
-		Map<String, Object> requestInit = new LinkedHashMap<>();
-		requestInit.put("headers", headers);
-		serverEntry.put("requestInit", requestInit);
-
-		String mcpServerKey = SERVER_KEY;
-		Map<String, Object> existing = (Map<String, Object>) servers.get(mcpServerKey);
-
+		Object existing = servers.get(SERVER_KEY);
 		boolean changed = !Objects.equals(existing, serverEntry);
 		CxLogger.info(LOG_TAG + " Config changed: " + changed);
 
@@ -179,100 +163,93 @@ public final class McpSettingsInjector {
 			return false;
 		}
 
-		CxLogger.info(LOG_TAG + " Updating MCP server entry in config");
-		servers.put(mcpServerKey, serverEntry);
-		root.put("servers", servers);
+		CxLogger.info(LOG_TAG + " Updating MCP server entry in Copilot preference");
+		servers.put(SERVER_KEY, serverEntry);
+		writeServers(node, servers);
 
-		// Create parent directories and write file
-		Files.createDirectories(configPath.getParent());
-		Files.writeString(configPath,
-				MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root),
-				StandardCharsets.UTF_8);
-
-		CxLogger.info(LOG_TAG + " ✓ MCP config written to: " + configPath.toAbsolutePath());
+		CxLogger.info(LOG_TAG + " MCP preference updated for bundle: " + COPILOT_UI_BUNDLE_ID);
 		return true;
 	}
 
 	/**
-	 * Removes Checkmarx server entry from MCP config file.
-	 * Returns true if entry was removed, false if not found.
+	 * Removes the Checkmarx server entry from Copilot's "mcp" preference. Returns
+	 * true if the entry was removed, false if not found.
 	 */
-	@SuppressWarnings("unchecked")
-	private static boolean removeCheckmarxServer(Path configPath) throws Exception {
-		if (!Files.exists(configPath)) {
-			CxLogger.info(LOG_TAG + " Config file does not exist: " + configPath.toAbsolutePath());
-			return false;
-		}
+	private static boolean removeCheckmarxServer() throws BackingStoreException {
+		IEclipsePreferences node = InstanceScope.INSTANCE.getNode(COPILOT_UI_BUNDLE_ID);
 
-		CxLogger.info(LOG_TAG + " Reading MCP config for removal...");
-		Map<String, Object> root = readJson(configPath);
-		Object serversObj = root.get("servers");
+		CxLogger.info(LOG_TAG + " Reading Copilot MCP preference for removal...");
+		Map<String, Object> servers = readServers(node);
 
-		if (!(serversObj instanceof Map)) {
-			CxLogger.info(LOG_TAG + " 'servers' field not found or is not a map");
-			return false;
-		}
-
-		String mcpServerKey = SERVER_KEY;
-		Map<String, Object> servers = (Map<String, Object>) serversObj;
-
-		boolean removed = servers.remove(mcpServerKey) != null;
+		boolean removed = servers.remove(SERVER_KEY) != null;
 
 		if (!removed) {
-			CxLogger.info(LOG_TAG + " Checkmarx MCP entry not found in config");
+			CxLogger.info(LOG_TAG + " Checkmarx MCP entry not found in Copilot preference");
 			return false;
 		}
 
 		CxLogger.info(LOG_TAG + " Checkmarx MCP entry found and removed");
-		root.put("servers", servers);
-		Files.writeString(configPath,
-				MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(root),
-				StandardCharsets.UTF_8);
+		writeServers(node, servers);
 
-		CxLogger.info(LOG_TAG + " ✓ MCP entry removed from: " + configPath.toAbsolutePath());
+		CxLogger.info(LOG_TAG + " MCP entry removed from bundle preference: " + COPILOT_UI_BUNDLE_ID);
 		return true;
 	}
 
 	/**
-	 * Reads JSON from config file, returns empty root if file doesn't exist.
+	 * Reads the "mcp" preference value and extracts the servers map. Accepts both
+	 * {@code {"servers": {...}}} and bare {@code {"name": {...}}} forms (mirroring
+	 * how Copilot itself parses this preference), tolerating a blank or invalid
+	 * value by returning an empty, mutable map.
 	 */
 	@SuppressWarnings("unchecked")
-	private static Map<String, Object> readJson(Path path) throws Exception {
-		if (!Files.exists(path)) {
-			CxLogger.info(LOG_TAG + " Config file does not exist, creating new");
-			return emptyServersRoot();
+	private static Map<String, Object> readServers(IEclipsePreferences node) {
+		String raw = node.get(MCP_PREFERENCE_KEY, "");
+		if (raw == null || raw.isBlank()) {
+			CxLogger.info(LOG_TAG + " No existing Copilot MCP preference value, starting fresh");
+			return new LinkedHashMap<>();
 		}
 
 		try {
-			String content = stripLineComments(Files.readString(path, StandardCharsets.UTF_8));
-			Map<String, Object> map = MAPPER.readValue(content, new TypeReference<Map<String, Object>>() {
+			Map<String, Object> parsed = MAPPER.readValue(raw, new TypeReference<Map<String, Object>>() {
 			});
-			if (map == null || map.isEmpty()) {
-				CxLogger.info(LOG_TAG + " Config file is empty or null, using empty root");
-				return emptyServersRoot();
+			if (parsed == null) {
+				return new LinkedHashMap<>();
 			}
-			CxLogger.info(LOG_TAG + " ✓ Config file read successfully");
-			return map;
+
+			Object serversObj = parsed.get("servers");
+			if (serversObj instanceof Map) {
+				CxLogger.info(LOG_TAG + "Existing preference read successfully (wrapped form)");
+				return new LinkedHashMap<>((Map<String, Object>) serversObj);
+			}
+
+			CxLogger.info(LOG_TAG + "Existing preference read successfully (bare form)");
+			return new LinkedHashMap<>(parsed);
 		} catch (Exception e) {
-			CxLogger.warning(LOG_TAG + " Failed to read existing config, starting fresh: " + e.getMessage());
-			return emptyServersRoot();
+			CxLogger.warning(LOG_TAG + " Failed to parse existing Copilot MCP preference, starting fresh: " + e.getMessage());
+			return new LinkedHashMap<>();
 		}
 	}
 
 	/**
-	 * Returns a new root map with empty servers.
+	 * Writes the servers map back to the "mcp" preference, wrapped as
+	 * {@code {"servers": {...}}}, and flushes it so it is persisted immediately
+	 * and observed by Copilot's live preference listeners.
 	 */
-	private static Map<String, Object> emptyServersRoot() {
-		Map<String, Object> root = new LinkedHashMap<>();
-		root.put("servers", new LinkedHashMap<>());
-		return root;
-	}
-
-	/**
-	 * Strips single-line comments from JSON content.
-	 */
-	private static String stripLineComments(String s) {
-		return s.replaceAll("(?m)^\\s*//.*$", "");
+	private static void writeServers(IEclipsePreferences node, Map<String, Object> servers) throws BackingStoreException {
+		try {
+			if (servers.isEmpty()) {
+				node.remove(MCP_PREFERENCE_KEY);
+			} else {
+				Map<String, Object> root = new LinkedHashMap<>();
+				root.put("servers", servers);
+				node.put(MCP_PREFERENCE_KEY, MAPPER.writeValueAsString(root));
+			}
+			node.flush();
+		} catch (BackingStoreException e) {
+			throw e;
+		} catch (Exception e) {
+			throw new IllegalStateException("Failed to serialize Copilot MCP preference", e);
+		}
 	}
 
 	/**
@@ -302,7 +279,7 @@ public final class McpSettingsInjector {
 			Object iss = map.get("iss");
 
 			if (iss != null) {
-				CxLogger.info(LOG_TAG + " ✓ Issuer extracted: " + iss.toString());
+				CxLogger.info(LOG_TAG + "Issuer extracted: " + iss.toString());
 				return iss.toString();
 			}
 
@@ -331,7 +308,7 @@ public final class McpSettingsInjector {
 			if (host != null && host.contains("iam.checkmarx")) {
 				String newHost = host.replace("iam", "ast");
 				String baseUrl = "https://" + newHost;
-				CxLogger.info(LOG_TAG + " ✓ Derived base URL: " + baseUrl);
+				CxLogger.info(LOG_TAG + "Derived base URL: " + baseUrl);
 				return baseUrl;
 			}
 
@@ -341,12 +318,5 @@ public final class McpSettingsInjector {
 			CxLogger.warning(LOG_TAG + " Failed to derive base URL from issuer: " + e.getMessage());
 			return FALLBACK_BASE;
 		}
-	}
-
-	/**
-	 * Public accessor for the MCP config path (used by UI).
-	 */
-	public static Path getMcpJsonPath() {
-		return resolveCopilotMcpConfigPath();
 	}
 }

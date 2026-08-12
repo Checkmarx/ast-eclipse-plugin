@@ -143,11 +143,31 @@ public final class McpInstallService {
 				}
 
 				return changed;
-			} catch (Exception ex) {
-				CxLogger.error(LOG_TAG + " Background MCP installation failed: " + ex.getMessage(), ex);
+			} catch (Throwable ex) {
+				// Catches Throwable, not just Exception: a class-loading failure (e.g.
+				// NoClassDefFoundError/LinkageError) inside McpSettingsInjector is an Error,
+				// which a plain "catch (Exception)" would miss - and since this future is
+				// never joined/observed by the caller, an uncaught Error here would otherwise
+				// vanish silently with no log at all.
+				logBackgroundFailure(ex);
 				return null; // null signals failure
 			}
+		}).exceptionally(ex -> {
+			// Safety net in case something fails outside the try/catch above
+			// (e.g. the executor itself, or the catch block's own logging call).
+			logBackgroundFailure(ex);
+			return null;
 		});
+	}
+
+	/**
+	 * Logs a background MCP installation failure, preserving the original
+	 * stack trace even when the failure is an Error rather than an Exception.
+	 */
+	private static void logBackgroundFailure(Throwable ex) {
+		String msg = LOG_TAG + " Background MCP installation failed: " + ex.getClass().getName() + ": " + ex.getMessage();
+		Exception loggable = (ex instanceof Exception) ? (Exception) ex : new RuntimeException(ex);
+		CxLogger.error(msg, loggable);
 	}
 
 	/**
