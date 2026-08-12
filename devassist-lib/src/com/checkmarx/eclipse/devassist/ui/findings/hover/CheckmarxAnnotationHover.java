@@ -36,8 +36,10 @@ import org.eclipse.swt.browser.LocationListener;
 
 import com.checkmarx.eclipse.common.utils.CxLogger;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.remediation.RemediationManager;
 import com.checkmarx.eclipse.devassist.ui.findings.editor.FindingsAnnotation;
 import com.checkmarx.eclipse.devassist.ui.findings.marker.MarkerIssueMapper;
+import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
 import com.checkmarx.eclipse.devassist.utils.HtmlEscapeUtil;
 
 /**
@@ -178,19 +180,29 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 
     private static void handleHoverAction(String action) {
         CxLogger.info("[HOVER] Action button clicked: " + action);
+
+        if (currentFinding == null) {
+            CxLogger.info("[HOVER] No finding context available for action: " + action);
+            return;
+        }
+
         switch (action) {
             case "fix":
-                CxLogger.info("[HOVER] Fix with AI action triggered");
+                new RemediationManager().fixWithCxOneAssist(currentFinding, DevAssistConstants.QUICK_FIX);
                 break;
+
             case "details":
-                CxLogger.info("[HOVER] View Details action triggered");
+                new RemediationManager().viewDetails(currentFinding, DevAssistConstants.QUICK_FIX);
                 break;
+
             case "ignore":
-                CxLogger.info("[HOVER] Ignore action triggered");
+                new RemediationManager().viewDetails(currentFinding, DevAssistConstants.QUICK_FIX);
                 break;
+
             case "copy":
-                CxLogger.info("[HOVER] Copy Details action triggered");
+                new RemediationManager().viewDetails(currentFinding, DevAssistConstants.QUICK_FIX);
                 break;
+
             default:
                 CxLogger.info("[HOVER] Unknown action: " + action);
         }
@@ -258,6 +270,7 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 
     private IInformationControlCreator hoverControlCreator;
     private IInformationControlCreator presenterControlCreator;
+    private static ScanIssue currentFinding;
 
     @Override
     public void setEditor(IEditorPart editor) {
@@ -392,6 +405,11 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
                     String title = findingsAnn.getTitle();
                     if (title != null && !title.isEmpty()) {
                         String description = findingsAnn.getDescription();
+                        ScanIssue scanIssue = findingsAnn.getScanIssue();
+                        if (scanIssue != null) {
+                            currentFinding = scanIssue;
+                            CxLogger.info("[HOVER] Captured ScanIssue for action handlers: " + title);
+                        }
                         String sectionHtml = buildHtmlForFinding(title, description);
                         checkmarxSections.add(sectionHtml);
                         CxLogger.info("[HOVER] Found FindingsAnnotation: " + title);
@@ -446,6 +464,8 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
                 CxLogger.info("[HOVER] Marker " + markerId + ": Failed to extract ScanIssue from marker");
                 return "";
             }
+            currentFinding = issue;
+            CxLogger.info("[HOVER] Captured ScanIssue for action handlers from marker: " + issue.getTitle());
             String html = "<div>" + CheckmarxProblemDescriptionFormatter.formatDescriptionHtml(issue) + "</div>";
             CxLogger.info("[HOVER] Marker " + markerId + ": Built HTML section for issue: " + issue.getTitle());
             return html;

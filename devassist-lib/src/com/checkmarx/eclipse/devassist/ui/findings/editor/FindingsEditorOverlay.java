@@ -62,7 +62,7 @@ public class FindingsEditorOverlay {
 
             // Create annotation for the line
             String annotationType = getAnnotationTypeForSeverity(issue.getSeverity());
-            FindingsAnnotation annotation = new FindingsAnnotation(annotationType, issue.getTitle(), issue.getDescription());
+            FindingsAnnotation annotation = new FindingsAnnotation(annotationType, issue.getTitle(), issue.getDescription(), issue);
             Position position = new Position(lineStartOffset, lineEndOffset - lineStartOffset);
 
             // Add annotation to model

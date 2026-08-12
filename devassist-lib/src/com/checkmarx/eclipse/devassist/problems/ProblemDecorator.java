@@ -179,7 +179,8 @@ public class ProblemDecorator {
 			FindingsAnnotation annotation = new FindingsAnnotation(
 				annotationType,
 				issue.getTitle(),
-				issue.getDescription()
+				issue.getDescription(),
+				issue
 			);
 			return annotation;
 		} catch (Exception e) {
