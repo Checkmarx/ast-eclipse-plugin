@@ -1,6 +1,10 @@
 package com.checkmarx.eclipse.devassist.ui.findings.hover;
 
+import java.util.List;
+
+import com.checkmarx.eclipse.devassist.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.model.Vulnerability;
 import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
 import com.checkmarx.eclipse.devassist.utils.HtmlEscapeUtil;
 
@@ -21,28 +25,55 @@ public final class CheckmarxProblemDescriptionFormatter {
      * Build the HTML body (without outer html/body tags) describing the issue,
      * suitable for embedding inside a BrowserInformationControl or merging with
      * other annotations' hover text on the same line.
+     * <p>
+     * For ASCA/IAC issues that group multiple vulnerabilities on the same line,
+     * renders one block per vulnerability - matching how
+     * CheckmarxAnnotationHover's FindingsAnnotation branch renders the live
+     * ScanIssue, so the marker-reconstructed path (this one) stays consistent
+     * with it instead of collapsing back down to a single title/description.
      *
      * @param issue the reconstructed scan issue
      * @return HTML fragment
      */
     public static String formatDescriptionHtml(ScanIssue issue) {
+        ScanEngine engine = issue.getScanEngine();
+        boolean iterateVulnerabilities = engine == ScanEngine.ASCA || engine == ScanEngine.IAC;
+        List<Vulnerability> vulnerabilities = issue.getVulnerabilities();
+
+        if (iterateVulnerabilities && vulnerabilities != null && !vulnerabilities.isEmpty()) {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < vulnerabilities.size(); i++) {
+                if (i > 0) {
+                    sb.append("<hr style='margin:4px 0;border:none;border-top:1px solid #ccc;'/>");
+                }
+                Vulnerability vuln = vulnerabilities.get(i);
+                String title = vuln.getTitle() != null && !vuln.getTitle().isEmpty() ? vuln.getTitle() : issue.getTitle();
+                sb.append(formatSingleFinding(issue.getSeverity(), title, vuln.getDescription()));
+            }
+            return sb.toString();
+        }
+
+        return formatSingleFinding(issue.getSeverity(), issue.getTitle(), issue.getDescription());
+    }
+
+    private static String formatSingleFinding(String severity, String title, String description) {
         StringBuilder sb = new StringBuilder();
         sb.append("<div style='padding:4px;'>");
 
-        String severity = getSeverityColor(issue.getSeverity());
-        sb.append("<b style='color:").append(severity).append(";font-size:12px;'>")
-          .append(HtmlEscapeUtil.escape(issue.getTitle()))
+        String severityColor = getSeverityColor(severity);
+        sb.append("<b style='color:").append(severityColor).append(";font-size:12px;'>")
+          .append(HtmlEscapeUtil.escape(title))
           .append("</b>");
         sb.append("<br/>");
 
         sb.append("<span style='color:#666;font-size:10px;'>Severity: <b>")
-          .append(HtmlEscapeUtil.escape(issue.getSeverity()))
+          .append(HtmlEscapeUtil.escape(severity))
           .append("</b></span>");
         sb.append("<br/>");
 
-        if (issue.getDescription() != null && !issue.getDescription().isEmpty()) {
+        if (description != null && !description.isEmpty()) {
             sb.append("<div style='margin:4px 0;color:#333;font-size:11px;'>")
-              .append(HtmlEscapeUtil.escape(issue.getDescription()))
+              .append(HtmlEscapeUtil.escape(description))
               .append("</div>");
         }
         appendActionLinks(sb);

@@ -1,11 +1,15 @@
 package com.checkmarx.eclipse.devassist.ui.findings.marker;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.eclipse.core.resources.IMarker;
 
 import com.checkmarx.eclipse.common.enums.Severity;
 import com.checkmarx.eclipse.devassist.model.Location;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.model.Vulnerability;
 
 /**
  * Maps between ScanIssue objects and IMarker attributes.
@@ -23,6 +27,23 @@ public class MarkerIssueMapper {
     private static final String ATTR_RULE_ID = "cx.ruleId";
     private static final String ATTR_FILE_PATH = "cx.filePath";
     public static final String ATTR_SCAN_ENGINE = "cx.scanEngine";
+    private static final String ATTR_VULNERABILITIES = "cx.vulnerabilities";
+
+    // Delimiters for the flat vulnerabilities encoding. These control characters
+    // (unit separator / record separator) can't legally appear in marker text
+    // (title/description), unlike printable characters such as commas or pipes.
+    private static final String VULN_FIELD_SEP = "";
+    private static final String VULN_RECORD_SEP = "";
+
+    /**
+     * Reads the Checkmarx issue id off a marker without needing a full
+     * fromMarker() reconstruction - used by the hover to cross-reference a
+     * MarkerAnnotation against an already-rendered FindingsAnnotation for the
+     * same underlying finding.
+     */
+    public static String getIssueId(IMarker marker) {
+        return marker.getAttribute(ATTR_ISSUE_ID, "");
+    }
 
     /**
      * Reconstruct a ScanIssue from marker attributes.
@@ -54,6 +75,7 @@ public class MarkerIssueMapper {
             int lineNumber = marker.getAttribute(IMarker.LINE_NUMBER, 1);
             int charStart = marker.getAttribute(IMarker.CHAR_START, 0);
             int charEnd = marker.getAttribute(IMarker.CHAR_END, 0);
+            String vulnerabilitiesRaw = marker.getAttribute(ATTR_VULNERABILITIES, "");
 
             // Reconstruct ScanIssue
             ScanIssue issue = new ScanIssue();
@@ -64,6 +86,9 @@ public class MarkerIssueMapper {
             issue.setRemediationAdvise(remediation);
             issue.setRuleId(ruleId);
             issue.setFilePath(filePath);
+            if (!vulnerabilitiesRaw.isEmpty()) {
+                issue.setVulnerabilities(decodeVulnerabilities(vulnerabilitiesRaw));
+            }
 
             // Parse scan engine
             try {
@@ -81,7 +106,7 @@ public class MarkerIssueMapper {
 
             return issue;
         } catch (Exception e) {
-            
+
             e.printStackTrace();
             return null;
         }
@@ -130,6 +155,13 @@ public class MarkerIssueMapper {
                 marker.setAttribute(ATTR_SCAN_ENGINE, issue.getScanEngine().toString());
             }
 
+            // Carry the full vulnerabilities list (ASCA/IAC can group several
+            // vulnerabilities under one issue) so marker-based hover/details
+            // reconstruction doesn't collapse back down to a single entry.
+            if (issue.getVulnerabilities() != null && !issue.getVulnerabilities().isEmpty()) {
+                marker.setAttribute(ATTR_VULNERABILITIES, encodeVulnerabilities(issue.getVulnerabilities()));
+            }
+
             // Set standard marker attributes from location
             if (issue.getLocations() != null && !issue.getLocations().isEmpty()) {
                 Location location = issue.getLocations().get(0);
@@ -142,12 +174,48 @@ public class MarkerIssueMapper {
                 marker.setAttribute(IMarker.SEVERITY, severity);
             }
 
-            
+
 
         } catch (Exception e) {
-            
+
             e.printStackTrace();
         }
+    }
+
+    /**
+     * Flattens title/description pairs into one marker-attribute-safe string.
+     */
+    private static String encodeVulnerabilities(List<Vulnerability> vulnerabilities) {
+        StringBuilder sb = new StringBuilder();
+        for (Vulnerability vuln : vulnerabilities) {
+            if (sb.length() > 0) {
+                sb.append(VULN_RECORD_SEP);
+            }
+            sb.append(sanitize(vuln.getTitle())).append(VULN_FIELD_SEP).append(sanitize(vuln.getDescription()));
+        }
+        return sb.toString();
+    }
+
+    private static List<Vulnerability> decodeVulnerabilities(String raw) {
+        List<Vulnerability> result = new ArrayList<>();
+        for (String record : raw.split(VULN_RECORD_SEP, -1)) {
+            if (record.isEmpty()) {
+                continue;
+            }
+            String[] fields = record.split(VULN_FIELD_SEP, -1);
+            Vulnerability vuln = new Vulnerability();
+            vuln.setTitle(fields.length > 0 ? fields[0] : "");
+            vuln.setDescription(fields.length > 1 ? fields[1] : "");
+            result.add(vuln);
+        }
+        return result;
+    }
+
+    private static String sanitize(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace(VULN_FIELD_SEP, " ").replace(VULN_RECORD_SEP, " ");
     }
 
     /**
@@ -193,4 +261,3 @@ public class MarkerIssueMapper {
         }
     }
 }
-

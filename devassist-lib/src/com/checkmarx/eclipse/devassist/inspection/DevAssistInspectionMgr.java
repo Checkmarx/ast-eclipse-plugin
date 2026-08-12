@@ -140,9 +140,18 @@ public class DevAssistInspectionMgr extends ScanManager {
 			// Clear existing decorations
 			ProblemDecorator.removeAllHighlighters(problemHelper.getProject());
 
-			// Process issues with decoration enabled
+			// Build descriptors WITHOUT per-issue decoration: decorateUI() below
+			// already redraws the full, merged issue list in one pass. Passing
+			// isDecoratorEnabled=true here used to make ScanIssueProcessor call
+			// ProblemDecorator.highlightLineAddGutterIconForProblem() once per
+			// issue, and each of those calls clears and rebuilds ALL annotations
+			// for the file (ProblemDecorator.decorateEditor() unconditionally
+			// clears before adding) - so a 4-issue file flickered through 4
+			// single-issue annotation states before the final full redraw,
+			// occasionally leaving the hover to sample an incomplete annotation
+			// model mid-flicker.
 			List<ProblemDescriptor> descriptors = createProblemDescriptors(
-				problemHelper, true);
+				problemHelper, false);
 
 			// Decorate UI
 			if (!descriptors.isEmpty()) {

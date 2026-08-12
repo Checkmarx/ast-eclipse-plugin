@@ -33,6 +33,8 @@ import org.eclipse.ui.texteditor.MarkerAnnotation;
 
 import org.eclipse.swt.browser.LocationEvent;
 import org.eclipse.swt.browser.LocationListener;
+import org.eclipse.swt.browser.ProgressEvent;
+import org.eclipse.swt.browser.ProgressListener;
 
 import com.checkmarx.eclipse.common.utils.CxLogger;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
@@ -168,6 +170,30 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
                             }
                         }
                     });
+                    // BrowserInformationControl.computeSizeHint() is called by
+                    // AbstractInformationControlManager synchronously right after
+                    // setInformation(), but Browser.setText() renders the DOM
+                    // asynchronously - so that first size computation often measures
+                    // an unrendered/partial page and comes back small (cutting off the
+                    // action links) despite the setSizeConstraints() override above
+                    // raising the ceiling. Forcing the size again once the browser
+                    // reports the page load actually finished fixes that race without
+                    // waiting for the user to move the mouse toward the popup (which
+                    // is what today accidentally "fixes" it, since the enriched
+                    // presenter control is created later, after rendering settles).
+                    browser.addProgressListener(new ProgressListener() {
+                        @Override
+                        public void changed(ProgressEvent event) {
+                            // no-op: only the final completed() matters here
+                        }
+
+                        @Override
+                        public void completed(ProgressEvent event) {
+                            if (!browser.isDisposed()) {
+                                control.setSize(MIN_POPUP_WIDTH, MIN_POPUP_HEIGHT);
+                            }
+                        }
+                    });
                     CxLogger.info("[HOVER] LocationListener added successfully to HoverControlCreator");
                 } else {
                     CxLogger.info("[HOVER] HoverControlCreator: Browser is null or disposed");
@@ -255,6 +281,19 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
                                 String action = event.location.substring(actionIndex + 8); // +8 for "#action:"
                                 CxLogger.info("[HOVER] Extracted action: " + action);
                                 handleHoverAction(action);
+                            }
+                        }
+                    });
+                    browser.addProgressListener(new ProgressListener() {
+                        @Override
+                        public void changed(ProgressEvent event) {
+                            // no-op: only the final completed() matters here
+                        }
+
+                        @Override
+                        public void completed(ProgressEvent event) {
+                            if (!browser.isDisposed()) {
+                                control.setSize(MIN_POPUP_WIDTH, MIN_POPUP_HEIGHT);
                             }
                         }
                     });
@@ -362,9 +401,18 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
                 .append("word-wrap:break-word;overflow-wrap:break-word;'>");
 
             Set<Long> seenMarkerIds = new HashSet<>();
+            // Tracks scanIssueIds already rendered via a FindingsAnnotation (the live,
+            // fully-populated ScanIssue) so a MarkerAnnotation for the SAME issue - which
+            // Eclipse creates the moment a finding is clicked in the Findings view, and
+            // which coexists indefinitely alongside the FindingsAnnotation in the same
+            // annotation model - doesn't render the finding a second time with only its
+            // root title/description (MarkerIssueMapper's marker-attribute reconstruction
+            // is inherently lossier than the live object).
+            Set<String> renderedIssueIds = new HashSet<>();
             List<String> checkmarxSections = new ArrayList<>();
             List<String> otherMessages = new ArrayList<>();
 
+            List<Annotation> lineAnnotations = new ArrayList<>();
             Iterator<Annotation> it = model.getAnnotationIterator();
             while (it.hasNext()) {
                 Annotation annotation = it.next();
@@ -383,40 +431,107 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
                     continue;
                 }
 
+                lineAnnotations.add(annotation);
+            }
+
+            // Pass 1: FindingsAnnotation first - it carries the live ScanIssue (full
+            // vulnerabilities list intact), so it takes priority over any MarkerAnnotation
+            // reconstruction of the same underlying issue.
+            for (Annotation annotation : lineAnnotations) {
+                if (!(annotation instanceof FindingsAnnotation)) {
+                    continue;
+                }
+                FindingsAnnotation findingsAnn = (FindingsAnnotation) annotation;
+                ScanIssue scanIssue = findingsAnn.getScanIssue();
+                if (scanIssue == null) {
+                    continue;
+                }
+                currentFinding = scanIssue;
+                CxLogger.info("[HOVER] Captured ScanIssue for action handlers: " + scanIssue.getTitle());
+
+                if (scanIssue.getScanIssueId() != null && !scanIssue.getScanIssueId().isEmpty()) {
+                    renderedIssueIds.add(scanIssue.getScanIssueId());
+                }
+
+                // Only iterate vulnerabilities for ASCA and IAC engines
+                // Other engines (OSS, SECRETS, CONTAINERS) use root ScanIssue attributes
+                boolean displayedVulnerabilities = false;
+                com.checkmarx.eclipse.devassist.model.ScanEngine engine = scanIssue.getScanEngine();
+                boolean shouldIterateVulnerabilities = (engine != null &&
+                    (engine == com.checkmarx.eclipse.devassist.model.ScanEngine.ASCA ||
+                     engine == com.checkmarx.eclipse.devassist.model.ScanEngine.IAC));
+
+                try {
+                    List<?> vulnerabilities = scanIssue.getVulnerabilities();
+                    if (shouldIterateVulnerabilities && vulnerabilities != null && !vulnerabilities.isEmpty()) {
+                        for (Object vulnObj : vulnerabilities) {
+                            String vulnHtml = buildHtmlForVulnerability(vulnObj);
+                            if (!vulnHtml.isEmpty()) {
+                                checkmarxSections.add(vulnHtml);
+                                displayedVulnerabilities = true;
+                            }
+                        }
+                        CxLogger.info("[HOVER] ASCA/IAC: Found " + vulnerabilities.size() + " vulnerabilities to display");
+                    }
+                } catch (Exception e) {
+                    CxLogger.info("[HOVER] getVulnerabilities() error: " + e.getMessage());
+                }
+
+                // Always use fallback for non-ASCA/IAC engines, or if no vulnerabilities were found
+                if (!displayedVulnerabilities) {
+                    String title = findingsAnn.getTitle();
+                    if (title != null && !title.isEmpty()) {
+                        String sectionHtml = buildHtmlForFinding(title, findingsAnn.getDescription());
+                        checkmarxSections.add(sectionHtml);
+                        String engineName = (engine != null) ? engine.toString() : "UNKNOWN";
+                        CxLogger.info("[HOVER] " + engineName + ": Using root ScanIssue attributes - " + title);
+                    }
+                }
+            }
+
+            // Pass 2: MarkerAnnotation (Checkmarx markers) and everything else (JDT/other
+            // linters). A Checkmarx marker is skipped here if its issue was already
+            // rendered in pass 1 above.
+            for (Annotation annotation : lineAnnotations) {
+                if (annotation instanceof FindingsAnnotation && ((FindingsAnnotation) annotation).getScanIssue() != null) {
+                    continue; // already handled in pass 1
+                }
+
                 if (annotation instanceof MarkerAnnotation) {
                     MarkerAnnotation markerAnnotation = (MarkerAnnotation) annotation;
                     IMarker marker = markerAnnotation.getMarker();
                     if (isCheckmarxMarker(marker)) {
                         Long id = marker.getId();
-                        if (!seenMarkerIds.contains(id)) {
-                            seenMarkerIds.add(id);
-                            String section = buildCheckmarxSection(marker, id);
-                            if (!section.isEmpty()) {
-                                checkmarxSections.add(section);
+                        if (seenMarkerIds.contains(id)) {
+                            continue;
+                        }
+                        seenMarkerIds.add(id);
+
+                        String issueId = MarkerIssueMapper.getIssueId(marker);
+                        if (!issueId.isEmpty() && renderedIssueIds.contains(issueId)) {
+                            CxLogger.info("[HOVER] Skipping marker " + id + ": issue " + issueId
+                                + " already rendered via FindingsAnnotation");
+                            continue;
+                        }
+
+                        String section = buildCheckmarxSection(marker, id);
+                        if (!section.isEmpty()) {
+                            checkmarxSections.add(section);
+                            if (!issueId.isEmpty()) {
+                                renderedIssueIds.add(issueId);
                             }
                         }
-                        continue;
-                    }
-                }
-
-                // Handle FindingsAnnotation (custom Checkmarx annotations from scan decorator)
-                if (annotation instanceof FindingsAnnotation) {
-                    FindingsAnnotation findingsAnn = (FindingsAnnotation) annotation;
-                    String title = findingsAnn.getTitle();
-                    if (title != null && !title.isEmpty()) {
-                        String description = findingsAnn.getDescription();
-                        ScanIssue scanIssue = findingsAnn.getScanIssue();
-                        if (scanIssue != null) {
-                            currentFinding = scanIssue;
-                            CxLogger.info("[HOVER] Captured ScanIssue for action handlers: " + title);
+                    } else {
+                        // Non-Checkmarx marker (JDT, other linters) - collect as other message
+                        String message = annotation.getText();
+                        if (message != null && !message.isEmpty()) {
+                            otherMessages.add(message);
                         }
-                        String sectionHtml = buildHtmlForFinding(title, description);
-                        checkmarxSections.add(sectionHtml);
-                        CxLogger.info("[HOVER] Found FindingsAnnotation: " + title);
-                        continue;
                     }
+                    continue;
                 }
 
+                // Collect other linter/annotation messages (JDT, etc.) that aren't handled above
                 String message = annotation.getText();
                 if (message != null && !message.isEmpty()) {
                     otherMessages.add(message);
@@ -426,8 +541,8 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
             CxLogger.info("[HOVER] Line " + (lineNumber + 1) + ": Found " + checkmarxSections.size()
                 + " Checkmarx section(s), " + otherMessages.size() + " other message(s)");
 
-            if (checkmarxSections.isEmpty() && otherMessages.isEmpty()) {
-                CxLogger.info("[HOVER] No content to display, returning null");
+            if (checkmarxSections.isEmpty()) {
+                CxLogger.info("[HOVER] No Checkmarx findings to display, returning null");
                 return null;
             }
 
@@ -439,11 +554,9 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
             }
 
             if (!otherMessages.isEmpty()) {
-                if (!checkmarxSections.isEmpty()) {
-                    html.append("<hr style='margin:4px 0;border:none;border-top:1px solid #ccc;'/>");
-                }
+                html.append("<hr style='margin:4px 0;border:none;border-top:1px solid #ccc;'/>");
                 for (String message : otherMessages) {
-                    html.append("<div style='color:#666;'>").append(HtmlEscapeUtil.escape(message)).append("</div>");
+                    html.append("<div style='color:#666;font-size:10px;'>").append(HtmlEscapeUtil.escape(message)).append("</div>");
                 }
             }
 
@@ -521,5 +634,71 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
         } catch (Exception e) {
             return false;
         }
+    }
+
+    private String buildHtmlForVulnerability(Object vulnerability) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("<div style='padding:4px;'>");
+
+        String title = "";
+        String description = "";
+
+        try {
+            // Try to get title
+            java.lang.reflect.Method getTitleMethod = vulnerability.getClass().getMethod("getTitle");
+            Object titleObj = getTitleMethod.invoke(vulnerability);
+            if (titleObj != null) {
+                title = titleObj.toString();
+            }
+
+            // Try to get description
+            java.lang.reflect.Method getDescMethod = vulnerability.getClass().getMethod("getDescription");
+            Object descObj = getDescMethod.invoke(vulnerability);
+            if (descObj != null) {
+                description = descObj.toString();
+            }
+
+            // If no title, try actualValue (for IaC)
+            if (title.isEmpty()) {
+                try {
+                    java.lang.reflect.Method getActualValueMethod = vulnerability.getClass().getMethod("getActualValue");
+                    Object actualValueObj = getActualValueMethod.invoke(vulnerability);
+                    if (actualValueObj != null) {
+                        title = actualValueObj.toString();
+                    }
+                } catch (Exception ignored) {}
+            }
+        } catch (Exception e) {
+            CxLogger.info("[HOVER] Error extracting vulnerability fields: " + e.getMessage());
+            return "";
+        }
+
+        if (title.isEmpty()) {
+            return "";
+        }
+
+        sb.append("<b style='color:#e84c3d;font-size:12px;'>")
+          .append(HtmlEscapeUtil.escape(title))
+          .append("</b>");
+        sb.append("<br/>");
+
+        if (!description.isEmpty()) {
+            sb.append("<div style='margin:4px 0;color:#333;font-size:11px;'>")
+              .append(HtmlEscapeUtil.escape(description))
+              .append("</div>");
+        }
+
+        sb.append("<span style='font-size:9px;color:#999;'> Checkmarx vulnerability</span>");
+
+        // Action links (clickable)
+        sb.append("<div style='margin-top:6px;border-top:1px solid #ddd;padding-top:4px;font-size:10px;'>");
+        sb.append("<a href='#action:fix' style='color:#0066cc;text-decoration:underline;cursor:pointer;margin-right:8px;'>Fix</a>");
+        sb.append("<a href='#action:details' style='color:#0066cc;text-decoration:underline;cursor:pointer;margin-right:8px;'>Details</a>");
+        sb.append("<a href='#action:ignore' style='color:#0066cc;text-decoration:underline;cursor:pointer;margin-right:8px;'>Ignore</a>");
+        sb.append("<a href='#action:copy' style='color:#0066cc;text-decoration:underline;cursor:pointer;'>Copy</a>");
+        sb.append("</div>");
+
+        sb.append("</div>");
+        return sb.toString();
     }
 }
