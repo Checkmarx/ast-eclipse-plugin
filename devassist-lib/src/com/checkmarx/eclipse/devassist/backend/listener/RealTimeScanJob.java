@@ -36,7 +36,7 @@ public class RealTimeScanJob extends Job {
 	 * @param fileName the file name (for logging)
 	 */
 	public RealTimeScanJob(IFile file, String fileName) {
-		super("Checkmarx Real-Time Scan: " + fileName);
+		super("Checkmarx is Scanning file : " + fileName);
 		this.file = file;
 		this.fileName = fileName;
 

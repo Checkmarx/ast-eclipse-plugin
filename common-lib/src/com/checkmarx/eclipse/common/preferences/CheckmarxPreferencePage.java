@@ -52,6 +52,13 @@ public class CheckmarxPreferencePage extends PreferencePage implements IWorkbenc
 	public static final String DEVASSIST_PLUGIN_REALTIME_SCANNERS_IAC_PREFIX= "Checkmarx Developer Assist IAC Realtime Scanner: Containers Management Tool";
 	public static final String DEVASSIST_PLUGIN_WELCOME_TITLE= "Welcome to Checkmarx Developer Assist";
 	public static final String CONTAINERS_TOOL_DESCRIPTION="Select the Containers Management Tool to use for IaC scanning.";
+	public static final String OSS_REALTIME_CHECKBOX="Scans your manifest files as you code";
+	public static final String SECRETS_REALTIME_CHECKBOX="Scans your files for potential secrets and credentials as you code";
+	public static final String CONTAINERS_REALTIME_CHECKBOX="Scans your Docker files and container configurations as you code";
+	public static final String IAC_REALTIME_CHECKBOX="Scans your Infrastructure as Code files as you code";
+	public static final String ASCA_CHECKBOX="Scan your file as you code";
+
+	
 
 	public CheckmarxPreferencePage() {
 		super();
@@ -84,31 +91,31 @@ public class CheckmarxPreferencePage extends PreferencePage implements IWorkbenc
         createSectionHeader(mainPanel, DEVASSIST_PLUGIN_REALTIME_SCANNERS_ASCA_TITLE);
         Composite ascaComp = createIndentComposite(mainPanel);
         ascaCheckbox = new Button(ascaComp, SWT.CHECK);
-        ascaCheckbox.setText("Enable ASCA Scanner");
+        ascaCheckbox.setText(ASCA_CHECKBOX);
 
         // --- OSS Section ---
         createSectionHeader(mainPanel, DEVASSIST_PLUGIN_REALTIME_SCANNERS_OSS_TITLE);
         Composite ossComp = createIndentComposite(mainPanel);
         ossCheckbox = new Button(ossComp, SWT.CHECK);
-        ossCheckbox.setText("Enable OSS Scanner");
+        ossCheckbox.setText(OSS_REALTIME_CHECKBOX);
 
         // --- Secrets Section ---
         createSectionHeader(mainPanel, DEVASSIST_PLUGIN_REALTIME_SCANNERS_SECRETS_TITLE);
         Composite secretsComp = createIndentComposite(mainPanel);
         secretsCheckbox = new Button(secretsComp, SWT.CHECK);
-        secretsCheckbox.setText("Enable Secrets Scanner");
+        secretsCheckbox.setText(SECRETS_REALTIME_CHECKBOX);
 
         // --- Containers Section ---
         createSectionHeader(mainPanel, DEVASSIST_PLUGIN_REALTIME_SCANNERS_CONTAINERS_TITLE);
         Composite containersComp = createIndentComposite(mainPanel);
         containersCheckbox = new Button(containersComp, SWT.CHECK);
-        containersCheckbox.setText("Enable Container Scanner");
+        containersCheckbox.setText(CONTAINERS_REALTIME_CHECKBOX);
 
         // --- IaC Section ---
         createSectionHeader(mainPanel, DEVASSIST_PLUGIN_REALTIME_SCANNERS_IAC_TITLE);
         Composite iacComp = createIndentComposite(mainPanel);
         iacCheckbox = new Button(iacComp, SWT.CHECK);
-        iacCheckbox.setText("Enable IaC Scanner");
+        iacCheckbox.setText(IAC_REALTIME_CHECKBOX);
 
         // --- Container Tool Selection Section ---
         createSectionHeader(mainPanel, DEVASSIST_PLUGIN_REALTIME_SCANNERS_IAC_PREFIX);

@@ -92,12 +92,13 @@ public final class McpSettingsInjector {
 			String mcpUrl = baseUrl + MCP_ENDPOINT;
 			CxLogger.info(LOG_TAG + " MCP URL: " + mcpUrl);
 
-			CxLogger.info(LOG_TAG + " Copilot MCP preference node: " + COPILOT_UI_BUNDLE_ID + " / " + MCP_PREFERENCE_KEY);
+			CxLogger.info(
+					LOG_TAG + " Copilot MCP preference node: " + COPILOT_UI_BUNDLE_ID + " / " + MCP_PREFERENCE_KEY);
 
 			boolean changed = mergeCheckmarxServer(mcpUrl, token);
 
 			if (changed) {
-				CxLogger.info(LOG_TAG + " ✓ MCP configuration installed/updated successfully");
+				CxLogger.info(LOG_TAG + " MCP configuration installed/updated successfully");
 			} else {
 				CxLogger.info(LOG_TAG + " MCP configuration unchanged (already up-to-date)");
 			}
@@ -122,7 +123,7 @@ public final class McpSettingsInjector {
 			boolean removed = removeCheckmarxServer();
 
 			if (removed) {
-				CxLogger.info(LOG_TAG + " ✓ Checkmarx MCP entry removed successfully");
+				CxLogger.info(LOG_TAG + " Checkmarx MCP entry removed successfully");
 			} else {
 				CxLogger.info(LOG_TAG + " No Checkmarx MCP entry found to remove");
 			}
@@ -167,7 +168,7 @@ public final class McpSettingsInjector {
 		servers.put(SERVER_KEY, serverEntry);
 		writeServers(node, servers);
 
-		CxLogger.info(LOG_TAG + " ✓ MCP preference updated for bundle: " + COPILOT_UI_BUNDLE_ID);
+		CxLogger.info(LOG_TAG + " MCP preference updated for bundle: " + COPILOT_UI_BUNDLE_ID);
 		return true;
 	}
 
@@ -191,7 +192,7 @@ public final class McpSettingsInjector {
 		CxLogger.info(LOG_TAG + " Checkmarx MCP entry found and removed");
 		writeServers(node, servers);
 
-		CxLogger.info(LOG_TAG + " ✓ MCP entry removed from bundle preference: " + COPILOT_UI_BUNDLE_ID);
+		CxLogger.info(LOG_TAG + " MCP entry removed from bundle preference: " + COPILOT_UI_BUNDLE_ID);
 		return true;
 	}
 
@@ -218,14 +219,15 @@ public final class McpSettingsInjector {
 
 			Object serversObj = parsed.get("servers");
 			if (serversObj instanceof Map) {
-				CxLogger.info(LOG_TAG + " ✓ Existing preference read successfully (wrapped form)");
+				CxLogger.info(LOG_TAG + "Existing preference read successfully (wrapped form)");
 				return new LinkedHashMap<>((Map<String, Object>) serversObj);
 			}
 
-			CxLogger.info(LOG_TAG + " ✓ Existing preference read successfully (bare form)");
+			CxLogger.info(LOG_TAG + "Existing preference read successfully (bare form)");
 			return new LinkedHashMap<>(parsed);
 		} catch (Exception e) {
-			CxLogger.warning(LOG_TAG + " Failed to parse existing Copilot MCP preference, starting fresh: " + e.getMessage());
+			CxLogger.warning(
+					LOG_TAG + " Failed to parse existing Copilot MCP preference, starting fresh: " + e.getMessage());
 			return new LinkedHashMap<>();
 		}
 	}
@@ -235,7 +237,8 @@ public final class McpSettingsInjector {
 	 * {@code {"servers": {...}}}, and flushes it so it is persisted immediately
 	 * and observed by Copilot's live preference listeners.
 	 */
-	private static void writeServers(IEclipsePreferences node, Map<String, Object> servers) throws BackingStoreException {
+	private static void writeServers(IEclipsePreferences node, Map<String, Object> servers)
+			throws BackingStoreException {
 		try {
 			if (servers.isEmpty()) {
 				node.remove(MCP_PREFERENCE_KEY);
@@ -279,7 +282,7 @@ public final class McpSettingsInjector {
 			Object iss = map.get("iss");
 
 			if (iss != null) {
-				CxLogger.info(LOG_TAG + " ✓ Issuer extracted: " + iss.toString());
+				CxLogger.info(LOG_TAG + "Issuer extracted: " + iss.toString());
 				return iss.toString();
 			}
 
@@ -293,7 +296,8 @@ public final class McpSettingsInjector {
 
 	/**
 	 * Derives AST base URL from issuer claim.
-	 * If issuer is like https://iam.checkmarx.com, converts to https://ast.checkmarx.com
+	 * If issuer is like https://iam.checkmarx.com, converts to
+	 * https://ast.checkmarx.com
 	 */
 	private static String deriveBaseUrlFromIssuer(String issuer) {
 		if (issuer == null || issuer.isBlank()) {
@@ -308,7 +312,7 @@ public final class McpSettingsInjector {
 			if (host != null && host.contains("iam.checkmarx")) {
 				String newHost = host.replace("iam", "ast");
 				String baseUrl = "https://" + newHost;
-				CxLogger.info(LOG_TAG + " ✓ Derived base URL: " + baseUrl);
+				CxLogger.info(LOG_TAG + "Derived base URL: " + baseUrl);
 				return baseUrl;
 			}
 
