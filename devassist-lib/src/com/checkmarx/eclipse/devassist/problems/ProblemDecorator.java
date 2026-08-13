@@ -16,6 +16,7 @@ import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.texteditor.ITextEditor;
 
 import com.checkmarx.eclipse.devassist.ui.findings.editor.FindingsAnnotation;
+import com.checkmarx.eclipse.devassist.ui.findings.marker.MarkerIssueMapper;
 import com.checkmarx.eclipse.devassist.model.Location;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.common.utils.CxLogger;
@@ -91,6 +92,11 @@ public class ProblemDecorator {
 
 			for (ScanIssue issue : scanIssues) {
 				try {
+					// Ensure the IMarker CheckmarxMarkerResolutionGenerator's Ctrl+1/quick-fix-in-hover
+					// actions anchor to exists as soon as the squiggly does, rather than only after the
+					// user separately navigates to this finding from the Findings view.
+					MarkerIssueMapper.ensureMarker(file, issue);
+
 					FindingsAnnotation annotation = createAnnotation(editor, issue);
 					if (annotation != null) {
 						annotation.addButton(filePath, null);

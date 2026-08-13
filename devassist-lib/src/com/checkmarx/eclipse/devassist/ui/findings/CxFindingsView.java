@@ -1077,41 +1077,14 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
     }
 
     /**
-     * Ensures IMarker.LINE_NUMBER is explicitly set as a 1-based Integer attribute.
+     * Ensures a marker exists for this issue. Markers are now created eagerly for every
+     * detected finding as soon as it's decorated (see ProblemDecorator.decorateEditor(), which
+     * calls MarkerIssueMapper.ensureMarker() for each issue) - this remains as a safety net for
+     * the navigate-to-finding flow in case the file wasn't open (and therefore wasn't decorated)
+     * when the finding was first reported.
      */
     private void createMarkerForIssue(IFile file, ScanIssue issue) {
-        if (file == null || issue == null || issue.getLocations() == null || issue.getLocations().isEmpty()) {
-            return;
-        }
-
-        try {
-            IMarker existingMarker = findMarkerForIssue(file, issue);
-            if (existingMarker != null && existingMarker.exists()) {
-                return;
-            }
-
-            // 1. Create the marker using the declared ID
-            IMarker newMarker = file.createMarker("com.checkmarx.eclipse.plugin.checkmarxProblemMarker");
-
-            // 2. Set Standard Core Eclipse Attributes (CRITICAL for Quick Fix matching)
-            int lineNumber = issue.getLocations().get(0).getLine();
-            newMarker.setAttribute(IMarker.LINE_NUMBER, lineNumber > 0 ? lineNumber : 1);
-            newMarker.setAttribute(IMarker.MESSAGE, issue.getTitle() != null ? issue.getTitle() : "Checkmarx Finding");
-            newMarker.setAttribute(IMarker.SEVERITY, IMarker.SEVERITY_WARNING);
-            newMarker.setAttribute(IMarker.USER_EDITABLE, false);
-
-            // FIX: Set character offsets with whitespace trimming (so underline doesn't include leading spaces)
-            setMarkerCharacterOffsets(newMarker, file, lineNumber);
-
-            // 3. Populate custom attributes
-            com.checkmarx.eclipse.devassist.ui.findings.marker.MarkerIssueMapper.populateMarker(newMarker, issue);
-
-            
-
-        } catch (org.eclipse.core.runtime.CoreException e) {
-            System.err.println("[FINDINGS] Error creating marker: " + e.getMessage());
-            e.printStackTrace();
-        }
+        com.checkmarx.eclipse.devassist.ui.findings.marker.MarkerIssueMapper.ensureMarker(file, issue);
     }
 
     /**
@@ -1129,7 +1102,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
             }
 
             // Find the marker corresponding to this issue
-            IMarker marker = findMarkerForIssue(file, issue);
+            IMarker marker = com.checkmarx.eclipse.devassist.ui.findings.marker.MarkerIssueMapper.findMarker(file, issue);
             if (marker != null && marker.exists()) {
                 org.eclipse.ui.ide.IDE.gotoMarker(editor, marker);
                 
@@ -1139,50 +1112,6 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
         } catch (Exception e) {
             
         }
-    }
-
-    /**
-     * Find the IMarker that corresponds to a ScanIssue.
-     * Matches by file, line number, and optionally title.
-     */
-    private IMarker findMarkerForIssue(IFile file, ScanIssue issue) {
-        if (file == null || issue == null || issue.getLocations() == null || issue.getLocations().isEmpty()) {
-            return null;
-        }
-
-        // Match by the stable, unique scan issue ID (stored via MarkerIssueMapper)
-        // rather than line+title, so multiple distinct findings on the same line
-        // - including same-titled findings from different scan engines - each get
-        // and keep their own independent marker instead of being deduplicated
-        // against each other.
-        String issueId = issue.getScanIssueId();
-        int issueLine = issue.getLocations().get(0).getLine();
-        String issueTitle = issue.getTitle();
-
-        try {
-            IMarker[] markers = file.findMarkers("com.checkmarx.eclipse.plugin.checkmarxProblemMarker", true, org.eclipse.core.resources.IResource.DEPTH_ZERO);
-            for (IMarker marker : markers) {
-                if (issueId != null && !issueId.isEmpty()) {
-                    String markerIssueId = marker.getAttribute("cx.issueId", "");
-                    if (issueId.equals(markerIssueId)) {
-                        return marker;
-                    }
-                    continue;
-                }
-                // Fallback for findings without a scanIssueId: previous line+title heuristic.
-                int markerLine = marker.getAttribute(org.eclipse.core.resources.IMarker.LINE_NUMBER, -1);
-                if (markerLine == issueLine) {
-                    String markerMsg = marker.getAttribute(org.eclipse.core.resources.IMarker.MESSAGE, "");
-                    if (issueTitle == null || issueTitle.isEmpty() || markerMsg.contains(issueTitle)) {
-                        return marker;
-                    }
-                }
-            }
-        } catch (Exception e) {
-
-        }
-
-        return null;
     }
 
     /**
@@ -1534,34 +1463,6 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
         }
     }
 
-
-    private void setMarkerCharacterOffsets(IMarker marker, IFile file, int lineNumber) {
-        try {
-            org.eclipse.ui.IWorkbenchWindow window = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
-            if (window == null) return;
-            org.eclipse.ui.IWorkbenchPage page = window.getActivePage();
-            if (page == null) return;
-            org.eclipse.ui.IEditorPart editor = page.getActiveEditor();
-            if (editor == null) return;
-
-            org.eclipse.ui.texteditor.ITextEditor textEditor = editor.getAdapter(org.eclipse.ui.texteditor.ITextEditor.class);
-            if (textEditor == null) return;
-
-            org.eclipse.jface.text.IDocument doc = textEditor.getDocumentProvider().getDocument(textEditor.getEditorInput());
-            if (doc == null || lineNumber <= 0 || lineNumber > doc.getNumberOfLines()) return;
-
-            int lineIdx = lineNumber - 1;
-            int lineOffset = doc.getLineOffset(lineIdx);
-            int lineLen = doc.getLineLength(lineIdx);
-
-            int trimOffset = getLeadingWhitespaceOffset(doc, lineOffset, lineLen);
-            marker.setAttribute(IMarker.CHAR_START, lineOffset + trimOffset);
-            marker.setAttribute(IMarker.CHAR_END, lineOffset + lineLen);
-
-        } catch (Exception e) {
-            // If we can't set char offsets, marker will still work with line-based positioning
-        }
-    }
 
     private int getLeadingWhitespaceOffset(org.eclipse.jface.text.IDocument document, int lineOffset, int lineLength) {
         try {

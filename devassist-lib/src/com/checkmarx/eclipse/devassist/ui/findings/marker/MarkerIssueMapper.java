@@ -3,7 +3,20 @@ package com.checkmarx.eclipse.devassist.ui.findings.marker;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
+import org.eclipse.core.resources.IResource;
+import org.eclipse.jface.text.IDocument;
+import org.eclipse.jface.text.IRegion;
+import org.eclipse.ui.IEditorInput;
+import org.eclipse.ui.IEditorPart;
+import org.eclipse.ui.IEditorReference;
+import org.eclipse.ui.IFileEditorInput;
+import org.eclipse.ui.IWorkbench;
+import org.eclipse.ui.IWorkbenchPage;
+import org.eclipse.ui.IWorkbenchWindow;
+import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.texteditor.ITextEditor;
 
 import com.checkmarx.eclipse.common.enums.Severity;
 import com.checkmarx.eclipse.devassist.model.Location;
@@ -17,6 +30,8 @@ import com.checkmarx.eclipse.devassist.model.Vulnerability;
  * Allows marker resolution to reconstruct finding details without searching.
  */
 public class MarkerIssueMapper {
+
+    private static final String MARKER_TYPE = "com.checkmarx.eclipse.plugin.checkmarxProblemMarker";
 
     // Marker attribute names (prefixed with cx. to avoid collision)
     private static final String ATTR_ISSUE_ID = "cx.issueId";
@@ -164,10 +179,7 @@ public class MarkerIssueMapper {
 
             // Set standard marker attributes from location
             if (issue.getLocations() != null && !issue.getLocations().isEmpty()) {
-                Location location = issue.getLocations().get(0);
-                marker.setAttribute(IMarker.LINE_NUMBER, location.getLine());
-                marker.setAttribute(IMarker.CHAR_START, location.getStartIndex());
-                marker.setAttribute(IMarker.CHAR_END, location.getEndIndex());
+                applyLocationAttributes(marker, issue.getLocations().get(0));
 
                 // Calculate severity for Eclipse marker system (0=info, 1=warning, 2=error)
                 int severity = calculateMarkerSeverity(issue.getSeverity());
@@ -179,6 +191,211 @@ public class MarkerIssueMapper {
         } catch (Exception e) {
 
             e.printStackTrace();
+        }
+    }
+
+    /**
+     * Ensures a {@value #MARKER_TYPE} marker exists for this finding, creating and populating
+     * one if none does yet. This is what CheckmarxMarkerResolutionGenerator's Ctrl+1/quick-fix-
+     * in-hover actions anchor to; ProblemDecorator calls this for every issue it decorates so the
+     * marker (and therefore the quick-fix actions) exists as soon as the squiggly does, instead of
+     * only after the user navigates to that specific finding from the Findings view.
+     *
+     * @param file the file the issue was found in
+     * @param issue the finding to ensure a marker for
+     */
+    public static void ensureMarker(IFile file, ScanIssue issue) {
+        if (file == null || issue == null || issue.getLocations() == null || issue.getLocations().isEmpty()) {
+            return;
+        }
+
+        try {
+            if (findMarker(file, issue) != null) {
+                return;
+            }
+
+            IMarker marker = file.createMarker(MARKER_TYPE);
+            int lineNumber = issue.getLocations().get(0).getLine();
+            marker.setAttribute(IMarker.LINE_NUMBER, lineNumber > 0 ? lineNumber : 1);
+            marker.setAttribute(IMarker.MESSAGE, issue.getTitle() != null ? issue.getTitle() : "Checkmarx Finding");
+            marker.setAttribute(IMarker.SEVERITY, IMarker.SEVERITY_WARNING);
+            marker.setAttribute(IMarker.USER_EDITABLE, false);
+
+            populateMarker(marker, issue);
+        } catch (Exception e) {
+            // Marker creation is best-effort: the squiggly annotation and CheckmarxAnnotationHover
+            // (both driven by the live ScanIssue/FindingsAnnotation, not this marker) still work
+            // even if this fails.
+        }
+    }
+
+    /**
+     * Finds the existing {@value #MARKER_TYPE} marker for a ScanIssue, matching by the stable
+     * scanIssueId when available and falling back to line+title for findings without one.
+     *
+     * @param file the file to search
+     * @param issue the finding to find a marker for
+     * @return the matching marker, or null if none exists
+     */
+    public static IMarker findMarker(IFile file, ScanIssue issue) {
+        if (file == null || issue == null || issue.getLocations() == null || issue.getLocations().isEmpty()) {
+            return null;
+        }
+
+        String issueId = issue.getScanIssueId();
+        int issueLine = issue.getLocations().get(0).getLine();
+        String issueTitle = issue.getTitle();
+
+        try {
+            IMarker[] markers = file.findMarkers(MARKER_TYPE, true, IResource.DEPTH_ZERO);
+            for (IMarker marker : markers) {
+                if (issueId != null && !issueId.isEmpty()) {
+                    if (issueId.equals(marker.getAttribute(ATTR_ISSUE_ID, ""))) {
+                        return marker;
+                    }
+                    continue;
+                }
+                // Fallback for findings without a scanIssueId: line+title heuristic.
+                int markerLine = marker.getAttribute(IMarker.LINE_NUMBER, -1);
+                if (markerLine == issueLine) {
+                    String markerMsg = marker.getAttribute(IMarker.MESSAGE, "");
+                    if (issueTitle == null || issueTitle.isEmpty() || markerMsg.contains(issueTitle)) {
+                        return marker;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // fall through
+        }
+
+        return null;
+    }
+
+    /**
+     * Sets IMarker.LINE_NUMBER and, when possible, IMarker.CHAR_START/CHAR_END from a
+     * Location. Most scan engines (OSS, IaC, Secrets, Containers) report startIndex/endIndex
+     * as offsets relative to the start of the line, not the file - writing them straight into
+     * CHAR_START/CHAR_END as absolute file offsets collapses every marker onto whichever line
+     * happens to contain that many characters (almost always line 1), independent of which
+     * line the finding is actually on. This resolves the line's real offset in the document and
+     * adds it in, mirroring the conversion ProblemDecorator already applies when positioning the
+     * squiggly annotation - so the IMarker (which is what Eclipse's built-in quick-fix-in-hover
+     * and Ctrl+1 machinery anchors to) lands on the same line as the squiggly instead of drifting
+     * to a different one.
+     *
+     * @param marker the IMarker being populated
+     * @param location the finding's location (line, and possibly line-relative or absolute start/end)
+     */
+    private static void applyLocationAttributes(IMarker marker, Location location) {
+        try {
+            marker.setAttribute(IMarker.LINE_NUMBER, location.getLine());
+        } catch (Exception e) {
+            return;
+        }
+
+        IDocument document = resolveDocument(marker);
+        if (document == null) {
+            // No open editor for this file (yet). Leave CHAR_START/CHAR_END unset rather than
+            // writing the scanner's raw, often line-relative, start/end indices in as if they
+            // were absolute file offsets - Eclipse falls back to deriving a position from
+            // LINE_NUMBER alone, which is still correct for the line even without a precise range.
+            return;
+        }
+
+        try {
+            int line = Math.max(0, location.getLine() - 1);
+            if (line >= document.getNumberOfLines()) {
+                return;
+            }
+
+            IRegion lineInfo = document.getLineInformation(line);
+            int lineOffset = lineInfo.getOffset();
+            int lineLength = lineInfo.getLength();
+            int docLength = document.getLength();
+
+            boolean isAbsoluteOffset = location.isAbsoluteOffset();
+            int charStart = isAbsoluteOffset ? location.getStartIndex() : (lineOffset + location.getStartIndex());
+            int charEnd = isAbsoluteOffset ? location.getEndIndex() : (lineOffset + location.getEndIndex());
+
+            // Scanners that don't report a real column range (e.g. ASCA only sets the line,
+            // leaving start/end at their default of 0) collapse to the very start of the line here -
+            // expand to the whole (leading-whitespace-trimmed) line instead of leaving a
+            // zero-length position, which some Eclipse annotation-model paths treat as invalid.
+            if (charStart <= lineOffset) {
+                charStart = lineOffset + getLeadingWhitespaceOffset(document, lineOffset, lineLength);
+            }
+            if (charEnd <= charStart) {
+                charEnd = lineOffset + lineLength;
+            }
+
+            charStart = Math.max(0, Math.min(charStart, docLength));
+            charEnd = Math.max(charStart, Math.min(charEnd, docLength));
+
+            marker.setAttribute(IMarker.CHAR_START, charStart);
+            marker.setAttribute(IMarker.CHAR_END, charEnd);
+        } catch (Exception e) {
+            // Leave CHAR_START/CHAR_END unset; the LINE_NUMBER set above still positions the
+            // marker on the correct line.
+        }
+    }
+
+    /**
+     * Finds the document for the marker's own file by searching every open editor reference
+     * across all workbench windows - not just the active editor - so markers created for a
+     * file that isn't currently focused (e.g. background/real-time scan results) still resolve
+     * to the right document instead of silently reading whichever file happens to be active.
+     * Returns null (rather than guessing) if the file has no open editor.
+     */
+    private static IDocument resolveDocument(IMarker marker) {
+        try {
+            IResource resource = marker.getResource();
+            if (!(resource instanceof IFile)) {
+                return null;
+            }
+            IFile file = (IFile) resource;
+
+            IWorkbench workbench = PlatformUI.getWorkbench();
+            if (workbench == null) {
+                return null;
+            }
+
+            for (IWorkbenchWindow window : workbench.getWorkbenchWindows()) {
+                IWorkbenchPage page = window.getActivePage();
+                if (page == null) {
+                    continue;
+                }
+                for (IEditorReference ref : page.getEditorReferences()) {
+                    IEditorPart editorPart = ref.getEditor(false);
+                    if (editorPart == null) {
+                        continue;
+                    }
+                    IEditorInput input = editorPart.getEditorInput();
+                    if (!(input instanceof IFileEditorInput)
+                            || !file.equals(((IFileEditorInput) input).getFile())) {
+                        continue;
+                    }
+                    ITextEditor textEditor = editorPart.getAdapter(ITextEditor.class);
+                    if (textEditor != null) {
+                        return textEditor.getDocumentProvider().getDocument(textEditor.getEditorInput());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // fall through
+        }
+        return null;
+    }
+
+    private static int getLeadingWhitespaceOffset(IDocument document, int lineOffset, int lineLength) {
+        try {
+            String lineText = document.get(lineOffset, lineLength);
+            int count = 0;
+            while (count < lineText.length() && Character.isWhitespace(lineText.charAt(count))) {
+                count++;
+            }
+            return count;
+        } catch (Exception e) {
+            return 0;
         }
     }
 
