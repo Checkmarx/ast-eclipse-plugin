@@ -25,6 +25,9 @@ import org.eclipse.jface.text.source.IAnnotationModel;
 import org.eclipse.jface.text.source.ISourceViewer;
 import org.eclipse.jdt.ui.text.java.hover.IJavaEditorTextHover;
 import org.eclipse.jface.resource.JFaceResources;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.graphics.Color;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.editors.text.EditorsUI;
@@ -84,7 +87,9 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 	 * dependency hover.
 	 */
 	private static final int MIN_POPUP_WIDTH = 480;
-	private static final int MIN_POPUP_HEIGHT = 400;
+	private static final int MIN_POPUP_HEIGHT = 300;
+	
+	 private static final CheckmarxProblemDescriptionFormatter PROBLEM_DESCRIPTRO = new CheckmarxProblemDescriptionFormatter();
 
 	/**
 	 * Creates the small (~6-line) preview control shown on the initial mouse hover.
@@ -554,6 +559,21 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 		}
 	}
 
+	/**
+	 * Returns the hex color string for Eclipse's native tooltip/hover background
+	 * (SWT.COLOR_INFO_BACKGROUND) - the same system color used by every stock
+	 * Eclipse hover (JDT Javadoc hover, problem hover, etc.). Sourcing it from the
+	 * Display at render time (instead of hardcoding a color) keeps this hover
+	 * visually consistent with the platform and automatically correct for both
+	 * light and dark themes, since COLOR_INFO_BACKGROUND is resolved by the
+	 * platform/theme itself.
+	 */
+	private static String getHoverBackgroundColorHex() {
+		Display display = Display.getDefault();
+		Color bg = display.getSystemColor(SWT.COLOR_INFO_BACKGROUND);
+		return String.format("#%02x%02x%02x", bg.getRed(), bg.getGreen(), bg.getBlue());
+	}
+
 	private String buildCheckmarxSection(IMarker marker, Long markerId) {
 		try {
 			ScanIssue issue = MarkerIssueMapper.fromMarker(marker);
@@ -565,7 +585,7 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 			CxLogger.info("[HOVER] Captured ScanIssue for action handlers from marker: " + issue.getTitle());
 			// Use consolidated formatter with clickable actions enabled (same as
 			// FindingsAnnotation path)
-			String html = "<div>" + CheckmarxProblemDescriptionFormatter.formatDescriptionHtml(issue, true) + "</div>";
+			String html = "<div>" + PROBLEM_DESCRIPTRO.formatDescriptionHtml(issue, true) + "</div>";
 			CxLogger.info("[HOVER] Marker " + markerId + ": Built HTML section for issue: " + issue.getTitle());
 			return html;
 		} catch (Exception e) {

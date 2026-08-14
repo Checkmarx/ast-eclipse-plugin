@@ -5,7 +5,7 @@ import java.nio.file.Paths;
 import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
-
+import java.net.URL;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jgit.annotations.NonNull;
@@ -18,9 +18,12 @@ import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.texteditor.ITextEditor;
-
+import org.eclipse.swt.SWT;
 import org.eclipse.swt.dnd.Clipboard;
 import org.eclipse.swt.dnd.TextTransfer;
+import org.eclipse.swt.graphics.Color;
+import org.eclipse.e4.ui.css.swt.theme.ITheme;
+import org.eclipse.e4.ui.css.swt.theme.IThemeEngine;
 import com.checkmarx.eclipse.devassist.backend.SeverityLevel;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.model.Vulnerability;
@@ -339,5 +342,104 @@ public class DevAssistUtils {
 			return false;
 		}
 	}
+	
+	
+    /**
+     * Get a Quick fix name for the quick fix action.
+     * Returns the appropriate fix name based on the plugin context.
+     * For Eclipse, defaults to DEV_ASSIST as this plugin is the DevAssist variant.
+     *
+     * @return Quick fix name string
+     */
+    public static String getAssistQuickFixName() {
+        return DevAssistConstants.FIX_WITH_DEV_ASSIST;
+    }
+    
+    /**
+     * Returns a resource URL string suitable for embedding in an <img src='...'> tag
+     * for the given simple icon key (e.g. "critical", "high", "package", "malicious").
+     *
+     * @param iconPath severity or logical icon path
+     * @return external form URL or empty string if not found
+     */
+    public static String themeBasedPNGIconForHtmlImage(String iconPath) {
+        if (iconPath == null || iconPath.isEmpty()) {
+            return "";
+        }
+        boolean dark = isDarkTheme();
+        // Try the dark variant first if in a dark theme.
+        String candidate = iconPath + (dark ? "_dark" : "");
+        URL res = DevAssistUtils.class.getResource(candidate);
+        if (res == null && dark) {
+            // Fallback to the light variant.
+            candidate = iconPath + ".png";
+            res = DevAssistUtils.class.getResource(candidate);
+        }
+        return res != null ? res.toExternalForm() : "";
+    }
+
+    /**
+     * Detects whether Eclipse is currently running in dark theme mode.
+     * Uses the e4 CSS theme engine to check the active theme ID.
+     * Falls back to luminance heuristic if the theme engine is unavailable.
+     *
+     * @return true if dark theme is active, false otherwise
+     */
+    private static boolean isDarkTheme() {
+        ITheme activeTheme = getActiveTheme();
+        if (activeTheme != null && activeTheme.getId() != null) {
+            return activeTheme.getId().toLowerCase().contains("dark");
+        }
+        return isDarkByBackgroundLuminance();
+    }
+
+    /**
+     * Retrieves the active Eclipse theme from the e4 CSS theme engine.
+     * Returns null if the theme engine is not available.
+     *
+     * @return ITheme object representing the active theme, or null if unavailable
+     */
+    private static ITheme getActiveTheme() {
+        try {
+            Display display = Display.getDefault();
+            if (display == null || display.isDisposed()) {
+                return null;
+            }
+            Object engineData = display.getData("org.eclipse.e4.ui.css.swt.theme");
+            if (engineData instanceof IThemeEngine) {
+                return ((IThemeEngine) engineData).getActiveTheme();
+            }
+        } catch (Throwable t) {
+            CxLogger.warning("Eclipse e4 theme engine unavailable, falling back to color heuristic");
+        }
+        return null;
+    }
+
+    /**
+     * Fallback method to detect dark theme by analyzing widget background color luminance.
+     * Uses the relative luminance formula (ITU-R BT.709) to determine if the background
+     * is dark enough to indicate a dark theme.
+     *
+     * Responsibility: Provides graceful degradation when e4 CSS theme engine is not available.
+     * This method does NOT impact other functionality - it only affects icon variant selection.
+     *
+     * @return true if background luminance is below 0.5 (dark), false otherwise
+     */
+    private static boolean isDarkByBackgroundLuminance() {
+        try {
+            Display display = Display.getDefault();
+            if (display == null || display.isDisposed()) {
+                return false;
+            }
+            Color background = display.getSystemColor(SWT.COLOR_WIDGET_BACKGROUND);
+            if (background != null) {
+                double luminance = (0.299 * background.getRed() + 0.587 * background.getGreen() + 0.114 * background.getBlue()) / 255.0;
+                return luminance < 0.5;
+            }
+        } catch (Exception e) {
+            CxLogger.warning("Error calculating background luminance: " + e.getMessage());
+        }
+        return false;
+    }
 }
 

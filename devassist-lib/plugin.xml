@@ -18,29 +18,7 @@
             restorable="true">
       </view>
    </extension>
-
-   <!-- Marker Type Declaration: makes the Checkmarx problem marker an official
-        Eclipse "problem" marker, enabling Quick Fix (Ctrl+1) integration and
-        collision-free coexistence with JDT/other linters' markers on the same line. -->
-   <extension
-         id="com.checkmarx.eclipse.plugin.checkmarxProblemMarker"
-         name="Checkmarx Finding"
-         point="org.eclipse.core.resources.markers">
-      <super type="org.eclipse.core.resources.problemmarker"/>
-      <super type="org.eclipse.core.resources.textmarker"/>
-      <persistent value="true"/>
-   </extension>
-
-   <!-- Marker Resolution Generator Registration: supplies the Quick Fix (Ctrl+1)
-        actions for Checkmarx findings. -->
-   <extension
-         point="org.eclipse.ui.ide.markerResolution">
-      <markerResolutionGenerator
-            markerType="com.checkmarx.eclipse.plugin.checkmarxProblemMarker"
-            class="com.checkmarx.eclipse.devassist.ui.findings.resolution.CheckmarxMarkerResolutionGenerator">
-      </markerResolutionGenerator>
-   </extension>
-
+   
    <!-- Line Hover (Java editor): org.eclipse.ui.editors.textHovers does NOT
         exist as a real Eclipse Platform extension point - text hovers are
         wired programmatically per-editor via SourceViewerConfiguration and

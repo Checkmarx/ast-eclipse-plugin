@@ -154,7 +154,7 @@ public final class DevAssistConstants {
 	public static final String CX_AGENT_NAME = "Checkmarx One Assist";
 	public static final String CX_DEVASSIST_AGENT_NAME = "Checkmarx Developer Assist";
 	public static final List<String> AI_AGENT_FILES = List.of("/Dummy.txt", "/", "/AIAssistantInput");
-	public static final String SEPARATOR = ":";
+	public static final String SEPERATOR = ":";
 	public static final String QUICK_FIX = "QUICK_FIX";
 	public static final String UNDO = "Undo";
 	
@@ -172,4 +172,34 @@ public final class DevAssistConstants {
 	public static final String WELCOME_CLOSE_BUTTON = "Close";
 	public static final String WELCOME_MCP_INSTALLED_INFO = "Checkmarx MCP Installed automatically - no need for manual integration";
 
+	
+	
+	/**
+     * Constant class to hold image paths.
+     */
+    public static final class ImagePaths {
+
+        private ImagePaths() {
+            throw new UnsupportedOperationException("Cannot instantiate ImagePaths class");
+        }
+
+        public static final String DEV_ASSIST_PNG = "/icons/tooltip/cxone_assist.png";
+        public static final String CRITICAL_PNG = "/icons/tooltip/critical.png";
+        public static final String HIGH_PNG = "/icons/tooltip/high.png";
+        public static final String MEDIUM_PNG = "/icons/tooltip/medium.png";
+        public static final String LOW_PNG = "/icons/tooltip/low.png";
+        public static final String MALICIOUS_PNG = "/icons/tooltip/malicious.png";
+        public static final String PACKAGE_PNG = "/icons/tooltip/package.png";
+        public static final String CONTAINER_PNG = "/icons/tooltip/container.png";
+
+        // Vulnerability Severity Count Icons
+        public static final String CRITICAL_16_PNG = "/icons/tooltip/severity_count/critical.png";
+        public static final String HIGH_16_PNG = "/icons/tooltip/severity_count/high.png";
+        public static final String MEDIUM_16_PNG = "/icons/tooltip/severity_count/medium.png";
+        public static final String LOW_16_PNG = "/icons/tooltip/severity_count/low.png";
+
+        //DEVASSIST PLUGIN ICONS
+        public static final String DEVASSIST_BADGE_PNG = "/icons/tooltip/devassist_badge.png";
+    }
+	
 }

@@ -79,6 +79,7 @@ public class IconRegistry {
         registerIcon("low", "icons/severity/low.svg");
         
         registerIcon("star_action", "icons/start-action.svg");
+        registerIcon("devassistBadge", "icons/devassist_badge.svg");
     }
 
     private static void registerIcon(String key, String path) {

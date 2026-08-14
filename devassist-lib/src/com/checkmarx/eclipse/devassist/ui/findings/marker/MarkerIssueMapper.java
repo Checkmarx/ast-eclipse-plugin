@@ -111,7 +111,6 @@ public class MarkerIssueMapper {
             } catch (IllegalArgumentException e) {
                 issue.setScanEngine(ScanEngine.ASCA);
             }
-
             // Reconstruct location
             Location location = new Location();
             location.setLine(lineNumber);
@@ -185,9 +184,6 @@ public class MarkerIssueMapper {
                 int severity = calculateMarkerSeverity(issue.getSeverity());
                 marker.setAttribute(IMarker.SEVERITY, severity);
             }
-
-
-
         } catch (Exception e) {
 
             e.printStackTrace();
@@ -213,11 +209,10 @@ public class MarkerIssueMapper {
             if (findMarker(file, issue) != null) {
                 return;
             }
-
             IMarker marker = file.createMarker(MARKER_TYPE);
             int lineNumber = issue.getLocations().get(0).getLine();
             marker.setAttribute(IMarker.LINE_NUMBER, lineNumber > 0 ? lineNumber : 1);
-            marker.setAttribute(IMarker.MESSAGE, issue.getTitle() != null ? issue.getTitle() : "Checkmarx Finding");
+            marker.setAttribute(IMarker.MESSAGE, issue.getTitle());
             marker.setAttribute(IMarker.SEVERITY, IMarker.SEVERITY_WARNING);
             marker.setAttribute(IMarker.USER_EDITABLE, false);
 
@@ -444,6 +439,7 @@ public class MarkerIssueMapper {
         }
 
         switch (severity.toLowerCase()) {
+            case "malicious":
             case "critical":
             case "high":
                 return IMarker.SEVERITY_ERROR;
@@ -467,6 +463,7 @@ public class MarkerIssueMapper {
 
         switch (severity) {
             case CRITICAL:
+            case MALICIOUS:
             case HIGH:
                 return IMarker.SEVERITY_ERROR;
             case MEDIUM:

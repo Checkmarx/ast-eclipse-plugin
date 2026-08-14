@@ -3,6 +3,7 @@ package com.checkmarx.eclipse.common.enums;
 public enum Severity {
 
 	CRITICAL,
+	MALICIOUS,
 	HIGH,
 	MEDIUM,
 	LOW,
