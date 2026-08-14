@@ -66,14 +66,32 @@ class DataProviderTest {
 
     @Test
     void testGetProjectsReturnsList() throws Exception {
-        List<Project> projects = dataProvider.getProjects();
-        assertNotNull(projects);
+        Project mockProject = mock(Project.class);
+        when(mockProject.getName()).thenReturn("TestProject");
+
+        try (MockedConstruction<CxWrapper> mocked = mockConstruction(CxWrapper.class, (mock, ctx) -> {
+            when(mock.authValidate()).thenReturn("OK");
+            when(mock.projectList(anyString())).thenReturn(Arrays.asList(mockProject));
+        })) {
+            List<Project> projects = dataProvider.getProjects();
+            assertNotNull(projects);
+            assertFalse(projects.isEmpty());
+        }
     }
 
     @Test
     void testGetProjectsByNameReturnsList() throws Exception {
-        List<Project> projects = dataProvider.getProjects(TEST_PROJECT);
-        assertNotNull(projects);
+        Project mockProject = mock(Project.class);
+        when(mockProject.getName()).thenReturn(TEST_PROJECT);
+
+        try (MockedConstruction<CxWrapper> mocked = mockConstruction(CxWrapper.class, (mock, ctx) -> {
+            when(mock.authValidate()).thenReturn("OK");
+            when(mock.projectList(TEST_PROJECT)).thenReturn(Arrays.asList(mockProject));
+        })) {
+            List<Project> projects = dataProvider.getProjects(TEST_PROJECT);
+            assertNotNull(projects);
+            assertFalse(projects.isEmpty());
+        }
     }
 
     @Test
@@ -108,8 +126,16 @@ class DataProviderTest {
 
     @Test
     void testGetTriageShowReturnsList() throws Exception {
-        List<Predicate> triage = dataProvider.getTriageShow(UUID.randomUUID(), "simId", "SAST");
-        assertNotNull(triage);
+        Predicate mockPredicate = mock(Predicate.class);
+
+        try (MockedConstruction<CxWrapper> mocked = mockConstruction(CxWrapper.class, (mock, ctx) -> {
+            when(mock.authValidate()).thenReturn("OK");
+            when(mock.triageShow(any(UUID.class), anyString(), anyString())).thenReturn(Arrays.asList(mockPredicate));
+        })) {
+            List<Predicate> triage = dataProvider.getTriageShow(UUID.randomUUID(), "simId", "SAST");
+            assertNotNull(triage);
+            assertFalse(triage.isEmpty());
+        }
     }
 
     @Test
