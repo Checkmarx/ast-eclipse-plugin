@@ -462,7 +462,7 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 				// Use consolidated formatter for both ASCA/IAC (iterates vulnerabilities)
 				// and other engines (uses root ScanIssue attributes)
 				try {
-					String sectionHtml = CheckmarxProblemDescriptionFormatter.formatDescriptionHtml(scanIssue, true);
+					String sectionHtml = PROBLEM_DESCRIPTRO.formatDescriptionHtml(scanIssue, true);
 					if (!sectionHtml.isEmpty()) {
 						checkmarxSections.add("<div>" + sectionHtml + "</div>");
 						com.checkmarx.eclipse.devassist.model.ScanEngine engine = scanIssue.getScanEngine();
