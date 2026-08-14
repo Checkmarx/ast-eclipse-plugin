@@ -73,38 +73,47 @@ public final class DevAssistConstants {
 
 	// Manifest file patterns
 	public static final List<String> MANIFEST_FILE_PATTERNS = List.of(
-			"**/Directory.Packages.props",
-			"**/packages.config",
-			"**/pom.xml",
-			"**/package.json",
-			"**/requirements.txt",
-			"**/go.mod",
-			"**/*.csproj",
-			"**/build.gradle",
-			"**/build.gradle.kts",
-			"**/yarn.lock",
-			"**/*.sbt",
-			"**/Gemfile",
-			"**/bower.json",
-			"**/requirement-*.txt",
-			"**/requirements-*.txt",
-			"**/Setup.py",
-			"**/Setup.cfg",
-			"**/pyproject.toml",
-			"**/poetry.lock",
-			"**/Package.swift",
-			"**/Package.resolved",
-			"**/composer.json",
-			"**/composer.lock",
-			"**/*.podspec.json",
-			"**/*.podspec",
-			"**/Podfile",
-			"**/Podfile.lock",
-			"**/Cartfile.resolved",
-			"**/Gemfile.lock",
-			"**/cpanfile.snapshot",
-			"**/cpanfile",
-			"**/pubspec.lock"
+            // .NET
+            "**/Directory.Packages.props",
+            "**/packages.config",
+            "**/*.csproj",
+            // Maven
+            "**/pom.xml",
+            // npm
+            "**/package.json",
+            // Bower
+            "**/bower.json",
+            // Python
+            "**/requirement*.txt",
+            "**/constraints.txt",
+            "**/constraints-*.txt",
+            "**/pyproject.toml",
+            "**/setup.cfg",
+            "**/setup.py",
+            // Go
+            "**/go.mod",
+            // Gradle
+            "**/*.gradle",
+            "**/*.gradle.kts",
+            "**/libs.versions.toml",
+            // SBT
+            "**/*.sbt",
+            // iOS CocoaPods
+            "**/Podfile",
+            "**/*.podspec",
+            "**/*.podspec.json",
+            // iOS Carthage
+            "**/Cartfile",
+            "**/Cartfile.private",
+            // Swift Package Manager
+            "**/Package.swift",
+            "**/Package@swift-*.swift",
+            // Dart/Flutter
+            "**/pubspec.yaml",
+            // Ruby
+            "**/Gemfile",
+            // PHP Composer
+            "**/composer.json"
 	);
 
 	// Container file patterns
