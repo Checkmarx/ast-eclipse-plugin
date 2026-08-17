@@ -327,53 +327,6 @@ public final class CheckmarxProblemDescriptionFormatter {
 		return formatDescriptionHtml(issue, false, null);
 	}
 
-	/**
-	 * Appends action links in two modes: - Clickable mode
-	 * (enableClickableActions=true): renders <a href='#action:...'> links for
-	 * LocationListener interception - Informational mode
-	 * (enableClickableActions=false): renders plain text with Ctrl+1 hint
-	 */
-	private static void appendActionLinks(StringBuilder sb, boolean enableClickableActions) {
-		sb.append("<div style='margin-top:6px;border-top:0px solid #ddd;padding-top:4px;font-size:10px;'>");
-
-		if (enableClickableActions) {
-			// Render as clickable action links (for BrowserInformationControl with
-			// LocationListener)
-			sb.append(
-					"<a href='#action:fix' style='color:#0066cc;text-decoration:underline;cursor:pointer;margin-right:8px;'>")
-					.append(HtmlEscapeUtil.escape(DevAssistConstants.FIX_WITH_DEV_ASSIST)).append("</a>");
-			sb.append(" | ");
-			sb.append(
-					"<a href='#action:details' style='color:#0066cc;text-decoration:underline;cursor:pointer;margin-right:8px;'>")
-					.append(HtmlEscapeUtil.escape(DevAssistConstants.VIEW_DETAILS_FIX_NAME)).append("</a>");
-			sb.append(" | ");
-			sb.append(
-					"<a href='#action:ignore' style='color:#0066cc;text-decoration:underline;cursor:pointer;margin-right:8px;'>")
-					.append(HtmlEscapeUtil.escape(DevAssistConstants.IGNORE_THIS_VULNERABILITY_FIX_NAME))
-					.append("</a>");
-			sb.append(" | ");
-			sb.append("<a href='#action:copy' style='color:#0066cc;text-decoration:underline;cursor:pointer;'>")
-					.append(HtmlEscapeUtil.escape(DevAssistConstants.COPY_DETAILS_FIX_NAME)).append("</a>");
-		} else {
-			// Render as informational text (for marker resolution fallback)
-			sb.append("<span style='color:#0066cc;cursor:pointer;'>")
-					.append(HtmlEscapeUtil.escape(DevAssistConstants.FIX_WITH_DEV_ASSIST)).append("</span>");
-			sb.append(" | ");
-			sb.append("<span style='color:#0066cc;cursor:pointer;'>")
-					.append(HtmlEscapeUtil.escape(DevAssistConstants.VIEW_DETAILS_FIX_NAME)).append("</span>");
-			sb.append(" | ");
-			sb.append("<span style='color:#0066cc;cursor:pointer;'>")
-					.append(HtmlEscapeUtil.escape(DevAssistConstants.IGNORE_THIS_VULNERABILITY_FIX_NAME))
-					.append("</span>");
-			sb.append(" | ");
-			sb.append("<span style='color:#0066cc;cursor:pointer;'>")
-					.append(HtmlEscapeUtil.escape(DevAssistConstants.COPY_DETAILS_FIX_NAME)).append("</span>");
-			sb.append(
-					"<br/><i style='color:#999;margin-top:4px;display:block;'>Press Ctrl+1 for Quick Fix actions</i>");
-		}
-
-		sb.append("</div>");
-	}
 	
 	/**
      * Builds the remediation actions section of the description.
