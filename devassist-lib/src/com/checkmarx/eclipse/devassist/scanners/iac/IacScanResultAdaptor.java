@@ -7,6 +7,7 @@ import com.checkmarx.eclipse.devassist.model.Location;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.model.Vulnerability;
+import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
 import com.checkmarx.eclipse.devassist.utils.DevAssistUtils;
 import com.checkmarx.eclipse.common.utils.CxLogger;
 import java.util.*;
@@ -29,7 +30,6 @@ import java.util.stream.Collectors;
 public class IacScanResultAdaptor implements ScanResult<IacRealtimeResults> {
 
 	private static final String LOG_TAG = "[IAC-ADAPTOR]";
-	private static final String MULTIPLE_ISSUES_SUFFIX = " IaC misconfigurations";
 
 	private final IacRealtimeResults iacRealtimeResults;
 	private final String filePath;
@@ -129,7 +129,7 @@ public class IacScanResultAdaptor implements ScanResult<IacRealtimeResults> {
 		// Set title based on whether there are multiple issues on the same line
 		String title;
 		if (iacIssues.size() > 1) {
-			title = iacIssues.size() + MULTIPLE_ISSUES_SUFFIX;
+			title = iacIssues.size() + DevAssistConstants.MULTIPLE_IAC_ISSUES;
 		} else {
 			title = firstIssue.getTitle();
 		}
@@ -176,7 +176,7 @@ public class IacScanResultAdaptor implements ScanResult<IacRealtimeResults> {
 		if (scanIssue.getVulnerabilities().size() == 1) {
 			scanIssue.setTitle(scanIssue.getVulnerabilities().get(0).getTitle());
 		} else if (scanIssue.getVulnerabilities().size() > 1) {
-			scanIssue.setTitle(scanIssue.getVulnerabilities().size() + MULTIPLE_ISSUES_SUFFIX);
+			scanIssue.setTitle(scanIssue.getVulnerabilities().size() + DevAssistConstants.MULTIPLE_IAC_ISSUES);
 		}
 
 		// Add location information from issues

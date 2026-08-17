@@ -39,6 +39,7 @@ import org.eclipse.swt.browser.ProgressEvent;
 import org.eclipse.swt.browser.ProgressListener;
 
 import com.checkmarx.eclipse.common.utils.CxLogger;
+import com.checkmarx.eclipse.devassist.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.remediation.RemediationManager;
 import com.checkmarx.eclipse.devassist.ui.findings.editor.FindingsAnnotation;
@@ -501,7 +502,7 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 					String sectionHtml = PROBLEM_DESCRIPTRO.formatDescriptionHtml(scanIssue, true, textColorForElements);
 					if (!sectionHtml.isEmpty()) {
 						checkmarxSections.add("<div>" + sectionHtml + "</div>");
-						com.checkmarx.eclipse.devassist.model.ScanEngine engine = scanIssue.getScanEngine();
+						ScanEngine engine = scanIssue.getScanEngine();
 						String engineName = (engine != null) ? engine.toString() : "UNKNOWN";
 						CxLogger.info("[HOVER] " + engineName + ": Rendered ScanIssue via formatter - "
 								+ scanIssue.getTitle());

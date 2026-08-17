@@ -93,17 +93,17 @@ public final class CheckmarxProblemDescriptionFormatter {
 		descBuilder.append("<hr style='margin:4px 0;border:none;border-top:none solid #ccc;'/>");
 
 		// For ASCA and IAC multiple violations
-		appendMultipleViolationsTitle(descBuilder, scanIssue);
+		appendMultipleViolationsTitle(descBuilder, scanIssue, textColor);
 
 		switch (scanIssue.getScanEngine()) {
 		case OSS:
-			buildOSSDescription(descBuilder, scanIssue);
+			buildOSSDescription(descBuilder, scanIssue, textColor);
 			break;
 		case ASCA:
 			buildASCADescription(descBuilder, scanIssue, textColor);
 			break;
 		case SECRETS:
-			buildSecretsDescription(descBuilder, scanIssue);
+			buildSecretsDescription(descBuilder, scanIssue, textColor);
 			break;
 		case IAC:
 			buildIACDescription(descBuilder, scanIssue, textColor);
@@ -132,8 +132,8 @@ public final class CheckmarxProblemDescriptionFormatter {
 	 *                    scanned issue, including its severity, vulnerabilities,
 	 *                    and related details
 	 */
-	private void buildOSSDescription(StringBuilder descBuilder, ScanIssue scanIssue) {
-		buildPackageMessage(descBuilder, scanIssue);
+	private void buildOSSDescription(StringBuilder descBuilder, ScanIssue scanIssue, String textColor) {
+		buildPackageMessage(descBuilder, scanIssue, textColor);
 		buildVulnerabilitySection(descBuilder, scanIssue);
 	}
 
@@ -148,8 +148,9 @@ public final class CheckmarxProblemDescriptionFormatter {
 	 * @param scanIssue   the ScanIssue object containing details about the issue
 	 *                    such as severity, title, and package version
 	 */
-	private static void buildPackageMessage(StringBuilder descBuilder, ScanIssue scanIssue) {
+	private static void buildPackageMessage(StringBuilder descBuilder, ScanIssue scanIssue, String textColor) {
 		String secondaryText = DevAssistConstants.SEVERITY_PACKAGE;
+		String colorStyle = textColor != null && !textColor.isEmpty() ? "color:" + textColor + ";" : "";
 		String iconKey = PACKAGE;
 		if (scanIssue.getSeverity().equalsIgnoreCase(SeverityLevel.MALICIOUS.getSeverity())) {
 			secondaryText = PACKAGE;
@@ -158,7 +159,7 @@ public final class CheckmarxProblemDescriptionFormatter {
 		String icon = getSeverityIconHtml(iconKey, ICON_INLINE_STYLE);
 
 		descBuilder.append(TABLE_WITH_TR).append("<td style='padding:0 6px 0 0;vertical-align:middle;'>").append(icon)
-				.append("</td>").append("<td style='padding:0 2px 0 2px;").append(TITLE_FONT_SIZE)
+				.append("</td>").append("<td style=' " + colorStyle + " padding:0 2px 0 2px;").append(TITLE_FONT_SIZE)
 				.append(TITLE_FONT_FAMILY).append(CELL_LINE_HEIGHT_STYLE).append("'>").append("<p style='margin:0;")
 				.append(TITLE_FONT_SIZE).append(TITLE_FONT_FAMILY).append("'>").append("<b>")
 				.append(HtmlEscapeUtil.escape(scanIssue.getTitle())).append("@")
@@ -225,11 +226,11 @@ public final class CheckmarxProblemDescriptionFormatter {
 	/**
 	 * Secrets description. Format: [Severity Icon] Title (bold) - Secret finding
 	 */
-	private void buildSecretsDescription(StringBuilder descBuilder, ScanIssue scanIssue) {
+	private void buildSecretsDescription(StringBuilder descBuilder, ScanIssue scanIssue, String textColor) {
 		String icon = getSeverityIconHtml(scanIssue.getSeverity(), ICON_INLINE_STYLE);
-
+		String colorStyle = textColor != null && !textColor.isEmpty() ? "color:" + textColor + ";" : "";
 		descBuilder.append(TABLE_WITH_TR).append("<td style='padding:0 6px 0 0;vertical-align:middle;'>").append(icon)
-				.append("</td>").append("<td style='padding:0 2px 0 2px;").append(TITLE_FONT_SIZE)
+				.append("</td>").append("<td style='" + colorStyle + "padding:0 2px 0 2px;").append(TITLE_FONT_SIZE)
 				.append(TITLE_FONT_FAMILY).append(CELL_LINE_HEIGHT_STYLE).append("'>").append("<p style='margin:0;")
 				.append(TITLE_FONT_SIZE).append(TITLE_FONT_FAMILY).append("'>").append("<b>")
 				.append(HtmlEscapeUtil.escape(formatTitle(scanIssue.getTitle()))).append("</b>")
@@ -247,17 +248,19 @@ public final class CheckmarxProblemDescriptionFormatter {
 					.append("<td style='width:20px;padding:0 6px 0 0;vertical-align:middle;'>").append(severityIcon)
 					.append("</td>");
 			String colorStyle = textColor != null && !textColor.isEmpty() ? "color:" + textColor + ";" : "";
-			descBuilder.append("<td style='" + colorStyle + "padding:0 4px;" + "white-space:normal;" + TITLE_FONT_SIZE
-					+ TITLE_FONT_FAMILY + CELL_LINE_HEIGHT_STYLE + "'>");
-			descBuilder.append(
-					"<div style='" + colorStyle + "display:block;" + "word-break:break-word;" + "overflow-wrap:anywhere;" + "'>");
-			descBuilder.append("<b>").append(HtmlEscapeUtil.escape(vulnerability.getTitle())).append("</b>")
-					.append(" - ").append(HtmlEscapeUtil.escape(vulnerability.getActualValue())).append(" ")
-					.append(HtmlEscapeUtil.escape(vulnerability.getDescription()));
-
-			descBuilder.append("<span style='").append(SECONDARY_SPAN_STYLE).append("'> IaC vulnerability</span>");
-			descBuilder.append("</div></td></tr></table>");
-			buildRemediationActionsSection(descBuilder, vulnerability.getVulnerabilityId(), scanIssue.getScanEngine().name());
+			descBuilder
+					.append("<td style='" + colorStyle + "padding:0 4px;" + "white-space:normal;" + TITLE_FONT_SIZE
+							+ TITLE_FONT_FAMILY + CELL_LINE_HEIGHT_STYLE + "'>")
+					.append("<div style='" + colorStyle + "display:block;" + "word-break:break-word;"
+							+ "overflow-wrap:anywhere;" + "'>")
+					.append("<b>").append(HtmlEscapeUtil.escape(vulnerability.getTitle())).append("</b>").append(" - ")
+					.append(HtmlEscapeUtil.escape(vulnerability.getActualValue())).append(" ")
+					.append(HtmlEscapeUtil.escape(vulnerability.getDescription()))
+					.append(" <span style='" + TITLE_FONT_SIZE + TITLE_FONT_FAMILY + CELL_LINE_HEIGHT_STYLE)
+					.append(SECONDARY_SPAN_STYLE).append("'>  IaC vulnerability</span>")
+					.append("</div></td></tr></table>");
+			buildRemediationActionsSection(descBuilder, vulnerability.getVulnerabilityId(),
+					scanIssue.getScanEngine().name());
 		}
 	}
 
@@ -477,16 +480,15 @@ public final class CheckmarxProblemDescriptionFormatter {
 	 * @param descBuilder the StringBuilder to append the title to
 	 * @param scanIssue   the ScanIssue containing information about vulnerabilities
 	 */
-	private static void appendMultipleViolationsTitle(StringBuilder descBuilder, ScanIssue scanIssue) {
+	private static void appendMultipleViolationsTitle(StringBuilder descBuilder, ScanIssue scanIssue, String textColor) {
+		String colorStyle = textColor != null && !textColor.isEmpty() ? "color:" + textColor + ";" : "";
 		if (scanIssue.getVulnerabilities() == null || scanIssue.getVulnerabilities().size() <= 1) {
 			return;
 		}
-
 		boolean isASCAOrIAC = scanIssue.getScanEngine() == ScanEngine.ASCA
 				|| scanIssue.getScanEngine() == ScanEngine.IAC;
-
 		if (isASCAOrIAC) {
-			descBuilder.append(TABLE_WITH_TR).append("<td style='padding:0 6px 0 0;'>").append("<p style='margin:0;")
+			descBuilder.append(TABLE_WITH_TR).append("<td style='" + colorStyle + "padding:0 6px 0 0;'>").append("<p style='margin:0;")
 					.append(TITLE_FONT_SIZE).append(TITLE_FONT_FAMILY).append("'>")
 					.append(HtmlEscapeUtil.escape(scanIssue.getTitle())).append(" <span style='")
 					.append(SECONDARY_SPAN_STYLE).append("'>Checkmarx One Assist</span>")

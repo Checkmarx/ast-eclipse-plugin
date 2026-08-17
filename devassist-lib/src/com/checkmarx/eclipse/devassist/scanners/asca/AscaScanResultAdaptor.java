@@ -6,6 +6,7 @@ import com.checkmarx.eclipse.devassist.model.Location;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.model.Vulnerability;
+import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
 import com.checkmarx.eclipse.devassist.utils.DevAssistUtils;
 import com.checkmarx.eclipse.common.utils.CxLogger;
 import java.util.*;
@@ -29,7 +30,6 @@ import java.util.stream.Collectors;
 public class AscaScanResultAdaptor implements ScanResult<Object> {
 
 	private static final String LOG_TAG = "[ASCA-ADAPTOR]";
-	private static final String MULTIPLE_ISSUES_SUFFIX = " ASCA issues";
 
 	private final com.checkmarx.ast.asca.ScanResult ascaScanResult;
 	private final String filePath;
@@ -141,7 +141,7 @@ public class AscaScanResultAdaptor implements ScanResult<Object> {
 		// Set title based on whether there are multiple issues on the same line
 		String title;
 		if (ascaScanDetails.size() > 1) {
-			title = ascaScanDetails.size() + MULTIPLE_ISSUES_SUFFIX;
+			title = ascaScanDetails.size() + DevAssistConstants.MULTIPLE_ASCA_ISSUES;
 		} else {
 			title = firstDetail.getRuleName();
 		}
@@ -196,7 +196,7 @@ public class AscaScanResultAdaptor implements ScanResult<Object> {
 		if (scanIssue.getVulnerabilities().size() == 1) {
 			scanIssue.setTitle(scanIssue.getVulnerabilities().get(0).getTitle());
 		} else if (scanIssue.getVulnerabilities().size() > 1) {
-			scanIssue.setTitle(scanIssue.getVulnerabilities().size() + MULTIPLE_ISSUES_SUFFIX);
+			scanIssue.setTitle(scanIssue.getVulnerabilities().size() + DevAssistConstants.MULTIPLE_ASCA_ISSUES);
 		}
 
 		// Add location information from first detail
