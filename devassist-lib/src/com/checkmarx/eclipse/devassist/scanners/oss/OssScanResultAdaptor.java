@@ -82,6 +82,9 @@ public class OssScanResultAdaptor implements ScanResult<OssRealtimeResults> {
 		List<ScanIssue> issues = packages.stream()
 				.map(this::createScanIssue)
 				.filter(Objects::nonNull)
+				.collect(Collectors.toMap(ScanIssue::getScanIssueId, java.util.function.Function.identity(),
+						(first, duplicate) -> first, java.util.LinkedHashMap::new))
+				.values().stream()
 				.collect(Collectors.toList());
 
 		CxLogger.info(LOG_TAG + " Converted " + issues.size() + " OSS scan issues for file: " + filePath);

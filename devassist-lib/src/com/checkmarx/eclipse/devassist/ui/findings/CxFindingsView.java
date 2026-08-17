@@ -366,38 +366,6 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
     
     private Composite parentComposite;
 
-
-    private void initFindingsViewUI() {
-        try {
-            
-            IProject[] projects = ResourcesPlugin.getWorkspace().getRoot().getProjects();
-
-            if (projects.length > 0 && projects[0].isOpen()) {
-                IProject project = projects[0];
-                ProblemHolderService problemHolder = (ProblemHolderService) project.getSessionProperty(
-                        new QualifiedName("com.checkmarx.eclipse.plugin", "problem-holder"));
-
-                if (problemHolder != null) {
-                    Map<String, List<ScanIssue>> existingIssues = problemHolder.getAllScanIssues();
-                    if (existingIssues != null && !existingIssues.isEmpty()) {
-                        this.currentIssues = existingIssues;
-                    }
-                }
-            }
-
-            subscribeToEventBroker();
-
-            ignoredStore = IgnoredProblemsStore.getInstance();
-            ignoredStore.addListener(this);
-
-            drawFindingsPanel(parentComposite);
-
-        } catch (Exception e) {
-            System.err.println("[FINDINGS] Error during view creation: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-
     /**
      * Removes every contribution from the view toolbar.
      */
@@ -542,7 +510,6 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
         if (filePath == null) {
             filePath = detailWithPath.getFilePath();
         }
-
         if (detail.getLocations() != null && !detail.getLocations().isEmpty()) {
             Location location = detail.getLocations().get(0);
             
@@ -748,10 +715,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
         try {
             // Extract document for real-time scanning
             org.eclipse.jface.text.IDocument document = null;
-            String filePath = file.getLocation().toOSString();
             String fileName = file.getName();
-
-            
 
             // Try method 1: Direct ITextEditor instance check
             if (editor instanceof org.eclipse.ui.texteditor.ITextEditor) {
@@ -1114,80 +1078,6 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
         }
     }
 
-    /**
-     * Create a marker for a ScanIssue.
-     *
-     * **CRITICAL FIX**: Markers were never being created, only searched for.
-     * This method creates markers on-demand when user navigates to an issue.
-     *
-     * **Works for ALL file types**: Java, Python, C++, JavaScript, YAML, XML, etc.
-     * Uses Eclipse's universal IMarker API (not language-specific).
-     *
-     * Marker attributes are populated using MarkerIssueMapper to store
-     * all ScanIssue data in marker attributes for later retrieval.
-     *
-     * @param file File to create marker in
-     * @param issue ScanIssue to create marker for
-     */
-//    private void createMarkerForIssue(IFile file, ScanIssue issue) {
-//        if (file == null || issue == null || issue.getLocations() == null || issue.getLocations().isEmpty()) {
-//            
-//            return;
-//        }
-//
-//        try {
-//            
-//            
-//            
-//            
-//            
-//            
-//            
-//
-//            // Step 1: Check if marker already exists for this issue
-//            IMarker existingMarker = findMarkerForIssue(file, issue);
-//            if (existingMarker != null && existingMarker.exists()) {
-//                
-//                return;
-//            }
-//
-//            // Step 2: Create new marker using Eclipse's universal IMarker API
-//            // **KEY**: Uses IMarker.PROBLEM which works for ALL file types
-//            // - NOT language-specific (works for Java, Python, C++, JS, YAML, etc.)
-//            // - Marker appears in Eclipse's Problems View
-//            // - Can be navigated with IDE.gotoMarker()
-//            IMarker newMarker = file.createMarker("com.checkmarx.eclipse.plugin.checkmarxProblemMarker");
-//            
-//
-//            // Step 3: Populate marker attributes using MarkerIssueMapper
-//            // This stores all ScanIssue data in marker for later retrieval
-//            com.checkmarx.eclipse.devassist.ui.findings.marker.MarkerIssueMapper.populateMarker(newMarker, issue);
-//            
-//
-//            // Step 4: Verify marker creation
-//            if (newMarker.exists()) {
-//                String markerMsg = newMarker.getAttribute(org.eclipse.core.resources.IMarker.MESSAGE, "");
-//                int markerLine = newMarker.getAttribute(org.eclipse.core.resources.IMarker.LINE_NUMBER, -1);
-//                int markerSeverity = newMarker.getAttribute(org.eclipse.core.resources.IMarker.SEVERITY, -1);
-//
-//                
-//                
-//                
-//                
-//                
-//                
-//            } else {
-//                
-//            }
-//
-//        } catch (org.eclipse.core.runtime.CoreException e) {
-//            System.err.println("[FINDINGS] [MARKER-CREATE] ✗ CoreException creating marker: " + e.getMessage());
-//            e.printStackTrace();
-//        } catch (Exception e) {
-//            System.err.println("[FINDINGS] [MARKER-CREATE] ✗ Error creating marker: " + e.getMessage());
-//            e.printStackTrace();
-//        }
-//    }
 
     private void showContextMenu(MouseEvent e) {
         ISelection selection = treeViewer.getSelection();
@@ -1298,14 +1188,12 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
         
 
         Map<String, List<ScanIssue>> filteredIssues = new HashMap<>();
-        int totalBefore = 0;
         int totalAfter = 0;
 
         for (String filePath : currentIssues.keySet()) {
             List<ScanIssue> issues = currentIssues.get(filePath);
             if (issues == null) continue;
 
-            totalBefore += issues.size();
             List<ScanIssue> filtered = new java.util.ArrayList<>();
 
             for (ScanIssue issue : issues) {
@@ -1401,14 +1289,6 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
      */
     public void refreshTree(Map<String, List<ScanIssue>> issues) {
         if (issues == null) return;
-
-        
-        
-        
-        
-        int totalIssues = issues.values().stream().filter(java.util.Objects::nonNull).mapToInt(List::size).sum();
-        
-
         // Log issues by severity
         Map<String, Long> severityCounts = new HashMap<>();
         issues.values().forEach(issueList -> {
@@ -1421,24 +1301,14 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
                 });
             }
         });
-
-        
-
-        for (String filePath : issues.keySet()) {
-            List<ScanIssue> fileIssues = issues.get(filePath);
-        }
-
-        
+       
         this.currentIssues = issues;
-
         // ✅ Thread-safe dispatching for background updates
         org.eclipse.swt.widgets.Display.getDefault().asyncExec(() -> {
             if (treeViewer != null && treeViewer.getControl() != null && !treeViewer.getControl().isDisposed()) {
                 refreshTreeWithFilter();
             }
         });
-
-        
     }
 
     @Override
