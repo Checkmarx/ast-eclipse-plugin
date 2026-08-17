@@ -41,6 +41,7 @@ import org.eclipse.swt.browser.ProgressListener;
 import com.checkmarx.eclipse.common.utils.CxLogger;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.remediation.RemediationLinkHandler;
 import com.checkmarx.eclipse.devassist.remediation.RemediationManager;
 import com.checkmarx.eclipse.devassist.ui.findings.editor.FindingsAnnotation;
 import com.checkmarx.eclipse.devassist.ui.findings.marker.MarkerIssueMapper;
@@ -164,8 +165,8 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 						@Override
 						public void changing(LocationEvent event) {
 							CxLogger.info("[HOVER] LocationListener.changing: " + event.location);
-							if (event.location.contains("#action:")) {
-								CxLogger.info("[HOVER] Blocking action URL: " + event.location);
+							if (event.location.contains("#cxonedevassist/")) {
+								CxLogger.info("[HOVER] Blocking remediation action URL: " + event.location);
 								event.doit = false;
 							}
 						}
@@ -173,12 +174,12 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 						@Override
 						public void changed(LocationEvent event) {
 							CxLogger.info("[HOVER] LocationListener.changed: " + event.location);
-							int actionIndex = event.location.indexOf("#action:");
+							int actionIndex = event.location.indexOf("#cxonedevassist/");
 							if (actionIndex >= 0) {
 								event.doit = false;
-								String action = event.location.substring(actionIndex + 8); // +8 for "#action:"
-								CxLogger.info("[HOVER] Extracted action: " + action);
-								handleHoverAction(action);
+								String linkData = event.location.substring(actionIndex + 16); // +16 for "#cxonedevassist/"
+								CxLogger.info("[HOVER] Extracted link data: " + linkData);
+								handleHoverAction(linkData);
 							}
 						}
 					});
@@ -213,25 +214,11 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 			return;
 		}
 
-		switch (action) {
-		case "fix":
-			new RemediationManager().fixWithCxOneAssist(currentFinding, DevAssistConstants.QUICK_FIX);
-			break;
+		RemediationLinkHandler linkHandler = new RemediationLinkHandler();
+		boolean handled = linkHandler.handleLink(action, currentFinding);
 
-		case "details":
-			new RemediationManager().viewDetails(currentFinding, DevAssistConstants.QUICK_FIX);
-			break;
-
-		case "ignore":
-			new RemediationManager().viewDetails(currentFinding, DevAssistConstants.QUICK_FIX);
-			break;
-
-		case "copy":
-			new RemediationManager().viewDetails(currentFinding, DevAssistConstants.QUICK_FIX);
-			break;
-
-		default:
-			CxLogger.info("[HOVER] Unknown action: " + action);
+		if (!handled) {
+			CxLogger.info("[HOVER] Unknown or unhandled action: " + action);
 		}
 	}
 
@@ -275,8 +262,8 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 						@Override
 						public void changing(LocationEvent event) {
 							CxLogger.info("[HOVER] LocationListener.changing: " + event.location);
-							if (event.location.contains("#action:")) {
-								CxLogger.info("[HOVER] Blocking action URL: " + event.location);
+							if (event.location.contains("#cxonedevassist/")) {
+								CxLogger.info("[HOVER] Blocking remediation action URL: " + event.location);
 								event.doit = false;
 							}
 						}
@@ -284,12 +271,12 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 						@Override
 						public void changed(LocationEvent event) {
 							CxLogger.info("[HOVER] LocationListener.changed: " + event.location);
-							int actionIndex = event.location.indexOf("#action:");
+							int actionIndex = event.location.indexOf("#cxonedevassist/");
 							if (actionIndex >= 0) {
 								event.doit = false;
-								String action = event.location.substring(actionIndex + 8); // +8 for "#action:"
-								CxLogger.info("[HOVER] Extracted action: " + action);
-								handleHoverAction(action);
+								String linkData = event.location.substring(actionIndex + 16); // +16 for "#cxonedevassist/"
+								CxLogger.info("[HOVER] Extracted link data: " + linkData);
+								handleHoverAction(linkData);
 							}
 						}
 					});
