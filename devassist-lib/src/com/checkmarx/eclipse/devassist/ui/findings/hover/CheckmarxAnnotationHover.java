@@ -428,6 +428,11 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 			    .append("word-wrap:break-word;")
 			    .append("overflow-wrap:break-word;'>");
 
+			// Determine text color for dynamic elements in the formatter
+			// (e.g., ASCA/IAC vulnerability titles). This is done on the UI thread,
+			// so it's safe to use from the formatter via parameter passing.
+			String textColorForElements = getTextColorForTheme();
+
 			Set<Long> seenMarkerIds = new HashSet<>();
 			// Tracks scanIssueIds already rendered via a FindingsAnnotation (the live,
 			// fully-populated ScanIssue) so a MarkerAnnotation for the SAME issue - which
@@ -493,7 +498,7 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 				// Use consolidated formatter for both ASCA/IAC (iterates vulnerabilities)
 				// and other engines (uses root ScanIssue attributes)
 				try {
-					String sectionHtml = PROBLEM_DESCRIPTRO.formatDescriptionHtml(scanIssue, true);
+					String sectionHtml = PROBLEM_DESCRIPTRO.formatDescriptionHtml(scanIssue, true, textColorForElements);
 					if (!sectionHtml.isEmpty()) {
 						checkmarxSections.add("<div>" + sectionHtml + "</div>");
 						com.checkmarx.eclipse.devassist.model.ScanEngine engine = scanIssue.getScanEngine();
@@ -543,7 +548,7 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 							continue;
 						}
 
-						String section = buildCheckmarxSection(marker, id);
+						String section = buildCheckmarxSection(marker, id, textColorForElements);
 						if (!section.isEmpty()) {
 							checkmarxSections.add(section);
 							if (!issueId.isEmpty()) {
@@ -605,7 +610,7 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 	}
 
 
-	private String buildCheckmarxSection(IMarker marker, Long markerId) {
+	private String buildCheckmarxSection(IMarker marker, Long markerId, String textColor) {
 		try {
 			ScanIssue issue = MarkerIssueMapper.fromMarker(marker);
 			if (issue == null) {
@@ -616,7 +621,7 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 			CxLogger.info("[HOVER] Captured ScanIssue for action handlers from marker: " + issue.getTitle());
 			// Use consolidated formatter with clickable actions enabled (same as
 			// FindingsAnnotation path)
-			String html = "<div>" + PROBLEM_DESCRIPTRO.formatDescriptionHtml(issue, true) + "</div>";
+			String html = "<div>" + PROBLEM_DESCRIPTRO.formatDescriptionHtml(issue, true, textColor) + "</div>";
 			CxLogger.info("[HOVER] Marker " + markerId + ": Built HTML section for issue: " + issue.getTitle());
 			return html;
 		} catch (Exception e) {
@@ -694,5 +699,26 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 
 	private static String buildFallbackDedupKey(String title, int lineNumber) {
 		return (title != null ? title : "") + "|" + lineNumber;
+	}
+
+	private static String getTextColorForTheme() {
+		Display display = Display.getDefault();
+		final String[] textColor = new String[1];
+
+		Runnable runnable = () -> {
+			if (DevAssistUtils.isDarkTheme()) {
+				textColor[0] = "#FFFFFF";
+			} else {
+				textColor[0] = "#000000";
+			}
+		};
+
+		if (Display.getCurrent() == display) {
+			runnable.run();
+		} else {
+			display.syncExec(runnable);
+		}
+
+		return textColor[0];
 	}
 }

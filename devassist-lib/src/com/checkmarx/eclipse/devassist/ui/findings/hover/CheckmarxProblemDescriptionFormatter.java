@@ -16,6 +16,7 @@ import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
 import com.checkmarx.eclipse.devassist.utils.DevAssistUtils;
 import com.checkmarx.eclipse.devassist.utils.HtmlEscapeUtil;
 import static com.checkmarx.eclipse.devassist.ui.findings.hover.CheckmarxProblemDescriptionFormatter.InlineStyle.*;
+import static com.checkmarx.eclipse.devassist.utils.DevAssistConstants.SEPERATOR;
 
 /**
  * Formats a ScanIssue as an HTML fragment for display in the editor's line
@@ -79,9 +80,11 @@ public final class CheckmarxProblemDescriptionFormatter {
 	 * @param enableClickableActions if true, renders action links as #action:...
 	 *                               for LocationListener interception; if false,
 	 *                               renders as informational text with Ctrl+1 hint
+	 * @param textColor              text color in hex format (e.g., "#000000" for dark themes,
+	 *                               "#FFFFFF" for light), or null to use inherited color
 	 * @return HTML fragment
 	 */
-	public String formatDescriptionHtml(ScanIssue scanIssue, boolean enableClickableActions) {
+	public String formatDescriptionHtml(ScanIssue scanIssue, boolean enableClickableActions, String textColor) {
 		StringBuilder descBuilder = new StringBuilder();
 
 		// DevAssist image
@@ -97,13 +100,13 @@ public final class CheckmarxProblemDescriptionFormatter {
 			buildOSSDescription(descBuilder, scanIssue);
 			break;
 		case ASCA:
-			buildASCADescription(descBuilder, scanIssue);
+			buildASCADescription(descBuilder, scanIssue, textColor);
 			break;
 		case SECRETS:
 			buildSecretsDescription(descBuilder, scanIssue);
 			break;
 		case IAC:
-			buildIACDescription(descBuilder, scanIssue);
+			buildIACDescription(descBuilder, scanIssue, textColor);
 			break;
 		case CONTAINERS:
 			buildContainerDescription(descBuilder, scanIssue);
@@ -112,7 +115,7 @@ public final class CheckmarxProblemDescriptionFormatter {
 			buildDefaultDescription(descBuilder, scanIssue);
 		}
 		if (scanIssue.getScanEngine() != ScanEngine.IAC && scanIssue.getScanEngine() != ScanEngine.ASCA) {
-			appendActionLinks(descBuilder, enableClickableActions);
+			buildRemediationActionsSection(descBuilder, scanIssue.getScanIssueId(), scanIssue.getScanEngine().name());
 		}
 		return descBuilder.toString();
 	}
@@ -199,24 +202,25 @@ public final class CheckmarxProblemDescriptionFormatter {
 	 * ASCA description. Format: [Title for multiple issues] [Severity Icon] Title
 	 * (bold) - description - SAST vulnerability
 	 */
-	private void buildASCADescription(StringBuilder descBuilder, ScanIssue scanIssue) {
+	private void buildASCADescription(StringBuilder descBuilder, ScanIssue scanIssue, String textColor) {
 		for (Vulnerability vulnerability : scanIssue.getVulnerabilities()) {
 			String severityIcon = getSeverityIconHtml(vulnerability.getSeverity(), ICON_INLINE_STYLE);
 			descBuilder.append(TABLE_WITH_TR_IAC_ASCA)
 					.append("<td style='width:20px;padding:0 6px 0 0;vertical-align:middle;'>").append(severityIcon)
 					.append("</td>");
+			String colorStyle = textColor != null && !textColor.isEmpty() ? "color:" + textColor + ";" : "";
 			descBuilder.append("<td style='padding:0 6px 0 6px;").append(TITLE_FONT_SIZE).append(TITLE_FONT_FAMILY)
 					.append(CELL_LINE_HEIGHT_STYLE).append("'>")
 					.append("<div style='display:flex;flex-direction:row;align-items:center;gap:6px;'>")
-					.append("<p style=\"").append(TITLE_FONT_SIZE).append(TITLE_FONT_FAMILY).append("\">").append("<b>")
+					.append("<p style=\"").append(colorStyle).append(TITLE_FONT_SIZE).append(TITLE_FONT_FAMILY).append("\">").append("<b>")
 					.append(HtmlEscapeUtil.escape(vulnerability.getTitle())).append("</b>").append(" - ")
 					.append(HtmlEscapeUtil.escape(vulnerability.getDescription())).append(" - <span style='")
 					.append(SECONDARY_SPAN_STYLE).append("'>SAST vulnerability</span>").append("</p>")
 					.append("</div></td></tr></table>");
-//            buildRemediationActionsSection(descBuilder, vulnerability.getVulnerabilityId(), scanIssue.getScanEngine().name());
-			appendActionLinks(descBuilder, true);
+			 buildRemediationActionsSection(descBuilder, vulnerability.getVulnerabilityId(), scanIssue.getScanEngine().name());
 		}
 	}
+	
 
 	/**
 	 * Secrets description. Format: [Severity Icon] Title (bold) - Secret finding
@@ -236,28 +240,24 @@ public final class CheckmarxProblemDescriptionFormatter {
 	/**
 	 * IAC description (image header + vulnerability description with Title).
 	 */
-	private void buildIACDescription(StringBuilder descBuilder, ScanIssue scanIssue) {
+	private void buildIACDescription(StringBuilder descBuilder, ScanIssue scanIssue, String textColor) {
 		for (Vulnerability vulnerability : scanIssue.getVulnerabilities()) {
 			String severityIcon = getSeverityIconHtml(vulnerability.getSeverity(), ICON_INLINE_STYLE);
 			descBuilder.append(TABLE_WITH_TR_IAC_ASCA)
 					.append("<td style='width:20px;padding:0 6px 0 0;vertical-align:middle;'>").append(severityIcon)
 					.append("</td>");
-
-			descBuilder.append("<td style='" + "padding:0 4px;" + "white-space:normal;" + TITLE_FONT_SIZE
+			String colorStyle = textColor != null && !textColor.isEmpty() ? "color:" + textColor + ";" : "";
+			descBuilder.append("<td style='" + colorStyle + "padding:0 4px;" + "white-space:normal;" + TITLE_FONT_SIZE
 					+ TITLE_FONT_FAMILY + CELL_LINE_HEIGHT_STYLE + "'>");
-
 			descBuilder.append(
-					"<div style='" + "display:block;" + "word-break:break-word;" + "overflow-wrap:anywhere;" + "'>");
-
+					"<div style='" + colorStyle + "display:block;" + "word-break:break-word;" + "overflow-wrap:anywhere;" + "'>");
 			descBuilder.append("<b>").append(HtmlEscapeUtil.escape(vulnerability.getTitle())).append("</b>")
 					.append(" - ").append(HtmlEscapeUtil.escape(vulnerability.getActualValue())).append(" ")
 					.append(HtmlEscapeUtil.escape(vulnerability.getDescription()));
 
 			descBuilder.append("<span style='").append(SECONDARY_SPAN_STYLE).append("'> IaC vulnerability</span>");
-
 			descBuilder.append("</div></td></tr></table>");
-//            buildRemediationActionsSection(descBuilder, vulnerability.getVulnerabilityId(), scanIssue.getScanEngine().name());
-			appendActionLinks(descBuilder, true);
+			buildRemediationActionsSection(descBuilder, vulnerability.getVulnerabilityId(), scanIssue.getScanEngine().name());
 		}
 	}
 
@@ -318,10 +318,10 @@ public final class CheckmarxProblemDescriptionFormatter {
 
 	/**
 	 * Legacy overload for backward compatibility: defaults to informational action
-	 * links (non-clickable).
+	 * links (non-clickable) and no text color override.
 	 */
 	public String formatDescriptionHtml(ScanIssue issue) {
-		return formatDescriptionHtml(issue, false);
+		return formatDescriptionHtml(issue, false, null);
 	}
 
 	/**
@@ -371,6 +371,40 @@ public final class CheckmarxProblemDescriptionFormatter {
 
 		sb.append("</div>");
 	}
+	
+	/**
+     * Builds the remediation actions section of the description.
+     *
+     * @param descBuilder {@link StringBuilder} object to add the remediation actions section to.
+     * @param scanIssueId {@link String} object containing the remediation actions section data.
+     */
+    private void buildRemediationActionsSection(StringBuilder descBuilder, String scanIssueId, String engineName) {
+        descBuilder.append("<table style='display:block;margin:0;border-collapse:collapse;border-spacing:0;padding:0;'><tr>")
+                .append("<td style='padding:0 10px 0 0;margin:0;'>")
+                .append("<a href=\"#cxonedevassist/copyfixprompt").append(SEPERATOR).append(scanIssueId).append(SEPERATOR).append(engineName).append("\" ")
+                .append("style='text-decoration: none; color: #4470EC; font-family: inter; white-space: nowrap; margin:0; padding:0;'>")
+                .append(DevAssistUtils.getAssistQuickFixName())
+                .append("</a></td>")
+                .append("<td style='padding:0 10px 0 0;margin:0;'>")
+                .append("<a href=\"#cxonedevassist/viewdetails").append(SEPERATOR).append(scanIssueId).append(SEPERATOR).append(engineName).append("\" ")
+                .append("style='text-decoration: none; color: #4470EC; font-family: inter; white-space: nowrap; margin:0; padding:0;'>")
+                .append(DevAssistConstants.VIEW_DETAILS_FIX_NAME)
+                .append("</a></td>")
+                .append("<td style='padding:0 10px 0 0;margin:0;'>")
+                .append("<a href=\"#cxonedevassist/ignorethis").append(SEPERATOR).append(scanIssueId).append(SEPERATOR).append(engineName).append("\" ")
+                .append("style='text-decoration: none; color: #4470EC; font-family: inter; white-space: nowrap; margin:0; padding:0;'>")
+                .append(DevAssistConstants.IGNORE_THIS_VULNERABILITY_FIX_NAME)
+                .append("</a></td>");
+        if (engineName.equalsIgnoreCase(String.valueOf(ScanEngine.OSS)) || engineName.equalsIgnoreCase(String.valueOf(ScanEngine.CONTAINERS))) {
+            descBuilder.append("<td style='padding:0 5px 0 0;margin:0;'>")
+                    .append("<a href=\"#cxonedevassist/ignoreallofthis").append(SEPERATOR).append(scanIssueId).append(SEPERATOR).append(engineName).append("\" ")
+                    .append("style='text-decoration: none; color: #4470EC; font-family: inter; white-space: nowrap; margin:0; padding:0;'>")
+                    .append(DevAssistConstants.IGNORE_ALL_OF_THIS_TYPE_FIX_NAME);
+        }
+        descBuilder.append("</a></td>")
+                .append("</tr></table><br>");
+    }
+
 
 	/**
 	 * Injects inline styles into an existing HTML image tag.
@@ -513,4 +547,5 @@ public final class CheckmarxProblemDescriptionFormatter {
 	private static String getSeverityCountIconKey(String severity) {
 		return severity + COUNT;
 	}
+
 }
