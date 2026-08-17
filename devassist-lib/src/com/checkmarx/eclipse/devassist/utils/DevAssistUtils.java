@@ -40,6 +40,9 @@ public class DevAssistUtils {
 	public static final String DOCKERFILE = "dockerfile";
 	public static final String DOCKER_COMPOSE = "docker-compose";
 	public static final String HELM = "helm";
+	private static final String THEME_ENGINE_DISPLAY_KEY = "org.eclipse.e4.ui.css.swt.theme";
+	private static final String DARK_THEME_ID_FRAGMENT = "dark";
+
 
 	private DevAssistUtils() {
 		// Private constructor to prevent instantiation
@@ -362,84 +365,66 @@ public class DevAssistUtils {
      * @param iconPath severity or logical icon path
      * @return external form URL or empty string if not found
      */
-    public static String themeBasedPNGIconForHtmlImage(String iconPath) {
-        if (iconPath == null || iconPath.isEmpty()) {
-            return "";
-        }
-        boolean dark = isDarkTheme();
-        // Try the dark variant first if in a dark theme.
-        String candidate = iconPath + (dark ? "_dark" : "");
-        URL res = DevAssistUtils.class.getResource(candidate);
-        if (res == null && dark) {
-            // Fallback to the light variant.
-            candidate = iconPath + ".png";
-            res = DevAssistUtils.class.getResource(candidate);
-        }
-        return res != null ? res.toExternalForm() : "";
-    }
+	public static String themeBasedPNGIconForHtmlImage(String iconPath) {
+		if (iconPath == null || iconPath.isEmpty()) {
+			return "";
+		}
+		boolean dark = isDarkTheme();
+		String candidate = iconPath;
+		if (dark) {
+			int extensionIndex = iconPath.lastIndexOf(".png");
+			if (extensionIndex >= 0) {
+				candidate = iconPath.substring(0, extensionIndex) + "_dark" + iconPath.substring(extensionIndex);
+			} else {
+				candidate = iconPath + "_dark";
+			}
+		}
+		URL res = DevAssistUtils.class.getResource(candidate);
+		if (res == null && dark) {
+			// Fallback to the light variant
+			candidate = iconPath;
+			res = DevAssistUtils.class.getResource(candidate);
+		}
+		return res != null ? res.toExternalForm() : "";
+	}
 
-    /**
-     * Detects whether Eclipse is currently running in dark theme mode.
-     * Uses the e4 CSS theme engine to check the active theme ID.
-     * Falls back to luminance heuristic if the theme engine is unavailable.
-     *
-     * @return true if dark theme is active, false otherwise
-     */
-    private static boolean isDarkTheme() {
-        ITheme activeTheme = getActiveTheme();
-        if (activeTheme != null && activeTheme.getId() != null) {
-            return activeTheme.getId().toLowerCase().contains("dark");
-        }
-        return isDarkByBackgroundLuminance();
-    }
+	/**
+	 * Reads Eclipse's own e4 CSS theme engine - the same mechanism the Platform
+	 * uses to decide dark vs. light styling - so the scanner image always matches
+	 * whatever theme Eclipse is actually rendering with, instead of guessing from
+	 * a color sample (which broke down in practice, e.g. custom/high-contrast themes).
+	 */
+	public static boolean isDarkTheme() {
+		ITheme activeTheme = getActiveTheme();
+		if (activeTheme != null && activeTheme.getId() != null) {
+			return activeTheme.getId().toLowerCase().contains(DARK_THEME_ID_FRAGMENT);
+		}
+		return isDarkByBackgroundLuminance();
+	}
 
-    /**
-     * Retrieves the active Eclipse theme from the e4 CSS theme engine.
-     * Returns null if the theme engine is not available.
-     *
-     * @return ITheme object representing the active theme, or null if unavailable
-     */
-    private static ITheme getActiveTheme() {
-        try {
-            Display display = Display.getDefault();
-            if (display == null || display.isDisposed()) {
-                return null;
-            }
-            Object engineData = display.getData("org.eclipse.e4.ui.css.swt.theme");
-            if (engineData instanceof IThemeEngine) {
-                return ((IThemeEngine) engineData).getActiveTheme();
-            }
-        } catch (Throwable t) {
-            CxLogger.warning("Eclipse e4 theme engine unavailable, falling back to color heuristic");
-        }
-        return null;
-    }
+	private static ITheme getActiveTheme() {
+		try {
+			Display display = Display.getCurrent();
+			Object engineData = display != null ? display.getData(THEME_ENGINE_DISPLAY_KEY) : null;
+			if (engineData instanceof IThemeEngine) {
+				return ((IThemeEngine) engineData).getActiveTheme();
+			}
+		} catch (Throwable t) {
+			// e4 CSS theming bundle not present/active in this runtime; caller falls back.
+			CxLogger.error("Eclipse e4 theme engine unavailable, falling back to color heuristic",
+					t instanceof Exception ? (Exception) t : new Exception(t));
+		}
+		return null;
+	}
 
-    /**
-     * Fallback method to detect dark theme by analyzing widget background color luminance.
-     * Uses the relative luminance formula (ITU-R BT.709) to determine if the background
-     * is dark enough to indicate a dark theme.
-     *
-     * Responsibility: Provides graceful degradation when e4 CSS theme engine is not available.
-     * This method does NOT impact other functionality - it only affects icon variant selection.
-     *
-     * @return true if background luminance is below 0.5 (dark), false otherwise
-     */
-    private static boolean isDarkByBackgroundLuminance() {
-        try {
-            Display display = Display.getDefault();
-            if (display == null || display.isDisposed()) {
-                return false;
-            }
-            Color background = display.getSystemColor(SWT.COLOR_WIDGET_BACKGROUND);
-            if (background != null) {
-                double luminance = (0.299 * background.getRed() + 0.587 * background.getGreen() + 0.114 * background.getBlue()) / 255.0;
-                return luminance < 0.5;
-            }
-        } catch (Exception e) {
-            CxLogger.warning("Error calculating background luminance: " + e.getMessage());
-        }
-        return false;
-    }
+	/**
+	 * Fallback for the rare runtime where the e4 CSS theme engine isn't registered
+	 * on the Display: approximate dark mode from the widget background luminance.
+	 */
+	private static boolean isDarkByBackgroundLuminance() {
+		Color background = Display.getCurrent().getSystemColor(SWT.COLOR_WIDGET_BACKGROUND);
+		double luminance = (0.299 * background.getRed() + 0.587 * background.getGreen() + 0.114 * background.getBlue()) / 255.0;
+		return luminance < 0.5;
+	}
 }
 

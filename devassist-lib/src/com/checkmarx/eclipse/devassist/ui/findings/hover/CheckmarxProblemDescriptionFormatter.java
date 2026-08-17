@@ -83,7 +83,6 @@ public final class CheckmarxProblemDescriptionFormatter {
 	 */
 	public String formatDescriptionHtml(ScanIssue scanIssue, boolean enableClickableActions) {
 		StringBuilder descBuilder = new StringBuilder();
-		descBuilder.append("<html><body style='margin:0;padding:0;'>");
 
 		// DevAssist image
 		descBuilder.append(TABLE_WITH_TR).append("<td style='vertical-align:middle;'>")
@@ -115,7 +114,6 @@ public final class CheckmarxProblemDescriptionFormatter {
 		if (scanIssue.getScanEngine() != ScanEngine.IAC && scanIssue.getScanEngine() != ScanEngine.ASCA) {
 			appendActionLinks(descBuilder, enableClickableActions);
 		}
-		descBuilder.append("</body></html>");
 		return descBuilder.toString();
 	}
 
@@ -475,16 +473,13 @@ public final class CheckmarxProblemDescriptionFormatter {
 		if (imagePath == null || imagePath.isEmpty()) {
 			return "";
 		}
-
 		try {
 			URL imageUrl = new URL(imagePath);
-
 			if (imageUrl != null) {
 				URL fileUrl = FileLocator.toFileURL(imageUrl);
 				String urlString = fileUrl.toString();
 				return "<img src='" + urlString + "' " + "style='display:inline-block;vertical-align:middle;' />";
 			}
-
 		} catch (Exception e) {
 			return "";
 		}

@@ -44,7 +44,9 @@ import com.checkmarx.eclipse.devassist.remediation.RemediationManager;
 import com.checkmarx.eclipse.devassist.ui.findings.editor.FindingsAnnotation;
 import com.checkmarx.eclipse.devassist.ui.findings.marker.MarkerIssueMapper;
 import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
+import com.checkmarx.eclipse.devassist.utils.DevAssistUtils;
 import com.checkmarx.eclipse.devassist.utils.HtmlEscapeUtil;
+import org.eclipse.jface.resource.JFaceColors;
 
 /**
  * Line hover for Checkmarx findings, contributed to the JDT Java editor via
@@ -86,10 +88,10 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 	 * first - the same "readable on first hover" behaviour as m2e's pom.xml
 	 * dependency hover.
 	 */
-	private static final int MIN_POPUP_WIDTH = 480;
+	private static final int MIN_POPUP_WIDTH = 580;
 	private static final int MIN_POPUP_HEIGHT = 300;
-	
-	 private static final CheckmarxProblemDescriptionFormatter PROBLEM_DESCRIPTRO = new CheckmarxProblemDescriptionFormatter();
+
+	private static final CheckmarxProblemDescriptionFormatter PROBLEM_DESCRIPTRO = new CheckmarxProblemDescriptionFormatter();
 
 	/**
 	 * Creates the small (~6-line) preview control shown on the initial mouse hover.
@@ -134,6 +136,11 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 								Math.max(maxHeight, MIN_POPUP_HEIGHT));
 					}
 				};
+				control.setBackgroundColor(
+				        JFaceColors.getInformationViewerBackgroundColor(parent.getDisplay()));
+
+				control.setForegroundColor(
+				        JFaceColors.getInformationViewerForegroundColor(parent.getDisplay()));
 				setupActionHandler(control);
 				return control;
 			}
@@ -174,17 +181,6 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 							}
 						}
 					});
-					// BrowserInformationControl.computeSizeHint() is called by
-					// AbstractInformationControlManager synchronously right after
-					// setInformation(), but Browser.setText() renders the DOM
-					// asynchronously - so that first size computation often measures
-					// an unrendered/partial page and comes back small (cutting off the
-					// action links) despite the setSizeConstraints() override above
-					// raising the ceiling. Forcing the size again once the browser
-					// reports the page load actually finished fixes that race without
-					// waiting for the user to move the mouse toward the popup (which
-					// is what today accidentally "fixes" it, since the enriched
-					// presenter control is created later, after rendering settles).
 					browser.addProgressListener(new ProgressListener() {
 						@Override
 						public void changed(ProgressEvent event) {
@@ -249,12 +245,18 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 			if (BrowserInformationControl.isAvailable(parent)) {
 				BrowserInformationControl control = new BrowserInformationControl(parent, JFaceResources.DIALOG_FONT,
 						true) {
+					
 					@Override
 					public void setSizeConstraints(int maxWidth, int maxHeight) {
 						super.setSizeConstraints(Math.max(maxWidth, MIN_POPUP_WIDTH),
 								Math.max(maxHeight, MIN_POPUP_HEIGHT));
 					}
 				};
+				control.setBackgroundColor(
+				        JFaceColors.getInformationViewerBackgroundColor(parent.getDisplay()));
+
+				control.setForegroundColor(
+				        JFaceColors.getInformationViewerForegroundColor(parent.getDisplay()));
 				setupActionHandler(control);
 				return control;
 			}
@@ -403,8 +405,28 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 			}
 
 			StringBuilder html = new StringBuilder();
-			html.append("<html><body style='margin:0;padding:4px;font-family:Arial,sans-serif;font-size:11px;")
-					.append("word-wrap:break-word;overflow-wrap:break-word;'>");
+//			html.append("<html><body style='margin:0;padding:4px;font-family:Arial,sans-serif;font-size:11px;")
+//			.append("word-wrap:break-word;overflow-wrap:break-word;'>");
+			
+			String backgroundColor = getHoverBackgroundColorHex();
+			String foregroundColor = getHoverForegroundColorHex();
+
+			html.append("<html>")
+			    .append("<head>")
+			    .append("<style>")
+			    .append("html, body {")
+			    .append("background-color:").append(backgroundColor).append(";")
+			    .append("color:").append(foregroundColor).append(";")
+			    .append("}")
+			    .append("</style>")
+			    .append("</head>")
+			    .append("<body style='")
+			    .append("margin:0;")
+			    .append("padding:4px;")
+			    .append("font-family:Arial,sans-serif;")
+			    .append("font-size:11px;")
+			    .append("word-wrap:break-word;")
+			    .append("overflow-wrap:break-word;'>");
 
 			Set<Long> seenMarkerIds = new HashSet<>();
 			// Tracks scanIssueIds already rendered via a FindingsAnnotation (the live,
@@ -415,6 +437,10 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 			// root title/description (MarkerIssueMapper's marker-attribute reconstruction
 			// is inherently lossier than the live object).
 			Set<String> renderedIssueIds = new HashSet<>();
+			// Fallback dedup key for issues without scanIssueId (e.g., OSS): title+line.
+			// Mirrors MarkerIssueMapper.findMarker()'s line+title heuristic for issues
+			// without a stable scanIssueId.
+			Set<String> renderedIssueKeys = new HashSet<>();
 			List<String> checkmarxSections = new ArrayList<>();
 			List<String> otherMessages = new ArrayList<>();
 
@@ -457,6 +483,11 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 
 				if (scanIssue.getScanIssueId() != null && !scanIssue.getScanIssueId().isEmpty()) {
 					renderedIssueIds.add(scanIssue.getScanIssueId());
+				} else {
+					// Fallback dedup key for issues without scanIssueId: title+line.
+					// This ensures OSS and other issues without stable IDs still deduplicate.
+					String fallbackKey = buildFallbackDedupKey(scanIssue.getTitle(), lineNumber);
+					renderedIssueKeys.add(fallbackKey);
 				}
 
 				// Use consolidated formatter for both ASCA/IAC (iterates vulnerabilities)
@@ -495,9 +526,20 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 						seenMarkerIds.add(id);
 
 						String issueId = MarkerIssueMapper.getIssueId(marker);
+						// Check primary dedup key (issueId) first
 						if (!issueId.isEmpty() && renderedIssueIds.contains(issueId)) {
 							CxLogger.info("[HOVER] Skipping marker " + id + ": issue " + issueId
 									+ " already rendered via FindingsAnnotation");
+							continue;
+						}
+
+						// Check fallback dedup key (title+line) for issues without stable issueId.
+						// This is critical for OSS and other engines that don't set scanIssueId.
+						String title = marker.getAttribute(IMarker.MESSAGE, "");
+						String fallbackKey = buildFallbackDedupKey(title, lineNumber);
+						if (renderedIssueKeys.contains(fallbackKey)) {
+							CxLogger.info("[HOVER] Skipping marker " + id + ": issue (title=" + title
+									+ ", line=" + (lineNumber + 1) + ") already rendered via FindingsAnnotation");
 							continue;
 						}
 
@@ -506,6 +548,9 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 							checkmarxSections.add(section);
 							if (!issueId.isEmpty()) {
 								renderedIssueIds.add(issueId);
+							} else {
+								// Track via fallback key if issueId is empty
+								renderedIssueKeys.add(fallbackKey);
 							}
 						}
 					} else {
@@ -559,20 +604,6 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 		}
 	}
 
-	/**
-	 * Returns the hex color string for Eclipse's native tooltip/hover background
-	 * (SWT.COLOR_INFO_BACKGROUND) - the same system color used by every stock
-	 * Eclipse hover (JDT Javadoc hover, problem hover, etc.). Sourcing it from the
-	 * Display at render time (instead of hardcoding a color) keeps this hover
-	 * visually consistent with the platform and automatically correct for both
-	 * light and dark themes, since COLOR_INFO_BACKGROUND is resolved by the
-	 * platform/theme itself.
-	 */
-	private static String getHoverBackgroundColorHex() {
-		Display display = Display.getDefault();
-		Color bg = display.getSystemColor(SWT.COLOR_INFO_BACKGROUND);
-		return String.format("#%02x%02x%02x", bg.getRed(), bg.getGreen(), bg.getBlue());
-	}
 
 	private String buildCheckmarxSection(IMarker marker, Long markerId) {
 		try {
@@ -611,5 +642,57 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 		} catch (Exception e) {
 			return false;
 		}
+	}
+	
+	private static String getHoverBackgroundColorHex() {
+	    Display display = Display.getDefault();
+	    final String[] colorHex = new String[1];
+
+	    Runnable runnable = () -> {
+	        if (DevAssistUtils.isDarkTheme()) {
+	            colorHex[0] = "#000000";
+	        } else {
+	            Color bg = display.getSystemColor(SWT.COLOR_INFO_BACKGROUND);
+
+	            colorHex[0] = String.format("#%02x%02x%02x",
+	                    bg.getRed(),
+	                    bg.getGreen(),
+	                    bg.getBlue());
+	        }
+	    };
+
+	    if (Display.getCurrent() == display) {
+	        runnable.run();
+	    } else {
+	        display.syncExec(runnable);
+	    }
+
+	    return colorHex[0];
+	}
+	private static String getHoverForegroundColorHex() {
+	    Display display = Display.getDefault();
+
+	    final String[] colorHex = new String[1];
+
+	    Runnable runnable = () -> {
+	        Color fg = JFaceColors.getInformationViewerForegroundColor(display);
+
+	        colorHex[0] = String.format("#%02x%02x%02x",
+	                fg.getRed(),
+	                fg.getGreen(),
+	                fg.getBlue());
+	    };
+
+	    if (Display.getCurrent() == display) {
+	        runnable.run();
+	    } else {
+	        display.syncExec(runnable);
+	    }
+
+	    return colorHex[0];
+	}
+
+	private static String buildFallbackDedupKey(String title, int lineNumber) {
+		return (title != null ? title : "") + "|" + lineNumber;
 	}
 }
