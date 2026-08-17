@@ -18,10 +18,11 @@ public enum PackageManager {
 	GO("go", ManifestFilePattern.GO),
 	PYTHON("python", ManifestFilePattern.PYTHON),
 	BOWER("bower", ManifestFilePattern.BOWER),
-	COCOAPODS("cocoapods", ManifestFilePattern.COCOAPODS),
-	CARTHAGE("carthage", ManifestFilePattern.CARTHAGE),
-	SWIFT("swift", ManifestFilePattern.SWIFT),
-	DART("dart", ManifestFilePattern.DART),
+	//YARN("yarn", ManifestFilePattern.YARN),
+	//COCOAPODS("cocoapods", ManifestFilePattern.COCOAPODS),
+	//CARTHAGE("carthage", ManifestFilePattern.CARTHAGE),
+	//SWIFT("swift", ManifestFilePattern.SWIFT),
+	//DART("dart", ManifestFilePattern.DART),
 	RUBY("ruby", ManifestFilePattern.RUBY),
 	PHP("php", ManifestFilePattern.PHP),
 	UNKNOWN("unknown", null);
@@ -89,9 +90,9 @@ public enum PackageManager {
 		case GRADLE:
 		case SBT:
 			return MAVEN.getPackageManager();
-		case COCOAPODS:
-		case CARTHAGE:
-			return SWIFT.getPackageManager();
+		//case COCOAPODS:
+		//case CARTHAGE:
+			//return SWIFT.getPackageManager();
 		default:
 			return packageManager;
 		}
@@ -205,10 +206,11 @@ public enum PackageManager {
 		PYTHON(List.of("**/requirement*.txt", "**/constraints.txt", "**/constraints-*.txt", "**/pyproject.toml",
 				"**/setup.cfg", "**/setup.py")),
 		BOWER(List.of("**/bower.json")),
-		COCOAPODS(List.of("**/Podfile", "**/*.podspec", "**/*.podspec.json")),
-		CARTHAGE(List.of("**/Cartfile", "**/Cartfile.private")),
-		SWIFT(List.of("**/Package.swift", "**/Package@swift-*.swift")),
-    	DART(List.of("**/pubspec.yaml")),
+    	//YARN(List.of("package.json", "yarn.lock")),
+		//COCOAPODS(List.of("**/Podfile", "**/*.podspec", "**/*.podspec.json")),
+		//CARTHAGE(List.of("**/Cartfile", "**/Cartfile.private")),
+		//SWIFT(List.of("**/Package.swift", "**/Package@swift-*.swift")),
+    	//DART(List.of("**/pubspec.yaml")),
     	RUBY(List.of("**/Gemfile")),
     	PHP(List.of("**/composer.json"));
 
