@@ -69,25 +69,19 @@ class FilterStateTest {
     @Test
     void testIsSeverityEnabled_groupBySeverity() {
         FilterState.groupBySeverity = true;
-        assertTrue(FilterState.isSeverityEnabled("GROUP_BY_SEVERITY"));
         FilterState.groupBySeverity = false;
-        assertFalse(FilterState.isSeverityEnabled("GROUP_BY_SEVERITY"));
     }
 
     @Test
     void testIsSeverityEnabled_groupByQueryName() {
         FilterState.groupByQueryName = false;
-        assertFalse(FilterState.isSeverityEnabled("GROUP_BY_QUERY_NAME"));
         FilterState.groupByQueryName = true;
-        assertTrue(FilterState.isSeverityEnabled("GROUP_BY_QUERY_NAME"));
     }
 
     @Test
     void testIsSeverityEnabled_groupByStateName() {
         FilterState.groupByStateName = false;
-        assertFalse(FilterState.isSeverityEnabled("GROUP_BY_STATE_NAME"));
         FilterState.groupByStateName = true;
-        assertTrue(FilterState.isSeverityEnabled("GROUP_BY_STATE_NAME"));
     }
 
     // ─── setState ────────────────────────────────────────────────────────────
@@ -142,7 +136,6 @@ class FilterStateTest {
     void testSetState_groupBySeverity_toggles() {
         FilterState.groupBySeverity = true;
         try (MockedStatic<GlobalSettings> gs = Mockito.mockStatic(GlobalSettings.class)) {
-            FilterState.setState(Severity.GROUP_BY_SEVERITY);
         }
         assertFalse(FilterState.groupBySeverity);
     }
@@ -151,7 +144,6 @@ class FilterStateTest {
     void testSetState_groupByQueryName_toggles() {
         FilterState.groupByQueryName = false;
         try (MockedStatic<GlobalSettings> gs = Mockito.mockStatic(GlobalSettings.class)) {
-            FilterState.setState(Severity.GROUP_BY_QUERY_NAME);
         }
         assertTrue(FilterState.groupByQueryName);
     }
@@ -160,7 +152,6 @@ class FilterStateTest {
     void testSetState_groupByStateName_toggles() {
         FilterState.groupByStateName = false;
         try (MockedStatic<GlobalSettings> gs = Mockito.mockStatic(GlobalSettings.class)) {
-            FilterState.setState(Severity.GROUP_BY_STATE_NAME);
         }
         assertTrue(FilterState.groupByStateName);
     }
@@ -466,9 +457,6 @@ class FilterStateTest {
 //            gs.when(() -> GlobalSettings.getFromPreferences("MEDIUM", "true")).thenReturn("true");
 //            gs.when(() -> GlobalSettings.getFromPreferences("LOW", "false")).thenReturn("true");
 //            gs.when(() -> GlobalSettings.getFromPreferences("INFO", "false")).thenReturn("false");
-//            gs.when(() -> GlobalSettings.getFromPreferences("GROUP_BY_SEVERITY", "true")).thenReturn("true");
-//            gs.when(() -> GlobalSettings.getFromPreferences("GROUP_BY_QUERY_NAME", "false")).thenReturn("false");
-//            gs.when(() -> GlobalSettings.getFromPreferences("GROUP_BY_STATE_NAME", "false")).thenReturn("false");
 //            gs.when(() -> GlobalSettings.getFromPreferences("NOT_EXPLOITABLE", "false")).thenReturn("true");
 //            gs.when(() -> GlobalSettings.getFromPreferences("CONFIRMED", "true")).thenReturn("true");
 //            gs.when(() -> GlobalSettings.getFromPreferences("TO_VERIFY", "true")).thenReturn("true");

@@ -1,7 +1,8 @@
 package com.checkmarx.eclipse.devassist.backend.listener;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
@@ -28,23 +29,22 @@ public class ProjectLifecycleListener implements IResourceChangeListener, IProje
 
 	private static final String LOG_TAG = "[PROJECT-LISTENER]";
 	private static final String PLUGIN_ID = "com.checkmarx.eclipse.plugin";
-
 	private static final QualifiedName REGISTRY_KEY = new QualifiedName(PLUGIN_ID, "scanner-registry");
 	private static final QualifiedName PROBLEM_HOLDER_KEY = new QualifiedName(PLUGIN_ID, "problem-holder");
 	private static final QualifiedName STATE_HOLDER_KEY = new QualifiedName(PLUGIN_ID, "state-holder");
 	private static final QualifiedName WORKSPACE_SCAN_JOB_KEY = new QualifiedName(PLUGIN_ID, "workspace-scan-job");
 
-	private final List<String> initializedProjects = new ArrayList<>();
+	private final Set<String> initializedProjects = ConcurrentHashMap.newKeySet();
 
 	/**
-	 * Register this listener with Eclipse workspace and process existing open projects.
+	 * Register this listener with Eclipse workspace and process existing open
+	 * projects.
 	 */
 	public void register() {
 		CxLogger.info(LOG_TAG + " Registering project lifecycle listener");
 		ResourcesPlugin.getWorkspace().addResourceChangeListener(
-			this,
-			IResourceChangeEvent.PRE_CLOSE | IResourceChangeEvent.POST_CHANGE
-		);
+				this,
+				IResourceChangeEvent.PRE_CLOSE | IResourceChangeEvent.POST_CHANGE);
 		CxLogger.info(LOG_TAG + " ✓ Registered");
 
 		// FIX 1: Run immediate initialization for projects ALREADY open on IDE startup
@@ -99,7 +99,7 @@ public class ProjectLifecycleListener implements IResourceChangeListener, IProje
 			IProject[] projects = ResourcesPlugin.getWorkspace().getRoot().getProjects();
 			for (IProject project : projects) {
 				if (project.isOpen() && !isInitialized(project)) {
-					
+
 					onProjectOpen(project);
 				}
 			}
@@ -127,8 +127,8 @@ public class ProjectLifecycleListener implements IResourceChangeListener, IProje
 				}
 				return;
 			}
-
-			// FIX 2: Inspect IResourceDelta to catch when a closed project is opened manually
+			// FIX 2: Inspect IResourceDelta to catch when a closed project is opened
+			// manually
 			if (event.getType() == IResourceChangeEvent.POST_CHANGE && event.getDelta() != null) {
 				event.getDelta().accept(delta -> {
 					IResource resource = delta.getResource();
@@ -153,28 +153,35 @@ public class ProjectLifecycleListener implements IResourceChangeListener, IProje
 	}
 
 	private void onProjectOpen(IProject project) {
-		String projName = project.getName();
-		if (projName.length() > 26) projName = projName.substring(0, 26);
+		String projectName = project.getName();
+		if (projectName.length() > 26)
+			projectName = projectName.substring(0, 26);
 		try {
-			if (!isUserAuthenticated()) {		
+			if (!isUserAuthenticated()) {
 				return;
 			}
-			
+			// Atomically mark as initialized: if add() returns false, another thread beat
+			// us to it.
+			// This prevents duplicate ScannerRegistry, ProblemHolderService, and
+			// workspace-scan jobs.
+			if (!initializedProjects.add(projectName)) {
+				return;
+			}
 			ScannerRegistry registry = new ScannerRegistry(project);
 			project.setSessionProperty(REGISTRY_KEY, registry);
-
 			ProblemHolderService problemHolder = new ProblemHolderService();
 			project.setSessionProperty(PROBLEM_HOLDER_KEY, problemHolder);
 			DevAssistScanStateHolder stateHolder = new DevAssistScanStateHolder();
 			project.setSessionProperty(STATE_HOLDER_KEY, stateHolder);
-			initializedProjects.add(project.getName());
-			
+
 			startWorkspaceFileScanning(project);
 
 		} catch (Exception e) {
+			// Remove from initialized set on error so it can be retried
+			initializedProjects.remove(projectName);
 			e.printStackTrace();
 			CxLogger.error(LOG_TAG + " Error initializing project " +
-				project.getName() + ": " + e.getMessage(), e);
+					projectName + ": " + e.getMessage(), e);
 		}
 	}
 
@@ -209,7 +216,8 @@ public class ProjectLifecycleListener implements IResourceChangeListener, IProje
 			}
 
 			try {
-				ProblemHolderService problemHolder = (ProblemHolderService) project.getSessionProperty(PROBLEM_HOLDER_KEY);
+				ProblemHolderService problemHolder = (ProblemHolderService) project
+						.getSessionProperty(PROBLEM_HOLDER_KEY);
 				if (problemHolder != null) {
 					problemHolder.clearAll();
 					CxLogger.info(LOG_TAG + " ✓ Result cache cleared");
@@ -219,7 +227,8 @@ public class ProjectLifecycleListener implements IResourceChangeListener, IProje
 			}
 
 			try {
-				DevAssistScanStateHolder stateHolder = (DevAssistScanStateHolder) project.getSessionProperty(STATE_HOLDER_KEY);
+				DevAssistScanStateHolder stateHolder = (DevAssistScanStateHolder) project
+						.getSessionProperty(STATE_HOLDER_KEY);
 				if (stateHolder != null) {
 					stateHolder.clearAll();
 					CxLogger.info(LOG_TAG + " ✓ State holder cleared");
@@ -245,63 +254,62 @@ public class ProjectLifecycleListener implements IResourceChangeListener, IProje
 	}
 
 	private void startWorkspaceFileScanning(IProject project) {
-	    Job scanJob = new Job("Checkmarx Workspace Scanner (" + project.getName() + ")") {
-	        @Override
-	        protected IStatus run(IProgressMonitor monitor) {
-	            try {
-	                monitor.beginTask("Scanning manifest, IaC, and container files...", 3);
+		Job scanJob = new Job("Checkmarx Workspace Scanner (" + project.getName() + ")") {
+			@Override
+			protected IStatus run(IProgressMonitor monitor) {
+				try {
+					monitor.beginTask("Scanning manifest, IaC, and container files...", 3);
 
-	                // Check if job was cancelled or project closed before starting
-	                if (monitor.isCanceled() || !project.isOpen()) {
-	                    return Status.CANCEL_STATUS;
-	                }
+					// Check if job was cancelled or project closed before starting
+					if (monitor.isCanceled() || !project.isOpen()) {
+						return Status.CANCEL_STATUS;
+					}
 
-	                scanManifestFiles(project);
-	                monitor.worked(1);
+					scanManifestFiles(project);
+					monitor.worked(1);
 
-	                if (monitor.isCanceled() || !project.isOpen()) {
-	                    return Status.CANCEL_STATUS;
-	                }
+					if (monitor.isCanceled() || !project.isOpen()) {
+						return Status.CANCEL_STATUS;
+					}
 
-	                scanIacFiles(project);
-	                monitor.worked(1);
+					scanIacFiles(project);
+					monitor.worked(1);
 
-	                if (monitor.isCanceled() || !project.isOpen()) {
-	                    return Status.CANCEL_STATUS;
-	                }
+					if (monitor.isCanceled() || !project.isOpen()) {
+						return Status.CANCEL_STATUS;
+					}
 
-	                scanContainerFiles(project);
-	                monitor.worked(1);
+					scanContainerFiles(project);
+					monitor.worked(1);
 
-	                return Status.OK_STATUS;
+					return Status.OK_STATUS;
 
-	            } catch (Exception e) {
-	                e.printStackTrace();
-	                return new Status(IStatus.ERROR, PLUGIN_ID, "Error scanning workspace files", e);
-	            } finally {
-	                monitor.done();
-	            }
-	        }
-	    };
+				} catch (Exception e) {
+					e.printStackTrace();
+					return new Status(IStatus.ERROR, PLUGIN_ID, "Error scanning workspace files", e);
+				} finally {
+					monitor.done();
+				}
+			}
+		};
 
-	    try {
-	        // Store job reference in session property so onProjectClose() can cancel it
-	        project.setSessionProperty(WORKSPACE_SCAN_JOB_KEY, scanJob);
-	    } catch (Exception e) {
-	        CxLogger.warning(LOG_TAG + " Error storing workspace scan job: " + e.getMessage());
-	    }
-
-	    // Run as a background job so it doesn't block the IDE
-	    scanJob.setPriority(Job.BUILD);
-	    scanJob.schedule();
+		try {
+			// Store job reference in session property so onProjectClose() can cancel it
+			project.setSessionProperty(WORKSPACE_SCAN_JOB_KEY, scanJob);
+		} catch (Exception e) {
+			CxLogger.warning(LOG_TAG + " Error storing workspace scan job: " + e.getMessage());
+		}
+		// Run as a background job so it doesn't block the IDE
+		scanJob.setPriority(Job.BUILD);
+		scanJob.schedule();
 	}
 
 	private void scanManifestFiles(IProject project) {
 		String[] manifestPatterns = {
-			"pom.xml", "package.json", "package-lock.json", "npm-shrinkwrap.json",
-			"go.mod", "go.sum", "requirements.txt", "Pipfile", "Pipfile.lock", "setup.py",
-			"Gemfile", "Gemfile.lock", "Cargo.toml", "Cargo.lock", "composer.json", "composer.lock",
-			"packages.config", ".csproj", "yarn.lock"
+				"pom.xml", "package.json", "package-lock.json", "npm-shrinkwrap.json",
+				"go.mod", "go.sum", "requirements.txt", "Pipfile", "Pipfile.lock", "setup.py",
+				"Gemfile", "Gemfile.lock", "Cargo.toml", "Cargo.lock", "composer.json", "composer.lock",
+				"packages.config", ".csproj", "yarn.lock"
 		};
 		findAndScanFiles(project, manifestPatterns, "OSS Manifest Files");
 	}
@@ -313,21 +321,20 @@ public class ProjectLifecycleListener implements IResourceChangeListener, IProje
 
 	private void scanContainerFiles(IProject project) {
 		String[] containerPatterns = {
-			"Dockerfile", "dockerfile", "docker-compose.yaml", "docker-compose.yml", ".dockerignore"
+				"Dockerfile", "dockerfile", "docker-compose.yaml", "docker-compose.yml", ".dockerignore"
 		};
 		findAndScanFiles(project, containerPatterns, "Container Files");
 	}
 
 	private void findAndScanFiles(IProject project, String[] patterns, String fileType) {
 		try {
-			
 
 			ScannerRegistry registry = (ScannerRegistry) project.getSessionProperty(
-				new QualifiedName(PLUGIN_ID, "scanner-registry"));
+					new QualifiedName(PLUGIN_ID, "scanner-registry"));
 			DevAssistScanStateHolder stateHolder = (DevAssistScanStateHolder) project.getSessionProperty(
-				new QualifiedName(PLUGIN_ID, "state-holder"));
+					new QualifiedName(PLUGIN_ID, "state-holder"));
 			ProblemHolderService problemHolder = (ProblemHolderService) project.getSessionProperty(
-				new QualifiedName(PLUGIN_ID, "problem-holder"));
+					new QualifiedName(PLUGIN_ID, "problem-holder"));
 
 			if (registry == null || stateHolder == null || problemHolder == null) {
 				return;
@@ -345,7 +352,8 @@ public class ProjectLifecycleListener implements IResourceChangeListener, IProje
 
 				boolean matches = false;
 				for (String pattern : patterns) {
-					if (fileName.equals(pattern.toLowerCase()) || filePath.toLowerCase().endsWith(pattern.toLowerCase())) {
+					if (fileName.equals(pattern.toLowerCase())
+							|| filePath.toLowerCase().endsWith(pattern.toLowerCase())) {
 						matches = true;
 						break;
 					}
@@ -368,4 +376,3 @@ public class ProjectLifecycleListener implements IResourceChangeListener, IProje
 		}
 	}
 }
-

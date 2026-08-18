@@ -6,7 +6,7 @@ import com.checkmarx.eclipse.devassist.basescanner.BaseScannerService;
 import com.checkmarx.eclipse.devassist.common.ScannerConfig;
 import com.checkmarx.eclipse.devassist.factory.CxWrapperFactory;
 import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
-import com.checkmarx.eclipse.devassist.utils.ScanEngine;
+import com.checkmarx.eclipse.devassist.model.ScanEngine;
 import com.checkmarx.eclipse.common.utils.CxLogger;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
@@ -77,7 +77,8 @@ public class AscaScannerService extends BaseScannerService<ScanResult> {
 	/**
 	 * Primary scan method - gets file content and executes scan.
 	 */
-	public com.checkmarx.eclipse.devassist.common.ScanResult<Object> scanWithDocument(String filePath, IDocument document) {
+	public com.checkmarx.eclipse.devassist.common.ScanResult<Object> scanWithDocument(String filePath,
+			IDocument document) {
 		return scanInternal(filePath, document, project);
 	}
 
@@ -86,7 +87,8 @@ public class AscaScannerService extends BaseScannerService<ScanResult> {
 		// No resources to close
 	}
 
-	private com.checkmarx.eclipse.devassist.common.ScanResult<Object> scanInternal(String filePath, IDocument document, IProject proj) {
+	private com.checkmarx.eclipse.devassist.common.ScanResult<Object> scanInternal(String filePath, IDocument document,
+			IProject proj) {
 		if (!shouldScanFile(filePath)) {
 			return null;
 		}
@@ -203,7 +205,8 @@ public class AscaScannerService extends BaseScannerService<ScanResult> {
 
 	/**
 	 * Get ignore file path for ASCA scanning.
-	 * Returns empty string by default - can be extended to read from .checkmarxIgnored file.
+	 * Returns empty string by default - can be extended to read from
+	 * .checkmarxIgnored file.
 	 */
 	private String getIgnoreFilePath() {
 		return "";
@@ -265,7 +268,6 @@ public class AscaScannerService extends BaseScannerService<ScanResult> {
 			return null;
 		}
 	}
-
 
 	/**
 	 * Sanitize file name to prevent directory traversal attacks.
@@ -329,7 +331,6 @@ public class AscaScannerService extends BaseScannerService<ScanResult> {
 			CxLogger.warning(LOG_TAG + " Unexpected error deleting temp file: " + e.getMessage());
 		}
 	}
-
 
 	private com.checkmarx.ast.asca.ScanResult scanAscaFile(String path, boolean ascaLatestVersion, String agent,
 			String ignoreFilePath) throws IOException, CxException, InterruptedException {

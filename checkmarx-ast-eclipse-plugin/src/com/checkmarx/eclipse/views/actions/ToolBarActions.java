@@ -21,6 +21,7 @@ import org.eclipse.ui.IActionBars;
 import org.eclipse.ui.PlatformUI;
 
 import com.checkmarx.eclipse.enums.ActionName;
+import com.checkmarx.eclipse.enums.GroupingMode;
 import com.checkmarx.eclipse.enums.PluginListenerType;
 import com.checkmarx.eclipse.common.enums.Severity;
 import com.checkmarx.eclipse.common.utils.CxLogger;
@@ -152,33 +153,33 @@ public class ToolBarActions {
 		groupBySeverityAction = new Action(GROUP_BY_SEVERITY, IAction.AS_CHECK_BOX) {
 			@Override
 			public void run() {
-				FilterState.setState(Severity.GROUP_BY_SEVERITY);
+				FilterState.setGroupingMode(GroupingMode.SEVERITY);
 				pluginEventBus.post(new PluginListenerDefinition(PluginListenerType.FILTER_CHANGED, DataProvider.getInstance().sortResults()));
 			}
 		};
-		
+
 		groupBySeverityAction.setId(ActionName.GROUP_BY_SEVERITY.name());
 		groupBySeverityAction.setChecked(FilterState.groupBySeverity);
 
 		groupByQueryNameAction = new Action(GROUP_BY_QUERY_NAME, IAction.AS_CHECK_BOX) {
 			@Override
 			public void run() {
-				FilterState.setState(Severity.GROUP_BY_QUERY_NAME);
+				FilterState.setGroupingMode(GroupingMode.QUERY_NAME);
 				pluginEventBus.post(new PluginListenerDefinition(PluginListenerType.FILTER_CHANGED, DataProvider.getInstance().sortResults()));
 			}
 		};
-		
+
 		groupByQueryNameAction.setId(ActionName.GROUP_BY_QUERY_NAME.name());
 		groupByQueryNameAction.setChecked(FilterState.groupByQueryName);
-		
+
 		groupByStateNameAction = new Action(GROUP_BY_STATE_NAME, IAction.AS_CHECK_BOX) {
 			@Override
 			public void run() {
-				FilterState.setState(Severity.GROUP_BY_STATE_NAME);
+				FilterState.setGroupingMode(GroupingMode.STATE_NAME);
 				pluginEventBus.post(new PluginListenerDefinition(PluginListenerType.FILTER_CHANGED, DataProvider.getInstance().sortResults()));
 			}
 		};
-		
+
 		groupByStateNameAction.setId(ActionName.GROUP_BY_STATE_NAME.name());
 		groupByStateNameAction.setChecked(FilterState.groupByStateName);
 		

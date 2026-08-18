@@ -120,7 +120,6 @@ public class MarkerIssueMapper {
 
             return issue;
         } catch (Exception e) {
-
             e.printStackTrace();
             return null;
         }
@@ -131,7 +130,7 @@ public class MarkerIssueMapper {
      * Called when creating markers from findings.
      *
      * @param marker the IMarker to populate
-     * @param issue the ScanIssue containing data to serialize
+     * @param issue  the ScanIssue containing data to serialize
      */
     public static void populateMarker(IMarker marker, ScanIssue issue) {
         try {
@@ -191,13 +190,18 @@ public class MarkerIssueMapper {
     }
 
     /**
-     * Ensures a {@value #MARKER_TYPE} marker exists for this finding, creating and populating
-     * one if none does yet. This is what CheckmarxMarkerResolutionGenerator's Ctrl+1/quick-fix-
-     * in-hover actions anchor to; ProblemDecorator calls this for every issue it decorates so the
-     * marker (and therefore the quick-fix actions) exists as soon as the squiggly does, instead of
-     * only after the user navigates to that specific finding from the Findings view.
+     * Ensures a {@value #MARKER_TYPE} marker exists for this finding, creating and
+     * populating
+     * one if none does yet. This is what CheckmarxMarkerResolutionGenerator's
+     * Ctrl+1/quick-fix-
+     * in-hover actions anchor to; ProblemDecorator calls this for every issue it
+     * decorates so the
+     * marker (and therefore the quick-fix actions) exists as soon as the squiggly
+     * does, instead of
+     * only after the user navigates to that specific finding from the Findings
+     * view.
      *
-     * @param file the file the issue was found in
+     * @param file  the file the issue was found in
      * @param issue the finding to ensure a marker for
      */
     public static void ensureMarker(IFile file, ScanIssue issue) {
@@ -218,17 +222,21 @@ public class MarkerIssueMapper {
 
             populateMarker(marker, issue);
         } catch (Exception e) {
-            // Marker creation is best-effort: the squiggly annotation and CheckmarxAnnotationHover
-            // (both driven by the live ScanIssue/FindingsAnnotation, not this marker) still work
+            // Marker creation is best-effort: the squiggly annotation and
+            // CheckmarxAnnotationHover
+            // (both driven by the live ScanIssue/FindingsAnnotation, not this marker) still
+            // work
             // even if this fails.
         }
     }
 
     /**
-     * Finds the existing {@value #MARKER_TYPE} marker for a ScanIssue, matching by the stable
-     * scanIssueId when available and falling back to line+title for findings without one.
+     * Finds the existing {@value #MARKER_TYPE} marker for a ScanIssue, matching by
+     * the stable
+     * scanIssueId when available and falling back to line+title for findings
+     * without one.
      *
-     * @param file the file to search
+     * @param file  the file to search
      * @param issue the finding to find a marker for
      * @return the matching marker, or null if none exists
      */
@@ -267,19 +275,29 @@ public class MarkerIssueMapper {
     }
 
     /**
-     * Sets IMarker.LINE_NUMBER and, when possible, IMarker.CHAR_START/CHAR_END from a
-     * Location. Most scan engines (OSS, IaC, Secrets, Containers) report startIndex/endIndex
-     * as offsets relative to the start of the line, not the file - writing them straight into
-     * CHAR_START/CHAR_END as absolute file offsets collapses every marker onto whichever line
-     * happens to contain that many characters (almost always line 1), independent of which
-     * line the finding is actually on. This resolves the line's real offset in the document and
-     * adds it in, mirroring the conversion ProblemDecorator already applies when positioning the
-     * squiggly annotation - so the IMarker (which is what Eclipse's built-in quick-fix-in-hover
-     * and Ctrl+1 machinery anchors to) lands on the same line as the squiggly instead of drifting
+     * Sets IMarker.LINE_NUMBER and, when possible, IMarker.CHAR_START/CHAR_END from
+     * a
+     * Location. Most scan engines (OSS, IaC, Secrets, Containers) report
+     * startIndex/endIndex
+     * as offsets relative to the start of the line, not the file - writing them
+     * straight into
+     * CHAR_START/CHAR_END as absolute file offsets collapses every marker onto
+     * whichever line
+     * happens to contain that many characters (almost always line 1), independent
+     * of which
+     * line the finding is actually on. This resolves the line's real offset in the
+     * document and
+     * adds it in, mirroring the conversion ProblemDecorator already applies when
+     * positioning the
+     * squiggly annotation - so the IMarker (which is what Eclipse's built-in
+     * quick-fix-in-hover
+     * and Ctrl+1 machinery anchors to) lands on the same line as the squiggly
+     * instead of drifting
      * to a different one.
      *
-     * @param marker the IMarker being populated
-     * @param location the finding's location (line, and possibly line-relative or absolute start/end)
+     * @param marker   the IMarker being populated
+     * @param location the finding's location (line, and possibly line-relative or
+     *                 absolute start/end)
      */
     private static void applyLocationAttributes(IMarker marker, Location location) {
         try {
@@ -290,10 +308,13 @@ public class MarkerIssueMapper {
 
         IDocument document = resolveDocument(marker);
         if (document == null) {
-            // No open editor for this file (yet). Leave CHAR_START/CHAR_END unset rather than
-            // writing the scanner's raw, often line-relative, start/end indices in as if they
+            // No open editor for this file (yet). Leave CHAR_START/CHAR_END unset rather
+            // than
+            // writing the scanner's raw, often line-relative, start/end indices in as if
+            // they
             // were absolute file offsets - Eclipse falls back to deriving a position from
-            // LINE_NUMBER alone, which is still correct for the line even without a precise range.
+            // LINE_NUMBER alone, which is still correct for the line even without a precise
+            // range.
             return;
         }
 
@@ -313,9 +334,11 @@ public class MarkerIssueMapper {
             int charEnd = isAbsoluteOffset ? location.getEndIndex() : (lineOffset + location.getEndIndex());
 
             // Scanners that don't report a real column range (e.g. ASCA only sets the line,
-            // leaving start/end at their default of 0) collapse to the very start of the line here -
+            // leaving start/end at their default of 0) collapse to the very start of the
+            // line here -
             // expand to the whole (leading-whitespace-trimmed) line instead of leaving a
-            // zero-length position, which some Eclipse annotation-model paths treat as invalid.
+            // zero-length position, which some Eclipse annotation-model paths treat as
+            // invalid.
             if (charStart <= lineOffset) {
                 charStart = lineOffset + getLeadingWhitespaceOffset(document, lineOffset, lineLength);
             }
@@ -329,16 +352,21 @@ public class MarkerIssueMapper {
             marker.setAttribute(IMarker.CHAR_START, charStart);
             marker.setAttribute(IMarker.CHAR_END, charEnd);
         } catch (Exception e) {
-            // Leave CHAR_START/CHAR_END unset; the LINE_NUMBER set above still positions the
+            // Leave CHAR_START/CHAR_END unset; the LINE_NUMBER set above still positions
+            // the
             // marker on the correct line.
         }
     }
 
     /**
-     * Finds the document for the marker's own file by searching every open editor reference
-     * across all workbench windows - not just the active editor - so markers created for a
-     * file that isn't currently focused (e.g. background/real-time scan results) still resolve
-     * to the right document instead of silently reading whichever file happens to be active.
+     * Finds the document for the marker's own file by searching every open editor
+     * reference
+     * across all workbench windows - not just the active editor - so markers
+     * created for a
+     * file that isn't currently focused (e.g. background/real-time scan results)
+     * still resolve
+     * to the right document instead of silently reading whichever file happens to
+     * be active.
      * Returns null (rather than guessing) if the file has no open editor.
      */
     private static IDocument resolveDocument(IMarker marker) {

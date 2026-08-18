@@ -32,7 +32,8 @@ import com.checkmarx.eclipse.devassist.utils.DevAssistUtils;
  */
 public final class RemediationManager {
 
-//	private static final Logger LOGGER = PluginUtils.getLogger(RemediationManager.class);
+	// private static final Logger LOGGER =
+	// PluginUtils.getLogger(RemediationManager.class);
 
 	private static final String DEV_ASSIST_COPY_FIX_PROMPT = "Fix prompt copied to clipboard! Paste the prompt into Copilot chat (Agent Mode)";
 
@@ -60,18 +61,18 @@ public final class RemediationManager {
 	@Nullable
 	private String buildRemediationPrompt(@NonNull ScanIssue scanIssue, String actionId) {
 		switch (scanIssue.getScanEngine()) {
-		case OSS:
-			return buildOSSRemediationPrompt(scanIssue);
-		case SECRETS:
-			return buildSecretRemediationPrompt(scanIssue);
-		case CONTAINERS:
-			return buildContainerRemediationPrompt(scanIssue);
-		case IAC:
-			return buildIACRemediationPrompt(scanIssue, actionId);
-		case ASCA:
-			return buildASCARemediationPrompt(scanIssue, actionId);
-		default:
-			return null;
+			case OSS:
+				return buildOSSRemediationPrompt(scanIssue);
+			case SECRETS:
+				return buildSecretRemediationPrompt(scanIssue);
+			case CONTAINERS:
+				return buildContainerRemediationPrompt(scanIssue);
+			case IAC:
+				return buildIACRemediationPrompt(scanIssue, actionId);
+			case ASCA:
+				return buildASCARemediationPrompt(scanIssue, actionId);
+			default:
+				return null;
 		}
 	}
 
@@ -100,7 +101,7 @@ public final class RemediationManager {
 					scanIssue.getScanEngine().name(), scanIssue.getTitle(), scanIssue.getFilePath()));
 		} else {
 			// Fallback: Copy to clipboard with notification when Copilot is not available
-			if (copyToClipboardAndNotify(prompt,notificationTitle, DEV_ASSIST_COPY_FIX_PROMPT)) {
+			if (copyToClipboardAndNotify(prompt, notificationTitle, DEV_ASSIST_COPY_FIX_PROMPT)) {
 				CxLogger.info(format("RTS-Fix: %s remediation completed (clipboard) for issue: %s, for file: %s",
 						scanIssue.getScanEngine().name(), scanIssue.getTitle(), scanIssue.getFilePath()));
 			}
@@ -156,18 +157,18 @@ public final class RemediationManager {
 	@Nullable
 	private String buildExplanationPrompt(@NonNull ScanIssue scanIssue, String actionId) {
 		switch (scanIssue.getScanEngine()) {
-		case OSS:
-			return buildOSSExplanationPrompt(scanIssue);
-		case SECRETS:
-			return buildSecretExplanationPrompt(scanIssue);
-		case CONTAINERS:
-			return buildContainerExplanationPrompt(scanIssue);
-		case IAC:
-			return buildIACExplanationPrompt(scanIssue, actionId);
-		case ASCA:
-			return buildASCAExplanationPrompt(scanIssue, actionId);
-		default:
-			return null;
+			case OSS:
+				return buildOSSExplanationPrompt(scanIssue);
+			case SECRETS:
+				return buildSecretExplanationPrompt(scanIssue);
+			case CONTAINERS:
+				return buildContainerExplanationPrompt(scanIssue);
+			case IAC:
+				return buildIACExplanationPrompt(scanIssue, actionId);
+			case ASCA:
+				return buildASCAExplanationPrompt(scanIssue, actionId);
+			default:
+				return null;
 		}
 	}
 
@@ -197,8 +198,9 @@ public final class RemediationManager {
 		} else {
 			// Fallback: Copy to clipboard with notification when Copilot is not available
 			if (copyToClipboardAndNotify(prompt, notificationTitle, DEV_ASSIST_COPY_VIEW_DETAILS_PROMPT)) {
-				CxLogger.info(format("RTS-ViewDetails: %s explanation completed (clipboard) for issue: %s, for file: %s",
-						scanIssue.getScanEngine().name(), scanIssue.getTitle(), scanIssue.getFilePath()));
+				CxLogger.info(
+						format("RTS-ViewDetails: %s explanation completed (clipboard) for issue: %s, for file: %s",
+								scanIssue.getScanEngine().name(), scanIssue.getTitle(), scanIssue.getFilePath()));
 			}
 		}
 	}
@@ -368,7 +370,7 @@ public final class RemediationManager {
 	private String getNotificationTitle(ScanEngine scanEngine) {
 		return DevAssistUtils.getAgentName() + " - " + scanEngine.name();
 	}
-	
+
 	/**
 	 * Copies the prompt to the clipboard and shows a balloon notification
 	 * confirming it.
@@ -385,7 +387,8 @@ public final class RemediationManager {
 				popup.open();
 			});
 		} else {
-			CxLogger.error("RTS-Fix: Failed to copy prompt to clipboard", new Exception("RTS-Fix: Failed to copy prompt to clipboard"));
+			CxLogger.error("RTS-Fix: Failed to copy prompt to clipboard",
+					new Exception("RTS-Fix: Failed to copy prompt to clipboard"));
 		}
 		return copied;
 	}

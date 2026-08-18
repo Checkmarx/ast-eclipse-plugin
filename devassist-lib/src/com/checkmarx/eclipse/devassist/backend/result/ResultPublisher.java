@@ -21,7 +21,8 @@ import java.util.List;
  *
  * Responsibilities:
  * - Update custom Findings View with scan results
- * - Render editor decorations (gutter icons, underlines) for Findings Window issues
+ * - Render editor decorations (gutter icons, underlines) for Findings Window
+ * issues
  * - NO integration with Eclipse native Problems View
  *
  * This connects scan results directly to the custom Findings Window.
@@ -41,7 +42,7 @@ public class ResultPublisher {
 	 * Mirrors JetBrains pattern where scan results are stored in cache,
 	 * which then publishes a message to notify all interested views.
 	 *
-	 * @param file File that was scanned
+	 * @param file       File that was scanned
 	 * @param scanIssues Issues found by scanners
 	 */
 	public static void publishResults(IFile file, List<ScanIssue> scanIssues) {
@@ -50,14 +51,12 @@ public class ResultPublisher {
 		}
 		try {
 			// Step 1: Update Findings View (try to display immediately if view is open)
-			
+
 			updateFindingsView(file, scanIssues);
-			
 
 			// Step 2: Create problem descriptors via DevAssistInspectionMgr
-			
+
 			createAndRenderDecorations(file, scanIssues);
-			
 
 		} catch (Exception e) {
 			System.err.println(LOG_TAG + " [ERROR] " + e.getMessage());
@@ -69,7 +68,7 @@ public class ResultPublisher {
 	/**
 	 * Update Findings View with scan results.
 	 *
-	 * @param file File that was scanned
+	 * @param file       File that was scanned
 	 * @param scanIssues Issues to display
 	 */
 	private static void updateFindingsView(IFile file, List<ScanIssue> scanIssues) {
@@ -91,34 +90,36 @@ public class ResultPublisher {
 			// 4. CxFindingsView listener receives callback with getAllIssues()
 			// 5. Listener calls refreshTree(allCachedResults)
 			// 6. Tree shows merged results (no duplicates, no stale issues)
-			// FIX: Use getLocation() (absolute path) to match cache key format used in RealTimeScanJob
-			// ProblemHolderService cache is keyed with absolute paths from RealTimeScanJob.scanFile()
-			// Must use same path format for cache lookups or removal will fail - causing duplicates
+			// FIX: Use getLocation() (absolute path) to match cache key format used in
+			// RealTimeScanJob
+			// ProblemHolderService cache is keyed with absolute paths from
+			// RealTimeScanJob.scanFile()
+			// Must use same path format for cache lookups or removal will fail - causing
+			// duplicates
 			String filePath = file.getLocation().toOSString();
 
 			org.eclipse.core.resources.IProject project = file.getProject();
 			if (project != null) {
-				ProblemHolderService problemHolder =
-					(ProblemHolderService) project.getSessionProperty(
+				ProblemHolderService problemHolder = (ProblemHolderService) project.getSessionProperty(
 						new org.eclipse.core.runtime.QualifiedName("com.checkmarx.eclipse.plugin", "problem-holder"));
 
 				if (problemHolder != null) {
 					// Get engine type from scan issues (all issues from same scan have same engine)
-					String engineType = scanIssues.isEmpty() ? null :
-						scanIssues.get(0).getScanEngine() != null ?
-						scanIssues.get(0).getScanEngine().name() : null;
+					String engineType = scanIssues.isEmpty() ? null
+							: scanIssues.get(0).getScanEngine() != null ? scanIssues.get(0).getScanEngine().name()
+									: null;
 
 					// Step 1: Remove old results from THIS scanner engine
 					if (engineType != null) {
 						problemHolder.removeScanIssuesByFileAndScanner(engineType, filePath);
-						
+
 					}
 
 					// Step 2: Add new results from THIS scanner engine
 					problemHolder.mergeScanIssues(filePath, scanIssues);
-					
+
 				} else {
-					
+
 				}
 			}
 
@@ -136,7 +137,7 @@ public class ResultPublisher {
 	 * 3. Call DevAssistInspectionMgr to create problem descriptors
 	 * 4. Render gutter icons and underlines using descriptors
 	 *
-	 * @param file File that was scanned
+	 * @param file       File that was scanned
 	 * @param scanIssues Issues to process
 	 */
 	private static void createAndRenderDecorations(IFile file, List<ScanIssue> scanIssues) {
@@ -160,15 +161,17 @@ public class ResultPublisher {
 				try {
 					// Get registry and state holder from session properties
 					ScannerRegistry registry = (ScannerRegistry) project.getSessionProperty(
-						new QualifiedName("com.checkmarx.eclipse.plugin", "scanner-registry"));
+							new QualifiedName("com.checkmarx.eclipse.plugin", "scanner-registry"));
 					DevAssistScanStateHolder stateHolder = (DevAssistScanStateHolder) project.getSessionProperty(
-						new QualifiedName("com.checkmarx.eclipse.plugin", "state-holder"));
+							new QualifiedName("com.checkmarx.eclipse.plugin", "state-holder"));
 					ProblemHolderService problemHolder = (ProblemHolderService) project.getSessionProperty(
-						new QualifiedName("com.checkmarx.eclipse.plugin", "problem-holder"));
+							new QualifiedName("com.checkmarx.eclipse.plugin", "problem-holder"));
 
 					if (registry == null || stateHolder == null || problemHolder == null) {
-						CxLogger.warning(LOG_TAG + " Required services not initialized (registry=" + (registry != null) +
-							", stateHolder=" + (stateHolder != null) + ", problemHolder=" + (problemHolder != null) + ")");
+						CxLogger.warning(
+								LOG_TAG + " Required services not initialized (registry=" + (registry != null) +
+										", stateHolder=" + (stateHolder != null) + ", problemHolder="
+										+ (problemHolder != null) + ")");
 						// Fallback to direct decoration if services not available
 						ProblemDecorator.decorateEditor(file, scanIssues);
 						return;
@@ -178,17 +181,18 @@ public class ResultPublisher {
 					String filePath = file.getLocation().toOSString();
 					org.eclipse.jface.text.IDocument document = getDocumentForFile(file);
 					ProblemHelper.Builder builder = ProblemHelper.builder(file, project)
-						.filePath(filePath)
-						.document(document)
-						.scanIssueList(scanIssues)
-						.problemHolderService(problemHolder)
-						.problemDecorator(new ProblemDecorator());
+							.filePath(filePath)
+							.document(document)
+							.scanIssueList(scanIssues)
+							.problemHolderService(problemHolder)
+							.problemDecorator(new ProblemDecorator());
 
 					// Create problem descriptors via DevAssistInspectionMgr
 					DevAssistInspectionMgr mgr = new DevAssistInspectionMgr(registry, stateHolder);
 					mgr.startScanAndCreateProblemDescriptors(builder);
 
-					CxLogger.info(LOG_TAG + " Problem descriptors created via DevAssistInspectionMgr for " + scanIssues.size() + " issues");
+					CxLogger.info(LOG_TAG + " Problem descriptors created via DevAssistInspectionMgr for "
+							+ scanIssues.size() + " issues");
 
 				} catch (Exception e) {
 					CxLogger.warning(LOG_TAG + " Error creating problem descriptors: " + e.getMessage());
@@ -196,7 +200,8 @@ public class ResultPublisher {
 					try {
 						ProblemDecorator.decorateEditor(file, scanIssues);
 					} catch (Exception fallbackError) {
-						CxLogger.error(LOG_TAG + " Fallback decoration also failed: " + fallbackError.getMessage(), fallbackError);
+						CxLogger.error(LOG_TAG + " Fallback decoration also failed: " + fallbackError.getMessage(),
+								fallbackError);
 					}
 				}
 			});
@@ -207,11 +212,14 @@ public class ResultPublisher {
 	}
 
 	/**
-	 * Get the IDocument for a file, preferring the live editor's document (so unsaved
+	 * Get the IDocument for a file, preferring the live editor's document (so
+	 * unsaved
 	 * edits are reflected) and falling back to reading the file's on-disk content.
 	 *
-	 * ScanIssueProcessor requires a non-null document to validate that an issue's line
-	 * number is within range (getNumberOfLines()); without it every issue is rejected.
+	 * ScanIssueProcessor requires a non-null document to validate that an issue's
+	 * line
+	 * number is within range (getNumberOfLines()); without it every issue is
+	 * rejected.
 	 *
 	 * @param file File to get the document for
 	 * @return IDocument, or null if it could not be obtained
@@ -223,7 +231,8 @@ public class ResultPublisher {
 				org.eclipse.ui.IEditorPart editor = page.findEditor(new org.eclipse.ui.part.FileEditorInput(file));
 				if (editor instanceof org.eclipse.ui.texteditor.ITextEditor) {
 					org.eclipse.ui.texteditor.ITextEditor textEditor = (org.eclipse.ui.texteditor.ITextEditor) editor;
-					org.eclipse.jface.text.IDocument doc = textEditor.getDocumentProvider().getDocument(textEditor.getEditorInput());
+					org.eclipse.jface.text.IDocument doc = textEditor.getDocumentProvider()
+							.getDocument(textEditor.getEditorInput());
 					if (doc != null) {
 						return doc;
 					}
@@ -261,7 +270,8 @@ public class ResultPublisher {
 			} catch (NullPointerException e) {
 				for (var window : workbench.getWorkbenchWindows()) {
 					page = window.getActivePage();
-					if (page != null) break;
+					if (page != null)
+						break;
 				}
 			}
 
@@ -270,7 +280,7 @@ public class ResultPublisher {
 			}
 
 			return (com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView) page
-				.findView(com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView.ID);
+					.findView(com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView.ID);
 
 		} catch (Exception e) {
 			CxLogger.warning(LOG_TAG + " Error finding Findings View: " + e.getMessage());

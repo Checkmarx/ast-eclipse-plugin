@@ -77,7 +77,7 @@ public class IconRegistry {
         registerIcon("high", "icons/severity/high.svg");
         registerIcon("medium", "icons/severity/medium.svg");
         registerIcon("low", "icons/severity/low.svg");
-        
+
         registerIcon("star_action", "icons/start-action.svg");
         registerIcon("devassistBadge", "icons/devassist_badge.svg");
     }

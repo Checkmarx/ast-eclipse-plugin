@@ -11,15 +11,16 @@ import org.eclipse.core.runtime.Platform;
 /**
  * Real-time scan job with debounce support.
  *
- * When the user edits a file, CheckmarxDocumentListener calls reschedule() repeatedly
- * as the user types. This job cancels the previous scheduled execution and starts a
- * new 1-second timer, so the scan only runs after the user pauses typing.
+ * When the user edits a file, CheckmarxDocumentListener calls reschedule()
+ * repeatedly as the user types. This job cancels the previous scheduled
+ * execution and starts a new 1-second timer, so the scan only runs after the
+ * user pauses typing.
  *
- * Equivalent to:
- * - JetBrains' real-time inspection pipeline (with debounce built-in)
- * - Eclipse's incremental builder, but for on-demand scanning
+ * Equivalent to: - JetBrains' real-time inspection pipeline (with debounce
+ * built-in) - Eclipse's incremental builder, but for on-demand scanning
  *
- * This is a background Job, so it runs off the UI thread and won't freeze the editor.
+ * This is a background Job, so it runs off the UI thread and won't freeze the
+ * editor.
  */
 public class RealTimeScanJob extends Job {
 
@@ -32,7 +33,7 @@ public class RealTimeScanJob extends Job {
 	/**
 	 * Create a real-time scan job for a specific file.
 	 *
-	 * @param file the IFile resource to scan
+	 * @param file     the IFile resource to scan
 	 * @param fileName the file name (for logging)
 	 */
 	public RealTimeScanJob(IFile file, String fileName) {
@@ -45,7 +46,6 @@ public class RealTimeScanJob extends Job {
 		setPriority(Job.DECORATE); // Lower priority than user interactions
 		setUser(false); // Not a user-initiated job
 
-		
 	}
 
 	/**
@@ -58,8 +58,9 @@ public class RealTimeScanJob extends Job {
 	/**
 	 * Reschedule this job with a given delay (debounce).
 	 *
-	 * If the job is already scheduled, it is cancelled and rescheduled with a new delay.
-	 * This ensures the scan only runs after the user stops typing for the specified delay.
+	 * If the job is already scheduled, it is cancelled and rescheduled with a new
+	 * delay. This ensures the scan only runs after the user stops typing for the
+	 * specified delay.
 	 *
 	 * @param delayMs delay in milliseconds before the job should run
 	 */
@@ -73,20 +74,17 @@ public class RealTimeScanJob extends Job {
 		// Schedule the job to run after the delay
 		schedule(delayMs);
 
-		
 	}
 
 	/**
 	 * Run the real-time scan.
 	 *
-	 * This method is called by the Eclipse Jobs framework after the debounce delay expires.
-	 * It performs the actual scanning logic.
+	 * This method is called by the Eclipse Jobs framework after the debounce delay
+	 * expires. It performs the actual scanning logic.
 	 *
-	 * Currently, this just logs a message. In production, you would:
-	 * 1. Parse the file
-	 * 2. Run security checks (synchronously or via backend API)
-	 * 3. Create markers for problems found
-	 * 4. Update the editor decoration
+	 * Currently, this just logs a message. In production, you would: 1. Parse the
+	 * file 2. Run security checks (synchronously or via backend API) 3. Create
+	 * markers for problems found 4. Update the editor decoration
 	 *
 	 * @param monitor progress monitor for cancellation support
 	 * @return Status.OK if successful, Status.CANCEL if cancelled
@@ -96,88 +94,75 @@ public class RealTimeScanJob extends Job {
 		try {
 			// Check if file still exists and is accessible
 			if (file == null || !file.exists()) {
-				
 				return Status.CANCEL_STATUS;
 			}
 
 			// Check if the job was cancelled while waiting
 			if (monitor.isCanceled()) {
-				
 				return Status.CANCEL_STATUS;
 			}
 
 			// **STEP 1: Check authentication status**
 			if (!isUserAuthenticated()) {
-				
-				
+
 				return Status.OK_STATUS; // Return OK but don't scan
 			}
-
-
-
-
-
 
 			// Call our backend scanners via ScanManager
 			try {
 				org.eclipse.core.resources.IProject project = file.getProject();
 				if (project == null || !project.isOpen()) {
-					
 					return Status.OK_STATUS;
 				}
 
 				String projectName = project.getName();
 				org.eclipse.core.runtime.QualifiedName registryKey = new org.eclipse.core.runtime.QualifiedName(
-					"com.checkmarx.eclipse.plugin", "scanner-registry");
+						"com.checkmarx.eclipse.plugin", "scanner-registry");
 				org.eclipse.core.runtime.QualifiedName stateHolderKey = new org.eclipse.core.runtime.QualifiedName(
-					"com.checkmarx.eclipse.plugin", "state-holder");
+						"com.checkmarx.eclipse.plugin", "state-holder");
 
 				// Get or lazily initialize backend services
-				com.checkmarx.eclipse.devassist.backend.ScannerRegistry registry =
-					(com.checkmarx.eclipse.devassist.backend.ScannerRegistry)
-					project.getSessionProperty(registryKey);
+				com.checkmarx.eclipse.devassist.backend.ScannerRegistry registry = (com.checkmarx.eclipse.devassist.backend.ScannerRegistry) project
+						.getSessionProperty(registryKey);
 
-				com.checkmarx.eclipse.devassist.backend.DevAssistScanStateHolder stateHolder =
-					(com.checkmarx.eclipse.devassist.backend.DevAssistScanStateHolder)
-					project.getSessionProperty(stateHolderKey);
+				com.checkmarx.eclipse.devassist.backend.DevAssistScanStateHolder stateHolder = (com.checkmarx.eclipse.devassist.backend.DevAssistScanStateHolder) project
+						.getSessionProperty(stateHolderKey);
 
 				// Lazy initialization if not found
 				if (registry == null) {
-					
+
 					registry = new com.checkmarx.eclipse.devassist.backend.ScannerRegistry(project);
 					project.setSessionProperty(registryKey, registry);
-					
+
 				}
 
 				if (stateHolder == null) {
-					
+
 					stateHolder = new com.checkmarx.eclipse.devassist.backend.DevAssistScanStateHolder();
 					project.setSessionProperty(stateHolderKey, stateHolder);
-					
+
 				}
 
 				// Execute backend scanners
-				
-				com.checkmarx.eclipse.devassist.common.ScanManager scanManager =
-					new com.checkmarx.eclipse.devassist.common.ScanManager(registry, stateHolder);
+				com.checkmarx.eclipse.devassist.common.ScanManager scanManager = new com.checkmarx.eclipse.devassist.common.ScanManager(
+						registry, stateHolder);
 
 				String filePath = file.getLocation().toOSString();
-				
 
-				java.util.List<com.checkmarx.eclipse.devassist.model.ScanIssue> issues =
-					scanManager.scanFile(filePath);
+				// Pass progress monitor into scanFile to support cancellation during scan
+				// execution
+				java.util.List<com.checkmarx.eclipse.devassist.model.ScanIssue> issues = scanManager.scanFile(filePath,
+						monitor);
 
-				
-				for (com.checkmarx.eclipse.devassist.model.ScanIssue issue : issues) {
+				// Re-check cancellation status right before updating UI/markers to avoid
+				// publishing stale results
+				if (monitor.isCanceled()) {
+					return Status.CANCEL_STATUS;
 				}
 
 				// Publish results to UI
-				
-				if (!issues.isEmpty()) {
+				if (issues != null && !issues.isEmpty()) {
 					com.checkmarx.eclipse.devassist.backend.result.ResultPublisher.publishResults(file, issues);
-					
-				} else {
-					
 				}
 
 			} catch (Exception e) {
@@ -189,7 +174,6 @@ public class RealTimeScanJob extends Job {
 				}
 			}
 
-			
 			return Status.OK_STATUS;
 
 		} catch (Exception e) {
@@ -200,8 +184,8 @@ public class RealTimeScanJob extends Job {
 				System.err.println("[REALTIME]   at " + elem);
 			}
 			// Return error status but don't fail the job permanently
-			return new Status(IStatus.WARNING, "com.checkmarx.eclipse.plugin",
-					"Real-time scan failed for " + fileName, e);
+			return new Status(IStatus.WARNING, "com.checkmarx.eclipse.plugin", "Real-time scan failed for " + fileName,
+					e);
 		}
 	}
 
@@ -221,12 +205,11 @@ public class RealTimeScanJob extends Job {
 	}
 
 	/**
-	 * Called when the job is cancelled.
-	 * Cleanup any resources if needed.
+	 * Called when the job is cancelled. Cleanup any resources if needed.
 	 */
 	@Override
 	protected void canceling() {
-		
+
 		super.canceling();
 	}
 

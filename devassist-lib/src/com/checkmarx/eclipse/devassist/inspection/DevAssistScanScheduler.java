@@ -5,13 +5,16 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
+import org.eclipse.core.runtime.jobs.IJobChangeEvent;
+import org.eclipse.core.runtime.jobs.IJobChangeListener;
 
 import com.checkmarx.eclipse.devassist.problems.ProblemHelper;
 import com.checkmarx.eclipse.devassist.backend.listener.RealTimeScanJob;
 import com.checkmarx.eclipse.common.utils.CxLogger;
 
 /**
- * Scheduler that wraps and coordinates RealTimeScanJob for background file scanning.
+ * Scheduler that wraps and coordinates RealTimeScanJob for background file
+ * scanning.
  *
  * Responsibilities:
  * - Manage scheduling of real-time scans with debounce
@@ -30,12 +33,59 @@ public class DevAssistScanScheduler {
 	private final Map<String, RealTimeScanJob> pendingScans = new ConcurrentHashMap<>();
 
 	/**
+	 * Listener that removes completed jobs from pendingScans.
+	 * Prevents unbounded memory growth from accumulated job entries.
+	 * The done() callback fires for both successful completion and cancellation.
+	 */
+	private final IJobChangeListener jobCompletionListener = new IJobChangeListener() {
+		@Override
+		public void done(IJobChangeEvent event) {
+			removeCompletedJob(event.getJob());
+		}
+
+		@Override
+		public void aboutToRun(IJobChangeEvent event) {
+		}
+
+		@Override
+		public void awake(IJobChangeEvent event) {
+		}
+
+		@Override
+		public void running(IJobChangeEvent event) {
+		}
+
+		@Override
+		public void scheduled(IJobChangeEvent event) {
+		}
+
+		@Override
+		public void sleeping(IJobChangeEvent event) {
+		}
+	};
+
+	/**
+	 * Remove a completed job from pendingScans map.
+	 * Called when job completes or is cancelled.
+	 */
+	private void removeCompletedJob(org.eclipse.core.runtime.jobs.Job job) {
+		// Find and remove the job from pendingScans by matching the job object
+		for (Map.Entry<String, RealTimeScanJob> entry : pendingScans.entrySet()) {
+			if (entry.getValue() == job) {
+				pendingScans.remove(entry.getKey());
+				CxLogger.info(LOG_TAG + " Removed completed scan from pending: " + entry.getKey());
+				return;
+			}
+		}
+	}
+
+	/**
 	 * Schedule a scan for a file with default debounce delay (1 second).
 	 *
 	 * If a scan is already pending for this file, returns false.
 	 * Use reschedule() to cancel and restart with new delay.
 	 *
-	 * @param file File to scan
+	 * @param file          File to scan
 	 * @param problemHelper Problem context (unused in current impl, for alignment)
 	 * @return true if scheduled, false if already pending
 	 */
@@ -46,7 +96,7 @@ public class DevAssistScanScheduler {
 	/**
 	 * Schedule a scan for a file with custom debounce delay.
 	 *
-	 * @param file File to scan
+	 * @param file    File to scan
 	 * @param delayMs Debounce delay in milliseconds
 	 * @return true if scheduled, false if already pending
 	 */
@@ -67,6 +117,9 @@ public class DevAssistScanScheduler {
 			// Create new job
 			RealTimeScanJob scanJob = new RealTimeScanJob(file, file.getName());
 
+			// Attach listener to clean up entry when job completes or is cancelled
+			scanJob.addJobChangeListener(jobCompletionListener);
+
 			// Track it
 			pendingScans.put(filePath, scanJob);
 
@@ -74,7 +127,7 @@ public class DevAssistScanScheduler {
 			scanJob.schedule(delayMs);
 
 			CxLogger.info(LOG_TAG + " Scheduled scan for: " + filePath +
-				" (delay=" + delayMs + "ms)");
+					" (delay=" + delayMs + "ms)");
 			return true;
 
 		} catch (Exception e) {
@@ -92,7 +145,7 @@ public class DevAssistScanScheduler {
 	 * - While typing: reschedule (cancel, start new 1s timer)
 	 * - After user pauses: job runs
 	 *
-	 * @param file File to reschedule
+	 * @param file    File to reschedule
 	 * @param delayMs New debounce delay
 	 * @return true if rescheduled, false if no pending job
 	 */
@@ -117,7 +170,7 @@ public class DevAssistScanScheduler {
 			existingJob.reschedule(delayMs);
 
 			CxLogger.info(LOG_TAG + " Rescheduled scan for: " + filePath +
-				" (delay=" + delayMs + "ms)");
+					" (delay=" + delayMs + "ms)");
 			return true;
 
 		} catch (Exception e) {
@@ -183,6 +236,6 @@ public class DevAssistScanScheduler {
 	 */
 	public String getStatistics() {
 		return "Pending scans: " + pendingScans.size() +
-			", Tracked files: " + pendingScans.keySet();
+				", Tracked files: " + pendingScans.keySet();
 	}
 }

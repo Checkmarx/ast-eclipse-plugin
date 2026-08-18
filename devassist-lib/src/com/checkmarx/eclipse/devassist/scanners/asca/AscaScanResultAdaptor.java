@@ -13,9 +13,11 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Adapter class for handling ASCA scan results and converting them into a standardized format.
+ * Adapter class for handling ASCA scan results and converting them into a
+ * standardized format.
  *
- * This class wraps a ASCA {@link ScanResult} instance and provides methods to process and extract
+ * This class wraps a ASCA {@link ScanResult} instance and provides methods to
+ * process and extract
  * meaningful scan issues based on ASCA findings detected in the files.
  *
  * Features:
@@ -36,10 +38,11 @@ public class AscaScanResultAdaptor implements ScanResult<Object> {
 	private final List<ScanIssue> scanIssues;
 
 	/**
-	 * Constructs an instance of AscaScanResultAdaptor with the specified ASCA scan results.
+	 * Constructs an instance of AscaScanResultAdaptor with the specified ASCA scan
+	 * results.
 	 *
 	 * @param ascaScanResult the ASCA scan results to be wrapped
-	 * @param filePath the path of the file being scanned
+	 * @param filePath       the path of the file being scanned
 	 */
 	public AscaScanResultAdaptor(com.checkmarx.ast.asca.ScanResult ascaScanResult, String filePath) {
 		this.ascaScanResult = ascaScanResult;
@@ -78,11 +81,10 @@ public class AscaScanResultAdaptor implements ScanResult<Object> {
 				.collect(Collectors.groupingBy(
 						ScanDetail::getLine,
 						Collectors.collectingAndThen(Collectors.toList(), detailsList -> {
-							detailsList.sort(Comparator.comparingInt(detail ->
-									getSeverityPrecedence(detail.getSeverity())));
+							detailsList.sort(
+									Comparator.comparingInt(detail -> getSeverityPrecedence(detail.getSeverity())));
 							return detailsList;
-						})
-				));
+						})));
 
 		List<ScanIssue> issues = groupedIssues.values().stream()
 				.map(this::createScanIssueForGroup)
@@ -94,10 +96,13 @@ public class AscaScanResultAdaptor implements ScanResult<Object> {
 	}
 
 	/**
-	 * Creates a ScanIssue from a group of ASCA scan details that are on the same line.
+	 * Creates a ScanIssue from a group of ASCA scan details that are on the same
+	 * line.
 	 *
-	 * @param ascaScanDetails the list of ASCA scan details for the same line (already sorted by severity)
-	 * @return a ScanIssue representing the ASCA finding(s), or null if conversion fails
+	 * @param ascaScanDetails the list of ASCA scan details for the same line
+	 *                        (already sorted by severity)
+	 * @return a ScanIssue representing the ASCA finding(s), or null if conversion
+	 *         fails
 	 */
 	private ScanIssue createScanIssueForGroup(List<ScanDetail> ascaScanDetails) {
 		if (ascaScanDetails == null || ascaScanDetails.isEmpty()) {
@@ -129,9 +134,11 @@ public class AscaScanResultAdaptor implements ScanResult<Object> {
 	}
 
 	/**
-	 * Creates a ScanIssue with appropriate title and basic properties from a group of ASCA scan details.
+	 * Creates a ScanIssue with appropriate title and basic properties from a group
+	 * of ASCA scan details.
 	 *
-	 * @param ascaScanDetails the list of ASCA scan details (already sorted by severity)
+	 * @param ascaScanDetails the list of ASCA scan details (already sorted by
+	 *                        severity)
 	 * @return a ScanIssue with basic properties set
 	 */
 	private ScanIssue getScanIssue(List<ScanDetail> ascaScanDetails) {
@@ -189,7 +196,8 @@ public class AscaScanResultAdaptor implements ScanResult<Object> {
 	}
 
 	/**
-	 * Updates the ScanIssue title and location based on vulnerability count and scan details.
+	 * Updates the ScanIssue title and location based on vulnerability count and
+	 * scan details.
 	 */
 	private void updateScanIssueTitleAndLocation(ScanIssue scanIssue, List<ScanDetail> ascaScanDetails) {
 		// Update title based on actual number of vulnerabilities

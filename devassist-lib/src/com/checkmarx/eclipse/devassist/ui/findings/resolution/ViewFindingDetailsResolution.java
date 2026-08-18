@@ -27,7 +27,8 @@ import com.checkmarx.eclipse.devassist.model.ScanIssue;
 /**
  * Marker resolution that opens a dialog showing complete finding details.
  * Reconstructs ScanIssue from marker attributes and displays rich UI.
- * Implements IMarkerResolution2 for better performance with hasResolutions() check.
+ * Implements IMarkerResolution2 for better performance with hasResolutions()
+ * check.
  */
 public class ViewFindingDetailsResolution implements IMarkerResolution2 {
 
@@ -58,21 +59,18 @@ public class ViewFindingDetailsResolution implements IMarkerResolution2 {
             // Reconstruct ScanIssue from marker attributes
             ScanIssue issue = MarkerIssueMapper.fromMarker(marker);
             if (issue == null) {
-                
+
                 return;
             }
 
             // Open the details dialog
             FindingDetailsDialog dialog = new FindingDetailsDialog(
                     PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell(),
-                    issue
-            );
+                    issue);
             dialog.open();
 
-            
-
         } catch (Exception e) {
-            
+
             e.printStackTrace();
         }
     }
@@ -104,8 +102,7 @@ public class ViewFindingDetailsResolution implements IMarkerResolution2 {
                 Point size = newShell.getSize();
                 newShell.setLocation(
                         bounds.x + (bounds.width - size.x) / 2,
-                        bounds.y + (bounds.height - size.y) / 2
-                );
+                        bounds.y + (bounds.height - size.y) / 2);
             }
         }
 
@@ -205,12 +202,12 @@ public class ViewFindingDetailsResolution implements IMarkerResolution2 {
         }
 
         private void onQuickFixClick() {
-            
+
             // TODO: Implement remediation integration
         }
 
         private void onIgnoreClick() {
-            
+
             // TODO: Implement ignore logic
         }
 
@@ -224,12 +221,12 @@ public class ViewFindingDetailsResolution implements IMarkerResolution2 {
                 TextTransfer transfer = TextTransfer.getInstance();
                 clipboard.setContents(new Object[] { text }, new Transfer[] { transfer });
                 clipboard.dispose();
-                
+
             });
         }
 
         private void onOpenWindowClick() {
-            
+
             // TODO: Open Findings window and navigate to this issue
         }
 
@@ -256,4 +253,3 @@ public class ViewFindingDetailsResolution implements IMarkerResolution2 {
         }
     }
 }
-

@@ -29,7 +29,8 @@ public class ScannerRegistry {
 
 	private final IProject project;
 	private final ConcurrentHashMap<String, Object> scanners = new ConcurrentHashMap<>();
-	private boolean disposed = false;
+	private volatile boolean disposed = false;
+	private final Object lock = new Object();
 
 	/**
 	 * Create a registry for a project.
@@ -41,54 +42,63 @@ public class ScannerRegistry {
 		CxLogger.info(LOG_TAG + " Created for project: " + project.getName());
 	}
 
-
 	/**
 	 * Deregister and dispose all scanners (on project close).
+	 * Synchronized to prevent race with getScannerService() lazy creation.
 	 */
 	public void deregisterAllScanners() {
-		CxLogger.info(LOG_TAG + " Deregistering all scanners for: " + project.getName());
+		synchronized (lock) {
+			CxLogger.info(LOG_TAG + " Deregistering all scanners for: " + project.getName());
 
-		// Dispose each scanner
-		scanners.forEach((type, scanner) -> {
-			try {
-				if (scanner instanceof AutoCloseable) {
-					((AutoCloseable) scanner).close();
+			// Dispose each scanner
+			scanners.forEach((type, scanner) -> {
+				try {
+					if (scanner instanceof AutoCloseable) {
+						((AutoCloseable) scanner).close();
+					}
+					CxLogger.info(LOG_TAG + "Disposed scanner: " + type);
+				} catch (Exception e) {
+					CxLogger.warning(LOG_TAG + " Error disposing scanner " + type + ": " +
+							e.getMessage());
 				}
-				CxLogger.info(LOG_TAG + "Disposed scanner: " + type);
-			} catch (Exception e) {
-				CxLogger.warning(LOG_TAG + " Error disposing scanner " + type + ": " +
-					e.getMessage());
-			}
-		});
+			});
 
-		scanners.clear();
-		disposed = true;
-		CxLogger.info(LOG_TAG + " All scanners disposed");
+			scanners.clear();
+			disposed = true;
+			CxLogger.info(LOG_TAG + " All scanners disposed");
+		}
 	}
 
 	/**
 	 * Get a scanner service by type.
 	 * Lazily creates the scanner on first access.
 	 *
+	 * Synchronized with deregisterAllScanners() to prevent race:
+	 * if project closes while scanner is being created, the new instance
+	 * will be disposed immediately and not leak.
+	 *
 	 * @param type Scanner type (OSS, SECRETS, etc.)
 	 * @return Scanner instance, or null if scanner type not supported
 	 */
 	public Object getScannerService(ScannerType type) {
-		if (disposed) {
-			CxLogger.warning(LOG_TAG + " Registry is disposed");
-			return null;
-		}
+		synchronized (lock) {
+			if (disposed) {
+				CxLogger.warning(LOG_TAG + " Registry is disposed");
+				return null;
+			}
 
-		return scanners.computeIfAbsent(type.name(), key -> {
-			CxLogger.info(LOG_TAG + " Creating scanner: " + type);
-			// Scanner creation will be implemented in Phase 2
-			return createScannerInstance(type);
-		});
+			return scanners.computeIfAbsent(type.name(), key -> {
+				CxLogger.info(LOG_TAG + " Creating scanner: " + type);
+				// Scanner creation will be implemented in Phase 2
+				return createScannerInstance(type);
+			});
+		}
 	}
 
 	/**
 	 * Create a scanner instance by type.
-	 * Creates implementations of ScannerService that delegate to the new scanner commands.
+	 * Creates implementations of ScannerService that delegate to the new scanner
+	 * commands.
 	 *
 	 * @param type Scanner type
 	 * @return Scanner instance
@@ -99,23 +109,23 @@ public class ScannerRegistry {
 			Object scanner = null;
 
 			switch (type) {
-			case OSS:
-				scanner = new OssScannerServiceImpl(project);
-				break;
-			case SECRETS:
-				scanner = new SecretsScannerServiceImpl(project);
-				break;
-			case CONTAINERS:
-				scanner = new ContainerScannerServiceImpl(project);
-				break;
-			case IAC:
-				scanner = new IacScannerServiceImpl(project);
-				break;
-			case ASCA:
-				scanner = new AscaScannerServiceImpl(project);
-				break;
-			default:
-				return null;
+				case OSS:
+					scanner = new OssScannerServiceImpl(project);
+					break;
+				case SECRETS:
+					scanner = new SecretsScannerServiceImpl(project);
+					break;
+				case CONTAINERS:
+					scanner = new ContainerScannerServiceImpl(project);
+					break;
+				case IAC:
+					scanner = new IacScannerServiceImpl(project);
+					break;
+				case ASCA:
+					scanner = new AscaScannerServiceImpl(project);
+					break;
+				default:
+					return null;
 			}
 
 			if (scanner != null) {
@@ -132,21 +142,27 @@ public class ScannerRegistry {
 	}
 
 	/**
-	 * Inner class implementations of ScannerService that bridge to new scanner commands.
+	 * Inner class implementations of ScannerService that bridge to new scanner
+	 * commands.
 	 * These are minimal adapters that delegate to the proper scanner packages.
 	 */
 
 	private static class OssScannerServiceImpl implements ScannerService<Object> {
 		private final com.checkmarx.eclipse.devassist.scanners.oss.OssScannerCommand command;
 		private final com.checkmarx.eclipse.devassist.common.ScannerConfig config;
+
 		OssScannerServiceImpl(IProject project) {
 			this.command = new com.checkmarx.eclipse.devassist.scanners.oss.OssScannerCommand(project);
 			this.config = com.checkmarx.eclipse.devassist.common.ScannerConfig.builder()
-				.engineName("OSS")
-				.build();
+					.engineName("OSS")
+					.build();
 		}
+
 		@Override
-		public boolean shouldScanFile(String filePath) { return filePath != null && !filePath.isEmpty(); }
+		public boolean shouldScanFile(String filePath) {
+			return filePath != null && !filePath.isEmpty();
+		}
+
 		@Override
 		public com.checkmarx.eclipse.devassist.common.ScanResult<Object> scan(String filePath) {
 			try {
@@ -157,23 +173,34 @@ public class ScannerRegistry {
 				return null;
 			}
 		}
+
 		@Override
-		public com.checkmarx.eclipse.devassist.common.ScannerConfig getConfig() { return config; }
+		public com.checkmarx.eclipse.devassist.common.ScannerConfig getConfig() {
+			return config;
+		}
+
 		@Override
-		public void close() throws Exception { command.dispose(); }
+		public void close() throws Exception {
+			command.dispose();
+		}
 	}
 
 	private static class SecretsScannerServiceImpl implements ScannerService<Object> {
 		private final com.checkmarx.eclipse.devassist.scanners.secrets.SecretsScannerCommand command;
 		private final com.checkmarx.eclipse.devassist.common.ScannerConfig config;
+
 		SecretsScannerServiceImpl(IProject project) {
 			this.command = new com.checkmarx.eclipse.devassist.scanners.secrets.SecretsScannerCommand(project);
 			this.config = com.checkmarx.eclipse.devassist.common.ScannerConfig.builder()
-				.engineName("SECRETS")
-				.build();
+					.engineName("SECRETS")
+					.build();
 		}
+
 		@Override
-		public boolean shouldScanFile(String filePath) { return filePath != null && !filePath.isEmpty(); }
+		public boolean shouldScanFile(String filePath) {
+			return filePath != null && !filePath.isEmpty();
+		}
+
 		@Override
 		public com.checkmarx.eclipse.devassist.common.ScanResult<Object> scan(String filePath) {
 			try {
@@ -184,23 +211,34 @@ public class ScannerRegistry {
 				return null;
 			}
 		}
+
 		@Override
-		public com.checkmarx.eclipse.devassist.common.ScannerConfig getConfig() { return config; }
+		public com.checkmarx.eclipse.devassist.common.ScannerConfig getConfig() {
+			return config;
+		}
+
 		@Override
-		public void close() throws Exception { command.dispose(); }
+		public void close() throws Exception {
+			command.dispose();
+		}
 	}
 
 	private static class IacScannerServiceImpl implements ScannerService<Object> {
 		private final com.checkmarx.eclipse.devassist.scanners.iac.IacScannerCommand command;
 		private final com.checkmarx.eclipse.devassist.common.ScannerConfig config;
+
 		IacScannerServiceImpl(IProject project) {
 			this.command = new com.checkmarx.eclipse.devassist.scanners.iac.IacScannerCommand(project);
 			this.config = com.checkmarx.eclipse.devassist.common.ScannerConfig.builder()
-				.engineName("IAC")
-				.build();
+					.engineName("IAC")
+					.build();
 		}
+
 		@Override
-		public boolean shouldScanFile(String filePath) { return filePath != null && !filePath.isEmpty(); }
+		public boolean shouldScanFile(String filePath) {
+			return filePath != null && !filePath.isEmpty();
+		}
+
 		@Override
 		public com.checkmarx.eclipse.devassist.common.ScanResult<Object> scan(String filePath) {
 			try {
@@ -211,23 +249,34 @@ public class ScannerRegistry {
 				return null;
 			}
 		}
+
 		@Override
-		public com.checkmarx.eclipse.devassist.common.ScannerConfig getConfig() { return config; }
+		public com.checkmarx.eclipse.devassist.common.ScannerConfig getConfig() {
+			return config;
+		}
+
 		@Override
-		public void close() throws Exception { command.dispose(); }
+		public void close() throws Exception {
+			command.dispose();
+		}
 	}
 
 	private static class AscaScannerServiceImpl implements ScannerService<Object> {
 		private final com.checkmarx.eclipse.devassist.scanners.asca.AscaScannerCommand command;
 		private final com.checkmarx.eclipse.devassist.common.ScannerConfig config;
+
 		AscaScannerServiceImpl(IProject project) {
 			this.command = new com.checkmarx.eclipse.devassist.scanners.asca.AscaScannerCommand(project);
 			this.config = com.checkmarx.eclipse.devassist.common.ScannerConfig.builder()
-				.engineName("ASCA")
-				.build();
+					.engineName("ASCA")
+					.build();
 		}
+
 		@Override
-		public boolean shouldScanFile(String filePath) { return filePath != null && !filePath.isEmpty(); }
+		public boolean shouldScanFile(String filePath) {
+			return filePath != null && !filePath.isEmpty();
+		}
+
 		@Override
 		public com.checkmarx.eclipse.devassist.common.ScanResult<Object> scan(String filePath) {
 			try {
@@ -238,23 +287,34 @@ public class ScannerRegistry {
 				return null;
 			}
 		}
+
 		@Override
-		public com.checkmarx.eclipse.devassist.common.ScannerConfig getConfig() { return config; }
+		public com.checkmarx.eclipse.devassist.common.ScannerConfig getConfig() {
+			return config;
+		}
+
 		@Override
-		public void close() throws Exception { command.dispose(); }
+		public void close() throws Exception {
+			command.dispose();
+		}
 	}
 
 	private static class ContainerScannerServiceImpl implements ScannerService<Object> {
 		private final com.checkmarx.eclipse.devassist.scanners.containers.ContainerScannerCommand command;
 		private final com.checkmarx.eclipse.devassist.common.ScannerConfig config;
+
 		ContainerScannerServiceImpl(IProject project) {
 			this.command = new com.checkmarx.eclipse.devassist.scanners.containers.ContainerScannerCommand(project);
 			this.config = com.checkmarx.eclipse.devassist.common.ScannerConfig.builder()
-				.engineName("CONTAINERS")
-				.build();
+					.engineName("CONTAINERS")
+					.build();
 		}
+
 		@Override
-		public boolean shouldScanFile(String filePath) { return filePath != null && !filePath.isEmpty(); }
+		public boolean shouldScanFile(String filePath) {
+			return filePath != null && !filePath.isEmpty();
+		}
+
 		@Override
 		public com.checkmarx.eclipse.devassist.common.ScanResult<Object> scan(String filePath) {
 			try {
@@ -265,10 +325,16 @@ public class ScannerRegistry {
 				return null;
 			}
 		}
+
 		@Override
-		public com.checkmarx.eclipse.devassist.common.ScannerConfig getConfig() { return config; }
+		public com.checkmarx.eclipse.devassist.common.ScannerConfig getConfig() {
+			return config;
+		}
+
 		@Override
-		public void close() throws Exception { command.dispose(); }
+		public void close() throws Exception {
+			command.dispose();
+		}
 	}
 
 	/**
@@ -306,8 +372,8 @@ public class ScannerRegistry {
 	 */
 	public String getStatistics() {
 		return "Project: " + project.getName() +
-			", Scanners: " + scanners.size() +
-			", Disposed: " + disposed;
+				", Scanners: " + scanners.size() +
+				", Disposed: " + disposed;
 	}
 
 	/**
@@ -332,4 +398,3 @@ public class ScannerRegistry {
 		}
 	}
 }
-

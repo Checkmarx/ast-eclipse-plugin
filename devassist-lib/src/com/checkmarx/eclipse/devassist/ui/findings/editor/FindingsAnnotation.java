@@ -33,9 +33,17 @@ public class FindingsAnnotation extends Annotation {
         return buttons;
     }
 
-    public String getTitle() { return title; }
-    public String getDescription() { return description; }
-    public ScanIssue getScanIssue() { return scanIssue; }
+    public String getTitle() {
+        return title;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public ScanIssue getScanIssue() {
+        return scanIssue;
+    }
 
     public static class AnnotationButton {
         public String label;

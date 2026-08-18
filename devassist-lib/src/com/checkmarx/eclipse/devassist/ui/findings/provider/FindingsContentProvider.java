@@ -8,18 +8,23 @@ import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.graphics.Image;
 
 import com.checkmarx.eclipse.devassist.ui.findings.model.FileNodeLabel;
+import com.checkmarx.eclipse.common.utils.CxLogger;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.ui.findings.model.ScanDetailWithPath;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
- * Content provider for the Findings tree viewer.
- * Implements {@link ITreeContentProvider} to provide hierarchical content structure.
- * Organizes scan issues by file path as parent nodes with individual issues as children.
+ * Content provider for the Findings tree viewer. Implements
+ * {@link ITreeContentProvider} to provide hierarchical content structure.
+ * Organizes scan issues by file path as parent nodes with individual issues as
+ * children.
  */
 public class FindingsContentProvider implements ITreeContentProvider {
+
+    private final Map<ImageDescriptor, Image> imageCache = new HashMap<>();
 
     @Override
     public void inputChanged(Viewer viewer, Object oldInput, Object newInput) {
@@ -30,17 +35,11 @@ public class FindingsContentProvider implements ITreeContentProvider {
         if (inputElement instanceof Map) {
             @SuppressWarnings("unchecked")
             Map<String, List<ScanIssue>> map = (Map<String, List<ScanIssue>>) inputElement;
-            return map.entrySet().stream()
-                    .map(entry -> {
-                        String fileName = getFileName(entry.getKey());
-                        Image fileIcon = getFileIcon(fileName);
-                        return new FileNodeLabel(
-                                fileName,
-                                entry.getKey(),
-                                entry.getValue(),
-                                fileIcon);
-                    })
-                    .toArray();
+            return map.entrySet().stream().map(entry -> {
+                String fileName = getFileName(entry.getKey());
+                Image fileIcon = getFileIcon(fileName);
+                return new FileNodeLabel(fileName, entry.getKey(), entry.getValue(), fileIcon);
+            }).toArray();
         }
         return new Object[0];
     }
@@ -55,12 +54,10 @@ public class FindingsContentProvider implements ITreeContentProvider {
             ImageDescriptor imageDescriptor = registry.getImageDescriptor(fileName);
 
             if (imageDescriptor != null) {
-                Image image = imageDescriptor.createImage();
-                if (image != null) {
-                    return image;
-                }
+                return imageCache.computeIfAbsent(imageDescriptor, descriptor -> descriptor.createImage());
             }
         } catch (Exception e) {
+            CxLogger.error("Error retrieving file icon for " + fileName, e);
         }
 
         return null;
@@ -71,8 +68,7 @@ public class FindingsContentProvider implements ITreeContentProvider {
         if (parentElement instanceof FileNodeLabel) {
             FileNodeLabel fileNode = (FileNodeLabel) parentElement;
             return fileNode.getIssues().stream()
-                    .map(issue -> new ScanDetailWithPath(issue, fileNode.getFilePath()))
-                    .toArray();
+                    .map(issue -> new ScanDetailWithPath(issue, fileNode.getFilePath(), fileNode)).toArray();
         }
         return new Object[0];
     }
@@ -80,8 +76,7 @@ public class FindingsContentProvider implements ITreeContentProvider {
     @Override
     public Object getParent(Object element) {
         if (element instanceof ScanDetailWithPath) {
-            // Parent is the file node - would need to track in the model
-            return null;
+            return ((ScanDetailWithPath) element).getParentNode();
         }
         return null;
     }
@@ -107,6 +102,13 @@ public class FindingsContentProvider implements ITreeContentProvider {
 
     @Override
     public void dispose() {
-        // Cleanup if needed
+        // Dispose all cached native OS handles to prevent memory leaks
+        for (Image image : imageCache.values()) {
+            if (image != null && !image.isDisposed()) {
+                image.dispose();
+            }
+        }
+        imageCache.clear();
     }
+
 }

@@ -6,7 +6,8 @@ import org.eclipse.ui.IMarkerResolutionGenerator2;
 
 /**
  * Provides marker resolutions for Checkmarx findings.
- * Invoked when user presses Ctrl+1 on a marker or selects "Quick Fix" from context menu.
+ * Invoked when user presses Ctrl+1 on a marker or selects "Quick Fix" from
+ * context menu.
  * Implements IMarkerResolutionGenerator2 for efficient hasResolutions() check.
  */
 public class CheckmarxMarkerResolutionGenerator implements IMarkerResolutionGenerator2 {
@@ -14,10 +15,10 @@ public class CheckmarxMarkerResolutionGenerator implements IMarkerResolutionGene
     @Override
     public IMarkerResolution[] getResolutions(IMarker marker) {
         return new IMarkerResolution[] {
-            new QuickFixRemediationResolution(marker),
-            new ViewFindingDetailsResolution(marker),
-            new IgnoreVulnerabilityResolution(marker),
-            new CopyDetailsResolution(marker)
+                new QuickFixRemediationResolution(marker),
+                new ViewFindingDetailsResolution(marker),
+                new IgnoreVulnerabilityResolution(marker),
+                new CopyDetailsResolution(marker)
         };
     }
 

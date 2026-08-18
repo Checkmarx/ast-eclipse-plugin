@@ -26,8 +26,10 @@ import java.util.stream.Collectors;
 /**
  * Container image scanner service for Eclipse.
  *
- * Handles file detection (Docker, Docker Compose, Helm), secure temporary folder management,
- * and direct invocation of Checkmarx Container Realtime scanning via CxWrapperFactory.
+ * Handles file detection (Docker, Docker Compose, Helm), secure temporary
+ * folder management,
+ * and direct invocation of Checkmarx Container Realtime scanning via
+ * CxWrapperFactory.
  */
 public class ContainerScannerService extends BaseScannerService<ContainersRealtimeResults> {
 
@@ -40,15 +42,13 @@ public class ContainerScannerService extends BaseScannerService<ContainersRealti
             "**/*.containerfile",
             "**/*.image",
             "**/docker-compose*.yml",
-            "**/docker-compose*.yaml"
-    );
+            "**/docker-compose*.yaml");
 
     private static final List<String> CONTAINER_HELM_EXCLUDED_FILES = List.of(
             "chart.yaml",
             "chart.yml",
             "values.yaml",
-            "values.yml"
-    );
+            "values.yml");
 
     private String fileType;
 
@@ -76,7 +76,8 @@ public class ContainerScannerService extends BaseScannerService<ContainersRealti
     }
 
     /**
-     * Checks whether the supplied file path matches container file patterns (Dockerfile, Docker Compose, etc.).
+     * Checks whether the supplied file path matches container file patterns
+     * (Dockerfile, Docker Compose, etc.).
      */
     private boolean isContainersFilePatternMatching(String filePath) {
         String lowerPath = filePath.toLowerCase();
@@ -120,7 +121,8 @@ public class ContainerScannerService extends BaseScannerService<ContainersRealti
     }
 
     /**
-     * Primary scan method. Reads content, creates isolated temporary directory structure,
+     * Primary scan method. Reads content, creates isolated temporary directory
+     * structure,
      * executes the container realtime scan, and updates ignored issues.
      */
     public ScanResult<ContainersRealtimeResults> scan(String filePath, IDocument document, IProject proj) {
@@ -151,17 +153,19 @@ public class ContainerScannerService extends BaseScannerService<ContainersRealti
                 Files.writeString(tempFilePath, fileContent, StandardCharsets.UTF_8);
 
                 CxLogger.info(LOG_TAG + " Start Container Realtime Scan On File: " + filePath);
-//                String ignoreFilePath = DevAssistUtils.getIgnoreFilePath(proj != null ? proj : this.project);
+                // String ignoreFilePath = DevAssistUtils.getIgnoreFilePath(proj != null ? proj
+                // : this.project);
 
                 ContainersRealtimeResults scanResults = null;
-				try {
-					scanResults = CxWrapperFactory.build().containersRealtimeScan(tempFilePath.toString(), "");
-				} catch (Exception e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
+                try {
+                    scanResults = CxWrapperFactory.build().containersRealtimeScan(tempFilePath.toString(), "");
+                } catch (Exception e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
 
-                updateIgnoredFileDataOnLatestResult(tempFilePath.toString(), proj != null ? proj : this.project, filePath);
+                updateIgnoredFileDataOnLatestResult(tempFilePath.toString(), proj != null ? proj : this.project,
+                        filePath);
 
                 return new ContainerScanResultAdaptor(scanResults, this.fileType, filePath);
 
@@ -177,24 +181,29 @@ public class ContainerScannerService extends BaseScannerService<ContainersRealti
     }
 
     /**
-     * Re-runs scan without ignore settings to calculate line updates for ignored entries.
+     * Re-runs scan without ignore settings to calculate line updates for ignored
+     * entries.
      */
     private void updateIgnoredFileDataOnLatestResult(String tempFilePath, IProject proj, String filePath) {
-//        try {
-//            IgnoreManager ignoreManager = new IgnoreManager(proj);
-//            if (ignoreManager.hasIgnoredEntries(ScanEngine.CONTAINERS)) {
-//                CxLogger.info(LOG_TAG + " Performing full scan to update line numbers for ignored packages");
-//                ContainersRealtimeResults fullScanResults = CxWrapperFactory.build()
-//                        .containersRealtimeScan(tempFilePath, "");
-//
-//                if (fullScanResults != null) {
-//                    ContainerScanResultAdaptor fullScanResultAdaptor = new ContainerScanResultAdaptor(fullScanResults, this.fileType, filePath);
-//                    ignoreManager.updateLineNumbersForIgnoredEntries(fullScanResultAdaptor, filePath);
-//                }
-//            }
-//        } catch (Exception e) {
-//            CxLogger.warning(LOG_TAG + " Exception occurred while updating ignored file line numbers: " + e.getMessage());
-//        }
+        // try {
+        // IgnoreManager ignoreManager = new IgnoreManager(proj);
+        // if (ignoreManager.hasIgnoredEntries(ScanEngine.CONTAINERS)) {
+        // CxLogger.info(LOG_TAG + " Performing full scan to update line numbers for
+        // ignored packages");
+        // ContainersRealtimeResults fullScanResults = CxWrapperFactory.build()
+        // .containersRealtimeScan(tempFilePath, "");
+        //
+        // if (fullScanResults != null) {
+        // ContainerScanResultAdaptor fullScanResultAdaptor = new
+        // ContainerScanResultAdaptor(fullScanResults, this.fileType, filePath);
+        // ignoreManager.updateLineNumbersForIgnoredEntries(fullScanResultAdaptor,
+        // filePath);
+        // }
+        // }
+        // } catch (Exception e) {
+        // CxLogger.warning(LOG_TAG + " Exception occurred while updating ignored file
+        // line numbers: " + e.getMessage());
+        // }
     }
 
     /**
@@ -224,7 +233,8 @@ public class ContainerScannerService extends BaseScannerService<ContainersRealti
     }
 
     /**
-     * Generates a unique 16-character hexadecimal hash using SHA-256 for temporary directory names.
+     * Generates a unique 16-character hexadecimal hash using SHA-256 for temporary
+     * directory names.
      */
     private String generateFileHash(String relativePath) {
         try {

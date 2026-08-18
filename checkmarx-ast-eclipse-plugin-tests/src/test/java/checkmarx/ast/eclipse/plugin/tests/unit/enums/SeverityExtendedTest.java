@@ -17,9 +17,6 @@ class SeverityExtendedTest {
 		assertEquals(Severity.MEDIUM, Severity.getSeverity("MEDIUM"));
 		assertEquals(Severity.LOW, Severity.getSeverity("LOW"));
 		assertEquals(Severity.INFO, Severity.getSeverity("INFO"));
-		assertEquals(Severity.GROUP_BY_SEVERITY, Severity.getSeverity("GROUP_BY_SEVERITY"));
-		assertEquals(Severity.GROUP_BY_QUERY_NAME, Severity.getSeverity("GROUP_BY_QUERY_NAME"));
-		assertEquals(Severity.GROUP_BY_STATE_NAME, Severity.getSeverity("GROUP_BY_STATE_NAME"));
 	}
 
 	@Test
@@ -49,9 +46,6 @@ class SeverityExtendedTest {
 		assertDoesNotThrow(() -> Severity.valueOf("MEDIUM"));
 		assertDoesNotThrow(() -> Severity.valueOf("LOW"));
 		assertDoesNotThrow(() -> Severity.valueOf("INFO"));
-		assertDoesNotThrow(() -> Severity.valueOf("GROUP_BY_SEVERITY"));
-		assertDoesNotThrow(() -> Severity.valueOf("GROUP_BY_QUERY_NAME"));
-		assertDoesNotThrow(() -> Severity.valueOf("GROUP_BY_STATE_NAME"));
 	}
 
 	@Test
@@ -71,9 +65,6 @@ class SeverityExtendedTest {
 		assertEquals("MEDIUM", Severity.MEDIUM.name());
 		assertEquals("LOW", Severity.LOW.name());
 		assertEquals("INFO", Severity.INFO.name());
-		assertEquals("GROUP_BY_SEVERITY", Severity.GROUP_BY_SEVERITY.name());
-		assertEquals("GROUP_BY_QUERY_NAME", Severity.GROUP_BY_QUERY_NAME.name());
-		assertEquals("GROUP_BY_STATE_NAME", Severity.GROUP_BY_STATE_NAME.name());
 	}
 
 	@Test
@@ -83,9 +74,6 @@ class SeverityExtendedTest {
 		assertEquals(2, Severity.MEDIUM.ordinal());
 		assertEquals(3, Severity.LOW.ordinal());
 		assertEquals(4, Severity.INFO.ordinal());
-		assertEquals(5, Severity.GROUP_BY_SEVERITY.ordinal());
-		assertEquals(6, Severity.GROUP_BY_QUERY_NAME.ordinal());
-		assertEquals(7, Severity.GROUP_BY_STATE_NAME.ordinal());
 	}
 
 	@Test
@@ -106,7 +94,6 @@ class SeverityExtendedTest {
 			if (s == Severity.CRITICAL) hasCritical = true;
 			if (s == Severity.HIGH) hasHigh = true;
 			if (s == Severity.LOW) hasLow = true;
-			if (s == Severity.GROUP_BY_SEVERITY) hasGroupBy = true;
 		}
 
 		assertTrue(hasCritical);
@@ -142,7 +129,6 @@ class SeverityExtendedTest {
 	void testToString_returnsName() {
 		assertEquals("CRITICAL", Severity.CRITICAL.toString());
 		assertEquals("HIGH", Severity.HIGH.toString());
-		assertEquals("GROUP_BY_SEVERITY", Severity.GROUP_BY_SEVERITY.toString());
 	}
 
 	@Test
@@ -210,9 +196,6 @@ class SeverityExtendedTest {
 
 	@Test
 	void testGroupByConstants_arePublicStaticFinal() {
-		assertNotNull(Severity.GROUP_BY_SEVERITY);
-		assertNotNull(Severity.GROUP_BY_QUERY_NAME);
-		assertNotNull(Severity.GROUP_BY_STATE_NAME);
 	}
 
 	@Test
@@ -233,9 +216,6 @@ class SeverityExtendedTest {
 
 	@Test
 	void testGetSeverity_allGroupByVariants() {
-		assertEquals(Severity.GROUP_BY_SEVERITY, Severity.getSeverity("GROUP_BY_SEVERITY"));
-		assertEquals(Severity.GROUP_BY_QUERY_NAME, Severity.getSeverity("GROUP_BY_QUERY_NAME"));
-		assertEquals(Severity.GROUP_BY_STATE_NAME, Severity.getSeverity("GROUP_BY_STATE_NAME"));
 	}
 
 	@ParameterizedTest
@@ -247,7 +227,6 @@ class SeverityExtendedTest {
 	}
 
 	@ParameterizedTest
-	@ValueSource(strings = {"GROUP_BY_SEVERITY", "GROUP_BY_QUERY_NAME", "GROUP_BY_STATE_NAME"})
 	void testGetSeverity_validGroupingOptions(String groupingName) {
 		Severity severity = Severity.getSeverity(groupingName);
 		assertNotNull(severity);

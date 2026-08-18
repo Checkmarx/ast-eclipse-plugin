@@ -14,9 +14,11 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Adapter class for handling IaC scan results and converting them into a standardized format.
+ * Adapter class for handling IaC scan results and converting them into a
+ * standardized format.
  *
- * This class wraps an IaC {@link IacRealtimeResults} instance and provides methods to process and extract
+ * This class wraps an IaC {@link IacRealtimeResults} instance and provides
+ * methods to process and extract
  * meaningful scan issues based on IaC misconfigurations detected in the files.
  *
  * Features:
@@ -73,11 +75,10 @@ public class IacScanResultAdaptor implements ScanResult<IacRealtimeResults> {
 							return 1;
 						},
 						Collectors.collectingAndThen(Collectors.toList(), issuesList -> {
-							issuesList.sort(Comparator.comparingInt(issue ->
-									getSeverityPrecedence(issue.getSeverity())));
+							issuesList
+									.sort(Comparator.comparingInt(issue -> getSeverityPrecedence(issue.getSeverity())));
 							return issuesList;
-						})
-				));
+						})));
 
 		List<ScanIssue> scanIssues = groupedIssues.values().stream()
 				.map(this::createScanIssueForGroup)
@@ -184,7 +185,7 @@ public class IacScanResultAdaptor implements ScanResult<IacRealtimeResults> {
 			if (iacIssue.getLocations() != null) {
 				for (RealtimeLocation loc : iacIssue.getLocations()) {
 					Location location = new Location();
-					location.setLine(loc.getLine()+1);
+					location.setLine(loc.getLine() + 1);
 					location.setStartIndex(loc.getStartIndex());
 					location.setEndIndex(loc.getEndIndex());
 					scanIssue.getLocations().add(location);

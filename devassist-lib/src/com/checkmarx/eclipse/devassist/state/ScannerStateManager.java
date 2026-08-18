@@ -8,13 +8,15 @@ import com.checkmarx.eclipse.devassist.model.ScanEngine;
 
 /**
  * Manages scanner state persistence using Eclipse preferences.
- * Loads and saves which scanners are enabled/disabled and scan frequency preference.
+ * Loads and saves which scanners are enabled/disabled and scan frequency
+ * preference.
  */
 public class ScannerStateManager {
 
-	private static final String PLUGIN_ID = "com.checkmarx.eclipse.plugin"; // Replace with your exact Bundle-SymbolicName if different
-	private static final String KEY_PREFIX = "scanner.";
-	private static final String KEY_ENABLED_SUFFIX = ".enabled";
+	// Aligned to match the canonical plugin qualifier used across the plugin
+	private static final String PLUGIN_ID = "com.checkmarx.eclipse";
+	private static final String KEY_PREFIX = "pref_";
+	private static final String KEY_ENABLED_SUFFIX = "_enabled";
 	private static final String KEY_FREQUENCY = "scan.frequency";
 
 	private final IPreferenceStore prefs;
