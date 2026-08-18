@@ -10,10 +10,16 @@ public class ScanDetailWithPath {
 
     private final ScanIssue detail;
     private final String filePath;
+    private final FileNodeLabel parentNode;
 
-    public ScanDetailWithPath(ScanIssue detail, String filePath) {
+    public ScanDetailWithPath(ScanIssue detail, String filePath, FileNodeLabel parentNode) {
         this.detail = detail;
         this.filePath = filePath;
+        this.parentNode = parentNode;
+    }
+    
+    public FileNodeLabel getParentNode() {
+        return parentNode;
     }
 
     public ScanIssue getDetail() {

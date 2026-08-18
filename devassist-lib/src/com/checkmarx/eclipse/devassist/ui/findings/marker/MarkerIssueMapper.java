@@ -6,6 +6,10 @@ import com.checkmarx.eclipse.common.enums.Severity;
 import com.checkmarx.eclipse.devassist.model.Location;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
+import org.eclipse.jface.text.Position;
+import org.eclipse.ui.texteditor.ITextEditor;
+
+import com.checkmarx.eclipse.devassist.problems.ProblemDecorator;
 
 /**
  * Maps between ScanIssue objects and IMarker attributes.
@@ -94,7 +98,7 @@ public class MarkerIssueMapper {
      * @param marker the IMarker to populate
      * @param issue the ScanIssue containing data to serialize
      */
-    public static void populateMarker(IMarker marker, ScanIssue issue) {
+    public static void populateMarker(IMarker marker, ScanIssue issue, ITextEditor editor) {
         try {
             if (issue.getScanIssueId() != null && !issue.getScanIssueId().isEmpty()) {
                 marker.setAttribute(ATTR_ISSUE_ID, issue.getScanIssueId());
@@ -106,7 +110,6 @@ public class MarkerIssueMapper {
 
             if (issue.getTitle() != null && !issue.getTitle().isEmpty()) {
                 marker.setAttribute(ATTR_TITLE, issue.getTitle());
-                // Also set MESSAGE for default marker hover display
                 marker.setAttribute(IMarker.MESSAGE, issue.getTitle());
             }
 
@@ -134,18 +137,25 @@ public class MarkerIssueMapper {
             if (issue.getLocations() != null && !issue.getLocations().isEmpty()) {
                 Location location = issue.getLocations().get(0);
                 marker.setAttribute(IMarker.LINE_NUMBER, location.getLine());
-                marker.setAttribute(IMarker.CHAR_START, location.getStartIndex());
-                marker.setAttribute(IMarker.CHAR_END, location.getEndIndex());
 
-                // Calculate severity for Eclipse marker system (0=info, 1=warning, 2=error)
+                if (editor != null) {
+                    // Use ProblemDecorator's calculateRange logic for accurate absolute offsets
+                    Position pos = ProblemDecorator.calculateRange(editor, issue);
+                    if (pos != null) {
+                        marker.setAttribute(IMarker.CHAR_START, pos.getOffset());
+                        marker.setAttribute(IMarker.CHAR_END, pos.getOffset() + pos.getLength());
+                    }
+                } else {
+                    // Fallback when editor instance is unavailable
+                    marker.setAttribute(IMarker.CHAR_START, location.getStartIndex());
+                    marker.setAttribute(IMarker.CHAR_END, location.getEndIndex());
+                }
+
                 int severity = calculateMarkerSeverity(issue.getSeverity());
                 marker.setAttribute(IMarker.SEVERITY, severity);
             }
 
-            
-
         } catch (Exception e) {
-            
             e.printStackTrace();
         }
     }
@@ -160,6 +170,7 @@ public class MarkerIssueMapper {
 
         switch (severity.toLowerCase()) {
             case "critical":
+            case "malicious":
             case "high":
                 return IMarker.SEVERITY_ERROR;
             case "medium":

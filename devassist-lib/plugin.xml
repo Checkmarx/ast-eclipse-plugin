@@ -111,22 +111,24 @@
             overviewRulerPreferenceValue="true"
             presentationLayer="4">
         </specification>
-		<specification
-		    annotationType="com.checkmarx.eclipse.findings.ok"
-		    label="Checkmarx OK Finding"
-		    icon="icons/ok_16.svg"
-		    verticalRulerPreferenceValue="true"
-		    overviewRulerPreferenceValue="false"
-		    presentationLayer="2">
-		</specification>
-		<specification
-		    annotationType="com.checkmarx.eclipse.findings.unknown"
-		    label="Checkmarx Unknown Finding"
-		    icon="icons/unknown_16.svg"
-		    verticalRulerPreferenceValue="true"
-		    overviewRulerPreferenceValue="false"
-		    presentationLayer="3">
-		</specification>
+        <specification
+            annotationType="com.checkmarx.eclipse.findings.unknown"
+            label="Checkmarx Unknown Finding"
+            icon="icons/unknown_16.svg"
+            textStylePreferenceValue="SQUIGGLES"
+            verticalRulerPreferenceValue="true"
+            overviewRulerPreferenceValue="true"
+            presentationLayer="3">
+        </specification>
+        <specification
+            annotationType="com.checkmarx.eclipse.findings.ok"
+            label="Checkmarx OK Finding"
+            icon="icons/ok_16.svg"
+            textStylePreferenceValue="SQUIGGLES"
+            verticalRulerPreferenceValue="true"
+            overviewRulerPreferenceValue="true"
+            presentationLayer="2">
+        </specification>
         <specification
             annotationType="com.checkmarx.eclipse.findings.ignored"
             label="Checkmarx Ignored Finding"
@@ -136,6 +138,12 @@
             overviewRulerPreferenceValue="true"
             presentationLayer="1">
         </specification>
+   </extension>
+   <extension point="org.eclipse.ui.ide.markerResolution">
+       <generator
+           class="com.checkmarx.eclipse.devassist.ui.findings.resolution.CheckmarxMarkerResolutionGenerator"
+           markerType="com.checkmarx.eclipse.plugin.checkmarxProblemMarker">
+       </generator>
    </extension>
 
 </plugin>

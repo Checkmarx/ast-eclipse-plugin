@@ -355,7 +355,7 @@ public class ProblemDecorator {
 	 * @param issue Scan issue with location info
 	 * @return org.eclipse.jface.text.Position representing the precise range
 	 */
-	private static Position calculateRange(ITextEditor editor, ScanIssue issue) {
+	public static Position calculateRange(ITextEditor editor, ScanIssue issue) {
 	    try {
 	        IDocument document = editor.getDocumentProvider().getDocument(editor.getEditorInput());
 	        if (document == null) return new org.eclipse.jface.text.Position(0, 1);

@@ -156,6 +156,12 @@ public final class DevAssistConstants {
 	public static final String SEPARATOR = ":";
 	public static final String QUICK_FIX = "QUICK_FIX";
 	public static final String UNDO = "Undo";
+	public static final String MALICIOUS = "malicious";
+	public static final String CRITICAL = "critical";
+	public static final String HIGH = "high";
+	public static final String MEDIUM = "medium";
+	public static final String LOW = "low";
+	
 	
 	/******************************** WELCOME DIALOG ********************************/
 	public static final String WELCOME_TITLE = "Welcome to Checkmarx";

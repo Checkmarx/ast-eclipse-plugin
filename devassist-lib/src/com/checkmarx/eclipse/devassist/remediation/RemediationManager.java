@@ -8,8 +8,6 @@ import java.util.Objects;
 import org.eclipse.jgit.annotations.NonNull;
 import org.eclipse.jgit.annotations.Nullable;
 import org.eclipse.swt.widgets.Display;
-import org.slf4j.Logger;
-
 import com.checkmarx.eclipse.common.utils.CxLogger;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;

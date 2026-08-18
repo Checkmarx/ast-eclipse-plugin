@@ -1,7 +1,7 @@
 package com.checkmarx.eclipse.devassist.basescanner;
 
 import com.checkmarx.eclipse.devassist.common.ScannerConfig;
-import com.checkmarx.eclipse.devassist.utils.ScanEngine;
+import com.checkmarx.eclipse.devassist.model.ScanEngine;
 import com.checkmarx.eclipse.common.utils.CxLogger;
 import org.eclipse.core.resources.IProject;
 
