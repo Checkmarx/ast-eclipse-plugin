@@ -13,13 +13,13 @@ public class FindingsAnnotation extends Annotation {
     private List<AnnotationButton> buttons = new ArrayList<>();
 
     public FindingsAnnotation(String type, String title, String description) {
-        super(type, false, title);
+        super(type, false, null);
         this.title = title;
         this.description = description;
     }
 
     public FindingsAnnotation(String type, String title, String description, ScanIssue scanIssue) {
-        super(type, false, title);
+        super(type, false, null);
         this.title = title;
         this.description = description;
         this.scanIssue = scanIssue;

@@ -31,8 +31,6 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.editors.text.EditorsUI;
-import org.eclipse.ui.texteditor.MarkerAnnotation;
-
 import org.eclipse.swt.browser.LocationEvent;
 import org.eclipse.swt.browser.LocationListener;
 import org.eclipse.swt.browser.ProgressEvent;
@@ -42,10 +40,8 @@ import com.checkmarx.eclipse.common.utils.CxLogger;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.remediation.RemediationLinkHandler;
-import com.checkmarx.eclipse.devassist.remediation.RemediationManager;
 import com.checkmarx.eclipse.devassist.ui.findings.editor.FindingsAnnotation;
 import com.checkmarx.eclipse.devassist.ui.findings.marker.MarkerIssueMapper;
-import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
 import com.checkmarx.eclipse.devassist.utils.DevAssistUtils;
 import com.checkmarx.eclipse.devassist.utils.HtmlEscapeUtil;
 import org.eclipse.jface.resource.JFaceColors;
@@ -505,83 +501,83 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 			// Pass 2: MarkerAnnotation (Checkmarx markers) and everything else (JDT/other
 			// linters). A Checkmarx marker is skipped here if its issue was already
 			// rendered in pass 1 above.
-			for (Annotation annotation : lineAnnotations) {
-				if (annotation instanceof FindingsAnnotation
-						&& ((FindingsAnnotation) annotation).getScanIssue() != null) {
-					continue; // already handled in pass 1
-				}
-
-				if (annotation instanceof MarkerAnnotation) {
-					MarkerAnnotation markerAnnotation = (MarkerAnnotation) annotation;
-					IMarker marker = markerAnnotation.getMarker();
-					if (isCheckmarxMarker(marker)) {
-						Long id = marker.getId();
-						if (seenMarkerIds.contains(id)) {
-							continue;
-						}
-						seenMarkerIds.add(id);
-
-						String issueId = MarkerIssueMapper.getIssueId(marker);
-						// Check primary dedup key (issueId) first
-						if (!issueId.isEmpty() && renderedIssueIds.contains(issueId)) {
-							CxLogger.info("[HOVER] Skipping marker " + id + ": issue " + issueId
-									+ " already rendered via FindingsAnnotation");
-							continue;
-						}
-
-						// Check enhanced fallback dedup key for issues without stable issueId.
-						// Extract title and version from marker message for robust matching.
-						String markerMessage = marker.getAttribute(IMarker.MESSAGE, "");
-						String markerTitle = extractTitleFromMarkerMessage(markerMessage);
-						String markerVersion = extractVersionFromMarkerMessage(markerMessage);
-
-						// Build enhanced key matching Pass 1 logic
-						String enhancedMarkerKey = markerTitle;
-						if (!markerVersion.isEmpty()) {
-							// Include version for engines like OSS that report it
-							enhancedMarkerKey = markerTitle + "@" + markerVersion;
-						}
-
-						String fallbackKey = buildFallbackDedupKey(enhancedMarkerKey, lineNumber);
-						if (renderedIssueKeys.contains(fallbackKey)) {
-							CxLogger.info("[HOVER] Skipping marker " + id + ": issue (title=" + markerTitle
-									+ ", version=" + markerVersion + ", line=" + (lineNumber + 1)
-									+ ") already rendered via FindingsAnnotation");
-							continue;
-						}
-
-						CxLogger.warning("[HOVER] Pass 2 - Checking marker: " + fallbackKey
-								+ " | Available keys: " + renderedIssueKeys);
-
-						String section = buildCheckmarxSection(marker, id, textColorForElements);
-						if (!section.isEmpty()) {
-							checkmarxSections.add(section);
-							if (!issueId.isEmpty()) {
-								renderedIssueIds.add(issueId);
-								CxLogger.warning("[HOVER] Pass 2 - Rendered marker with ID: " + issueId);
-							} else {
-								// Track via enhanced fallback key if issueId is empty
-								renderedIssueKeys.add(fallbackKey);
-								CxLogger.warning("[HOVER] Pass 2 - Rendered marker with fallback key: " + fallbackKey);
-							}
-						}
-					} else {
-						// Non-Checkmarx marker (JDT, other linters) - collect as other message
-						String message = annotation.getText();
-						if (message != null && !message.isEmpty()) {
-							otherMessages.add(message);
-						}
-					}
-					continue;
-				}
-
-				// Collect other linter/annotation messages (JDT, etc.) that aren't handled
-				// above
-				String message = annotation.getText();
-				if (message != null && !message.isEmpty()) {
-					otherMessages.add(message);
-				}
-			}
+//			for (Annotation annotation : lineAnnotations) {
+//				if (annotation instanceof FindingsAnnotation
+//						&& ((FindingsAnnotation) annotation).getScanIssue() != null) {
+//					continue; // already handled in pass 1
+//				}
+//
+//				if (annotation instanceof MarkerAnnotation) {
+//					MarkerAnnotation markerAnnotation = (MarkerAnnotation) annotation;
+//					IMarker marker = markerAnnotation.getMarker();
+//					if (isCheckmarxMarker(marker)) {
+//						Long id = marker.getId();
+//						if (seenMarkerIds.contains(id)) {
+//							continue;
+//						}
+//						seenMarkerIds.add(id);
+//
+//						String issueId = MarkerIssueMapper.getIssueId(marker);
+//						// Check primary dedup key (issueId) first
+//						if (!issueId.isEmpty() && renderedIssueIds.contains(issueId)) {
+//							CxLogger.info("[HOVER] Skipping marker " + id + ": issue " + issueId
+//									+ " already rendered via FindingsAnnotation");
+//							continue;
+//						}
+//
+//						// Check enhanced fallback dedup key for issues without stable issueId.
+//						// Extract title and version from marker message for robust matching.
+//						String markerMessage = marker.getAttribute(IMarker.MESSAGE, "");
+//						String markerTitle = extractTitleFromMarkerMessage(markerMessage);
+//						String markerVersion = extractVersionFromMarkerMessage(markerMessage);
+//
+//						// Build enhanced key matching Pass 1 logic
+//						String enhancedMarkerKey = markerTitle;
+//						if (!markerVersion.isEmpty()) {
+//							// Include version for engines like OSS that report it
+//							enhancedMarkerKey = markerTitle + "@" + markerVersion;
+//						}
+//
+//						String fallbackKey = buildFallbackDedupKey(enhancedMarkerKey, lineNumber);
+//						if (renderedIssueKeys.contains(fallbackKey)) {
+//							CxLogger.info("[HOVER] Skipping marker " + id + ": issue (title=" + markerTitle
+//									+ ", version=" + markerVersion + ", line=" + (lineNumber + 1)
+//									+ ") already rendered via FindingsAnnotation");
+//							continue;
+//						}
+//
+//						CxLogger.warning("[HOVER] Pass 2 - Checking marker: " + fallbackKey
+//								+ " | Available keys: " + renderedIssueKeys);
+//
+//						String section = buildCheckmarxSection(marker, id, textColorForElements);
+//						if (!section.isEmpty()) {
+//							checkmarxSections.add(section);
+//							if (!issueId.isEmpty()) {
+//								renderedIssueIds.add(issueId);
+//								CxLogger.warning("[HOVER] Pass 2 - Rendered marker with ID: " + issueId);
+//							} else {
+//								// Track via enhanced fallback key if issueId is empty
+//								renderedIssueKeys.add(fallbackKey);
+//								CxLogger.warning("[HOVER] Pass 2 - Rendered marker with fallback key: " + fallbackKey);
+//							}
+//						}
+//					} else {
+//						// Non-Checkmarx marker (JDT, other linters) - collect as other message
+//						String message = annotation.getText();
+//						if (message != null && !message.isEmpty()) {
+//							otherMessages.add(message);
+//						}
+//					}
+//					continue;
+//				}
+//
+//				// Collect other linter/annotation messages (JDT, etc.) that aren't handled
+//				// above
+//				String message = annotation.getText();
+//				if (message != null && !message.isEmpty()) {
+//					otherMessages.add(message);
+//				}
+//			}
 
 			CxLogger.info("[HOVER] Line " + (lineNumber + 1) + ": Found " + checkmarxSections.size()
 					+ " Checkmarx section(s), " + otherMessages.size() + " other message(s)");
@@ -667,9 +663,9 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 	            Color bg = display.getSystemColor(SWT.COLOR_INFO_BACKGROUND);
 
 	            colorHex[0] = String.format("#%02x%02x%02x",
-	                    bg.getRed(),
-	                    bg.getGreen(),
-	                    bg.getBlue());
+	                    135,
+	                   206,
+	                    255);
 	        }
 	    };
 
@@ -754,64 +750,5 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 
 		// Default: use title only
 		return scanIssue.getTitle();
-	}
-
-	/**
-	 * Extracts a stable identifier from marker message for deduplication.
-	 * Parses engine-specific message format to reconstruct identifying information.
-	 *
-	 * Example marker messages:
-	 * - OSS: "org.xerial.snappy:snappy-java - High Severity Package"
-	 * - ASCA: "vulnerability title - SAST vulnerability"
-	 * - Secrets: "secret key name - Secret finding"
-	 *
-	 * @param markerMessage the marker message attribute
-	 * @return extracted identifier (title part before " - ")
-	 */
-	private static String extractTitleFromMarkerMessage(String markerMessage) {
-		if (markerMessage == null || markerMessage.isEmpty()) {
-			return "";
-		}
-
-		// Marker messages have format: "{TITLE} - {ENGINE_SUFFIX}"
-		// Extract the part before " - " as the title
-		int dashIndex = markerMessage.indexOf(" - ");
-		if (dashIndex > 0) {
-			return markerMessage.substring(0, dashIndex);
-		}
-
-		// If no " - " found, use entire message
-		return markerMessage;
-	}
-
-	/**
-	 * Extracts package version from marker message if present.
-	 * For OSS packages, looks for @version pattern in marker message.
-	 *
-	 * @param markerMessage the marker message
-	 * @return version string if found, or empty string
-	 */
-	private static String extractVersionFromMarkerMessage(String markerMessage) {
-		if (markerMessage == null || markerMessage.isEmpty()) {
-			return "";
-		}
-
-		// Look for @version pattern (e.g., "snappy-java@1.1.0")
-		int atIndex = markerMessage.indexOf("@");
-		if (atIndex > 0) {
-			// Extract from @ to next space or dash
-			int endIndex = markerMessage.length();
-			int spaceIndex = markerMessage.indexOf(" ", atIndex);
-			int dashIndex = markerMessage.indexOf("-", atIndex);
-
-			if (spaceIndex > 0) endIndex = Math.min(endIndex, spaceIndex);
-			if (dashIndex > 0) endIndex = Math.min(endIndex, dashIndex);
-
-			if (endIndex > atIndex) {
-				return markerMessage.substring(atIndex + 1, endIndex);
-			}
-		}
-
-		return "";
 	}
 }
