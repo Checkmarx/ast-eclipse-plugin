@@ -1258,9 +1258,53 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 
 		// Update view title with problem count
 		if (totalAfter > 0) {
-			setPartName(DevAssistConstants.DEVASSIST_TAB + totalAfter);
+			setPartName(DevAssistConstants.DEVASSIST_TAB+ " " + totalAfter);
 		} else {
 			setPartName(DevAssistConstants.DEVASSIST_TAB);
+		}
+
+		// Apply decorations to open editors for all filtered findings
+		// This ensures annotations are in the annotation model for hover to find them
+		applyDecorationsToOpenEditors(filteredIssues);
+	}
+
+	/**
+	 * Apply decorations to all open editors that have findings in filteredIssues.
+	 * This ensures annotations are present in the annotation model when the Findings View
+	 * displays cached results, so hover can find them without waiting for a new scan.
+	 */
+	private void applyDecorationsToOpenEditors(Map<String, List<ScanIssue>> filteredIssues) {
+		if (filteredIssues == null || filteredIssues.isEmpty()) {
+			return;
+		}
+
+		try {
+			IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
+			if (page == null) {
+				return;
+			}
+
+			for (String filePath : filteredIssues.keySet()) {
+				List<ScanIssue> issues = filteredIssues.get(filePath);
+				if (issues == null || issues.isEmpty()) {
+					continue;
+				}
+
+				// Find if this file is currently open in an editor
+				try {
+					IFile file = ResourcesPlugin.getWorkspace().getRoot()
+							.getFileForLocation(new org.eclipse.core.runtime.Path(filePath));
+					if (file != null && file.exists()) {
+						// Trigger decoration for this file's open editor (if any)
+						com.checkmarx.eclipse.devassist.problems.ProblemDecorator.decorateEditor(file, issues);
+					}
+				} catch (Exception e) {
+					// Log but continue with other files
+					System.err.println("[FINDINGS] Error decorating file " + filePath + ": " + e.getMessage());
+				}
+			}
+		} catch (Exception e) {
+			System.err.println("[FINDINGS] Error applying decorations to open editors: " + e.getMessage());
 		}
 	}
 

@@ -663,9 +663,9 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 	            Color bg = display.getSystemColor(SWT.COLOR_INFO_BACKGROUND);
 
 	            colorHex[0] = String.format("#%02x%02x%02x",
-	                    135,
-	                   206,
-	                    255);
+	            		bg.getRed(),
+	                    bg.getGreen(),
+	                    bg.getBlue());
 	        }
 	    };
 

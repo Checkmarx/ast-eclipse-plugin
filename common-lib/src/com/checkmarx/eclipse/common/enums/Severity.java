@@ -13,7 +13,8 @@ public enum Severity {
 	HIGH,
 	MEDIUM,
 	LOW,
-	INFO;
+	INFO, 
+	MALICIOUS;
 
 	public static Severity getSeverity(String severity) {
 		return Severity.valueOf(severity);

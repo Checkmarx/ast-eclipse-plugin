@@ -149,7 +149,7 @@ public final class DevAssistConstants {
 	public static final String CX_AGENT_NAME = "Checkmarx One Assist";
 	public static final String CX_DEVASSIST_AGENT_NAME = "Checkmarx Developer Assist";
 	public static final List<String> AI_AGENT_FILES = List.of("/Dummy.txt", "/", "/AIAssistantInput");
-	public static final String SEPARATOR = ":";
+	public static final String SEPERATOR = ":";
 	public static final String QUICK_FIX = "QUICK_FIX";
 	public static final String UNDO = "Undo";
 	public static final String MALICIOUS = "malicious";
