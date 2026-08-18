@@ -7,7 +7,7 @@ import java.util.concurrent.TimeoutException;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotTreeItem;
 import org.junit.jupiter.api.Test;
 
-import com.checkmarx.eclipse.utils.PluginConstants;
+import com.checkmarx.eclipse.common.utils.PluginConstants;
 
 public class BestFixLocationTest extends BaseUITest{
 

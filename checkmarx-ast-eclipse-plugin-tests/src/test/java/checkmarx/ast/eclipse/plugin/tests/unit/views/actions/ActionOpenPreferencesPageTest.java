@@ -15,8 +15,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
+import com.checkmarx.eclipse.common.utils.PluginConstants;
 import com.checkmarx.eclipse.enums.ActionName;
-import com.checkmarx.eclipse.utils.PluginConstants;
 import com.checkmarx.eclipse.views.DisplayModel;
 import com.checkmarx.eclipse.views.actions.ActionOpenPreferencesPage;
 

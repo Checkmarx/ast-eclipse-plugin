@@ -89,13 +89,14 @@ import com.checkmarx.ast.results.result.PackageData;
 import com.checkmarx.ast.results.result.Result;
 import com.checkmarx.ast.scan.Scan;
 import com.checkmarx.ast.wrapper.CxException;
+import com.checkmarx.eclipse.common.events.SettingsTopics;
+import com.checkmarx.eclipse.common.preferences.Preferences;
 import com.checkmarx.eclipse.Activator;
 import com.checkmarx.eclipse.enums.ActionName;
-import com.checkmarx.eclipse.enums.Severity;
-import com.checkmarx.eclipse.properties.Preferences;
-import com.checkmarx.eclipse.utils.CxLogger;
+import com.checkmarx.eclipse.common.enums.Severity;
+import com.checkmarx.eclipse.common.utils.CxLogger;
+import com.checkmarx.eclipse.common.utils.PluginConstants;
 import com.checkmarx.eclipse.utils.NotificationPopUpUI;
-import com.checkmarx.eclipse.utils.PluginConstants;
 import com.checkmarx.eclipse.utils.PluginUtils;
 import com.checkmarx.eclipse.views.actions.ToolBarActions;
 import com.checkmarx.eclipse.views.filters.FilterState;
@@ -223,7 +224,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		currentProjectId = globalSettings.getProjectId();
 		currentBranch = globalSettings.getBranch();
 		currentScanId = globalSettings.getScanId();
-		PluginUtils.getEventBroker().subscribe(PluginConstants.TOPIC_APPLY_SETTINGS, this);
+		PluginUtils.getEventBroker().subscribe(SettingsTopics.TOPIC_APPLY_SETTINGS, this);
 	}
 
 	@Override
@@ -249,7 +250,9 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	public void createPartControl(Composite parent) {
 		this.parent = parent;
 
-		// Clear vulnerabilities from Problems View
+		// Clear any stale vulnerability markers from a previous session before drawing the view.
+		// Markers persist as real Eclipse IMarkers across restarts, so without this cleanup,
+		// vulnerabilities from prior scans can appear until the user changes project/branch/scan.
 		PluginUtils.clearVulnerabilitiesFromProblemsView();
 
 		if (PluginUtils.areCredentialsDefined()) {
@@ -333,10 +336,13 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 * Draw Plugin
 	 */
 	private void drawPluginPanel() {
-		// Dispose missing credentials panel
-		if (openSettingsComposite != null && !openSettingsComposite.isDisposed()) {
-			openSettingsComposite.dispose();
+		// Dispose all children to remove credentials panel and any other UI elements
+		for (Control child : parent.getChildren()) {
+			if (!child.isDisposed()) {
+				child.dispose();
+			}
 		}
+		openSettingsComposite = null;
 
 		// Define parent layout
 		GridLayout parentLayout = new GridLayout();
@@ -743,15 +749,18 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 * Draw panel when Checkmarx credentials are not defined
 	 */
 	private void drawMissingCredentialsPanel() {
-		
-	    // Dispose all children to remove any previous panels
+	    // Dispose all children to remove any previous panels (plugin panel, etc.)
 	    for (Control child : parent.getChildren()) {
 	        child.dispose();
 	    }
-		openSettingsComposite = new Composite(parent, SWT.NONE);
 
+	    // Set parent layout for credentials panel
+	    GridLayout parentLayout = new GridLayout(1, true);
+	    parent.setLayout(parentLayout);
+
+		openSettingsComposite = new Composite(parent, SWT.NONE);
 		openSettingsComposite.setLayout(new GridLayout(1, true));
-		
+
 		// This is the key line: center horizontally and vertically, and expand to fill
 	    openSettingsComposite.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, true, true));
 
@@ -2813,33 +2822,61 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	 */
 	@Override
 	public void handleEvent(org.osgi.service.event.Event arg0) {
-		String currentApiKey = Preferences.STORE.getString(Preferences.API_KEY);
-		if (!currentApiKey.isEmpty() && !isPluginDraw) {
-			drawPluginPanel();
-		} else {
-			// If credentials changed reload projects, branches and scans from new tenant
-			if (currentApiKey.isEmpty()) {
+		// IEventBroker dispatches on a non-UI thread; every branch below touches SWT
+		// widgets, so it must be marshalled onto the display thread or it silently
+		// throws SWTException and the missing-credentials panel never redraws.
+		Display.getDefault().asyncExec(() -> {
+			if (parent == null || parent.isDisposed()) {
+				return;
+			}
+			String currentApiKey = Preferences.STORE.getString(Preferences.API_KEY);
+
+			// Handle case: credentials just set (plugin panel not yet drawn)
+			if (!currentApiKey.isEmpty() && !isPluginDraw) {
+				CxLogger.info("Credentials detected, drawing plugin panel");
+				drawPluginPanel();
+				lastApiKey = currentApiKey;
+				return;
+			}
+
+			// Handle case: credentials just removed (plugin panel is drawn)
+			if (currentApiKey.isEmpty() && isPluginDraw) {
+				CxLogger.info("Credentials removed, showing missing credentials panel");
 				updateStartScanButton(false);
 				drawMissingCredentialsPanel();
-				//Dispose toolbar
-			    if (toolBarActions != null) {
-			        toolBarActions.disposeToolbar();
-			        toolBarActions = null;
-			    }
+				// Dispose toolbar
+				if (toolBarActions != null) {
+					toolBarActions.disposeToolbar();
+					toolBarActions = null;
+				}
 				isPluginDraw = false;
-			} else if (lastApiKey.equalsIgnoreCase(currentApiKey)) {
+				lastApiKey = currentApiKey;
 				return;
-			} else {
-				// clear result section
+			}
+
+			// Handle case: no credentials and panel not drawn (initial state)
+			if (currentApiKey.isEmpty() && !isPluginDraw) {
+				// Already showing missing credentials panel, nothing to do
+				lastApiKey = currentApiKey;
+				return;
+			}
+
+			// Handle case: API key changed but still authenticated (plugin already drawn)
+			if (!currentApiKey.isEmpty() && isPluginDraw) {
+				if (lastApiKey != null && lastApiKey.equalsIgnoreCase(currentApiKey)) {
+					// Same credentials, no reload needed
+					return;
+				}
+				// Different credentials, reload projects/branches/scans
+				CxLogger.info("Credentials changed, reloading data from new tenant");
 				PluginUtils.clearMessage(rootModel, resultsTree);
-				// Reset state variables
 				currentProjectId = PluginConstants.EMPTY_STRING;
 				currentBranch = PluginConstants.EMPTY_STRING;
 				currentScanId = PluginConstants.EMPTY_STRING;
 				loadComboboxes();
+				lastApiKey = currentApiKey;
 			}
-			lastApiKey=currentApiKey;
-		}
+		});
 	}
 
 	/**

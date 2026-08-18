@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import org.junit.jupiter.api.Test;
 
-import com.checkmarx.eclipse.utils.CxLogger;
+import com.checkmarx.eclipse.common.utils.CxLogger;
 
 class CxLoggerTest {
 

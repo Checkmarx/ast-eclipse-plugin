@@ -16,8 +16,8 @@ import org.eclipse.swtbot.swt.finder.widgets.SWTBotText;
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotTreeItem;
 import org.junit.jupiter.api.Test;
 
-import com.checkmarx.eclipse.enums.Severity;
-import com.checkmarx.eclipse.utils.PluginConstants;
+import com.checkmarx.eclipse.common.enums.Severity;
+import com.checkmarx.eclipse.common.utils.PluginConstants;
 
 public class TestTriage  extends BaseUITest {
 

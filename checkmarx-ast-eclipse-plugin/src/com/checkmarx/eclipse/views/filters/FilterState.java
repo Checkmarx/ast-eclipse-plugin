@@ -6,7 +6,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.checkmarx.eclipse.enums.Severity;
+import com.checkmarx.eclipse.common.enums.Severity;
+import com.checkmarx.eclipse.enums.GroupingMode;
 import com.checkmarx.eclipse.enums.State;
 import com.checkmarx.eclipse.views.GlobalSettings;
 
@@ -45,11 +46,11 @@ public class FilterState {
 		low = Boolean.parseBoolean(GlobalSettings.getFromPreferences(Severity.LOW.name(), "true"));
 		info = Boolean.parseBoolean(GlobalSettings.getFromPreferences(Severity.INFO.name(), "true"));
 		groupBySeverity = Boolean
-				.parseBoolean(GlobalSettings.getFromPreferences(Severity.GROUP_BY_SEVERITY.name(), "true"));
+				.parseBoolean(GlobalSettings.getFromPreferences(GroupingMode.SEVERITY.name(), "true"));
 		groupByQueryName = Boolean
-				.parseBoolean(GlobalSettings.getFromPreferences(Severity.GROUP_BY_QUERY_NAME.name(), "false"));
+				.parseBoolean(GlobalSettings.getFromPreferences(GroupingMode.QUERY_NAME.name(), "false"));
 		groupByStateName = Boolean
-				.parseBoolean(GlobalSettings.getFromPreferences(Severity.GROUP_BY_STATE_NAME.name(), "false"));
+				.parseBoolean(GlobalSettings.getFromPreferences(GroupingMode.STATE_NAME.name(), "false"));
 
 		notExploitable = Boolean.parseBoolean(GlobalSettings.getFromPreferences("NOT_EXPLOITABLE", "false"));
 		confirmed = Boolean.parseBoolean(GlobalSettings.getFromPreferences("CONFIRMED", "true"));
@@ -63,9 +64,12 @@ public class FilterState {
 	}
 
 	/**
-	 * Change severity state
+	 * Change severity state (only actual severity levels, not grouping modes)
 	 */
 	public static void setState(Severity severity) {
+		if (severity == null) {
+			return;
+		}
 		switch (severity) {
 		case CRITICAL:
 			critical = !critical;
@@ -87,17 +91,30 @@ public class FilterState {
 			info = !info;
 			GlobalSettings.storeInPreferences(Severity.INFO.name(), String.valueOf(info));
 			break;
-		case GROUP_BY_SEVERITY:
+		default:
+			break;
+		}
+	}
+
+	/**
+	 * Change grouping mode state (Severity, Query Name, or State Name)
+	 */
+	public static void setGroupingMode(GroupingMode mode) {
+		if (mode == null) {
+			return;
+		}
+		switch (mode) {
+		case SEVERITY:
 			groupBySeverity = !groupBySeverity;
-			GlobalSettings.storeInPreferences(Severity.GROUP_BY_SEVERITY.name(), String.valueOf(groupBySeverity));
+			GlobalSettings.storeInPreferences(GroupingMode.SEVERITY.name(), String.valueOf(groupBySeverity));
 			break;
-		case GROUP_BY_QUERY_NAME:
+		case QUERY_NAME:
 			groupByQueryName = !groupByQueryName;
-			GlobalSettings.storeInPreferences(Severity.GROUP_BY_QUERY_NAME.name(), String.valueOf(groupByQueryName));
+			GlobalSettings.storeInPreferences(GroupingMode.QUERY_NAME.name(), String.valueOf(groupByQueryName));
 			break;
-		case GROUP_BY_STATE_NAME:
+		case STATE_NAME:
 			groupByStateName = !groupByStateName;
-			GlobalSettings.storeInPreferences(Severity.GROUP_BY_STATE_NAME.name(), String.valueOf(groupByStateName));
+			GlobalSettings.storeInPreferences(GroupingMode.STATE_NAME.name(), String.valueOf(groupByStateName));
 			break;
 		default:
 			break;
@@ -185,30 +202,51 @@ public class FilterState {
 	}
 
 	/**
-	 * Checks whether a severity is enabled
+	 * Checks whether a severity is enabled (only actual severity levels)
 	 */
 	public static boolean isSeverityEnabled(String severity) {
-		switch (Severity.getSeverity(severity)) {
-		case CRITICAL:
-			return critical;
-		case HIGH:
-			return high;
-		case MEDIUM:
-			return medium;
-		case LOW:
-			return low;
-		case INFO:
-			return info;
-		case GROUP_BY_SEVERITY:
-			return groupBySeverity;
-		case GROUP_BY_QUERY_NAME:
-			return groupByQueryName;
-		case GROUP_BY_STATE_NAME:
-			return groupByStateName;
-		default:
-			break;
+		if (severity == null) {
+			return false;
+		}
+		try {
+			switch (Severity.getSeverity(severity)) {
+			case CRITICAL:
+				return critical;
+			case HIGH:
+				return high;
+			case MEDIUM:
+				return medium;
+			case LOW:
+				return low;
+			case INFO:
+				return info;
+			default:
+				break;
+			}
+		} catch (IllegalArgumentException e) {
+			// Invalid severity string
+			return false;
 		}
 		return false;
+	}
+
+	/**
+	 * Checks whether a grouping mode is enabled
+	 */
+	public static boolean isGroupingModeEnabled(GroupingMode mode) {
+		if (mode == null) {
+			return false;
+		}
+		switch (mode) {
+		case SEVERITY:
+			return groupBySeverity;
+		case QUERY_NAME:
+			return groupByQueryName;
+		case STATE_NAME:
+			return groupByStateName;
+		default:
+			return false;
+		}
 	}
 
 	/**

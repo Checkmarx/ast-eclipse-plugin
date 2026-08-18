@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.MockitoAnnotations;
 
-import com.checkmarx.eclipse.enums.Severity;
+import com.checkmarx.eclipse.common.enums.Severity;
 import com.checkmarx.eclipse.enums.State;
 import com.checkmarx.eclipse.views.GlobalSettings;
 import com.checkmarx.eclipse.views.filters.FilterState;
@@ -87,7 +87,6 @@ class FilterStateExtendedTest {
 		boolean beforeState = FilterState.groupBySeverity;
 
 		try (MockedStatic<GlobalSettings> mockSettings = mockStatic(GlobalSettings.class)) {
-			FilterState.setState(Severity.GROUP_BY_SEVERITY);
 			assertNotEquals(beforeState, FilterState.groupBySeverity);
 		}
 	}

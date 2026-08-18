@@ -16,11 +16,12 @@ import org.eclipse.ui.PlatformUI;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+
+import com.checkmarx.eclipse.common.utils.PluginConstants;
+
 import org.eclipse.swtbot.swt.finder.widgets.SWTBotTree;
 import org.eclipse.swt.widgets.Decorations;
 import org.eclipse.swt.widgets.Tree;
-
-import com.checkmarx.eclipse.utils.PluginConstants;
 
 import checkmarx.ast.eclipse.plugin.tests.common.Environment;
 

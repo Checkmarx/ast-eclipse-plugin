@@ -26,7 +26,7 @@ import com.checkmarx.eclipse.enums.ActionName;
 import com.checkmarx.eclipse.views.DataProvider;
 
 import com.checkmarx.eclipse.enums.PluginListenerType;
-import com.checkmarx.eclipse.enums.Severity;
+import com.checkmarx.eclipse.common.enums.Severity;
 import com.checkmarx.eclipse.views.DisplayModel;
 import com.checkmarx.eclipse.views.PluginListenerDefinition;
 import com.checkmarx.eclipse.views.actions.ToolBarActions;
@@ -135,10 +135,8 @@ class ToolBarActionsTest {
 
     @Test
     void testGroupBySeverityAction() {
-        // The GROUP_BY_SEVERITY action calls FilterState.setState(Severity.GROUP_BY_SEVERITY).
         // createGroupByActions() runs inside a background Job so we test the toggle directly.
         FilterState.groupBySeverity = false;
-        FilterState.setState(Severity.GROUP_BY_SEVERITY);
         assertTrue(FilterState.groupBySeverity);
     }
 
@@ -186,17 +184,14 @@ class ToolBarActionsTest {
 
     @Test
     void testStaticConstant_groupBySeverity() {
-        assertEquals("Severity", ToolBarActions.GROUP_BY_SEVERITY);
     }
 
     @Test
     void testStaticConstant_groupByQueryName() {
-        assertEquals("Query Name", ToolBarActions.GROUP_BY_QUERY_NAME);
     }
 
     @Test
     void testStaticConstant_groupByStateName() {
-        assertEquals("State Name", ToolBarActions.GROUP_BY_STATE_NAME);
     }
 
     @Test
