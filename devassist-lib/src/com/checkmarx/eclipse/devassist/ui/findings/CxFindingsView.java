@@ -236,7 +236,6 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 
         sashForm.setWeights(new int[] { 70, 30 });
 
-        setupToolbar();
         setupTreeListeners();
 
         if (!currentIssues.isEmpty()) {
@@ -244,6 +243,9 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
         }
 
         parent.layout(true, true);
+
+        // Setup toolbar after layout has settled to ensure proper rendering in tab bar
+        Display.getDefault().asyncExec(this::setupToolbar);
     }
 
     /**
@@ -377,7 +379,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
     }
 
     private void setupToolbar() {
-        
+
         IToolBarManager toolbar = getViewSite().getActionBars().getToolBarManager();
 
         // The same IToolBarManager instance survives every re-render of the view,
@@ -386,7 +388,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 
         // Add filter actions
         VulnerabilityFilterAction.IFilterChangeListener filterListener = () -> {
-            
+
             refreshTreeWithFilter();
         };
 
@@ -395,7 +397,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
         toolbar.add(new VulnerabilityFilterAction.HighFilter(filterListener));
         toolbar.add(new VulnerabilityFilterAction.MediumFilter(filterListener));
         toolbar.add(new VulnerabilityFilterAction.LowFilter(filterListener));
-        
+
         toolbar.add(new org.eclipse.jface.action.Separator("\t"));
 
      // Shared Eclipse images (replace with your own icons later)
@@ -460,7 +462,11 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 
         toolbar.update(true);
         getViewSite().getActionBars().updateActionBars();
-        
+
+        // Force layout update on the parent to ensure toolbar renders properly
+        if (parentComposite != null && !parentComposite.isDisposed()) {
+            parentComposite.layout(true, true);
+        }
     }
     private void setupTreeListeners() {
         Tree tree = treeViewer.getTree();
@@ -1279,7 +1285,11 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
         }
 
         // Update view title with problem count
-        setPartName("Checkmarx One Assist Findings " + totalAfter);
+        if (totalAfter > 0) {
+         setPartName(DevAssistConstants.DEVASSIST_TAB + totalAfter);
+        }else {
+			 setPartName(DevAssistConstants.DEVASSIST_TAB );
+		 }
     }
 
     /**
