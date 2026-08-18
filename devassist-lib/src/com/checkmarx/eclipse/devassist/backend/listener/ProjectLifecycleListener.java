@@ -1,7 +1,8 @@
 package com.checkmarx.eclipse.devassist.backend.listener;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
@@ -28,13 +29,12 @@ public class ProjectLifecycleListener implements IResourceChangeListener, IProje
 
 	private static final String LOG_TAG = "[PROJECT-LISTENER]";
 	private static final String PLUGIN_ID = "com.checkmarx.eclipse.plugin";
-
 	private static final QualifiedName REGISTRY_KEY = new QualifiedName(PLUGIN_ID, "scanner-registry");
 	private static final QualifiedName PROBLEM_HOLDER_KEY = new QualifiedName(PLUGIN_ID, "problem-holder");
 	private static final QualifiedName STATE_HOLDER_KEY = new QualifiedName(PLUGIN_ID, "state-holder");
 	private static final QualifiedName WORKSPACE_SCAN_JOB_KEY = new QualifiedName(PLUGIN_ID, "workspace-scan-job");
 
-	private final List<String> initializedProjects = new ArrayList<>();
+	private final Set<String> initializedProjects = ConcurrentHashMap.newKeySet();
 
 	/**
 	 * Register this listener with Eclipse workspace and process existing open projects.
@@ -127,7 +127,6 @@ public class ProjectLifecycleListener implements IResourceChangeListener, IProje
 				}
 				return;
 			}
-
 			// FIX 2: Inspect IResourceDelta to catch when a closed project is opened manually
 			if (event.getType() == IResourceChangeEvent.POST_CHANGE && event.getDelta() != null) {
 				event.getDelta().accept(delta -> {
@@ -153,28 +152,32 @@ public class ProjectLifecycleListener implements IResourceChangeListener, IProje
 	}
 
 	private void onProjectOpen(IProject project) {
-		String projName = project.getName();
-		if (projName.length() > 26) projName = projName.substring(0, 26);
+		String projectName = project.getName();
+		if (projectName.length() > 26) projectName = projectName.substring(0, 26);
 		try {
-			if (!isUserAuthenticated()) {		
+			if (!isUserAuthenticated()) {
 				return;
 			}
-			
+			// Atomically mark as initialized: if add() returns false, another thread beat us to it.
+			// This prevents duplicate ScannerRegistry, ProblemHolderService, and workspace-scan jobs.
+			if (!initializedProjects.add(projectName)) {
+				return;
+			}
 			ScannerRegistry registry = new ScannerRegistry(project);
 			project.setSessionProperty(REGISTRY_KEY, registry);
-
 			ProblemHolderService problemHolder = new ProblemHolderService();
 			project.setSessionProperty(PROBLEM_HOLDER_KEY, problemHolder);
 			DevAssistScanStateHolder stateHolder = new DevAssistScanStateHolder();
 			project.setSessionProperty(STATE_HOLDER_KEY, stateHolder);
-			initializedProjects.add(project.getName());
-			
+
 			startWorkspaceFileScanning(project);
 
 		} catch (Exception e) {
+			// Remove from initialized set on error so it can be retried
+			initializedProjects.remove(projectName);
 			e.printStackTrace();
 			CxLogger.error(LOG_TAG + " Error initializing project " +
-				project.getName() + ": " + e.getMessage(), e);
+				projectName + ": " + e.getMessage(), e);
 		}
 	}
 
@@ -290,7 +293,6 @@ public class ProjectLifecycleListener implements IResourceChangeListener, IProje
 	    } catch (Exception e) {
 	        CxLogger.warning(LOG_TAG + " Error storing workspace scan job: " + e.getMessage());
 	    }
-
 	    // Run as a background job so it doesn't block the IDE
 	    scanJob.setPriority(Job.BUILD);
 	    scanJob.schedule();
@@ -321,7 +323,6 @@ public class ProjectLifecycleListener implements IResourceChangeListener, IProje
 	private void findAndScanFiles(IProject project, String[] patterns, String fileType) {
 		try {
 			
-
 			ScannerRegistry registry = (ScannerRegistry) project.getSessionProperty(
 				new QualifiedName(PLUGIN_ID, "scanner-registry"));
 			DevAssistScanStateHolder stateHolder = (DevAssistScanStateHolder) project.getSessionProperty(

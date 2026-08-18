@@ -29,7 +29,8 @@ public class ScannerRegistry {
 
 	private final IProject project;
 	private final ConcurrentHashMap<String, Object> scanners = new ConcurrentHashMap<>();
-	private boolean disposed = false;
+	private volatile boolean disposed = false;
+	private final Object lock = new Object();
 
 	/**
 	 * Create a registry for a project.
@@ -44,46 +45,55 @@ public class ScannerRegistry {
 
 	/**
 	 * Deregister and dispose all scanners (on project close).
+	 * Synchronized to prevent race with getScannerService() lazy creation.
 	 */
 	public void deregisterAllScanners() {
-		CxLogger.info(LOG_TAG + " Deregistering all scanners for: " + project.getName());
+		synchronized (lock) {
+			CxLogger.info(LOG_TAG + " Deregistering all scanners for: " + project.getName());
 
-		// Dispose each scanner
-		scanners.forEach((type, scanner) -> {
-			try {
-				if (scanner instanceof AutoCloseable) {
-					((AutoCloseable) scanner).close();
+			// Dispose each scanner
+			scanners.forEach((type, scanner) -> {
+				try {
+					if (scanner instanceof AutoCloseable) {
+						((AutoCloseable) scanner).close();
+					}
+					CxLogger.info(LOG_TAG + "Disposed scanner: " + type);
+				} catch (Exception e) {
+					CxLogger.warning(LOG_TAG + " Error disposing scanner " + type + ": " +
+						e.getMessage());
 				}
-				CxLogger.info(LOG_TAG + "Disposed scanner: " + type);
-			} catch (Exception e) {
-				CxLogger.warning(LOG_TAG + " Error disposing scanner " + type + ": " +
-					e.getMessage());
-			}
-		});
+			});
 
-		scanners.clear();
-		disposed = true;
-		CxLogger.info(LOG_TAG + " All scanners disposed");
+			scanners.clear();
+			disposed = true;
+			CxLogger.info(LOG_TAG + " All scanners disposed");
+		}
 	}
 
 	/**
 	 * Get a scanner service by type.
 	 * Lazily creates the scanner on first access.
 	 *
+	 * Synchronized with deregisterAllScanners() to prevent race:
+	 * if project closes while scanner is being created, the new instance
+	 * will be disposed immediately and not leak.
+	 *
 	 * @param type Scanner type (OSS, SECRETS, etc.)
 	 * @return Scanner instance, or null if scanner type not supported
 	 */
 	public Object getScannerService(ScannerType type) {
-		if (disposed) {
-			CxLogger.warning(LOG_TAG + " Registry is disposed");
-			return null;
-		}
+		synchronized (lock) {
+			if (disposed) {
+				CxLogger.warning(LOG_TAG + " Registry is disposed");
+				return null;
+			}
 
-		return scanners.computeIfAbsent(type.name(), key -> {
-			CxLogger.info(LOG_TAG + " Creating scanner: " + type);
-			// Scanner creation will be implemented in Phase 2
-			return createScannerInstance(type);
-		});
+			return scanners.computeIfAbsent(type.name(), key -> {
+				CxLogger.info(LOG_TAG + " Creating scanner: " + type);
+				// Scanner creation will be implemented in Phase 2
+				return createScannerInstance(type);
+			});
+		}
 	}
 
 	/**

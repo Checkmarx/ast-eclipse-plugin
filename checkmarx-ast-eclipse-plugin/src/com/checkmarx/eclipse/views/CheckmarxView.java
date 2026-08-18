@@ -250,6 +250,11 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 	public void createPartControl(Composite parent) {
 		this.parent = parent;
 
+		// Clear any stale vulnerability markers from a previous session before drawing the view.
+		// Markers persist as real Eclipse IMarkers across restarts, so without this cleanup,
+		// vulnerabilities from prior scans can appear until the user changes project/branch/scan.
+		PluginUtils.clearVulnerabilitiesFromProblemsView();
+
 		if (PluginUtils.areCredentialsDefined()) {
 			drawPluginPanel();
 		} else {

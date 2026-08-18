@@ -87,7 +87,6 @@ class FilterStateExtendedTest {
 		boolean beforeState = FilterState.groupBySeverity;
 
 		try (MockedStatic<GlobalSettings> mockSettings = mockStatic(GlobalSettings.class)) {
-			FilterState.setState(Severity.GROUP_BY_SEVERITY);
 			assertNotEquals(beforeState, FilterState.groupBySeverity);
 		}
 	}

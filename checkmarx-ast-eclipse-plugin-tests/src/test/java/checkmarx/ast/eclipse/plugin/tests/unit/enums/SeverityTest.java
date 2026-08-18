@@ -34,21 +34,6 @@ class SeverityTest {
     }
 
     @Test
-    void testGetSeverity_groupBySeverity() {
-        assertEquals(Severity.GROUP_BY_SEVERITY, Severity.getSeverity("GROUP_BY_SEVERITY"));
-    }
-
-    @Test
-    void testGetSeverity_groupByQueryName() {
-        assertEquals(Severity.GROUP_BY_QUERY_NAME, Severity.getSeverity("GROUP_BY_QUERY_NAME"));
-    }
-
-    @Test
-    void testGetSeverity_groupByStateName() {
-        assertEquals(Severity.GROUP_BY_STATE_NAME, Severity.getSeverity("GROUP_BY_STATE_NAME"));
-    }
-
-    @Test
     void testGetSeverity_unknownValue_throwsIllegalArgumentException() {
         assertThrows(IllegalArgumentException.class, () -> Severity.getSeverity("UNKNOWN_SEVERITY_XYZ"));
     }

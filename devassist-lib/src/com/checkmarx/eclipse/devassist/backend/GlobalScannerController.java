@@ -1,8 +1,8 @@
 package com.checkmarx.eclipse.devassist.backend;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import com.checkmarx.eclipse.devassist.backend.ScannerRegistry.ScannerType;
 import com.checkmarx.eclipse.common.utils.CxLogger;
@@ -31,7 +31,8 @@ public class GlobalScannerController {
 		new ConcurrentHashMap<>();
 
 	// Listeners notified when scanner state changes
-	private final List<ScannerStateListener> stateListeners = new ArrayList<>();
+	// Using CopyOnWriteArrayList for thread-safe concurrent iteration and mutation
+	private final List<ScannerStateListener> stateListeners = new CopyOnWriteArrayList<>();
 
 	/**
 	 * Get the global singleton instance.
@@ -136,6 +137,7 @@ public class GlobalScannerController {
 
 	/**
 	 * Register a listener to be notified of state changes.
+	 * Thread-safe: can be called concurrently with notifications.
 	 *
 	 * @param listener Listener callback
 	 */
@@ -147,6 +149,7 @@ public class GlobalScannerController {
 
 	/**
 	 * Unregister a state listener.
+	 * Thread-safe: can be called concurrently with notifications.
 	 *
 	 * @param listener Listener to remove
 	 */
@@ -158,6 +161,7 @@ public class GlobalScannerController {
 
 	/**
 	 * Notify all listeners of a scanner state change.
+	 * Thread-safe: listeners can register/unregister concurrently without ConcurrentModificationException.
 	 *
 	 * @param type Changed scanner type
 	 * @param enabled New enabled state

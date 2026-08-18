@@ -137,44 +137,44 @@ public class ScannerFactory {
 		}
 	}
 
-	/**
-	 * Get scanner by file name pattern (useful for quick lookups).
-	 * Returns the primary scanner for a file type.
-	 *
-	 * @param filePath File path
-	 * @return Primary scanner type for this file, or null
-	 */
-	public ScannerType getPrimaryScannerType(String filePath) {
-		if (filePath == null) {
-			return null;
-		}
-
-		String lowerPath = filePath.toLowerCase();
-
-		// Manifest files → OSS
-		if (lowerPath.matches(".*\\.(package\\.json|pom\\.xml|go\\.mod|requirements\\.txt|" +
-			"Gemfile|Cargo\\.toml|Pipfile)$")) {
-			return ScannerType.OSS;
-		}
-
-		// Source code files → ASCA
-		if (lowerPath.matches(".*\\.(java|py|js|ts|cpp|cs|go|php|rb|swift)$")) {
-			return ScannerType.ASCA;
-		}
-
-		// Infrastructure files → IAC
-		if (lowerPath.matches(".*\\.(tf|yaml|yml|json|hcl)$")) {
-			return ScannerType.IAC;
-		}
-
-		// Container files → CONTAINERS
-		if (lowerPath.matches(".*(Dockerfile|docker-compose\\.ya?ml)")) {
-			return ScannerType.CONTAINERS;
-		}
-
-		// Everything else can be scanned for secrets
-		return ScannerType.SECRETS;
-	}
+//	/**
+//	 * Get scanner by file name pattern (useful for quick lookups).
+//	 * Returns the primary scanner for a file type.
+//	 *
+//	 * @param filePath File path
+//	 * @return Primary scanner type for this file, or null
+//	 */
+//	public ScannerType getPrimaryScannerType(String filePath) {
+//		if (filePath == null) {
+//			return null;
+//		}
+//
+//		String lowerPath = filePath.toLowerCase();
+//
+//		// Manifest files → OSS
+//		if (lowerPath.matches(".*\\.(package\\.json|pom\\.xml|go\\.mod|requirements\\.txt|" +
+//			"Gemfile|Cargo\\.toml|Pipfile)$")) {
+//			return ScannerType.OSS;
+//		}
+//
+//		// Source code files → ASCA
+//		if (lowerPath.matches(".*\\.(java|py|js|ts|cpp|cs|go|php|rb|swift)$")) {
+//			return ScannerType.ASCA;
+//		}
+//
+//		// Infrastructure files → IAC
+//		if (lowerPath.matches(".*\\.(tf|yaml|yml|json|hcl)$")) {
+//			return ScannerType.IAC;
+//		}
+//
+//		// Container files → CONTAINERS
+//		if (lowerPath.matches(".*(Dockerfile|docker-compose\\.ya?ml)")) {
+//			return ScannerType.CONTAINERS;
+//		}
+//
+//		// Everything else can be scanned for secrets
+//		return ScannerType.SECRETS;
+//	}
 
 	/**
 	 * Get factory statistics.

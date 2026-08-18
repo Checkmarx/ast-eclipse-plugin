@@ -7,6 +7,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.preference.PreferenceDialog;
 import org.eclipse.jface.preference.PreferencePage;
+import org.eclipse.jface.util.PropertyChangeEvent;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.StyleRange;
 import org.eclipse.swt.custom.StyledText;
@@ -63,6 +64,24 @@ public class CheckmarxPreferencePage extends PreferencePage implements IWorkbenc
 	public CheckmarxPreferencePage() {
 		super();
 		setPreferenceStore(com.checkmarx.eclipse.common.preferences.Preferences.STORE);
+		// Listen for preference changes to update login state.
+		// Critical: if user logs out in another page while this page is visible in the same
+		// dialog session, we need to refresh the UI to show logged-out content instead of stale
+		// logged-in checkboxes. Without this, performOk() would still run with stale loggedIn=true.
+		Preferences.STORE.addPropertyChangeListener(this::handlePreferenceChange);
+	}
+
+	/**
+	 * Called when preferences change (e.g., user logs out in another page of the same dialog).
+	 * Re-reads the login state and updates the visible UI accordingly.
+	 */
+	private void handlePreferenceChange(PropertyChangeEvent event) {
+		// Re-check login state: if API key was cleared, we need to switch from
+		// logged-in scanner checkboxes to logged-out message
+		boolean isNowLoggedIn = StringUtils.isNotBlank(Preferences.getApiKey());
+		if (loggedIn != isNowLoggedIn) {
+			loggedIn = isNowLoggedIn;
+		}
 	}
 
 	@Override
@@ -193,7 +212,10 @@ public class CheckmarxPreferencePage extends PreferencePage implements IWorkbenc
 
     @Override
     protected void performDefaults() {
-        if (!loggedIn) {
+        // Check credentials fresh, not from captured field.
+        // If user logged out while viewing another page, loggedIn would be stale.
+        boolean isCurrentlyLoggedIn = StringUtils.isNotBlank(Preferences.getApiKey());
+        if (!isCurrentlyLoggedIn) {
             super.performDefaults();
             return;
         }
@@ -246,7 +268,11 @@ public class CheckmarxPreferencePage extends PreferencePage implements IWorkbenc
 
 	@Override
     public boolean performOk() {
-        if (!loggedIn) {
+        // Check credentials fresh, not from captured field.
+        // Critical: if user logged out while viewing another page within the same dialog session,
+        // loggedIn would be stale and we'd save/notify with false authentication status.
+        boolean isCurrentlyLoggedIn = StringUtils.isNotBlank(Preferences.getApiKey());
+        if (!isCurrentlyLoggedIn) {
             return super.performOk();
         }
         IPreferenceStore store = getPreferenceStore();

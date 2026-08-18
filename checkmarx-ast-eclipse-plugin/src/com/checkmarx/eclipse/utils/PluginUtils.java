@@ -54,7 +54,7 @@ public class PluginUtils {
 			DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(PARAM_TIMESTAMP_PATTERN).withZone(ZoneId.systemDefault());
 			parsedDate = dateTimeFormatter.format(instant);
 		} catch (Exception e) {
-			
+			CxLogger.warning(String.format("[TIME-STAMP] Returning time stamp", e.getMessage()));
 			return timestamp;
 		}
 

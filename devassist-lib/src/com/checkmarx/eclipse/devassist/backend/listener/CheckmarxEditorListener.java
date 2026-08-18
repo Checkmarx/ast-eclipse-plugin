@@ -232,17 +232,36 @@ public class CheckmarxEditorListener implements IPartListener2 {
 			try {
 				document.removeDocumentListener(listener);
 				listener.dispose();
-				
+
 			} catch (Exception e) {
 				System.err.println("[REALTIME] Error removing document listener: " + e.getMessage());
 			}
 		}
 
-		// Cancel the scan job
+		// Cancel the scan job in editor listener's tracking
 		RealTimeScanJob scanJob = activeScanJobs.remove(documentId);
 		if (scanJob != null) {
 			scanJob.cancel();
-			
+		}
+
+		// Also cancel the scheduler's pending scan for this file.
+		// Critical: if editor closes within debounce window (1s), scheduler's job
+		// still fires and publishes results for a closed editor.
+		org.eclipse.core.resources.IFile file = extractFileFromEditor(editor);
+		if (file != null) {
+			try {
+				org.eclipse.core.resources.IProject project = file.getProject();
+				if (project != null) {
+					com.checkmarx.eclipse.devassist.inspection.DevAssistScanScheduler scheduler =
+						(com.checkmarx.eclipse.devassist.inspection.DevAssistScanScheduler) project.getSessionProperty(
+							new org.eclipse.core.runtime.QualifiedName("com.checkmarx.eclipse.plugin", "scan-scheduler"));
+					if (scheduler != null) {
+						scheduler.cancelScheduledInspection(file);
+					}
+				}
+			} catch (Exception e) {
+				System.err.println("[REALTIME] Error cancelling scheduler's pending scan: " + e.getMessage());
+			}
 		}
 	}
 

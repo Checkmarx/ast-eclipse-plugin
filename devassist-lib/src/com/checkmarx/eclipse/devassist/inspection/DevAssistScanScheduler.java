@@ -5,6 +5,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
+import org.eclipse.core.runtime.jobs.IJobChangeEvent;
+import org.eclipse.core.runtime.jobs.IJobChangeListener;
 
 import com.checkmarx.eclipse.devassist.problems.ProblemHelper;
 import com.checkmarx.eclipse.devassist.backend.listener.RealTimeScanJob;
@@ -28,6 +30,48 @@ public class DevAssistScanScheduler {
 
 	// Track pending jobs per file path
 	private final Map<String, RealTimeScanJob> pendingScans = new ConcurrentHashMap<>();
+
+	/**
+	 * Listener that removes completed jobs from pendingScans.
+	 * Prevents unbounded memory growth from accumulated job entries.
+	 * The done() callback fires for both successful completion and cancellation.
+	 */
+	private final IJobChangeListener jobCompletionListener = new IJobChangeListener() {
+		@Override
+		public void done(IJobChangeEvent event) {
+			removeCompletedJob(event.getJob());
+		}
+
+		@Override
+		public void aboutToRun(IJobChangeEvent event) {}
+
+		@Override
+		public void awake(IJobChangeEvent event) {}
+
+		@Override
+		public void running(IJobChangeEvent event) {}
+
+		@Override
+		public void scheduled(IJobChangeEvent event) {}
+
+		@Override
+		public void sleeping(IJobChangeEvent event) {}
+	};
+
+	/**
+	 * Remove a completed job from pendingScans map.
+	 * Called when job completes or is cancelled.
+	 */
+	private void removeCompletedJob(org.eclipse.core.runtime.jobs.Job job) {
+		// Find and remove the job from pendingScans by matching the job object
+		for (Map.Entry<String, RealTimeScanJob> entry : pendingScans.entrySet()) {
+			if (entry.getValue() == job) {
+				pendingScans.remove(entry.getKey());
+				CxLogger.info(LOG_TAG + " Removed completed scan from pending: " + entry.getKey());
+				return;
+			}
+		}
+	}
 
 	/**
 	 * Schedule a scan for a file with default debounce delay (1 second).
@@ -66,6 +110,9 @@ public class DevAssistScanScheduler {
 		try {
 			// Create new job
 			RealTimeScanJob scanJob = new RealTimeScanJob(file, file.getName());
+
+			// Attach listener to clean up entry when job completes or is cancelled
+			scanJob.addJobChangeListener(jobCompletionListener);
 
 			// Track it
 			pendingScans.put(filePath, scanJob);

@@ -3,6 +3,8 @@ package com.checkmarx.eclipse.devassist.common;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.eclipse.core.runtime.IProgressMonitor;
+
 import com.checkmarx.eclipse.devassist.backend.DevAssistScanStateHolder;
 import com.checkmarx.eclipse.devassist.backend.ScannerRegistry;
 import com.checkmarx.eclipse.devassist.backend.ScannerRegistry.ScannerType;
@@ -21,13 +23,13 @@ import com.checkmarx.eclipse.common.utils.CxLogger;
  * This is the main entry point for initiating scans. Called from
  * FileEditorListener when a file is modified.
  *
- * NOTE: Uses backend.DevAssistScanStateHolder (not inspection.version) to maintain compatibility
- * with existing code that passes backend version to super().
+ * NOTE: Uses backend.DevAssistScanStateHolder (not inspection.version) to
+ * maintain compatibility with existing code that passes backend version to
+ * super().
  */
 public class ScanManager {
 
 	private static final String LOG_TAG = "[SCAN-MANAGER]";
-
 	private final ScannerFactory factory;
 	private final com.checkmarx.eclipse.devassist.backend.DevAssistScanStateHolder stateHolder;
 
@@ -52,31 +54,40 @@ public class ScanManager {
 	 * results
 	 *
 	 * @param filePath Absolute file path to scan
+	 * @param monitor progress monitor to check for cancellation during scan
 	 * @return List of issues found by all scanners
 	 * @throws Exception if scan fails
 	 */
-	public List<ScanIssue> scanFile(String filePath) throws Exception {
+	public List<ScanIssue> scanFile(String filePath, IProgressMonitor monitor) throws Exception {
 		if (filePath == null || filePath.isEmpty()) {
-			
+
 			return List.of();
 		}
 
-		
-		
-		
-		
+		// Handle null monitor (for backward compatibility if called without monitor)
+		if (monitor == null) {
+			monitor = new org.eclipse.core.runtime.NullProgressMonitor();
+		}
 
 		// 1. Compute current file state hash
-		
+
 		long currentStateHash = DevAssistScanStateHolder.computeFileStateHash(filePath);
-		
 
 		// 2. Check if file changed since last scan
-		// NOTE: hasChanged() atomically marks the file as "in-flight" when it returns true.
-		// We MUST call stateHolder.markScanComplete(filePath) once we're done (success or
-		// failure) or every subsequent edit will be permanently BLOCKED as "already in-flight".
+		// NOTE: hasChanged() atomically marks the file as "in-flight" when it returns
+		// true.
+		// We MUST call stateHolder.markScanComplete(filePath) once we're done (success
+		// or
+		// failure) or every subsequent edit will be permanently BLOCKED as "already
+		// in-flight".
 		if (!stateHolder.hasChanged(filePath, currentStateHash)) {
+			return List.of();
+		}
 
+		// Check cancellation before proceeding with expensive scan operations
+		if (monitor.isCanceled()) {
+			CxLogger.warning("[SCAN-MANAGER] Scan cancelled before starting for: " + filePath);
+			stateHolder.markScanComplete(filePath);
 			return List.of();
 		}
 
@@ -85,12 +96,10 @@ public class ScanManager {
 
 			List<ScannerService<?>> applicableScanners = factory.getAllSupportedScanners(filePath);
 
-
 			for (ScannerService<?> scanner : applicableScanners) {
 				String displayName = scanner.getConfig() != null ? scanner.getConfig().getEngineName() : "Unknown";
 
 			}
-
 			if (applicableScanners.isEmpty()) {
 
 				// Still update state to avoid re-checking unsupported files
@@ -99,12 +108,16 @@ public class ScanManager {
 			}
 
 			// 4. Execute all scanners and merge results
-
 			List<ScanIssue> allIssues = new ArrayList<>();
 			int scannerIndex = 1;
 			int successfulScanners = 0;
 
 			for (ScannerService<?> scanner : applicableScanners) {
+				// Check for cancellation before each scanner execution
+				if (monitor.isCanceled()) {
+					CxLogger.warning("[SCAN-MANAGER] Scan cancelled during scanner loop for: " + filePath);
+					break;
+				}
 				String displayName = scanner.getConfig() != null ? scanner.getConfig().getEngineName() : "Unknown";
 				try {
 					var scanResult = scanner.scan(filePath);
@@ -116,15 +129,22 @@ public class ScanManager {
 						allIssues.addAll(scannerResults);
 					}
 					successfulScanners++;
-
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
 				scannerIndex++;
 			}
 
+			// Check for cancellation before returning/publishing results
+			if (monitor.isCanceled()) {
+				CxLogger.warning("[SCAN-MANAGER] Scan cancelled before publishing results for: " + filePath);
+				// Don't update state hash so file will be re-scanned when triggered again
+				return List.of();
+			}
+
 			// 5. Update state hash only if at least one scanner succeeded
-			// If all scanners failed, don't update hash so file will be re-scanned on next change
+			// If all scanners failed, don't update hash so file will be re-scanned on next
+			// change
 			if (successfulScanners > 0) {
 				stateHolder.updateStateHash(filePath, currentStateHash);
 			}
@@ -134,6 +154,18 @@ public class ScanManager {
 			// Always release the in-flight marker so the next edit can trigger a scan.
 			stateHolder.markScanComplete(filePath);
 		}
+	}
+
+	/**
+	 * Scan a file using all applicable scanners (backward-compatible overload without monitor).
+	 *
+	 * @param filePath Absolute file path to scan
+	 * @return List of issues found by all scanners
+	 * @throws Exception if scan fails
+	 * @deprecated Use scanFile(String filePath, IProgressMonitor monitor) for cancellation support
+	 */
+	public List<ScanIssue> scanFile(String filePath) throws Exception {
+		return scanFile(filePath, new org.eclipse.core.runtime.NullProgressMonitor());
 	}
 
 	/**
@@ -182,4 +214,3 @@ public class ScanManager {
 		return factory.getStatistics();
 	}
 }
-
