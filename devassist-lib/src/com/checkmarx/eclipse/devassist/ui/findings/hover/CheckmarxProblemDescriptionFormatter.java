@@ -207,13 +207,14 @@ public final class CheckmarxProblemDescriptionFormatter {
 		for (Vulnerability vulnerability : scanIssue.getVulnerabilities()) {
 			String severityIcon = getSeverityIconHtml(vulnerability.getSeverity(), ICON_INLINE_STYLE);
 			descBuilder.append(TABLE_WITH_TR_IAC_ASCA)
-					.append("<td style='width:20px;padding:0 6px 0 0;vertical-align:middle;'>").append(severityIcon)
+					.append("<td style='width:20px;padding:0 6px 0 0;vertical-align:top;'>").append(severityIcon)
 					.append("</td>");
 			String colorStyle = textColor != null && !textColor.isEmpty() ? "color:" + textColor + ";" : "";
 			descBuilder.append("<td style='padding:0 6px 0 6px;").append(TITLE_FONT_SIZE).append(TITLE_FONT_FAMILY)
-					.append(CELL_LINE_HEIGHT_STYLE).append("'>")
-					.append("<div style='display:flex;flex-direction:row;align-items:center;gap:6px;'>")
-					.append("<p style=\"").append(colorStyle).append(TITLE_FONT_SIZE).append(TITLE_FONT_FAMILY).append("\">").append("<b>")
+					.append(";").append(CELL_LINE_HEIGHT_STYLE).append("'>")
+					.append("<div style='display:block;word-break:break-word;overflow-wrap:anywhere;white-space:normal;'>")
+					.append("<p style=\"").append(colorStyle).append(TITLE_FONT_SIZE).append(TITLE_FONT_FAMILY)
+					.append(";margin:0;padding:0;line-height:1.4;\">").append("<b>")
 					.append(HtmlEscapeUtil.escape(vulnerability.getTitle())).append("</b>").append(" - ")
 					.append(HtmlEscapeUtil.escape(vulnerability.getDescription())).append(" - <span style='")
 					.append(SECONDARY_SPAN_STYLE).append("'>SAST vulnerability</span>").append("</p>")
@@ -250,13 +251,13 @@ public final class CheckmarxProblemDescriptionFormatter {
 			String colorStyle = textColor != null && !textColor.isEmpty() ? "color:" + textColor + ";" : "";
 			descBuilder
 					.append("<td style='" + colorStyle + "padding:0 4px;" + "white-space:normal;" + TITLE_FONT_SIZE
-							+ TITLE_FONT_FAMILY + CELL_LINE_HEIGHT_STYLE + "'>")
+							+ TITLE_FONT_FAMILY + ";" + CELL_LINE_HEIGHT_STYLE + "'>")
 					.append("<div style='" + colorStyle + "display:block;" + "word-break:break-word;"
 							+ "overflow-wrap:anywhere;" + "'>")
 					.append("<b>").append(HtmlEscapeUtil.escape(vulnerability.getTitle())).append("</b>").append(" - ")
 					.append(HtmlEscapeUtil.escape(vulnerability.getActualValue())).append(" ")
 					.append(HtmlEscapeUtil.escape(vulnerability.getDescription()))
-					.append(" <span style='" + TITLE_FONT_SIZE + TITLE_FONT_FAMILY + CELL_LINE_HEIGHT_STYLE)
+					.append(" <span style='" + TITLE_FONT_SIZE + TITLE_FONT_FAMILY + ";" + CELL_LINE_HEIGHT_STYLE)
 					.append(SECONDARY_SPAN_STYLE).append("'>  IaC vulnerability</span>")
 					.append("</div></td></tr></table>");
 			buildRemediationActionsSection(descBuilder, vulnerability.getVulnerabilityId(),
@@ -337,8 +338,15 @@ public final class CheckmarxProblemDescriptionFormatter {
 	 *                    section data.
 	 */
 	private void buildRemediationActionsSection(StringBuilder descBuilder, String scanIssueId, String engineName) {
-		String buttonStyle = "text-decoration: none; color: #4470EC; " + TITLE_FONT_SIZE + TITLE_FONT_FAMILY
+		String buttonStyle = "color: #4470EC; cursor: pointer; " + TITLE_FONT_SIZE + TITLE_FONT_FAMILY
 				+ CELL_LINE_HEIGHT_STYLE + "white-space: nowrap; margin:0; padding:0;";
+
+		// Add CSS for hover effect with underline - more specific selector with !important to ensure it applies
+		descBuilder.append("<style>")
+				.append("a[href^='#cxonedevassist'] { text-decoration: none; }")
+				.append("a[href^='#cxonedevassist']:hover { text-decoration: underline !important; }")
+				.append("</style>");
+
 		descBuilder.append(
 				"<table style='display:block;margin:8px 0 0 0;border-collapse:collapse;border-spacing:0;padding:0;'><tr>")
 				.append("<td style='padding:0 10px 0 0;margin:0;'>").append("<a href=\"#cxonedevassist/copyfixprompt")
@@ -399,10 +407,10 @@ public final class CheckmarxProblemDescriptionFormatter {
 		// Table layout: icon (20px) in first column, content in second column
 		static final String TABLE_WITH_TR = "<table style='display:inline-table;vertical-align:middle;border-collapse:collapse;'><tr>";
 		static final String TABLE_WITH_TR_IAC_ASCA = "<table cellspacing='0' cellpadding='0' " + "style='display:table;"
-				+ "border-collapse:collapse;" + "table-layout:fixed;" + "width:460px;'><tr>";
+				+ "border-collapse:collapse;" + "table-layout:auto;" + "width:100%;'><tr>";
 
 		static final String TABLE_WITH_TR_FULL_WIDTH = "<table cellspacing='0' cellpadding='0' "
-				+ "style='display:table;" + "border-collapse:collapse;" + "table-layout:fixed;" + "width:460px;'><tr>";
+				+ "style='display:table;" + "border-collapse:collapse;" + "table-layout:auto;" + "width:100%;'><tr>";
 
 		// Typography styles
 		static final String TITLE_FONT_FAMILY = "font-family: sans-serif";

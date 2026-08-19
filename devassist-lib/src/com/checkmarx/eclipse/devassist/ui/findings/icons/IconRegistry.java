@@ -63,7 +63,7 @@ public class IconRegistry {
         registerIcon("critical_16", "icons/severity_16/critical.svg");
         registerIcon("critical_16_dark", "icons/severity_16/critical_dark.svg");
         registerIcon("high_16", "icons/severity_16/high.svg");
-        registerIcon("high_16_dark", "icons/severity_16/hig_dark.svg");
+        registerIcon("high_16_dark", "icons/severity_16/high_dark.svg");
         registerIcon("medium_16", "icons/severity_16/medium.svg");
         registerIcon("medium_16_dark", "icons/severity_16/medium_dark.svg");
         registerIcon("low_16", "icons/severity_16/low.svg");

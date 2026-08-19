@@ -72,22 +72,10 @@ import org.eclipse.jface.resource.JFaceColors;
 public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHoverExtension2, ITextHoverExtension {
 
 	/**
-	 * Minimum size the popup is forced to regardless of what
-	 * AbstractInformationControlManager tries to impose. The manager hardcodes a
-	 * 60-characters-by-6-lines constraint for hover popups (see
-	 * AbstractInformationControlManager: fWidthConstraint=60, fHeightConstraint=6)
-	 * and pushes it into the control via setSizeConstraints(w, h) right before
-	 * asking the control to size itself -
-	 * BrowserInformationControl.computeSizeHint() then clamps its own natural
-	 * content size down to that constraint. Since setSizeConstraints(int, int) is
-	 * not final, overriding it to enlarge whatever the manager passes in is the
-	 * supported way to opt out of that 6-line default and show the full finding
-	 * immediately, without requiring the user to move the mouse into the popup
-	 * first - the same "readable on first hover" behaviour as m2e's pom.xml
-	 * dependency hover.
+	 * Hover popup sizing is now automatic - content determines the size.
+	 * The popup will automatically expand to fit the content and allows
+	 * user resizing via dragging, consistent with non-Java editor hovers.
 	 */
-	private static final int MIN_POPUP_WIDTH = 580;
-	private static final int MIN_POPUP_HEIGHT = 300;
 
 	private static final CheckmarxProblemDescriptionFormatter PROBLEM_DESCRIPTRO = new CheckmarxProblemDescriptionFormatter();
 
@@ -130,8 +118,8 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 
 					@Override
 					public void setSizeConstraints(int maxWidth, int maxHeight) {
-						super.setSizeConstraints(Math.max(maxWidth, MIN_POPUP_WIDTH),
-								Math.max(maxHeight, MIN_POPUP_HEIGHT));
+						// Use default sizing - content determines popup size, user can resize by dragging
+						super.setSizeConstraints(maxWidth, maxHeight);
 					}
 				};
 				control.setBackgroundColor(
@@ -187,9 +175,8 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 
 						@Override
 						public void completed(ProgressEvent event) {
-							if (!browser.isDisposed()) {
-								control.setSize(MIN_POPUP_WIDTH, MIN_POPUP_HEIGHT);
-							}
+							// Content is now laid out - popup size is determined by content
+							// No fixed size constraints applied
 						}
 					});
 					CxLogger.info("[HOVER] LocationListener added successfully to HoverControlCreator");
@@ -232,8 +219,8 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 					
 					@Override
 					public void setSizeConstraints(int maxWidth, int maxHeight) {
-						super.setSizeConstraints(Math.max(maxWidth, MIN_POPUP_WIDTH),
-								Math.max(maxHeight, MIN_POPUP_HEIGHT));
+						// Use default sizing - content determines popup size, user can resize by dragging
+						super.setSizeConstraints(maxWidth, maxHeight);
 					}
 				};
 				control.setBackgroundColor(
@@ -284,9 +271,8 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 
 						@Override
 						public void completed(ProgressEvent event) {
-							if (!browser.isDisposed()) {
-								control.setSize(MIN_POPUP_WIDTH, MIN_POPUP_HEIGHT);
-							}
+							// Content is now laid out - popup size is determined by content
+							// No fixed size constraints applied
 						}
 					});
 					CxLogger.info("[HOVER] LocationListener added successfully to PresenterControlCreator");

@@ -133,12 +133,12 @@
       </type>
    </extension>
 
-    <!-- Gutter icon + squiggly underline specifications for Findings annotations -->
+    <!-- Light Theme: Gutter icon + squiggly underline specifications for Findings annotations -->
     <extension point="org.eclipse.ui.editors.markerAnnotationSpecification">
         <specification
             annotationType="com.checkmarx.eclipse.findings.malicious"
             label="Checkmarx Malicious Finding"
-            icon="icons/malicious_16.svg"
+            icon="icons/severity_16/malicious.svg"
             textStylePreferenceValue="SQUIGGLES"
             verticalRulerPreferenceValue="true"
             overviewRulerPreferenceValue="true"
@@ -147,7 +147,7 @@
         <specification
             annotationType="com.checkmarx.eclipse.findings.critical"
             label="Checkmarx Critical Finding"
-            icon="icons/critical_16.svg"
+            icon="icons/severity_16/critical.svg"
             textStylePreferenceValue="SQUIGGLES"
             verticalRulerPreferenceValue="true"
             overviewRulerPreferenceValue="true"
@@ -156,7 +156,7 @@
         <specification
             annotationType="com.checkmarx.eclipse.findings.high"
             label="Checkmarx High Finding"
-            icon="icons/high_16.svg"
+            icon="icons/severity_16/high.svg"
             textStylePreferenceValue="SQUIGGLES"
             verticalRulerPreferenceValue="true"
             overviewRulerPreferenceValue="true"
@@ -165,7 +165,7 @@
         <specification
             annotationType="com.checkmarx.eclipse.findings.medium"
             label="Checkmarx Medium Finding"
-            icon="icons/medium_16.svg"
+            icon="icons/severity_16/medium.svg"
             textStylePreferenceValue="SQUIGGLES"
             verticalRulerPreferenceValue="true"
             overviewRulerPreferenceValue="true"
@@ -174,7 +174,7 @@
         <specification
             annotationType="com.checkmarx.eclipse.findings.low"
             label="Checkmarx Low Finding"
-            icon="icons/low_16.svg"
+            icon="icons/severity_16/low.svg"
             textStylePreferenceValue="SQUIGGLES"
             verticalRulerPreferenceValue="true"
             overviewRulerPreferenceValue="true"
@@ -183,7 +183,7 @@
 		<specification
 		    annotationType="com.checkmarx.eclipse.findings.ok"
 		    label="Checkmarx OK Finding"
-		    icon="icons/ok_16.svg"
+		    icon="icons/severity_16/ok.svg"
 		    verticalRulerPreferenceValue="true"
 		    overviewRulerPreferenceValue="false"
 		    presentationLayer="2">
@@ -191,7 +191,7 @@
 		<specification
 		    annotationType="com.checkmarx.eclipse.findings.unknown"
 		    label="Checkmarx Unknown Finding"
-		    icon="icons/unknown_16.svg"
+		    icon="icons/severity_16/unknown.svg"
 		    verticalRulerPreferenceValue="true"
 		    overviewRulerPreferenceValue="false"
 		    presentationLayer="3">
@@ -199,7 +199,79 @@
         <specification
             annotationType="com.checkmarx.eclipse.findings.ignored"
             label="Checkmarx Ignored Finding"
-            icon="icons/ignored_16.svg"
+            icon="icons/severity_16/ignored.svg"
+            textStylePreferenceValue="SQUIGGLES"
+            verticalRulerPreferenceValue="true"
+            overviewRulerPreferenceValue="true"
+            presentationLayer="1">
+        </specification>
+
+        <!-- Dark Theme: Dark variant icons for dark theme support -->
+        <specification
+            annotationType="com.checkmarx.eclipse.findings.malicious_dark"
+            label="Checkmarx Malicious Finding (Dark)"
+            icon="icons/severity_16/malicious_dark.svg"
+            textStylePreferenceValue="SQUIGGLES"
+            verticalRulerPreferenceValue="true"
+            overviewRulerPreferenceValue="true"
+            presentationLayer="8">
+        </specification>
+        <specification
+            annotationType="com.checkmarx.eclipse.findings.critical_dark"
+            label="Checkmarx Critical Finding (Dark)"
+            icon="icons/severity_16/critical_dark.svg"
+            textStylePreferenceValue="SQUIGGLES"
+            verticalRulerPreferenceValue="true"
+            overviewRulerPreferenceValue="true"
+            presentationLayer="7">
+        </specification>
+        <specification
+            annotationType="com.checkmarx.eclipse.findings.high_dark"
+            label="Checkmarx High Finding (Dark)"
+            icon="icons/severity_16/high_dark.svg"
+            textStylePreferenceValue="SQUIGGLES"
+            verticalRulerPreferenceValue="true"
+            overviewRulerPreferenceValue="true"
+            presentationLayer="6">
+        </specification>
+        <specification
+            annotationType="com.checkmarx.eclipse.findings.medium_dark"
+            label="Checkmarx Medium Finding (Dark)"
+            icon="icons/severity_16/medium_dark.svg"
+            textStylePreferenceValue="SQUIGGLES"
+            verticalRulerPreferenceValue="true"
+            overviewRulerPreferenceValue="true"
+            presentationLayer="5">
+        </specification>
+        <specification
+            annotationType="com.checkmarx.eclipse.findings.low_dark"
+            label="Checkmarx Low Finding (Dark)"
+            icon="icons/severity_16/low_dark.svg"
+            textStylePreferenceValue="SQUIGGLES"
+            verticalRulerPreferenceValue="true"
+            overviewRulerPreferenceValue="true"
+            presentationLayer="4">
+        </specification>
+		<specification
+		    annotationType="com.checkmarx.eclipse.findings.ok_dark"
+		    label="Checkmarx OK Finding (Dark)"
+		    icon="icons/severity_16/ok_dark.svg"
+		    verticalRulerPreferenceValue="true"
+		    overviewRulerPreferenceValue="false"
+		    presentationLayer="2">
+		</specification>
+		<specification
+		    annotationType="com.checkmarx.eclipse.findings.unknown_dark"
+		    label="Checkmarx Unknown Finding (Dark)"
+		    icon="icons/severity_16/unknown_dark.svg"
+		    verticalRulerPreferenceValue="true"
+		    overviewRulerPreferenceValue="false"
+		    presentationLayer="3">
+		</specification>
+        <specification
+            annotationType="com.checkmarx.eclipse.findings.ignored_dark"
+            label="Checkmarx Ignored Finding (Dark)"
+            icon="icons/severity_16/ignored_dark.svg"
             textStylePreferenceValue="SQUIGGLES"
             verticalRulerPreferenceValue="true"
             overviewRulerPreferenceValue="true"

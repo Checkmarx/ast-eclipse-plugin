@@ -19,6 +19,7 @@ import com.checkmarx.eclipse.devassist.ui.findings.editor.FindingsAnnotation;
 import com.checkmarx.eclipse.devassist.ui.findings.marker.MarkerIssueMapper;
 import com.checkmarx.eclipse.devassist.model.Location;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.utils.DevAssistUtils;
 import com.checkmarx.eclipse.common.utils.CxLogger;
 
 /**
@@ -187,44 +188,48 @@ public class ProblemDecorator {
 	}
 
 	/**
-	 * Map severity level to custom Findings annotation type.
+	 * Map severity level to theme-aware custom Findings annotation type.
+	 * Returns dark theme variant in dark theme, light variant in light theme.
 	 * Handles all 8 severity levels including OK, UNKNOWN, and IGNORED.
 	 *
 	 * @param severity Severity string (MALICIOUS, CRITICAL, HIGH, MEDIUM, LOW,
 	 *                 UNKNOWN, OK, IGNORED)
-	 * @return Annotation type constant (com.checkmarx.eclipse.findings.{severity})
+	 * @return Annotation type constant (com.checkmarx.eclipse.findings.{severity}[_dark])
 	 */
 	private static String mapSeverityToAnnotationType(String severity) {
+		// Append _dark suffix if dark theme is active
+		String themeSuffix = DevAssistUtils.isDarkTheme() ? "_dark" : "";
+
 		if (severity == null) {
-			return "com.checkmarx.eclipse.findings.unknown";
+			return "com.checkmarx.eclipse.findings.unknown" + themeSuffix;
 		}
 		String upper = severity.toUpperCase();
 		if (upper.contains("MALICIOUS")) {
-			return "com.checkmarx.eclipse.findings.malicious";
+			return "com.checkmarx.eclipse.findings.malicious" + themeSuffix;
 		}
 		if (upper.contains("CRITICAL") || upper.contains("ERROR")) {
-			return "com.checkmarx.eclipse.findings.critical";
+			return "com.checkmarx.eclipse.findings.critical" + themeSuffix;
 		}
 		if (upper.contains("HIGH")) {
-			return "com.checkmarx.eclipse.findings.high";
+			return "com.checkmarx.eclipse.findings.high" + themeSuffix;
 		}
 		if (upper.contains("MEDIUM")) {
-			return "com.checkmarx.eclipse.findings.medium";
+			return "com.checkmarx.eclipse.findings.medium" + themeSuffix;
 		}
 		if (upper.contains("LOW") || upper.contains("INFO")) {
-			return "com.checkmarx.eclipse.findings.low";
+			return "com.checkmarx.eclipse.findings.low" + themeSuffix;
 		}
 		if (upper.contains("UNKNOWN")) {
-			return "com.checkmarx.eclipse.findings.unknown";
+			return "com.checkmarx.eclipse.findings.unknown" + themeSuffix;
 		}
 		if (upper.contains("OK")) {
-			return "com.checkmarx.eclipse.findings.ok";
+			return "com.checkmarx.eclipse.findings.ok" + themeSuffix;
 		}
 		if (upper.contains("IGNORED")) {
-			return "com.checkmarx.eclipse.findings.ignored";
+			return "com.checkmarx.eclipse.findings.ignored" + themeSuffix;
 		}
 
-		return "com.checkmarx.eclipse.findings.unknown";
+		return "com.checkmarx.eclipse.findings.unknown" + themeSuffix;
 	}
 
 	/**
