@@ -45,6 +45,7 @@ import com.checkmarx.eclipse.devassist.backend.Constants;
 import com.checkmarx.eclipse.devassist.backend.listener.CheckmarxDocumentListener;
 import com.checkmarx.eclipse.devassist.backend.listener.RealTimeScanJob;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.ui.findings.model.FileNodeLabel;
 import com.checkmarx.eclipse.devassist.ui.findings.model.ScanDetailWithPath;
 import com.checkmarx.eclipse.devassist.model.Location;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
@@ -1239,8 +1240,8 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 				// Restore expansion state for files that still exist in filtered results
 				java.util.List<Object> validExpanded = new java.util.ArrayList<>();
 				for (Object element : expandedElements) {
-					if (element instanceof com.checkmarx.eclipse.devassist.ui.findings.model.FileNodeLabel) {
-						com.checkmarx.eclipse.devassist.ui.findings.model.FileNodeLabel fileNode = (com.checkmarx.eclipse.devassist.ui.findings.model.FileNodeLabel) element;
+					if (element instanceof FileNodeLabel) {
+						FileNodeLabel fileNode = (FileNodeLabel) element;
 						if (filteredIssues.containsKey(fileNode.getFilePath())) {
 							validExpanded.add(element);
 						}

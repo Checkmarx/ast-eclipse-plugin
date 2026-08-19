@@ -6,6 +6,7 @@ import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 
 import com.checkmarx.eclipse.devassist.backend.Constants;
+import com.checkmarx.eclipse.devassist.utils.DevAssistUtils;
 
 /**
  * Registry for managing Checkmarx severity icons.
@@ -56,35 +57,49 @@ public class IconRegistry {
         imageRegistry = PlatformUI.getWorkbench().getDisplay() != null
                 ? new ImageRegistry(PlatformUI.getWorkbench().getDisplay())
                 : new ImageRegistry();
+        // Register small icons (16px) - light and dark variants
+        registerIcon("malicious_16", "icons/severity_16/malicious.svg");
+        registerIcon("malicious_16_dark", "icons/severity_16/malicious_dark.svg");
+        registerIcon("critical_16", "icons/severity_16/critical.svg");
+        registerIcon("critical_16_dark", "icons/severity_16/critical_dark.svg");
+        registerIcon("high_16", "icons/severity_16/high.svg");
+        registerIcon("high_16_dark", "icons/severity_16/hig_dark.svg");
+        registerIcon("medium_16", "icons/severity_16/medium.svg");
+        registerIcon("medium_16_dark", "icons/severity_16/medium_dark.svg");
+        registerIcon("low_16", "icons/severity_16/low.svg");
+        registerIcon("low_16_dark", "icons/severity_16/low_dark.svg");
 
-        // Register small icons (16px)
-        registerIcon("malicious_16", "icons/severity/malicious_16.svg");
-        registerIcon("critical_16", "icons/severity/critical_16.svg");
-        registerIcon("high_16", "icons/severity/high_16.svg");
-        registerIcon("medium_16", "icons/severity/medium_16.svg");
-        registerIcon("low_16", "icons/severity/low_16.svg");
+        // Register medium icons (20px) - light and dark variants
+        registerIcon("malicious_20", "icons/severity_20/malicious.svg");
+        registerIcon("malicious_20_dark", "icons/severity_20/malicious_dark.svg");
+        registerIcon("critical_20", "icons/severity_20/critical.svg");
+        registerIcon("critical_20_dark", "icons/severity_20/critical_dark.svg");
+        registerIcon("high_20", "icons/severity_20/high.svg");
+        registerIcon("high_20_dark", "icons/severity_20/high_dark.svg");
+        registerIcon("medium_20", "icons/severity_20/medium.svg");
+        registerIcon("medium_20_dark", "icons/severity_20/medium_dark.svg");
+        registerIcon("low_20", "icons/severity_20/low.svg");
+        registerIcon("low_20_dark", "icons/severity_20/low_dark.svg");
 
-        // Register medium icons (20px)
-        registerIcon("malicious_20", "icons/severity/malicious_20.svg");
-        registerIcon("critical_20", "icons/severity/critical_20.svg");
-        registerIcon("high_20", "icons/severity/high_20.svg");
-        registerIcon("medium_20", "icons/severity/medium_20.svg");
-        registerIcon("low_20", "icons/severity/low_20.svg");
-
-        // Register base icons
+        // Register base icons - light and dark variants
         registerIcon("malicious", "icons/severity/malicious.svg");
+        registerIcon("malicious_dark", "icons/severity/malicious_dark.svg");
         registerIcon("critical", "icons/severity/critical.svg");
+        registerIcon("critical_dark", "icons/severity/critical_dark.svg");
         registerIcon("high", "icons/severity/high.svg");
+        registerIcon("high_dark", "icons/severity/high_dark.svg");
         registerIcon("medium", "icons/severity/medium.svg");
+        registerIcon("medium_dark", "icons/severity/medium_dark.svg");
         registerIcon("low", "icons/severity/low.svg");
+        registerIcon("low_dark", "icons/severity/low_dark.svg");
 
         registerIcon("star_action", "icons/start-action.svg");
         registerIcon("devassistBadge", "icons/devassist_badge.svg");
     }
 
     private static void registerIcon(String key, String path) {
-        AbstractUIPlugin.imageDescriptorFromPlugin(Constants.MAIN_PLUGIN_ID, path);
-        imageRegistry.put(key, AbstractUIPlugin.imageDescriptorFromPlugin(Constants.MAIN_PLUGIN_ID, path));
+        // Load icons from devassist module instead of main plugin
+        imageRegistry.put(key, AbstractUIPlugin.imageDescriptorFromPlugin("com.checkmarx.eclipse.devassist", path));
     }
 
     /**
@@ -100,6 +115,29 @@ public class IconRegistry {
         }
 
         String key = severity.toLowerCase() + size.getSuffix();
+        return imageRegistry.get(key);
+    }
+
+    /**
+     * Get theme-aware icon for a severity level and size.
+     * Returns dark variant in dark theme, light variant in light theme.
+     *
+     * @param severity Severity level (case-insensitive)
+     * @param size     Icon size
+     * @return Image instance or null if not found
+     */
+    public static Image getThemeAwareIcon(String severity, Size size) {
+        if (severity == null) {
+            return null;
+        }
+
+        String key = severity.toLowerCase() + size.getSuffix();
+
+        // Append _dark suffix if dark theme is active
+        if (DevAssistUtils.isDarkTheme()) {
+            key += "_dark";
+        }
+
         return imageRegistry.get(key);
     }
 

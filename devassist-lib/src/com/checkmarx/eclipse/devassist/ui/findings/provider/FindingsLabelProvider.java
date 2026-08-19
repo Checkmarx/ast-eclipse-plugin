@@ -4,14 +4,16 @@ import java.util.Map;
 import org.eclipse.jface.viewers.DelegatingStyledCellLabelProvider;
 import org.eclipse.jface.viewers.ILabelProviderListener;
 import org.eclipse.jface.viewers.StyledString;
-import org.eclipse.jface.viewers.ViewerCell;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.graphics.Font;
+import org.eclipse.swt.graphics.FontData;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.widgets.Event;
 
 import com.checkmarx.eclipse.devassist.ui.findings.model.FileNodeLabel;
 import com.checkmarx.eclipse.devassist.ui.findings.model.ScanDetailWithPath;
+import com.checkmarx.eclipse.devassist.utils.DevAssistUtils;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.ui.findings.icons.IconRegistry;
 
@@ -43,7 +45,7 @@ public class FindingsLabelProvider extends DelegatingStyledCellLabelProvider {
                     return ((FileNodeLabel) element).getIcon();
                 } else if (element instanceof ScanDetailWithPath) {
                     String severity = ((ScanDetailWithPath) element).getDetail().getSeverity();
-                    return IconRegistry.getIcon(severity, IconRegistry.Size.SMALL);
+                    return IconRegistry.getThemeAwareIcon(severity, IconRegistry.Size.SMALL);
                 }
                 return null;
             }
@@ -120,8 +122,8 @@ public class FindingsLabelProvider extends DelegatingStyledCellLabelProvider {
                 for (String severity : SEVERITIES) {
                     Long count = counts.get(severity);
                     if (count != null && count > 0) {
-                        // Grab actual shield PNG asset
-                        Image badgePng = IconRegistry.getIcon(severity, IconRegistry.Size.SMALL);
+                        // Grab theme-aware shield icon (light or dark variant based on current theme)
+                        Image badgePng = IconRegistry.getThemeAwareIcon(severity, IconRegistry.Size.MEDIUM);
                         
                         if (badgePng != null) {
                             // Draw Shield Badge
@@ -131,18 +133,24 @@ public class FindingsLabelProvider extends DelegatingStyledCellLabelProvider {
                             // Draw Count Number tightly next to the shield
                             String countStr = String.valueOf(count);
 
-                            // Match text color dynamically (Use foreground selection color if item is highlighted)
+                            // Set text color based on theme and selection state
                             if ((event.detail & SWT.SELECTED) != 0) {
                                 event.gc.setForeground(event.display.getSystemColor(SWT.COLOR_LIST_SELECTION_TEXT));
                             } else {
-                                event.gc.setForeground(event.display.getSystemColor(SWT.COLOR_LIST_FOREGROUND));
+                                // Use theme-based colors for non-selected state
+                                if (DevAssistUtils.isDarkTheme()) {
+                                    event.gc.setForeground(event.display.getSystemColor(SWT.COLOR_WHITE));
+                                } else {
+                                    event.gc.setForeground(event.display.getSystemColor(SWT.COLOR_BLACK));
+                                }
                             }
 
                             // Make count text bold
-                            org.eclipse.swt.graphics.Font originalFont = event.gc.getFont();
-                            org.eclipse.swt.graphics.FontData[] fontData = originalFont.getFontData();
-                            for (org.eclipse.swt.graphics.FontData fd : fontData) {
+                            Font originalFont = event.gc.getFont();
+                            FontData[] fontData = originalFont.getFontData();
+                            for (FontData fd : fontData) {
                                 fd.setStyle(fd.getStyle() | SWT.BOLD);
+                                fd.setHeight(10);
                             }
                             org.eclipse.swt.graphics.Font boldFont = new org.eclipse.swt.graphics.Font(event.display, fontData);
                             event.gc.setFont(boldFont);

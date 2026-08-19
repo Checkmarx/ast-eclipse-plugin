@@ -31,7 +31,7 @@ public class FindingsContentProvider implements ITreeContentProvider {
     }
 
     @Override
-    public Object[] getElements(Object inputElement) {
+	public Object[] getElements(Object inputElement) {
         if (inputElement instanceof Map) {
             @SuppressWarnings("unchecked")
             Map<String, List<ScanIssue>> map = (Map<String, List<ScanIssue>>) inputElement;

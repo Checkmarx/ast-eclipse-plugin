@@ -2,9 +2,11 @@ package com.checkmarx.eclipse.devassist.backend.result;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.runtime.QualifiedName;
+import org.eclipse.jface.text.IDocument;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.texteditor.ITextEditor;
 
 import com.checkmarx.eclipse.devassist.backend.DevAssistScanStateHolder;
 import com.checkmarx.eclipse.devassist.backend.ScannerRegistry;
@@ -229,9 +231,9 @@ public class ResultPublisher {
 			IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
 			if (page != null) {
 				org.eclipse.ui.IEditorPart editor = page.findEditor(new org.eclipse.ui.part.FileEditorInput(file));
-				if (editor instanceof org.eclipse.ui.texteditor.ITextEditor) {
-					org.eclipse.ui.texteditor.ITextEditor textEditor = (org.eclipse.ui.texteditor.ITextEditor) editor;
-					org.eclipse.jface.text.IDocument doc = textEditor.getDocumentProvider()
+				if (editor instanceof ITextEditor) {
+					ITextEditor textEditor = (ITextEditor) editor;
+					IDocument doc = textEditor.getDocumentProvider()
 							.getDocument(textEditor.getEditorInput());
 					if (doc != null) {
 						return doc;
