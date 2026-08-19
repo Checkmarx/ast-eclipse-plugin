@@ -5,7 +5,7 @@ Bundle-SymbolicName: com.checkmarx.eclipse.common
 Bundle-Version: 1.0.0.qualifier
 Bundle-Vendor: Checkmarx
 Bundle-ClassPath: .,
- lib/ast-cli-java-wrapper-2.4.24.jar,
+ lib/ast-cli-java-wrapper-2.4.27.jar,
  lib/jackson-core-2.21.4.jar,
  lib/jackson-databind-2.21.5.jar,
  lib/jackson-annotations-2.21.jar,

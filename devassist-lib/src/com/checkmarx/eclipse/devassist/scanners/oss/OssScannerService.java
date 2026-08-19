@@ -1,18 +1,5 @@
 package com.checkmarx.eclipse.devassist.scanners.oss;
 
-import com.checkmarx.ast.ossrealtime.OssRealtimeResults;
-import com.checkmarx.eclipse.devassist.basescanner.BaseScannerService;
-import com.checkmarx.eclipse.devassist.common.ScanResult;
-import com.checkmarx.eclipse.devassist.common.ScannerConfig;
-import com.checkmarx.eclipse.devassist.factory.CxWrapperFactory;
-import com.checkmarx.eclipse.devassist.model.ScanEngine;
-import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
-import com.checkmarx.eclipse.devassist.utils.PackageManager;
-import com.checkmarx.eclipse.common.utils.CxLogger;
-import org.eclipse.core.resources.IProject;
-import org.eclipse.jface.text.Document;
-import org.eclipse.jface.text.IDocument;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -30,7 +17,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import com.checkmarx.eclipse.common.wrapper.WrapperProvider;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.jface.text.Document;
@@ -217,7 +203,7 @@ public class OssScannerService extends BaseScannerService<OssRealtimeResults> {
 		for (String companionFileName : companionFileNameList) {
 			Path companionOriginalPath = parentPath.resolve(companionFileName);
 			if (!Files.exists(companionOriginalPath)) {
-				return;
+				continue;
 			}
 
 			Path companionTempPath = tempFolderPath.resolve(companionFileName);

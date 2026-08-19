@@ -4,7 +4,7 @@ import com.checkmarx.ast.containersrealtime.ContainersRealtimeResults;
 import com.checkmarx.eclipse.devassist.basescanner.BaseScannerService;
 import com.checkmarx.eclipse.devassist.utils.DevAssistUtils;
 import com.checkmarx.eclipse.devassist.common.ScannerConfig;
-import com.checkmarx.eclipse.devassist.factory.CxWrapperFactory;
+import com.checkmarx.eclipse.common.wrapper.WrapperProvider;
 import com.checkmarx.eclipse.devassist.common.ScanResult;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
  * Handles file detection (Docker, Docker Compose, Helm), secure temporary
  * folder management,
  * and direct invocation of Checkmarx Container Realtime scanning via
- * CxWrapperFactory.
+ * WrapperProvider.
  */
 public class ContainerScannerService extends BaseScannerService<ContainersRealtimeResults> {
 
