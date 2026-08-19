@@ -1,19 +1,16 @@
 package com.checkmarx.eclipse.common.runner;
 
-import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.checkmarx.ast.wrapper.CxConfig;
-import com.checkmarx.ast.wrapper.CxException;
-import com.checkmarx.ast.wrapper.CxWrapper;
 import com.checkmarx.eclipse.common.utils.CxLogger;
 import com.checkmarx.eclipse.common.utils.PluginConstants;
+import com.checkmarx.eclipse.common.wrapper.WrapperProvider;
 
 public class Authenticator {
 	   private final Logger log;
-	   
-	   private Authenticator() {
+
+	   public Authenticator() {
 	       this.log = LoggerFactory.getLogger(Authenticator.class);
 	   }
 	   
@@ -26,16 +23,11 @@ public class Authenticator {
 	   public static final Authenticator INSTANCE = new Authenticator();
 
 	   public String doAuthentication(String apiKey, String additionalParams) {
-	       CxConfig config = CxConfig.builder()
-	               .apiKey(apiKey)
-	               .additionalParameters(additionalParams)
-	               .build();
 	       try {
-	           CxWrapper wrapper = new CxWrapper(config, log);
-	           String cxValidateOutput = wrapper.authValidate();
+	           String cxValidateOutput = new WrapperProvider().authValidate(apiKey, additionalParams);
 	           CxLogger.info(String.format(PluginConstants.INFO_AUTHENTICATION_STATUS, cxValidateOutput));
 	           return cxValidateOutput;
-	       } catch (IOException | InterruptedException | CxException e) {
+	       } catch (Exception e) {
 	           CxLogger.error(String.format(PluginConstants.ERROR_AUTHENTICATING_AST, e.getMessage()), e);
 	           return e.getMessage();
 	       }
