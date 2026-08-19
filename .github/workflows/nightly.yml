@@ -27,8 +27,7 @@ jobs:
         run: echo "created tag $TAG_NAME"
   nightly:
     needs: set_tag
-    uses: Checkmarx/ast-eclipse-plugin/.github/workflows/release.yml@main # zizmor: ignore[unpinned-uses]
+    uses: Checkmarx/ast-eclipse-plugin/.github/workflows/release.yml@a776dbbfa70cda798753bec14dd7c1f47d094595
     with:
       tag: ${{ needs.set_tag.outputs.tag_name }}
       rbranch: "nightly"
-    secrets: inherit  # zizmor: ignore[secrets-inherit]

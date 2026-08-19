@@ -38,10 +38,9 @@ permissions: {}
 
 jobs:
   deleteDevReleases:
-    uses: Checkmarx/ast-eclipse-plugin/.github/workflows/delete-dev-releases.yml@main # zizmor: ignore[unpinned-uses]
+    uses: Checkmarx/ast-eclipse-plugin/.github/workflows/delete-dev-releases.yml@a776dbbfa70cda798753bec14dd7c1f47d094595
     with:
       tag: ${{ inputs.rbranch }}
-    secrets: inherit  # zizmor: ignore[secrets-inherit]
     if: inputs.rbranch
   release:
     name: Release
