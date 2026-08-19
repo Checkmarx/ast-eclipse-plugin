@@ -23,7 +23,7 @@ import com.checkmarx.eclipse.devassist.ui.findings.icons.IconRegistry;
  */
 public class FindingsLabelProvider extends DelegatingStyledCellLabelProvider {
 
-    private static final String[] SEVERITIES = { "critical", "high", "medium", "low" };
+    private static final String[] SEVERITIES = { "malicious", "critical", "high", "medium", "low" };
     private static final int BETWEEN_BADGE_SPACING = 4; // Space between different shield groups
     private static final int TEXT_TO_BADGE_PADDING = 28; // Space after filename before first badge
 
