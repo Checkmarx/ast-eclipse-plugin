@@ -18,6 +18,75 @@
             restorable="true">
       </view>
    </extension>
+   
+   <!-- Line Hover (Java editor): org.eclipse.ui.editors.textHovers does NOT
+        exist as a real Eclipse Platform extension point - text hovers are
+        wired programmatically per-editor via SourceViewerConfiguration and
+        cannot be injected into an editor a plugin doesn't own through a
+        generic mechanism. JDT's own Java editor exposes the ONLY documented,
+        public extension point for contributing an additional hover into an
+        editor this plugin doesn't control: org.eclipse.jdt.ui.javaEditorTextHovers
+        (the same point JDT itself uses for its Javadoc/Problem/BestMatch
+        hovers - see org.eclipse.jdt.ui's own plugin.xml). JDT stacks multiple
+        <hover> contributions rather than replacing a single slot, so this
+        adds alongside JDT's existing hovers without hiding them.
+        CheckmarxAnnotationHover implements org.eclipse.jdt.ui's
+        IJavaEditorTextHover (required by JDT's hover framework, which casts
+        contributed classes to this type), so org.eclipse.jdt.ui is a hard
+        (non-optional) Require-Bundle dependency in MANIFEST.MF - this plugin
+        now requires the JDT UI tooling to be installed.
+        Coverage: .java files only. Other file types (Dockerfile, YAML, JSON,
+        etc.) have no equivalent public extension point in stock Eclipse and
+        fall back to Eclipse's built-in default marker hover (shows
+        IMarker.MESSAGE and aggregates "Multiple markers at this line"
+        automatically - no custom code needed, nothing is hidden).
+        IMPORTANT - NOT VERIFIED YET: JDT gates which contributed hovers are
+        actually shown via user preferences (Preferences > Java > Editor >
+        Hovers), keyed by this hover's id, with an enabled/modifier-key state
+        loaded from a preference store. Registering this extension makes the
+        hover available/selectable in that preference page, but does NOT by
+        itself guarantee the hover is active by default for a fresh install -
+        this must be confirmed in a running Eclipse instance before this can
+        be considered "working out of the box" rather than "available to
+        enable".
+
+        Remediation Link Handler: RemediationLinkHandler is wired into
+        CheckmarxAnnotationHover's browser LocationListener to handle
+        remediation actions (fix, view details, ignore) triggered from
+        hover popup links. The link handler is instantiated and invoked
+        programmatically (no extension point registration needed). -->
+   <extension
+         point="org.eclipse.jdt.ui.javaEditorTextHovers">
+      <hover
+            id="com.checkmarx.eclipse.devassist.hover.checkmarxAnnotationHover"
+            class="com.checkmarx.eclipse.devassist.ui.findings.hover.CheckmarxAnnotationHover"
+            label="Checkmarx Finding"
+            description="Shows Checkmarx finding details, alongside other issues on the same line">
+      </hover>
+   </extension>
+
+   <!-- Line Hover (all other text-based editors): org.eclipse.jdt.ui.javaEditorTextHovers
+        above only reaches JDT's own Java editor. Every other file type this plugin
+        scans (pom.xml, package.json, secrets.py, Dockerfiles, ...) that has no
+        dedicated editor of its own falls back to the Platform's Generic Editor
+        (org.eclipse.ui.genericeditor.GenericEditor), which has its own, separate
+        hover extension point. CheckmarxAnnotationHover's content is already
+        marker/annotation-based (not JDT-specific), so the same class is reused
+        here unchanged. Unlike the JDT extension point, the Generic Editor combines
+        all matching hoverProviders automatically (see CompositeTextHover) - no
+        per-hover preference toggle needed for this one to show up.
+        contentType="org.eclipse.core.runtime.text" is the Platform's base "Text"
+        content type; org.eclipse.core.runtime.xml, .properties, and most
+        language-specific content types declare it as their base-type, so this
+        applies broadly rather than needing one registration per file type. -->
+   <extension
+         point="org.eclipse.ui.genericeditor.hoverProviders">
+      <hoverProvider
+            id="com.checkmarx.eclipse.devassist.hover.checkmarxGenericHoverProvider"
+            class="com.checkmarx.eclipse.devassist.ui.findings.hover.CheckmarxAnnotationHover"
+            contentType="org.eclipse.core.runtime.text">
+      </hoverProvider>
+   </extension>
 
    <!-- Annotation Types Extension Point (for in-editor vulnerability markers/highlights) -->
    <extension
@@ -64,12 +133,12 @@
       </type>
    </extension>
 
-    <!-- Gutter icon + squiggly underline specifications for Findings annotations -->
+    <!-- Light Theme: Gutter icon + squiggly underline specifications for Findings annotations -->
     <extension point="org.eclipse.ui.editors.markerAnnotationSpecification">
         <specification
             annotationType="com.checkmarx.eclipse.findings.malicious"
             label="Checkmarx Malicious Finding"
-            icon="icons/malicious_16.svg"
+            icon="icons/severity_16/malicious.svg"
             textStylePreferenceValue="SQUIGGLES"
             verticalRulerPreferenceValue="true"
             overviewRulerPreferenceValue="true"
@@ -78,7 +147,7 @@
         <specification
             annotationType="com.checkmarx.eclipse.findings.critical"
             label="Checkmarx Critical Finding"
-            icon="icons/critical_16.svg"
+            icon="icons/severity_16/critical.svg"
             textStylePreferenceValue="SQUIGGLES"
             verticalRulerPreferenceValue="true"
             overviewRulerPreferenceValue="true"
@@ -87,7 +156,7 @@
         <specification
             annotationType="com.checkmarx.eclipse.findings.high"
             label="Checkmarx High Finding"
-            icon="icons/high_16.svg"
+            icon="icons/severity_16/high.svg"
             textStylePreferenceValue="SQUIGGLES"
             verticalRulerPreferenceValue="true"
             overviewRulerPreferenceValue="true"
@@ -96,7 +165,7 @@
         <specification
             annotationType="com.checkmarx.eclipse.findings.medium"
             label="Checkmarx Medium Finding"
-            icon="icons/medium_16.svg"
+            icon="icons/severity_16/medium.svg"
             textStylePreferenceValue="SQUIGGLES"
             verticalRulerPreferenceValue="true"
             overviewRulerPreferenceValue="true"
@@ -105,45 +174,109 @@
         <specification
             annotationType="com.checkmarx.eclipse.findings.low"
             label="Checkmarx Low Finding"
-            icon="icons/low_16.svg"
+            icon="icons/severity_16/low.svg"
             textStylePreferenceValue="SQUIGGLES"
             verticalRulerPreferenceValue="true"
             overviewRulerPreferenceValue="true"
             presentationLayer="4">
         </specification>
-        <specification
-            annotationType="com.checkmarx.eclipse.findings.unknown"
-            label="Checkmarx Unknown Finding"
-            icon="icons/unknown_16.svg"
-            textStylePreferenceValue="SQUIGGLES"
-            verticalRulerPreferenceValue="true"
-            overviewRulerPreferenceValue="true"
-            presentationLayer="3">
-        </specification>
-        <specification
-            annotationType="com.checkmarx.eclipse.findings.ok"
-            label="Checkmarx OK Finding"
-            icon="icons/ok_16.svg"
-            textStylePreferenceValue="SQUIGGLES"
-            verticalRulerPreferenceValue="true"
-            overviewRulerPreferenceValue="true"
-            presentationLayer="2">
-        </specification>
+		<specification
+		    annotationType="com.checkmarx.eclipse.findings.ok"
+		    label="Checkmarx OK Finding"
+		    icon="icons/severity_16/ok.svg"
+		    verticalRulerPreferenceValue="true"
+		    overviewRulerPreferenceValue="false"
+		    presentationLayer="2">
+		</specification>
+		<specification
+		    annotationType="com.checkmarx.eclipse.findings.unknown"
+		    label="Checkmarx Unknown Finding"
+		    icon="icons/severity_16/unknown.svg"
+		    verticalRulerPreferenceValue="true"
+		    overviewRulerPreferenceValue="false"
+		    presentationLayer="3">
+		</specification>
         <specification
             annotationType="com.checkmarx.eclipse.findings.ignored"
             label="Checkmarx Ignored Finding"
-            icon="icons/ignored_16.svg"
+            icon="icons/severity_16/ignored.svg"
             textStylePreferenceValue="SQUIGGLES"
             verticalRulerPreferenceValue="true"
             overviewRulerPreferenceValue="true"
             presentationLayer="1">
         </specification>
-   </extension>
-   <extension point="org.eclipse.ui.ide.markerResolution">
-       <generator
-           class="com.checkmarx.eclipse.devassist.ui.findings.resolution.CheckmarxMarkerResolutionGenerator"
-           markerType="com.checkmarx.eclipse.plugin.checkmarxProblemMarker">
-       </generator>
+
+        <!-- Dark Theme: Dark variant icons for dark theme support -->
+        <specification
+            annotationType="com.checkmarx.eclipse.findings.malicious_dark"
+            label="Checkmarx Malicious Finding (Dark)"
+            icon="icons/severity_16/malicious_dark.svg"
+            textStylePreferenceValue="SQUIGGLES"
+            verticalRulerPreferenceValue="true"
+            overviewRulerPreferenceValue="true"
+            presentationLayer="8">
+        </specification>
+        <specification
+            annotationType="com.checkmarx.eclipse.findings.critical_dark"
+            label="Checkmarx Critical Finding (Dark)"
+            icon="icons/severity_16/critical_dark.svg"
+            textStylePreferenceValue="SQUIGGLES"
+            verticalRulerPreferenceValue="true"
+            overviewRulerPreferenceValue="true"
+            presentationLayer="7">
+        </specification>
+        <specification
+            annotationType="com.checkmarx.eclipse.findings.high_dark"
+            label="Checkmarx High Finding (Dark)"
+            icon="icons/severity_16/high_dark.svg"
+            textStylePreferenceValue="SQUIGGLES"
+            verticalRulerPreferenceValue="true"
+            overviewRulerPreferenceValue="true"
+            presentationLayer="6">
+        </specification>
+        <specification
+            annotationType="com.checkmarx.eclipse.findings.medium_dark"
+            label="Checkmarx Medium Finding (Dark)"
+            icon="icons/severity_16/medium_dark.svg"
+            textStylePreferenceValue="SQUIGGLES"
+            verticalRulerPreferenceValue="true"
+            overviewRulerPreferenceValue="true"
+            presentationLayer="5">
+        </specification>
+        <specification
+            annotationType="com.checkmarx.eclipse.findings.low_dark"
+            label="Checkmarx Low Finding (Dark)"
+            icon="icons/severity_16/low_dark.svg"
+            textStylePreferenceValue="SQUIGGLES"
+            verticalRulerPreferenceValue="true"
+            overviewRulerPreferenceValue="true"
+            presentationLayer="4">
+        </specification>
+		<specification
+		    annotationType="com.checkmarx.eclipse.findings.ok_dark"
+		    label="Checkmarx OK Finding (Dark)"
+		    icon="icons/severity_16/ok_dark.svg"
+		    verticalRulerPreferenceValue="true"
+		    overviewRulerPreferenceValue="false"
+		    presentationLayer="2">
+		</specification>
+		<specification
+		    annotationType="com.checkmarx.eclipse.findings.unknown_dark"
+		    label="Checkmarx Unknown Finding (Dark)"
+		    icon="icons/severity_16/unknown_dark.svg"
+		    verticalRulerPreferenceValue="true"
+		    overviewRulerPreferenceValue="false"
+		    presentationLayer="3">
+		</specification>
+        <specification
+            annotationType="com.checkmarx.eclipse.findings.ignored_dark"
+            label="Checkmarx Ignored Finding (Dark)"
+            icon="icons/severity_16/ignored_dark.svg"
+            textStylePreferenceValue="SQUIGGLES"
+            verticalRulerPreferenceValue="true"
+            overviewRulerPreferenceValue="true"
+            presentationLayer="1">
+        </specification>
    </extension>
 
 </plugin>

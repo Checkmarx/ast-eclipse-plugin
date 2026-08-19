@@ -92,7 +92,8 @@ public final class McpSettingsInjector {
 			String mcpUrl = baseUrl + MCP_ENDPOINT;
 			CxLogger.info(LOG_TAG + " MCP URL: " + mcpUrl);
 
-			CxLogger.info(LOG_TAG + " Copilot MCP preference node: " + COPILOT_UI_BUNDLE_ID + " / " + MCP_PREFERENCE_KEY);
+			CxLogger.info(
+					LOG_TAG + " Copilot MCP preference node: " + COPILOT_UI_BUNDLE_ID + " / " + MCP_PREFERENCE_KEY);
 
 			boolean changed = mergeCheckmarxServer(mcpUrl, token);
 
@@ -225,7 +226,8 @@ public final class McpSettingsInjector {
 			CxLogger.info(LOG_TAG + "Existing preference read successfully (bare form)");
 			return new LinkedHashMap<>(parsed);
 		} catch (Exception e) {
-			CxLogger.warning(LOG_TAG + " Failed to parse existing Copilot MCP preference, starting fresh: " + e.getMessage());
+			CxLogger.warning(
+					LOG_TAG + " Failed to parse existing Copilot MCP preference, starting fresh: " + e.getMessage());
 			return new LinkedHashMap<>();
 		}
 	}
@@ -235,7 +237,8 @@ public final class McpSettingsInjector {
 	 * {@code {"servers": {...}}}, and flushes it so it is persisted immediately
 	 * and observed by Copilot's live preference listeners.
 	 */
-	private static void writeServers(IEclipsePreferences node, Map<String, Object> servers) throws BackingStoreException {
+	private static void writeServers(IEclipsePreferences node, Map<String, Object> servers)
+			throws BackingStoreException {
 		try {
 			if (servers.isEmpty()) {
 				node.remove(MCP_PREFERENCE_KEY);
@@ -293,7 +296,8 @@ public final class McpSettingsInjector {
 
 	/**
 	 * Derives AST base URL from issuer claim.
-	 * If issuer is like https://iam.checkmarx.com, converts to https://ast.checkmarx.com
+	 * If issuer is like https://iam.checkmarx.com, converts to
+	 * https://ast.checkmarx.com
 	 */
 	private static String deriveBaseUrlFromIssuer(String issuer) {
 		if (issuer == null || issuer.isBlank()) {

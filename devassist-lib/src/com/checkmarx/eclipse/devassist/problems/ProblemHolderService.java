@@ -218,11 +218,13 @@ public class ProblemHolderService {
 	}
 
 	/**
-	 * Clear all caches (on project close).
+	 * Clear all caches (on project close or logout).
 	 */
 	public void clearAll() {
 		fileToScanIssues.clear();
+		fileToProblemDescriptors.clear();
 		CxLogger.info(LOG_TAG + " All caches cleared");
+		publishIssuesUpdated();
 	}
 
 	/**

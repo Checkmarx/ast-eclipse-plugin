@@ -13,7 +13,8 @@ import com.checkmarx.eclipse.devassist.backend.listener.RealTimeScanJob;
 import com.checkmarx.eclipse.common.utils.CxLogger;
 
 /**
- * Scheduler that wraps and coordinates RealTimeScanJob for background file scanning.
+ * Scheduler that wraps and coordinates RealTimeScanJob for background file
+ * scanning.
  *
  * Responsibilities:
  * - Manage scheduling of real-time scans with debounce
@@ -43,19 +44,24 @@ public class DevAssistScanScheduler {
 		}
 
 		@Override
-		public void aboutToRun(IJobChangeEvent event) {}
+		public void aboutToRun(IJobChangeEvent event) {
+		}
 
 		@Override
-		public void awake(IJobChangeEvent event) {}
+		public void awake(IJobChangeEvent event) {
+		}
 
 		@Override
-		public void running(IJobChangeEvent event) {}
+		public void running(IJobChangeEvent event) {
+		}
 
 		@Override
-		public void scheduled(IJobChangeEvent event) {}
+		public void scheduled(IJobChangeEvent event) {
+		}
 
 		@Override
-		public void sleeping(IJobChangeEvent event) {}
+		public void sleeping(IJobChangeEvent event) {
+		}
 	};
 
 	/**
@@ -79,7 +85,7 @@ public class DevAssistScanScheduler {
 	 * If a scan is already pending for this file, returns false.
 	 * Use reschedule() to cancel and restart with new delay.
 	 *
-	 * @param file File to scan
+	 * @param file          File to scan
 	 * @param problemHelper Problem context (unused in current impl, for alignment)
 	 * @return true if scheduled, false if already pending
 	 */
@@ -90,7 +96,7 @@ public class DevAssistScanScheduler {
 	/**
 	 * Schedule a scan for a file with custom debounce delay.
 	 *
-	 * @param file File to scan
+	 * @param file    File to scan
 	 * @param delayMs Debounce delay in milliseconds
 	 * @return true if scheduled, false if already pending
 	 */
@@ -121,7 +127,7 @@ public class DevAssistScanScheduler {
 			scanJob.schedule(delayMs);
 
 			CxLogger.info(LOG_TAG + " Scheduled scan for: " + filePath +
-				" (delay=" + delayMs + "ms)");
+					" (delay=" + delayMs + "ms)");
 			return true;
 
 		} catch (Exception e) {
@@ -139,7 +145,7 @@ public class DevAssistScanScheduler {
 	 * - While typing: reschedule (cancel, start new 1s timer)
 	 * - After user pauses: job runs
 	 *
-	 * @param file File to reschedule
+	 * @param file    File to reschedule
 	 * @param delayMs New debounce delay
 	 * @return true if rescheduled, false if no pending job
 	 */
@@ -164,7 +170,7 @@ public class DevAssistScanScheduler {
 			existingJob.reschedule(delayMs);
 
 			CxLogger.info(LOG_TAG + " Rescheduled scan for: " + filePath +
-				" (delay=" + delayMs + "ms)");
+					" (delay=" + delayMs + "ms)");
 			return true;
 
 		} catch (Exception e) {
@@ -230,6 +236,6 @@ public class DevAssistScanScheduler {
 	 */
 	public String getStatistics() {
 		return "Pending scans: " + pendingScans.size() +
-			", Tracked files: " + pendingScans.keySet();
+				", Tracked files: " + pendingScans.keySet();
 	}
 }

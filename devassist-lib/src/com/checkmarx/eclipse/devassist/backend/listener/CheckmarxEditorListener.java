@@ -48,7 +48,7 @@ public class CheckmarxEditorListener implements IPartListener2 {
 	private final Map<Integer, RealTimeScanJob> activeScanJobs = new HashMap<>();
 
 	public CheckmarxEditorListener() {
-		
+
 	}
 
 	/**
@@ -77,7 +77,8 @@ public class CheckmarxEditorListener implements IPartListener2 {
 
 	/**
 	 * Called when an editor is activated.
-	 * Setup scanning if not done, or trigger rescan if switching to an already-open tab.
+	 * Setup scanning if not done, or trigger rescan if switching to an already-open
+	 * tab.
 	 */
 	@Override
 	public void partActivated(IWorkbenchPartReference partRef) {
@@ -92,7 +93,7 @@ public class CheckmarxEditorListener implements IPartListener2 {
 					if (activeListeners.containsKey(documentId)) {
 						RealTimeScanJob scanJob = activeScanJobs.get(documentId);
 						if (scanJob != null) {
-							
+
 							scanJob.reschedule(0);
 						}
 						return;
@@ -146,13 +147,12 @@ public class CheckmarxEditorListener implements IPartListener2 {
 
 		// Check if we've already set up scanning for this document
 		if (activeListeners.containsKey(documentId)) {
-			
+
 			return;
 		}
 
 		// Get file name for logging
 		String fileName = extractFileNameFromEditor(editor);
-		
 
 		// Log to Eclipse Error Log
 		String message = "User opened the file: " + fileName;
@@ -170,11 +170,13 @@ public class CheckmarxEditorListener implements IPartListener2 {
 			try {
 				org.eclipse.core.resources.IProject project = file.getProject();
 				if (project != null) {
-					scheduler = (com.checkmarx.eclipse.devassist.inspection.DevAssistScanScheduler) project.getSessionProperty(
-						new org.eclipse.core.runtime.QualifiedName("com.checkmarx.eclipse.plugin", "scan-scheduler"));
+					scheduler = (com.checkmarx.eclipse.devassist.inspection.DevAssistScanScheduler) project
+							.getSessionProperty(
+									new org.eclipse.core.runtime.QualifiedName("com.checkmarx.eclipse.plugin",
+											"scan-scheduler"));
 				}
 			} catch (Exception e) {
-				
+
 			}
 		}
 
@@ -189,17 +191,16 @@ public class CheckmarxEditorListener implements IPartListener2 {
 			activeListeners.put(documentId, docListener);
 			activeScanJobs.put(documentId, scanJob);
 
-			
-
 			// **CRITICAL FIX: Apply cached decorations if findings exist for this file**
 			// JetBrains pattern: when editor opens, apply cached decorations immediately
-			// This fixes the issue where decorations don't appear if editor wasn't open during scan
+			// This fixes the issue where decorations don't appear if editor wasn't open
+			// during scan
 			applyCachedDecorationsForFile(file, document);
 
 			// **CRITICAL FIX: Trigger initial scan when file is opened**
 			// JetBrains pattern: scan on file open, then on keystroke debounce
 			// Without this, opening a file doesn't trigger any scan — only edits do
-			
+
 			scanJob.reschedule(0);
 
 		} catch (Exception e) {
@@ -232,7 +233,6 @@ public class CheckmarxEditorListener implements IPartListener2 {
 			try {
 				document.removeDocumentListener(listener);
 				listener.dispose();
-
 			} catch (Exception e) {
 				System.err.println("[REALTIME] Error removing document listener: " + e.getMessage());
 			}
@@ -252,9 +252,10 @@ public class CheckmarxEditorListener implements IPartListener2 {
 			try {
 				org.eclipse.core.resources.IProject project = file.getProject();
 				if (project != null) {
-					com.checkmarx.eclipse.devassist.inspection.DevAssistScanScheduler scheduler =
-						(com.checkmarx.eclipse.devassist.inspection.DevAssistScanScheduler) project.getSessionProperty(
-							new org.eclipse.core.runtime.QualifiedName("com.checkmarx.eclipse.plugin", "scan-scheduler"));
+					com.checkmarx.eclipse.devassist.inspection.DevAssistScanScheduler scheduler = (com.checkmarx.eclipse.devassist.inspection.DevAssistScanScheduler) project
+							.getSessionProperty(
+									new org.eclipse.core.runtime.QualifiedName("com.checkmarx.eclipse.plugin",
+											"scan-scheduler"));
 					if (scheduler != null) {
 						scheduler.cancelScheduledInspection(file);
 					}
@@ -287,7 +288,8 @@ public class CheckmarxEditorListener implements IPartListener2 {
 			}
 		}
 
-		// Try method 2: Adapter pattern (for MavenPomEditor and other non-ITextEditor editors)
+		// Try method 2: Adapter pattern (for MavenPomEditor and other non-ITextEditor
+		// editors)
 		try {
 			ITextEditor textEditor = editor.getAdapter(ITextEditor.class);
 			if (textEditor != null) {
@@ -333,8 +335,8 @@ public class CheckmarxEditorListener implements IPartListener2 {
 	private org.eclipse.core.resources.IFile extractFileFromEditor(IEditorPart editor) {
 		try {
 			if (editor.getEditorInput() instanceof org.eclipse.ui.part.FileEditorInput) {
-				org.eclipse.ui.part.FileEditorInput fileInput =
-						(org.eclipse.ui.part.FileEditorInput) editor.getEditorInput();
+				org.eclipse.ui.part.FileEditorInput fileInput = (org.eclipse.ui.part.FileEditorInput) editor
+						.getEditorInput();
 				return fileInput.getFile();
 			}
 		} catch (Exception e) {
@@ -350,7 +352,7 @@ public class CheckmarxEditorListener implements IPartListener2 {
 	 * and apply decorations immediately. This ensures decorations appear even if
 	 * the editor wasn't open when the scan completed.
 	 *
-	 * @param file the Eclipse IFile being opened
+	 * @param file     the Eclipse IFile being opened
 	 * @param document the document for the file
 	 */
 	private void applyCachedDecorationsForFile(org.eclipse.core.resources.IFile file, IDocument document) {
@@ -367,24 +369,23 @@ public class CheckmarxEditorListener implements IPartListener2 {
 			}
 
 			// Get cached findings for this file
-			ProblemHolderService problemHolder =
-				(ProblemHolderService) project.getSessionProperty(
+			ProblemHolderService problemHolder = (ProblemHolderService) project.getSessionProperty(
 					new org.eclipse.core.runtime.QualifiedName("com.checkmarx.eclipse.plugin", "problem-holder"));
 
 			if (problemHolder == null) {
 				return;
 			}
 
-			java.util.List<com.checkmarx.eclipse.devassist.model.ScanIssue> cachedIssues =
-				problemHolder.getScanIssuesByFile(filePath);
+			java.util.List<com.checkmarx.eclipse.devassist.model.ScanIssue> cachedIssues = problemHolder
+					.getScanIssuesByFile(filePath);
 
 			if (cachedIssues == null || cachedIssues.isEmpty()) {
-				
+
 				return;
 			}
 
 			// Apply decorations for cached findings
-			
+
 			ProblemDecorator.decorateEditor(file, cachedIssues);
 
 		} catch (Exception e) {
@@ -396,19 +397,24 @@ public class CheckmarxEditorListener implements IPartListener2 {
 	// Implement other IPartListener2 methods (not used for real-time scanning)
 
 	@Override
-	public void partBroughtToTop(IWorkbenchPartReference partRef) {}
+	public void partBroughtToTop(IWorkbenchPartReference partRef) {
+	}
 
 	@Override
-	public void partDeactivated(IWorkbenchPartReference partRef) {}
+	public void partDeactivated(IWorkbenchPartReference partRef) {
+	}
 
 	@Override
-	public void partHidden(IWorkbenchPartReference partRef) {}
+	public void partHidden(IWorkbenchPartReference partRef) {
+	}
 
 	@Override
-	public void partVisible(IWorkbenchPartReference partRef) {}
+	public void partVisible(IWorkbenchPartReference partRef) {
+	}
 
 	@Override
-	public void partInputChanged(IWorkbenchPartReference partRef) {}
+	public void partInputChanged(IWorkbenchPartReference partRef) {
+	}
 
 	/**
 	 * Trigger an immediate rescan of every currently open editor with real-time

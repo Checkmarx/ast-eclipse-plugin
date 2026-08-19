@@ -24,91 +24,91 @@ import java.util.Map;
  */
 public class FindingsContentProvider implements ITreeContentProvider {
 
-	private final Map<ImageDescriptor, Image> imageCache = new HashMap<>();
+    private final Map<ImageDescriptor, Image> imageCache = new HashMap<>();
 
-	@Override
-	public void inputChanged(Viewer viewer, Object oldInput, Object newInput) {
-	}
+    @Override
+    public void inputChanged(Viewer viewer, Object oldInput, Object newInput) {
+    }
 
-	@Override
+    @Override
 	public Object[] getElements(Object inputElement) {
-		if (inputElement instanceof Map) {
-			@SuppressWarnings("unchecked")
-			Map<String, List<ScanIssue>> map = (Map<String, List<ScanIssue>>) inputElement;
-			return map.entrySet().stream().map(entry -> {
-				String fileName = getFileName(entry.getKey());
-				Image fileIcon = getFileIcon(fileName);
-				return new FileNodeLabel(fileName, entry.getKey(), entry.getValue(), fileIcon);
-			}).toArray();
-		}
-		return new Object[0];
-	}
+        if (inputElement instanceof Map) {
+            @SuppressWarnings("unchecked")
+            Map<String, List<ScanIssue>> map = (Map<String, List<ScanIssue>>) inputElement;
+            return map.entrySet().stream().map(entry -> {
+                String fileName = getFileName(entry.getKey());
+                Image fileIcon = getFileIcon(fileName);
+                return new FileNodeLabel(fileName, entry.getKey(), entry.getValue(), fileIcon);
+            }).toArray();
+        }
+        return new Object[0];
+    }
 
-	private Image getFileIcon(String fileName) {
-		if (fileName == null || fileName.isEmpty()) {
-			return null;
-		}
+    private Image getFileIcon(String fileName) {
+        if (fileName == null || fileName.isEmpty()) {
+            return null;
+        }
 
-		try {
-			IEditorRegistry registry = PlatformUI.getWorkbench().getEditorRegistry();
-			ImageDescriptor imageDescriptor = registry.getImageDescriptor(fileName);
+        try {
+            IEditorRegistry registry = PlatformUI.getWorkbench().getEditorRegistry();
+            ImageDescriptor imageDescriptor = registry.getImageDescriptor(fileName);
 
-			if (imageDescriptor != null) {
-				return imageCache.computeIfAbsent(imageDescriptor, descriptor -> descriptor.createImage());
-			}
-		} catch (Exception e) {
-			CxLogger.error("Error retrieving file icon for " + fileName, e);
-		}
+            if (imageDescriptor != null) {
+                return imageCache.computeIfAbsent(imageDescriptor, descriptor -> descriptor.createImage());
+            }
+        } catch (Exception e) {
+            CxLogger.error("Error retrieving file icon for " + fileName, e);
+        }
 
-		return null;
-	}
+        return null;
+    }
 
-	@Override
-	public Object[] getChildren(Object parentElement) {
-		if (parentElement instanceof FileNodeLabel) {
-			FileNodeLabel fileNode = (FileNodeLabel) parentElement;
-			return fileNode.getIssues().stream()
-					.map(issue -> new ScanDetailWithPath(issue, fileNode.getFilePath(), fileNode)).toArray();
-		}
-		return new Object[0];
-	}
+    @Override
+    public Object[] getChildren(Object parentElement) {
+        if (parentElement instanceof FileNodeLabel) {
+            FileNodeLabel fileNode = (FileNodeLabel) parentElement;
+            return fileNode.getIssues().stream()
+                    .map(issue -> new ScanDetailWithPath(issue, fileNode.getFilePath(), fileNode)).toArray();
+        }
+        return new Object[0];
+    }
 
-	@Override
-	public Object getParent(Object element) {
-		if (element instanceof ScanDetailWithPath) {
-			return ((ScanDetailWithPath) element).getParentNode();
-		}
-		return null;
-	}
+    @Override
+    public Object getParent(Object element) {
+        if (element instanceof ScanDetailWithPath) {
+            return ((ScanDetailWithPath) element).getParentNode();
+        }
+        return null;
+    }
 
-	@Override
-	public boolean hasChildren(Object element) {
-		if (element instanceof FileNodeLabel) {
-			return !((FileNodeLabel) element).getIssues().isEmpty();
-		}
-		return false;
-	}
+    @Override
+    public boolean hasChildren(Object element) {
+        if (element instanceof FileNodeLabel) {
+            return !((FileNodeLabel) element).getIssues().isEmpty();
+        }
+        return false;
+    }
 
-	private String getFileName(String filePath) {
-		if (filePath == null || filePath.isEmpty()) {
-			return "Unknown";
-		}
-		int lastSeparator = Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'));
-		if (lastSeparator >= 0) {
-			return filePath.substring(lastSeparator + 1);
-		}
-		return filePath;
-	}
+    private String getFileName(String filePath) {
+        if (filePath == null || filePath.isEmpty()) {
+            return "Unknown";
+        }
+        int lastSeparator = Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'));
+        if (lastSeparator >= 0) {
+            return filePath.substring(lastSeparator + 1);
+        }
+        return filePath;
+    }
 
-	@Override
-	public void dispose() {
-		// Dispose all cached native OS handles to prevent memory leaks
-		for (Image image : imageCache.values()) {
-			if (image != null && !image.isDisposed()) {
-				image.dispose();
-			}
-		}
-		imageCache.clear();
-	}
+    @Override
+    public void dispose() {
+        // Dispose all cached native OS handles to prevent memory leaks
+        for (Image image : imageCache.values()) {
+            if (image != null && !image.isDisposed()) {
+                image.dispose();
+            }
+        }
+        imageCache.clear();
+    }
 
 }

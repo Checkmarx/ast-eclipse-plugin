@@ -42,7 +42,6 @@ public class ScannerRegistry {
 		CxLogger.info(LOG_TAG + " Created for project: " + project.getName());
 	}
 
-
 	/**
 	 * Deregister and dispose all scanners (on project close).
 	 * Synchronized to prevent race with getScannerService() lazy creation.
@@ -60,7 +59,7 @@ public class ScannerRegistry {
 					CxLogger.info(LOG_TAG + "Disposed scanner: " + type);
 				} catch (Exception e) {
 					CxLogger.warning(LOG_TAG + " Error disposing scanner " + type + ": " +
-						e.getMessage());
+							e.getMessage());
 				}
 			});
 
@@ -98,7 +97,8 @@ public class ScannerRegistry {
 
 	/**
 	 * Create a scanner instance by type.
-	 * Creates implementations of ScannerService that delegate to the new scanner commands.
+	 * Creates implementations of ScannerService that delegate to the new scanner
+	 * commands.
 	 *
 	 * @param type Scanner type
 	 * @return Scanner instance
@@ -109,23 +109,23 @@ public class ScannerRegistry {
 			Object scanner = null;
 
 			switch (type) {
-			case OSS:
-				scanner = new OssScannerServiceImpl(project);
-				break;
-			case SECRETS:
-				scanner = new SecretsScannerServiceImpl(project);
-				break;
-			case CONTAINERS:
-				scanner = new ContainerScannerServiceImpl(project);
-				break;
-			case IAC:
-				scanner = new IacScannerServiceImpl(project);
-				break;
-			case ASCA:
-				scanner = new AscaScannerServiceImpl(project);
-				break;
-			default:
-				return null;
+				case OSS:
+					scanner = new OssScannerServiceImpl(project);
+					break;
+				case SECRETS:
+					scanner = new SecretsScannerServiceImpl(project);
+					break;
+				case CONTAINERS:
+					scanner = new ContainerScannerServiceImpl(project);
+					break;
+				case IAC:
+					scanner = new IacScannerServiceImpl(project);
+					break;
+				case ASCA:
+					scanner = new AscaScannerServiceImpl(project);
+					break;
+				default:
+					return null;
 			}
 
 			if (scanner != null) {
@@ -142,143 +142,227 @@ public class ScannerRegistry {
 	}
 
 	/**
-	 * Inner class implementations of ScannerService that bridge to new scanner commands.
+	 * Inner class implementations of ScannerService that bridge to new scanner
+	 * commands.
 	 * These are minimal adapters that delegate to the proper scanner packages.
 	 */
 
 	private static class OssScannerServiceImpl implements ScannerService<Object> {
 		private final com.checkmarx.eclipse.devassist.scanners.oss.OssScannerCommand command;
 		private final com.checkmarx.eclipse.devassist.common.ScannerConfig config;
+
 		OssScannerServiceImpl(IProject project) {
 			this.command = new com.checkmarx.eclipse.devassist.scanners.oss.OssScannerCommand(project);
 			this.config = com.checkmarx.eclipse.devassist.common.ScannerConfig.builder()
-				.engineName("OSS")
-				.build();
+					.engineName("OSS")
+					.build();
 		}
+
 		@Override
-		public boolean shouldScanFile(String filePath) { return filePath != null && !filePath.isEmpty(); }
+		public boolean shouldScanFile(String filePath) {
+			return filePath != null && !filePath.isEmpty();
+		}
+
 		@Override
 		public com.checkmarx.eclipse.devassist.common.ScanResult<Object> scan(String filePath) {
 			try {
-				var result = command.scan(filePath, new org.eclipse.jface.text.Document());
+				// ✅ CRITICAL: Use the LIVE (possibly unsaved) editor buffer, not a
+				// brand-new empty Document. A new Document() has no content, so
+				// getFileContent() falls back to reading the file from DISK -
+				// meaning unsaved edits (e.g. deleting a vulnerable line) would
+				// never be seen by the scanner until the file is saved.
+				org.eclipse.jface.text.IDocument liveDocument = com.checkmarx.eclipse.devassist.utils.DevAssistUtils
+						.getLiveDocumentForFile(filePath);
+				var result = command.scan(filePath,
+						liveDocument != null ? liveDocument : new org.eclipse.jface.text.Document());
 				return (com.checkmarx.eclipse.devassist.common.ScanResult<Object>) (Object) result;
 			} catch (Exception e) {
 				CxLogger.error("[OSS-SERVICE] Scan error: " + e.getMessage(), e);
 				return null;
 			}
 		}
+
 		@Override
-		public com.checkmarx.eclipse.devassist.common.ScannerConfig getConfig() { return config; }
+		public com.checkmarx.eclipse.devassist.common.ScannerConfig getConfig() {
+			return config;
+		}
+
 		@Override
-		public void close() throws Exception { command.dispose(); }
+		public void close() throws Exception {
+			command.dispose();
+		}
 	}
 
 	private static class SecretsScannerServiceImpl implements ScannerService<Object> {
 		private final com.checkmarx.eclipse.devassist.scanners.secrets.SecretsScannerCommand command;
 		private final com.checkmarx.eclipse.devassist.common.ScannerConfig config;
+
 		SecretsScannerServiceImpl(IProject project) {
 			this.command = new com.checkmarx.eclipse.devassist.scanners.secrets.SecretsScannerCommand(project);
 			this.config = com.checkmarx.eclipse.devassist.common.ScannerConfig.builder()
-				.engineName("SECRETS")
-				.build();
+					.engineName("SECRETS")
+					.build();
 		}
+
 		@Override
-		public boolean shouldScanFile(String filePath) { return filePath != null && !filePath.isEmpty(); }
+		public boolean shouldScanFile(String filePath) {
+			return filePath != null && !filePath.isEmpty();
+		}
+
 		@Override
 		public com.checkmarx.eclipse.devassist.common.ScanResult<Object> scan(String filePath) {
 			try {
-				var result = command.scan(filePath, new org.eclipse.jface.text.Document());
+				// ✅ CRITICAL: Use the LIVE (possibly unsaved) editor buffer - see
+				// the identical fix/comment in OssScannerServiceImpl.scan() above.
+				org.eclipse.jface.text.IDocument liveDocument = com.checkmarx.eclipse.devassist.utils.DevAssistUtils
+						.getLiveDocumentForFile(filePath);
+				var result = command.scan(filePath,
+						liveDocument != null ? liveDocument : new org.eclipse.jface.text.Document());
 				return (com.checkmarx.eclipse.devassist.common.ScanResult<Object>) (Object) result;
 			} catch (Exception e) {
 				CxLogger.error("[SECRETS-SERVICE] Scan error: " + e.getMessage(), e);
 				return null;
 			}
 		}
+
 		@Override
-		public com.checkmarx.eclipse.devassist.common.ScannerConfig getConfig() { return config; }
+		public com.checkmarx.eclipse.devassist.common.ScannerConfig getConfig() {
+			return config;
+		}
+
 		@Override
-		public void close() throws Exception { command.dispose(); }
+		public void close() throws Exception {
+			command.dispose();
+		}
 	}
 
 	private static class IacScannerServiceImpl implements ScannerService<Object> {
 		private final com.checkmarx.eclipse.devassist.scanners.iac.IacScannerCommand command;
 		private final com.checkmarx.eclipse.devassist.common.ScannerConfig config;
+
 		IacScannerServiceImpl(IProject project) {
 			this.command = new com.checkmarx.eclipse.devassist.scanners.iac.IacScannerCommand(project);
 			this.config = com.checkmarx.eclipse.devassist.common.ScannerConfig.builder()
-				.engineName("IAC")
-				.build();
+					.engineName("IAC")
+					.build();
 		}
+
 		@Override
-		public boolean shouldScanFile(String filePath) { return filePath != null && !filePath.isEmpty(); }
+		public boolean shouldScanFile(String filePath) {
+			return filePath != null && !filePath.isEmpty();
+		}
+
 		@Override
 		public com.checkmarx.eclipse.devassist.common.ScanResult<Object> scan(String filePath) {
 			try {
-				var result = command.scan(filePath, new org.eclipse.jface.text.Document());
+				// ✅ CRITICAL: Use the LIVE (possibly unsaved) editor buffer - see
+				// the identical fix/comment in OssScannerServiceImpl.scan() above.
+				org.eclipse.jface.text.IDocument liveDocument = com.checkmarx.eclipse.devassist.utils.DevAssistUtils
+						.getLiveDocumentForFile(filePath);
+				var result = command.scan(filePath,
+						liveDocument != null ? liveDocument : new org.eclipse.jface.text.Document());
 				return (com.checkmarx.eclipse.devassist.common.ScanResult<Object>) (Object) result;
 			} catch (Exception e) {
 				CxLogger.error("[IAC-SERVICE] Scan error: " + e.getMessage(), e);
 				return null;
 			}
 		}
+
 		@Override
-		public com.checkmarx.eclipse.devassist.common.ScannerConfig getConfig() { return config; }
+		public com.checkmarx.eclipse.devassist.common.ScannerConfig getConfig() {
+			return config;
+		}
+
 		@Override
-		public void close() throws Exception { command.dispose(); }
+		public void close() throws Exception {
+			command.dispose();
+		}
 	}
 
 	private static class AscaScannerServiceImpl implements ScannerService<Object> {
 		private final com.checkmarx.eclipse.devassist.scanners.asca.AscaScannerCommand command;
 		private final com.checkmarx.eclipse.devassist.common.ScannerConfig config;
+
 		AscaScannerServiceImpl(IProject project) {
 			this.command = new com.checkmarx.eclipse.devassist.scanners.asca.AscaScannerCommand(project);
 			this.config = com.checkmarx.eclipse.devassist.common.ScannerConfig.builder()
-				.engineName("ASCA")
-				.build();
+					.engineName("ASCA")
+					.build();
 		}
+
 		@Override
-		public boolean shouldScanFile(String filePath) { return filePath != null && !filePath.isEmpty(); }
+		public boolean shouldScanFile(String filePath) {
+			return filePath != null && !filePath.isEmpty();
+		}
+
 		@Override
 		public com.checkmarx.eclipse.devassist.common.ScanResult<Object> scan(String filePath) {
 			try {
-				var result = command.scan(filePath, new org.eclipse.jface.text.Document());
+				// ✅ CRITICAL: Use the LIVE (possibly unsaved) editor buffer - see
+				// the identical fix/comment in OssScannerServiceImpl.scan() above.
+				org.eclipse.jface.text.IDocument liveDocument = com.checkmarx.eclipse.devassist.utils.DevAssistUtils
+						.getLiveDocumentForFile(filePath);
+				var result = command.scan(filePath,
+						liveDocument != null ? liveDocument : new org.eclipse.jface.text.Document());
 				return (com.checkmarx.eclipse.devassist.common.ScanResult<Object>) (Object) result;
 			} catch (Exception e) {
 				CxLogger.error("[ASCA-SERVICE] Scan error: " + e.getMessage(), e);
 				return null;
 			}
 		}
+
 		@Override
-		public com.checkmarx.eclipse.devassist.common.ScannerConfig getConfig() { return config; }
+		public com.checkmarx.eclipse.devassist.common.ScannerConfig getConfig() {
+			return config;
+		}
+
 		@Override
-		public void close() throws Exception { command.dispose(); }
+		public void close() throws Exception {
+			command.dispose();
+		}
 	}
 
 	private static class ContainerScannerServiceImpl implements ScannerService<Object> {
 		private final com.checkmarx.eclipse.devassist.scanners.containers.ContainerScannerCommand command;
 		private final com.checkmarx.eclipse.devassist.common.ScannerConfig config;
+
 		ContainerScannerServiceImpl(IProject project) {
 			this.command = new com.checkmarx.eclipse.devassist.scanners.containers.ContainerScannerCommand(project);
 			this.config = com.checkmarx.eclipse.devassist.common.ScannerConfig.builder()
-				.engineName("CONTAINERS")
-				.build();
+					.engineName("CONTAINERS")
+					.build();
 		}
+
 		@Override
-		public boolean shouldScanFile(String filePath) { return filePath != null && !filePath.isEmpty(); }
+		public boolean shouldScanFile(String filePath) {
+			return filePath != null && !filePath.isEmpty();
+		}
+
 		@Override
 		public com.checkmarx.eclipse.devassist.common.ScanResult<Object> scan(String filePath) {
 			try {
-				var result = command.scan(filePath, new org.eclipse.jface.text.Document());
+				// ✅ CRITICAL: Use the LIVE (possibly unsaved) editor buffer - see
+				// the identical fix/comment in OssScannerServiceImpl.scan() above.
+				org.eclipse.jface.text.IDocument liveDocument = com.checkmarx.eclipse.devassist.utils.DevAssistUtils
+						.getLiveDocumentForFile(filePath);
+				var result = command.scan(filePath,
+						liveDocument != null ? liveDocument : new org.eclipse.jface.text.Document());
 				return (com.checkmarx.eclipse.devassist.common.ScanResult<Object>) (Object) result;
 			} catch (Exception e) {
 				CxLogger.error("[CONTAINER-SERVICE] Scan error: " + e.getMessage(), e);
 				return null;
 			}
 		}
+
 		@Override
-		public com.checkmarx.eclipse.devassist.common.ScannerConfig getConfig() { return config; }
+		public com.checkmarx.eclipse.devassist.common.ScannerConfig getConfig() {
+			return config;
+		}
+
 		@Override
-		public void close() throws Exception { command.dispose(); }
+		public void close() throws Exception {
+			command.dispose();
+		}
 	}
 
 	/**
@@ -316,8 +400,8 @@ public class ScannerRegistry {
 	 */
 	public String getStatistics() {
 		return "Project: " + project.getName() +
-			", Scanners: " + scanners.size() +
-			", Disposed: " + disposed;
+				", Scanners: " + scanners.size() +
+				", Disposed: " + disposed;
 	}
 
 	/**
@@ -342,4 +426,3 @@ public class ScannerRegistry {
 		}
 	}
 }
-

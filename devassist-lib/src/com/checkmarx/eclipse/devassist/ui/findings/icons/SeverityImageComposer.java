@@ -16,10 +16,12 @@ import java.util.Map;
 public class SeverityImageComposer {
 
     private static final Map<String, Image> compositeImageCache = new HashMap<>();
-    
+
     // Shared severity icon instances
-    private static final Image MALICIOUS_ICON = IconRegistry.getIcon(DevAssistConstants.MALICIOUS, IconRegistry.Size.SMALL);
-    private static final Image CRITICAL_ICON = IconRegistry.getIcon(DevAssistConstants.CRITICAL, IconRegistry.Size.SMALL);
+    private static final Image MALICIOUS_ICON = IconRegistry.getIcon(DevAssistConstants.MALICIOUS,
+            IconRegistry.Size.SMALL);
+    private static final Image CRITICAL_ICON = IconRegistry.getIcon(DevAssistConstants.CRITICAL,
+            IconRegistry.Size.SMALL);
     private static final Image HIGH_ICON = IconRegistry.getIcon(DevAssistConstants.HIGH, IconRegistry.Size.SMALL);
     private static final Image MEDIUM_ICON = IconRegistry.getIcon(DevAssistConstants.MEDIUM, IconRegistry.Size.SMALL);
     private static final Image LOW_ICON = IconRegistry.getIcon(DevAssistConstants.LOW, IconRegistry.Size.SMALL);
@@ -33,7 +35,8 @@ public class SeverityImageComposer {
             return null;
         }
 
-        // Create cache key with a prefix to avoid collisions with createSeverityBadgeImage
+        // Create cache key with a prefix to avoid collisions with
+        // createSeverityBadgeImage
         String cacheKey = "full_" + createCacheKey(fileNode);
         if (compositeImageCache.containsKey(cacheKey)) {
             return compositeImageCache.get(cacheKey);
@@ -52,6 +55,7 @@ public class SeverityImageComposer {
             return null;
         }
     }
+
     /**
      * Create a composite image showing severity icons with counts inline.
      * Example: Creates visual badges for Critical:4, High:3, Medium:1
@@ -128,7 +132,7 @@ public class SeverityImageComposer {
 
             int x = 0;
             int y = 0;
-            
+
             if (hasCount(fileNode, "malicious") && MALICIOUS_ICON != null) {
                 gc.drawImage(MALICIOUS_ICON, x, y);
                 x += iconSize + spacing;
@@ -180,11 +184,16 @@ public class SeverityImageComposer {
 
             // Count how many icons we need
             int iconCount = 0;
-            if (hasCount(fileNode, DevAssistConstants.MALICIOUS)) iconCount++;
-            if (hasCount(fileNode, DevAssistConstants.CRITICAL)) iconCount++;
-            if (hasCount(fileNode, DevAssistConstants.HIGH)) iconCount++;
-            if (hasCount(fileNode, DevAssistConstants.MEDIUM)) iconCount++;
-            if (hasCount(fileNode, DevAssistConstants.LOW)) iconCount++;
+            if (hasCount(fileNode, DevAssistConstants.MALICIOUS))
+                iconCount++;
+            if (hasCount(fileNode, DevAssistConstants.CRITICAL))
+                iconCount++;
+            if (hasCount(fileNode, DevAssistConstants.HIGH))
+                iconCount++;
+            if (hasCount(fileNode, DevAssistConstants.MEDIUM))
+                iconCount++;
+            if (hasCount(fileNode, DevAssistConstants.LOW))
+                iconCount++;
 
             if (iconCount == 0) {
                 return null;
@@ -202,7 +211,7 @@ public class SeverityImageComposer {
 
             int x = 0;
             int y = 0;
-            
+
             if (hasCount(fileNode, DevAssistConstants.MALICIOUS) && MALICIOUS_ICON != null) {
                 gc.drawImage(MALICIOUS_ICON, x, y);
                 x += iconSize + spacing;

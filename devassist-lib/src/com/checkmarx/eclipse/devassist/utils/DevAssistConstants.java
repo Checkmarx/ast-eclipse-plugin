@@ -61,8 +61,7 @@ public final class DevAssistConstants {
 
 	// ASCA Supported File Extensions
 	public static final List<String> ASCA_SUPPORTED_EXTENSIONS = List.of(
-			"java", "cs", "go", "py", "js", "jsx", "ts", "tsx", "rb", "cpp"
-	);
+			"java", "cs", "go", "py", "js", "jsx", "ts", "tsx", "rb", "cpp");
 
 	// Dev Assist Fixes Constants
 	public static final String FIX_WITH_CXONE_ASSIST = "Fix with Checkmarx One Assist";
@@ -70,6 +69,7 @@ public final class DevAssistConstants {
 	public static final String VIEW_DETAILS_FIX_NAME = "View details";
 	public static final String IGNORE_THIS_VULNERABILITY_FIX_NAME = "Ignore this vulnerability";
 	public static final String IGNORE_ALL_OF_THIS_TYPE_FIX_NAME = "Ignore all of this type";
+	public static final String COPY_DETAILS_FIX_NAME = "Copy finding details";
 
 	// Manifest file patterns
 	public static final List<String> MANIFEST_FILE_PATTERNS = List.of(
@@ -104,8 +104,7 @@ public final class DevAssistConstants {
 			"**/Gemfile.lock",
 			"**/cpanfile.snapshot",
 			"**/cpanfile",
-			"**/pubspec.lock"
-	);
+			"**/pubspec.lock");
 
 	// Container file patterns
 	public static final List<String> CONTAINERS_FILE_PATTERNS = List.of(
@@ -115,19 +114,16 @@ public final class DevAssistConstants {
 			"**/docker-compose.yml",
 			"**/docker-compose.yaml",
 			"**/docker-compose-*.yml",
-			"**/docker-compose-*.yaml"
-	);
+			"**/docker-compose-*.yaml");
 
 	// IaC file patterns and extensions
 	public static final List<String> IAC_SUPPORTED_PATTERNS = List.of(
 			"**/dockerfile",
 			"**/*.auto.tfvars",
-			"**/*.terraform.tfvars"
-	);
+			"**/*.terraform.tfvars");
 
 	public static final List<String> IAC_FILE_EXTENSIONS = List.of(
-			"tf", "yaml", "yml", "json", "proto", "dockerfile"
-	);
+			"tf", "yaml", "yml", "json", "proto", "dockerfile");
 
 	// Multiple issues on same line
 	public static final String MULTIPLE_IAC_ISSUES = " IAC issues detected on this line";
@@ -153,7 +149,7 @@ public final class DevAssistConstants {
 	public static final String CX_AGENT_NAME = "Checkmarx One Assist";
 	public static final String CX_DEVASSIST_AGENT_NAME = "Checkmarx Developer Assist";
 	public static final List<String> AI_AGENT_FILES = List.of("/Dummy.txt", "/", "/AIAssistantInput");
-	public static final String SEPARATOR = ":";
+	public static final String SEPERATOR = ":";
 	public static final String QUICK_FIX = "QUICK_FIX";
 	public static final String UNDO = "Undo";
 	public static final String MALICIOUS = "malicious";
@@ -161,9 +157,10 @@ public final class DevAssistConstants {
 	public static final String HIGH = "high";
 	public static final String MEDIUM = "medium";
 	public static final String LOW = "low";
-	
-	
-	/******************************** WELCOME DIALOG ********************************/
+
+	/********************************
+	 * WELCOME DIALOG
+	 ********************************/
 	public static final String WELCOME_TITLE = "Welcome to Checkmarx";
 	public static final String WELCOME_SUBTITLE = "Checkmarx offers immediate threat detection and assists you in preventing vulnerabilities before they arise.";
 	public static final String WELCOME_ASSIST_TITLE = "Code Smarter with Checkmarx One Assist";
@@ -176,5 +173,33 @@ public final class DevAssistConstants {
 	public static final String WELCOME_MAIN_FEATURE_4 = "Triage & fix issues directly in the editor.";
 	public static final String WELCOME_CLOSE_BUTTON = "Close";
 	public static final String WELCOME_MCP_INSTALLED_INFO = "Checkmarx MCP Installed automatically - no need for manual integration";
+
+	/**
+	 * Constant class to hold image paths.
+	 */
+	public static final class ImagePaths {
+
+		private ImagePaths() {
+			throw new UnsupportedOperationException("Cannot instantiate ImagePaths class");
+		}
+
+		public static final String DEV_ASSIST_PNG = "/icons/tooltip/cxone_assist.png";
+		public static final String CRITICAL_PNG = "/icons/tooltip/critical.png";
+		public static final String HIGH_PNG = "/icons/tooltip/high.png";
+		public static final String MEDIUM_PNG = "/icons/tooltip/medium.png";
+		public static final String LOW_PNG = "/icons/tooltip/low.png";
+		public static final String MALICIOUS_PNG = "/icons/tooltip/malicious.png";
+		public static final String PACKAGE_PNG = "/icons/tooltip/package.png";
+		public static final String CONTAINER_PNG = "/icons/tooltip/container.png";
+
+		// Vulnerability Severity Count Icons
+		public static final String CRITICAL_16_PNG = "/icons/tooltip/severity_count/critical.png";
+		public static final String HIGH_16_PNG = "/icons/tooltip/severity_count/high.png";
+		public static final String MEDIUM_16_PNG = "/icons/tooltip/severity_count/medium.png";
+		public static final String LOW_16_PNG = "/icons/tooltip/severity_count/low.png";
+
+		// DEVASSIST PLUGIN ICONS
+		public static final String DEVASSIST_BADGE_PNG = "/icons/tooltip/devassist_badge.png";
+	}
 
 }

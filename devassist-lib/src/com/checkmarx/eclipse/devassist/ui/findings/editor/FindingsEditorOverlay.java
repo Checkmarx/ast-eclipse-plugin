@@ -11,7 +11,8 @@ import com.checkmarx.eclipse.devassist.model.ScanIssue;
 
 /**
  * Manages highlighting and underlining of problematic code lines in the editor.
- * Provides visual feedback for findings by underlining vulnerable code with severity-based colors.
+ * Provides visual feedback for findings by underlining vulnerable code with
+ * severity-based colors.
  *
  * Supports:
  * - Red wavy underline for CRITICAL/HIGH issues
@@ -32,7 +33,7 @@ public class FindingsEditorOverlay {
      * Highlight a problematic line in the editor.
      *
      * @param editor The TextEditor to highlight in
-     * @param issue The scan issue containing location information
+     * @param issue  The scan issue containing location information
      */
     public static void highlightIssueLine(TextEditor editor, ScanIssue issue) {
         try {
@@ -45,13 +46,13 @@ public class FindingsEditorOverlay {
 
             ISourceViewer viewer = (ISourceViewer) editor.getAdapter(ISourceViewer.class);
             if (viewer == null) {
-                
+
                 return;
             }
 
             IDocument document = viewer.getDocument();
             if (document == null || lineNumber < 0 || lineNumber >= document.getNumberOfLines()) {
-                
+
                 return;
             }
 
@@ -62,21 +63,18 @@ public class FindingsEditorOverlay {
 
             // Create annotation for the line
             String annotationType = getAnnotationTypeForSeverity(issue.getSeverity());
-            FindingsAnnotation annotation = new FindingsAnnotation(annotationType, issue.getTitle(), issue.getDescription());
+            FindingsAnnotation annotation = new FindingsAnnotation(annotationType, issue.getTitle(),
+                    issue.getDescription(), issue);
             Position position = new Position(lineStartOffset, lineEndOffset - lineStartOffset);
 
             // Add annotation to model
             IAnnotationModel annotationModel = viewer.getAnnotationModel();
             if (annotationModel != null) {
                 annotationModel.addAnnotation(annotation, position);
-                
-                
-                
-                
-                
+
             }
         } catch (BadLocationException e) {
-            
+
         }
     }
 
@@ -106,9 +104,8 @@ public class FindingsEditorOverlay {
                 }
             });
 
-            
         } catch (Exception e) {
-            
+
         }
     }
 
@@ -137,4 +134,3 @@ public class FindingsEditorOverlay {
         }
     }
 }
-

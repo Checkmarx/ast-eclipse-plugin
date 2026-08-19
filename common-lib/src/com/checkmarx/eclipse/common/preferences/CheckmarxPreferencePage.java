@@ -27,7 +27,7 @@ import com.checkmarx.eclipse.common.listener.ISettingsChangeNotifier;
  */
 public class CheckmarxPreferencePage extends PreferencePage implements IWorkbenchPreferencePage {
 
-	// Preference Keys
+    // Preference Keys
     public static final String PREF_ASCA_ENABLED = "scanner.asca.enabled";
     public static final String PREF_OSS_ENABLED = "scanner.oss.enabled";
     public static final String PREF_SECRETS_ENABLED = "scanner.secrets.enabled";
@@ -45,46 +45,48 @@ public class CheckmarxPreferencePage extends PreferencePage implements IWorkbenc
     private Combo containersToolCombo;
     private boolean loggedIn;
 
-    public static final String DEVASSIST_PLUGIN_REALTIME_SCANNERS_OSS_TITLE= "Checkmarx Developer Assist Open Source Realtime Scanner (OSS-Realtime): Activate OSS-Realtime";
-	public static final String DEVASSIST_PLUGIN_REALTIME_SCANNERS_SECRETS_TITLE="Checkmarx Developer Assist Secret Detection Realtime Scanner: Activate Secret Detection Realtime";
-	public static final String DEVASSIST_PLUGIN_REALTIME_SCANNERS_CONTAINERS_TITLE= "Checkmarx Developer Assist Containers Realtime Scanner: Activate Containers Realtime";
-	public static final String DEVASSIST_PLUGIN_REALTIME_SCANNERS_IAC_TITLE= "Checkmarx Developer Assist IAC Realtime Scanner: Activate IAC Realtime";
-	public static final String DEVASSIST_PLUGIN_REALTIME_SCANNERS_ASCA_TITLE= "Checkmarx Developer Assist AI Secure Coding Assistant (ASCA): Activate ASCA";
-	public static final String DEVASSIST_PLUGIN_REALTIME_SCANNERS_IAC_PREFIX= "Checkmarx Developer Assist IAC Realtime Scanner: Containers Management Tool";
-	public static final String DEVASSIST_PLUGIN_WELCOME_TITLE= "Welcome to Checkmarx Developer Assist";
-	public static final String CONTAINERS_TOOL_DESCRIPTION="Select the Containers Management Tool to use for IaC scanning.";
-	public static final String OSS_REALTIME_CHECKBOX="Scans your manifest files as you code";
-	public static final String SECRETS_REALTIME_CHECKBOX="Scans your files for potential secrets and credentials as you code";
-	public static final String CONTAINERS_REALTIME_CHECKBOX="Scans your Docker files and container configurations as you code";
-	public static final String IAC_REALTIME_CHECKBOX="Scans your Infrastructure as Code files as you code";
-	public static final String ASCA_CHECKBOX="Scan your file as you code";
+    public static final String DEVASSIST_PLUGIN_REALTIME_SCANNERS_OSS_TITLE = "Checkmarx Developer Assist Open Source Realtime Scanner (OSS-Realtime): Activate OSS-Realtime";
+    public static final String DEVASSIST_PLUGIN_REALTIME_SCANNERS_SECRETS_TITLE = "Checkmarx Developer Assist Secret Detection Realtime Scanner: Activate Secret Detection Realtime";
+    public static final String DEVASSIST_PLUGIN_REALTIME_SCANNERS_CONTAINERS_TITLE = "Checkmarx Developer Assist Containers Realtime Scanner: Activate Containers Realtime";
+    public static final String DEVASSIST_PLUGIN_REALTIME_SCANNERS_IAC_TITLE = "Checkmarx Developer Assist IAC Realtime Scanner: Activate IAC Realtime";
+    public static final String DEVASSIST_PLUGIN_REALTIME_SCANNERS_ASCA_TITLE = "Checkmarx Developer Assist AI Secure Coding Assistant (ASCA): Activate ASCA";
+    public static final String DEVASSIST_PLUGIN_REALTIME_SCANNERS_IAC_PREFIX = "Checkmarx Developer Assist IAC Realtime Scanner: Containers Management Tool";
+    public static final String DEVASSIST_PLUGIN_WELCOME_TITLE = "Welcome to Checkmarx Developer Assist";
+    public static final String CONTAINERS_TOOL_DESCRIPTION = "Select the Containers Management Tool to use for IaC scanning.";
+    public static final String OSS_REALTIME_CHECKBOX = "Scans your manifest files as you code";
+    public static final String SECRETS_REALTIME_CHECKBOX = "Scans your files for potential secrets and credentials as you code";
+    public static final String CONTAINERS_REALTIME_CHECKBOX = "Scans your Docker files and container configurations as you code";
+    public static final String IAC_REALTIME_CHECKBOX = "Scans your Infrastructure as Code files as you code";
+    public static final String ASCA_CHECKBOX = "Scan your file as you code";
 
-	
+    public CheckmarxPreferencePage() {
+        super();
+        setPreferenceStore(com.checkmarx.eclipse.common.preferences.Preferences.STORE);
+        // Listen for preference changes to update login state.
+        // Critical: if user logs out in another page while this page is visible in the
+        // same
+        // dialog session, we need to refresh the UI to show logged-out content instead
+        // of stale
+        // logged-in checkboxes. Without this, performOk() would still run with stale
+        // loggedIn=true.
+        Preferences.STORE.addPropertyChangeListener(this::handlePreferenceChange);
+    }
 
-	public CheckmarxPreferencePage() {
-		super();
-		setPreferenceStore(com.checkmarx.eclipse.common.preferences.Preferences.STORE);
-		// Listen for preference changes to update login state.
-		// Critical: if user logs out in another page while this page is visible in the same
-		// dialog session, we need to refresh the UI to show logged-out content instead of stale
-		// logged-in checkboxes. Without this, performOk() would still run with stale loggedIn=true.
-		Preferences.STORE.addPropertyChangeListener(this::handlePreferenceChange);
-	}
+    /**
+     * Called when preferences change (e.g., user logs out in another page of the
+     * same dialog).
+     * Re-reads the login state and updates the visible UI accordingly.
+     */
+    private void handlePreferenceChange(PropertyChangeEvent event) {
+        // Re-check login state: if API key was cleared, we need to switch from
+        // logged-in scanner checkboxes to logged-out message
+        boolean isNowLoggedIn = StringUtils.isNotBlank(Preferences.getApiKey());
+        if (loggedIn != isNowLoggedIn) {
+            loggedIn = isNowLoggedIn;
+        }
+    }
 
-	/**
-	 * Called when preferences change (e.g., user logs out in another page of the same dialog).
-	 * Re-reads the login state and updates the visible UI accordingly.
-	 */
-	private void handlePreferenceChange(PropertyChangeEvent event) {
-		// Re-check login state: if API key was cleared, we need to switch from
-		// logged-in scanner checkboxes to logged-out message
-		boolean isNowLoggedIn = StringUtils.isNotBlank(Preferences.getApiKey());
-		if (loggedIn != isNowLoggedIn) {
-			loggedIn = isNowLoggedIn;
-		}
-	}
-
-	@Override
+    @Override
     protected Control createContents(Composite parent) {
         loggedIn = StringUtils.isNotBlank(Preferences.getApiKey());
         if (!loggedIn) {
@@ -145,18 +147,19 @@ public class CheckmarxPreferencePage extends PreferencePage implements IWorkbenc
         containerDesc.setLayoutData(descData);
 
         containersToolCombo = new Combo(containerToolComp, SWT.READ_ONLY);
-        containersToolCombo.setItems(new String[] { "docker", "podman"});
+        containersToolCombo.setItems(new String[] { "docker", "podman" });
         containersToolCombo.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
 
         loadValues();
         return mainPanel;
     }
 
-	/**
-	 * Shown instead of the scanner checkboxes when the user isn't logged in - there
-	 * is nothing meaningful to configure until credentials are set in "Checkmarx One".
-	 */
-	private Control createLoggedOutContent(Composite parent) {
+    /**
+     * Shown instead of the scanner checkboxes when the user isn't logged in - there
+     * is nothing meaningful to configure until credentials are set in "Checkmarx
+     * One".
+     */
+    private Control createLoggedOutContent(Composite parent) {
         Composite composite = new Composite(parent, SWT.NONE);
         GridLayout layout = new GridLayout(1, false);
         layout.marginTop = 20;
@@ -184,7 +187,7 @@ public class CheckmarxPreferencePage extends PreferencePage implements IWorkbenc
         return composite;
     }
 
-	private Composite createIndentComposite(Composite parent) {
+    private Composite createIndentComposite(Composite parent) {
         Composite comp = new Composite(parent, SWT.NONE);
         GridLayout layout = new GridLayout(1, false);
         layout.marginLeft = 15;
@@ -228,49 +231,51 @@ public class CheckmarxPreferencePage extends PreferencePage implements IWorkbenc
         super.performDefaults();
     }
 
-	/**
+    /**
      * Helper to create a titled section with a horizontal line separator.
      */
-	private void createSectionHeader(Composite parent, String titleText) {
-		Composite headerComp = new Composite(parent, SWT.NONE);
-		GridLayout layout = new GridLayout(2, false);
-		layout.marginWidth = 0;
-		layout.marginTop = 6;
-		layout.marginBottom = 0;
-		headerComp.setLayout(layout);
-		headerComp.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+    private void createSectionHeader(Composite parent, String titleText) {
+        Composite headerComp = new Composite(parent, SWT.NONE);
+        GridLayout layout = new GridLayout(2, false);
+        layout.marginWidth = 0;
+        layout.marginTop = 6;
+        layout.marginBottom = 0;
+        headerComp.setLayout(layout);
+        headerComp.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
 
-		int colonIndex = titleText.indexOf(":");
+        int colonIndex = titleText.indexOf(":");
 
-		StyledText title = new StyledText(headerComp, SWT.READ_ONLY | SWT.WRAP);
-		title.setText(titleText);
-		title.setBackground(headerComp.getBackground()); // Match background color
-		title.setCaret(null); // Hide text cursor
+        StyledText title = new StyledText(headerComp, SWT.READ_ONLY | SWT.WRAP);
+        title.setText(titleText);
+        title.setBackground(headerComp.getBackground()); // Match background color
+        title.setCaret(null); // Hide text cursor
 
-		if (colonIndex != -1 && colonIndex + 1 < titleText.length()) {
-			int start = colonIndex + 1; // Start right after the colon
-			int length = titleText.length() - start;
+        if (colonIndex != -1 && colonIndex + 1 < titleText.length()) {
+            int start = colonIndex + 1; // Start right after the colon
+            int length = titleText.length() - start;
 
-			StyleRange boldStyle = new StyleRange();
-			boldStyle.start = start;
-			boldStyle.length = length;
-			boldStyle.fontStyle = SWT.BOLD;
+            StyleRange boldStyle = new StyleRange();
+            boldStyle.start = start;
+            boldStyle.length = length;
+            boldStyle.fontStyle = SWT.BOLD;
 
-			title.setStyleRange(boldStyle);
+            title.setStyleRange(boldStyle);
 
-		}
-	}
+        }
+    }
 
-	@Override
-	public void init(IWorkbench workbench) {
-		// Initialization if needed
-	}
+    @Override
+    public void init(IWorkbench workbench) {
+        // Initialization if needed
+    }
 
-	@Override
+    @Override
     public boolean performOk() {
         // Check credentials fresh, not from captured field.
-        // Critical: if user logged out while viewing another page within the same dialog session,
-        // loggedIn would be stale and we'd save/notify with false authentication status.
+        // Critical: if user logged out while viewing another page within the same
+        // dialog session,
+        // loggedIn would be stale and we'd save/notify with false authentication
+        // status.
         boolean isCurrentlyLoggedIn = StringUtils.isNotBlank(Preferences.getApiKey());
         if (!isCurrentlyLoggedIn) {
             return super.performOk();
@@ -297,15 +302,16 @@ public class CheckmarxPreferencePage extends PreferencePage implements IWorkbenc
 
         // Diagnostic: Verify what was saved
         CxLogger.info("[PREFS-PAGE] Saved to preference store: ASCA=" + ascaSelected + ", OSS=" + ossSelected +
-                     ", SECRETS=" + secretsSelected + ", CONTAINERS=" + containersSelected + ", IAC=" + iacSelected);
+                ", SECRETS=" + secretsSelected + ", CONTAINERS=" + containersSelected + ", IAC=" + iacSelected);
 
         // Step 2: Save as user preferences (mirrors JetBrains apply() method)
         // This preserves user's choices if features toggle on/off later
         Preferences.setUserPreferences(ascaSelected, ossSelected, secretsSelected,
-                                      containersSelected, iacSelected);
+                containersSelected, iacSelected);
         CxLogger.info("[PREFS-PAGE] Saved as user preferences");
 
-        // Step 3: Notify listeners (e.g., GlobalScannerController) about preference changes
+        // Step 3: Notify listeners (e.g., GlobalScannerController) about preference
+        // changes
         // The listener will update GlobalScannerController based on new preferences
         // This decouples CheckmarxPreferencePage from devassist-lib modules
         for (ISettingsChangeNotifier notifier : Preferences.getSettingsChangeNotifiers()) {
