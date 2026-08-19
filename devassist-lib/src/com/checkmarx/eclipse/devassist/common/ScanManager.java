@@ -45,7 +45,45 @@ public class ScanManager {
 	}
 
 	/**
-	 * Scan a file using all applicable scanners.
+	 * Result of a scan attempt.
+	 *
+	 * Distinguishes a REAL scan cycle (scanners actually executed, state hash
+	 * updated) from a SKIPPED cycle (file unchanged since last scan, or
+	 * cancelled, or every scanner failed). Both cases can return an empty issue
+	 * list, but only a real scan cycle means "we now know this file has these
+	 * (possibly zero) issues" - callers must NOT treat a skipped cycle's empty
+	 * list as "file is now clean", or they will wipe out valid cached results
+	 * every time a no-op scan fires (e.g. editor re-activation, hover-triggered
+	 * focus events).
+	 */
+	public static class ScanOutcome {
+		private final List<ScanIssue> issues;
+		private final boolean scanned;
+
+		public ScanOutcome(List<ScanIssue> issues, boolean scanned) {
+			this.issues = issues;
+			this.scanned = scanned;
+		}
+
+		public List<ScanIssue> getIssues() {
+			return issues;
+		}
+
+		/**
+		 * @return true if scanners actually ran this cycle and {@link #getIssues()}
+		 *         reflects the file's current, complete state across all applicable
+		 *         engines (even if empty). false if the cycle was skipped (file
+		 *         unchanged, cancelled, or all scanners failed) and the caller should
+		 *         leave existing cached results/decorations untouched.
+		 */
+		public boolean isScanned() {
+			return scanned;
+		}
+	}
+
+	/**
+	 * Scan a file using all applicable scanners, reporting whether a real scan
+	 * cycle occurred.
 	 *
 	 * High-level flow: 1. Compute current file state hash 2. Check if file changed
 	 * since last scan 3. If unchanged, return cached results 4. Get all scanners
@@ -55,13 +93,13 @@ public class ScanManager {
 	 *
 	 * @param filePath Absolute file path to scan
 	 * @param monitor  progress monitor to check for cancellation during scan
-	 * @return List of issues found by all scanners
+	 * @return {@link ScanOutcome} with the issues found and whether a scan
+	 *         actually ran
 	 * @throws Exception if scan fails
 	 */
-	public List<ScanIssue> scanFile(String filePath, IProgressMonitor monitor) throws Exception {
+	public ScanOutcome scanFileWithOutcome(String filePath, IProgressMonitor monitor) throws Exception {
 		if (filePath == null || filePath.isEmpty()) {
-
-			return List.of();
+			return new ScanOutcome(List.of(), false);
 		}
 
 		// Handle null monitor (for backward compatibility if called without monitor)
@@ -81,14 +119,15 @@ public class ScanManager {
 		// failure) or every subsequent edit will be permanently BLOCKED as "already
 		// in-flight".
 		if (!stateHolder.hasChanged(filePath, currentStateHash)) {
-			return List.of();
+			// Nothing changed - this is NOT a fresh scan result, it's a skipped cycle.
+			return new ScanOutcome(List.of(), false);
 		}
 
 		// Check cancellation before proceeding with expensive scan operations
 		if (monitor.isCanceled()) {
 			CxLogger.warning("[SCAN-MANAGER] Scan cancelled before starting for: " + filePath);
 			stateHolder.markScanComplete(filePath);
-			return List.of();
+			return new ScanOutcome(List.of(), false);
 		}
 
 		try {
@@ -96,20 +135,15 @@ public class ScanManager {
 
 			List<ScannerService<?>> applicableScanners = factory.getAllSupportedScanners(filePath);
 
-			for (ScannerService<?> scanner : applicableScanners) {
-				String displayName = scanner.getConfig() != null ? scanner.getConfig().getEngineName() : "Unknown";
-
-			}
 			if (applicableScanners.isEmpty()) {
 
 				// Still update state to avoid re-checking unsupported files
 				stateHolder.updateStateHash(filePath, currentStateHash);
-				return List.of();
+				return new ScanOutcome(List.of(), false);
 			}
 
 			// 4. Execute all scanners and merge results
 			List<ScanIssue> allIssues = new ArrayList<>();
-			int scannerIndex = 1;
 			int successfulScanners = 0;
 
 			for (ScannerService<?> scanner : applicableScanners) {
@@ -118,42 +152,54 @@ public class ScanManager {
 					CxLogger.warning("[SCAN-MANAGER] Scan cancelled during scanner loop for: " + filePath);
 					break;
 				}
-				String displayName = scanner.getConfig() != null ? scanner.getConfig().getEngineName() : "Unknown";
 				try {
 					var scanResult = scanner.scan(filePath);
 					List<ScanIssue> scannerResults = scanResult != null ? scanResult.getIssues() : null;
 
 					if (scannerResults != null) {
-						for (ScanIssue issue : scannerResults) {
-						}
 						allIssues.addAll(scannerResults);
 					}
 					successfulScanners++;
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
-				scannerIndex++;
 			}
 
 			// Check for cancellation before returning/publishing results
 			if (monitor.isCanceled()) {
 				CxLogger.warning("[SCAN-MANAGER] Scan cancelled before publishing results for: " + filePath);
 				// Don't update state hash so file will be re-scanned when triggered again
-				return List.of();
+				return new ScanOutcome(List.of(), false);
 			}
 
 			// 5. Update state hash only if at least one scanner succeeded
 			// If all scanners failed, don't update hash so file will be re-scanned on next
-			// change
+			// change, and don't report this as a real scan (results are unreliable).
 			if (successfulScanners > 0) {
 				stateHolder.updateStateHash(filePath, currentStateHash);
+				return new ScanOutcome(allIssues, true);
 			}
 
-			return allIssues;
+			return new ScanOutcome(List.of(), false);
 		} finally {
 			// Always release the in-flight marker so the next edit can trigger a scan.
 			stateHolder.markScanComplete(filePath);
 		}
+	}
+
+	/**
+	 * Scan a file using all applicable scanners.
+	 *
+	 * @param filePath Absolute file path to scan
+	 * @param monitor  progress monitor to check for cancellation during scan
+	 * @return List of issues found by all scanners
+	 * @throws Exception if scan fails
+	 * @deprecated Use {@link #scanFileWithOutcome(String, IProgressMonitor)} to
+	 *             distinguish a real "zero issues" result from a skipped scan
+	 *             cycle.
+	 */
+	public List<ScanIssue> scanFile(String filePath, IProgressMonitor monitor) throws Exception {
+		return scanFileWithOutcome(filePath, monitor).getIssues();
 	}
 
 	/**

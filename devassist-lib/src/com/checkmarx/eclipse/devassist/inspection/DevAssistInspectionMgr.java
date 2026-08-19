@@ -76,9 +76,17 @@ public class DevAssistInspectionMgr extends ScanManager {
 		CxLogger.info(LOG_TAG + " Starting scan for file: " + problemHelper.getFile().getName());
 
 		try {
-			// Use pre-scanned issues if available, otherwise scan file
+			// Use pre-scanned issues if available, otherwise scan file.
+			// ✅ Only fall back to a fresh scan when the caller genuinely has no
+			// issue list yet (null). Callers such as ResultPublisher always pass a
+			// real (possibly empty) list here after a completed scan cycle - an
+			// empty list is a legitimate "file has zero issues" result, not a
+			// signal to re-scan. Treating isEmpty() as "need a fresh scan" caused a
+			// redundant, wasted re-scan on every zero-issue publish (harmless
+			// since ScanManager's state-hash dedup made it a no-op, but noisy and
+			// misleading in logs).
 			List<ScanIssue> allScanIssues = problemHelper.getScanIssueList();
-			if (allScanIssues == null || allScanIssues.isEmpty()) {
+			if (allScanIssues == null) {
 				allScanIssues = scanFile(problemHelper.getFilePath());
 				CxLogger.info(LOG_TAG + " Performed fresh scan for file: " + problemHelper.getFile().getName());
 			} else {
@@ -88,6 +96,10 @@ public class DevAssistInspectionMgr extends ScanManager {
 			if (allScanIssues.isEmpty()) {
 				CxLogger.info(LOG_TAG + " No scan issues found for: " +
 						problemHelper.getFile().getName());
+				// Clear stale cached problem descriptors for this file - otherwise a
+				// later getExistingProblems() lookup could resurrect descriptors for
+				// issues that no longer exist.
+				problemHelper.getProblemHolderService().removeProblemDescriptorsForFile(problemHelper.getFilePath());
 				decorateUIForIgnoreVulnerability(problemHelper.getFile(), allScanIssues);
 				return new ProblemDescriptor[0];
 			}
@@ -283,15 +295,23 @@ public class DevAssistInspectionMgr extends ScanManager {
 	}
 
 	/**
-	 * Decorate UI for ignored vulnerabilities (empty if none ignored).
+	 * Decorate UI for ignored vulnerabilities or when NO issues found.
+	 *
+	 * ✅ CRITICAL: This is called when scan returns 0 issues.
+	 * We MUST clear old annotations/decorations from the editor.
+	 * By calling decorateEditor() with the (empty) list, it will:
+	 * 1. Clear old annotations via clearAnnotations()
+	 * 2. Return early since the list is empty (nothing to add)
 	 *
 	 * @param file          File to decorate
 	 * @param scanIssueList Issues (may be empty)
 	 */
 	public void decorateUIForIgnoreVulnerability(IFile file, List<ScanIssue> scanIssueList) {
 		try {
-			CxLogger.info(LOG_TAG + " decorateUIForIgnoreVulnerability called for: " + file.getName());
-			// TODO: Integrate with IgnoredProblemsStore when available
+			CxLogger.info(LOG_TAG + " decorateUIForIgnoreVulnerability called for: " + file.getName() +
+					" with " + scanIssueList.size() + " issues");
+			// Clear decorations from editor (this also works with empty list)
+			ProblemDecorator.decorateEditor(file, scanIssueList);
 		} catch (Exception e) {
 			CxLogger.error(LOG_TAG + " Error in decorateUIForIgnoreVulnerability: " + e.getMessage(), e);
 		}

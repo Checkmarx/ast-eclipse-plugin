@@ -70,28 +70,30 @@ public class ResultPublisher {
 	/**
 	 * Update Findings View with scan results.
 	 *
+	 * ✅ CRITICAL: `scanIssues` here always represents the COMPLETE, current set
+	 * of issues for this file across every applicable/enabled engine - because
+	 * {@link com.checkmarx.eclipse.devassist.common.ScanManager#scanFileWithOutcome}
+	 * runs every applicable scanner for the file in a single pass and this method
+	 * is only invoked by callers that just performed (or confirmed) such a real
+	 * scan cycle (see {@link RealTimeScanJob}, which gates this call on
+	 * {@code ScanOutcome.isScanned()}).
+	 *
+	 * Because of that, this is a full REPLACE of the file's cached issues, not a
+	 * per-engine merge/remove. This correctly handles the case where a vulnerable
+	 * line is deleted (scanIssues becomes empty -> cache is fully cleared for
+	 * this file) without needing to infer which engine produced which result.
+	 *
 	 * @param file       File that was scanned
-	 * @param scanIssues Issues to display
+	 * @param scanIssues Complete, current issue list for this file (may be empty)
 	 */
 	private static void updateFindingsView(IFile file, List<ScanIssue> scanIssues) {
 		try {
-			if (scanIssues.isEmpty()) {
-				return;
-			}
-
 			// Must run on UI thread
 			org.eclipse.swt.widgets.Display display = PlatformUI.getWorkbench().getDisplay();
 			if (display == null || display.isDisposed()) {
 				return;
 			}
 
-			// This triggers the message bus pattern:
-			// 1. removeScanIssuesByFileAndScanner() removes old results for THIS engine
-			// 2. mergeScanIssues() stores new results in cache
-			// 3. notifyListenersOfUpdate() publishes to all listeners
-			// 4. CxFindingsView listener receives callback with getAllIssues()
-			// 5. Listener calls refreshTree(allCachedResults)
-			// 6. Tree shows merged results (no duplicates, no stale issues)
 			// FIX: Use getLocation() (absolute path) to match cache key format used in
 			// RealTimeScanJob
 			// ProblemHolderService cache is keyed with absolute paths from
@@ -106,26 +108,21 @@ public class ResultPublisher {
 						new org.eclipse.core.runtime.QualifiedName("com.checkmarx.eclipse.plugin", "problem-holder"));
 
 				if (problemHolder != null) {
-					// Get engine type from scan issues (all issues from same scan have same engine)
-					String engineType = scanIssues.isEmpty() ? null
-							: scanIssues.get(0).getScanEngine() != null ? scanIssues.get(0).getScanEngine().name()
-									: null;
-
-					// Step 1: Remove old results from THIS scanner engine
-					if (engineType != null) {
-						problemHolder.removeScanIssuesByFileAndScanner(engineType, filePath);
-
-					}
-
-					// Step 2: Add new results from THIS scanner engine
-					problemHolder.mergeScanIssues(filePath, scanIssues);
+					// Full replace: this cycle's scanIssues list IS the complete truth for
+					// this file. If it's empty, every previously-cached issue for this
+					// file (from any engine) is correctly dropped. This also publishes
+					// the ISSUES_UPDATED_TOPIC event that CxFindingsView listens to.
+					problemHolder.addScanIssues(filePath, scanIssues);
+					CxLogger.info(LOG_TAG + " Updated cache for " + filePath + " with " + scanIssues.size()
+							+ " issues");
 
 				} else {
-
+					CxLogger.warning(LOG_TAG + " ProblemHolderService not initialized for project");
 				}
 			}
 
 		} catch (Exception e) {
+			CxLogger.error(LOG_TAG + " Error updating findings view: " + e.getMessage(), e);
 			e.printStackTrace();
 		}
 	}
@@ -139,15 +136,14 @@ public class ResultPublisher {
 	 * 3. Call DevAssistInspectionMgr to create problem descriptors
 	 * 4. Render gutter icons and underlines using descriptors
 	 *
+	 * ✅ CRITICAL: Always processes results, even if empty.
+	 * When scan returns 0 issues, we MUST clear old decorations/annotations.
+	 *
 	 * @param file       File that was scanned
-	 * @param scanIssues Issues to process
+	 * @param scanIssues Issues to process (may be empty)
 	 */
 	private static void createAndRenderDecorations(IFile file, List<ScanIssue> scanIssues) {
 		try {
-			if (scanIssues.isEmpty()) {
-				return;
-			}
-
 			org.eclipse.swt.widgets.Display display = PlatformUI.getWorkbench().getDisplay();
 			if (display == null || display.isDisposed()) {
 				return;

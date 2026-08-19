@@ -166,7 +166,15 @@ public class ScannerRegistry {
 		@Override
 		public com.checkmarx.eclipse.devassist.common.ScanResult<Object> scan(String filePath) {
 			try {
-				var result = command.scan(filePath, new org.eclipse.jface.text.Document());
+				// ✅ CRITICAL: Use the LIVE (possibly unsaved) editor buffer, not a
+				// brand-new empty Document. A new Document() has no content, so
+				// getFileContent() falls back to reading the file from DISK -
+				// meaning unsaved edits (e.g. deleting a vulnerable line) would
+				// never be seen by the scanner until the file is saved.
+				org.eclipse.jface.text.IDocument liveDocument = com.checkmarx.eclipse.devassist.utils.DevAssistUtils
+						.getLiveDocumentForFile(filePath);
+				var result = command.scan(filePath,
+						liveDocument != null ? liveDocument : new org.eclipse.jface.text.Document());
 				return (com.checkmarx.eclipse.devassist.common.ScanResult<Object>) (Object) result;
 			} catch (Exception e) {
 				CxLogger.error("[OSS-SERVICE] Scan error: " + e.getMessage(), e);
@@ -204,7 +212,12 @@ public class ScannerRegistry {
 		@Override
 		public com.checkmarx.eclipse.devassist.common.ScanResult<Object> scan(String filePath) {
 			try {
-				var result = command.scan(filePath, new org.eclipse.jface.text.Document());
+				// ✅ CRITICAL: Use the LIVE (possibly unsaved) editor buffer - see
+				// the identical fix/comment in OssScannerServiceImpl.scan() above.
+				org.eclipse.jface.text.IDocument liveDocument = com.checkmarx.eclipse.devassist.utils.DevAssistUtils
+						.getLiveDocumentForFile(filePath);
+				var result = command.scan(filePath,
+						liveDocument != null ? liveDocument : new org.eclipse.jface.text.Document());
 				return (com.checkmarx.eclipse.devassist.common.ScanResult<Object>) (Object) result;
 			} catch (Exception e) {
 				CxLogger.error("[SECRETS-SERVICE] Scan error: " + e.getMessage(), e);
@@ -242,7 +255,12 @@ public class ScannerRegistry {
 		@Override
 		public com.checkmarx.eclipse.devassist.common.ScanResult<Object> scan(String filePath) {
 			try {
-				var result = command.scan(filePath, new org.eclipse.jface.text.Document());
+				// ✅ CRITICAL: Use the LIVE (possibly unsaved) editor buffer - see
+				// the identical fix/comment in OssScannerServiceImpl.scan() above.
+				org.eclipse.jface.text.IDocument liveDocument = com.checkmarx.eclipse.devassist.utils.DevAssistUtils
+						.getLiveDocumentForFile(filePath);
+				var result = command.scan(filePath,
+						liveDocument != null ? liveDocument : new org.eclipse.jface.text.Document());
 				return (com.checkmarx.eclipse.devassist.common.ScanResult<Object>) (Object) result;
 			} catch (Exception e) {
 				CxLogger.error("[IAC-SERVICE] Scan error: " + e.getMessage(), e);
@@ -280,7 +298,12 @@ public class ScannerRegistry {
 		@Override
 		public com.checkmarx.eclipse.devassist.common.ScanResult<Object> scan(String filePath) {
 			try {
-				var result = command.scan(filePath, new org.eclipse.jface.text.Document());
+				// ✅ CRITICAL: Use the LIVE (possibly unsaved) editor buffer - see
+				// the identical fix/comment in OssScannerServiceImpl.scan() above.
+				org.eclipse.jface.text.IDocument liveDocument = com.checkmarx.eclipse.devassist.utils.DevAssistUtils
+						.getLiveDocumentForFile(filePath);
+				var result = command.scan(filePath,
+						liveDocument != null ? liveDocument : new org.eclipse.jface.text.Document());
 				return (com.checkmarx.eclipse.devassist.common.ScanResult<Object>) (Object) result;
 			} catch (Exception e) {
 				CxLogger.error("[ASCA-SERVICE] Scan error: " + e.getMessage(), e);
@@ -318,7 +341,12 @@ public class ScannerRegistry {
 		@Override
 		public com.checkmarx.eclipse.devassist.common.ScanResult<Object> scan(String filePath) {
 			try {
-				var result = command.scan(filePath, new org.eclipse.jface.text.Document());
+				// ✅ CRITICAL: Use the LIVE (possibly unsaved) editor buffer - see
+				// the identical fix/comment in OssScannerServiceImpl.scan() above.
+				org.eclipse.jface.text.IDocument liveDocument = com.checkmarx.eclipse.devassist.utils.DevAssistUtils
+						.getLiveDocumentForFile(filePath);
+				var result = command.scan(filePath,
+						liveDocument != null ? liveDocument : new org.eclipse.jface.text.Document());
 				return (com.checkmarx.eclipse.devassist.common.ScanResult<Object>) (Object) result;
 			} catch (Exception e) {
 				CxLogger.error("[CONTAINER-SERVICE] Scan error: " + e.getMessage(), e);
