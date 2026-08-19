@@ -16,12 +16,35 @@ import org.eclipse.jface.text.IDocument;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.*;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.PathMatcher;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalTime;
-import java.util.*;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
+import com.checkmarx.eclipse.common.wrapper.WrapperProvider;
+
+import org.eclipse.core.resources.IProject;
+import org.eclipse.jface.text.Document;
+import org.eclipse.jface.text.IDocument;
+
+import com.checkmarx.ast.ossrealtime.OssRealtimeResults;
+import com.checkmarx.eclipse.common.utils.CxLogger;
+import com.checkmarx.eclipse.common.wrapper.WrapperProvider;
+import com.checkmarx.eclipse.devassist.basescanner.BaseScannerService;
+import com.checkmarx.eclipse.devassist.common.ScanResult;
+import com.checkmarx.eclipse.devassist.common.ScannerConfig;
+import com.checkmarx.eclipse.devassist.model.ScanEngine;
+import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
+import com.checkmarx.eclipse.devassist.utils.PackageManager;
 
 /**
  * Realtime OSS manifest scanner service for Eclipse that handles temporary file isolation,
@@ -34,6 +57,7 @@ public class OssScannerService extends BaseScannerService<OssRealtimeResults> {
 	private static final String LOG_TAG = "[OSS-SERVICE]";
 	private static final String OSS_DIR = "CxOSS";
 	private static final Object SCAN_LOCK = new Object();
+	private final WrapperProvider wrapperProvider = new WrapperProvider();
 
 	public OssScannerService(IProject project) {
 		super(project, createConfig());
@@ -113,7 +137,7 @@ public class OssScannerService extends BaseScannerService<OssRealtimeResults> {
 
 				CxLogger.info(LOG_TAG + " Starting Realtime OSS Scan on File: " + filePath);
 
-				OssRealtimeResults scanResults = CxWrapperFactory.build().ossRealtimeScan(mainTempPath.get(), "");
+				OssRealtimeResults scanResults = wrapperProvider.ossRealtimeScan(mainTempPath.get(), "");
 				if (scanResults == null) {
 					return null;
 				}

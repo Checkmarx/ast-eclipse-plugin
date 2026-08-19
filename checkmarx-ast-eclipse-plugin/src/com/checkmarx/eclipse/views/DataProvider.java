@@ -15,8 +15,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import org.eclipse.jgit.util.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.checkmarx.ast.codebashing.CodeBashing;
 import com.checkmarx.ast.learnMore.LearnMore;
@@ -27,13 +25,10 @@ import com.checkmarx.ast.results.Results;
 import com.checkmarx.ast.results.result.Node;
 import com.checkmarx.ast.results.result.Result;
 import com.checkmarx.ast.scan.Scan;
-import com.checkmarx.ast.wrapper.CxConfig;
 import com.checkmarx.ast.wrapper.CxException;
-import com.checkmarx.ast.wrapper.CxWrapper;
-import com.checkmarx.eclipse.common.preferences.Preferences;
-import com.checkmarx.eclipse.common.runner.Authenticator;
 import com.checkmarx.eclipse.common.utils.CxLogger;
 import com.checkmarx.eclipse.common.utils.PluginConstants;
+import com.checkmarx.eclipse.common.wrapper.WrapperProvider;
 import com.checkmarx.eclipse.utils.PluginUtils;
 import com.checkmarx.eclipse.views.filters.FilterState;
 
@@ -59,6 +54,8 @@ public class DataProvider {
 	private String projectId;
 	private List<DisplayModel> currentResultsTransformed;
 	private List<String> platformStates = new ArrayList<>();
+	
+	private WrapperProvider wrapperProvider = new WrapperProvider();
 	
 	/**
 	 * Singleton data provider instance
@@ -97,30 +94,25 @@ public class DataProvider {
 	 */
 	public List<Project> getProjects() throws Exception {
 		List<Project> projectList = new ArrayList<Project>();
-		
-		CxWrapper cxWrapper = authenticateWithAST();
-		
-		if (cxWrapper != null) {
-			try {
-				projectList = cxWrapper.projectList(LIMIT_FILTER);
 
-			} catch (IOException | InterruptedException | CxException e) {
-				CxLogger.error(String.format(PluginConstants.ERROR_GETTING_PROJECTS, e.getMessage()), e);
-			}
+		try {
+			projectList = wrapperProvider.getProjects(LIMIT_FILTER);
+
+		} catch (IOException | InterruptedException | CxException e) {
+			CxLogger.error(String.format(PluginConstants.ERROR_GETTING_PROJECTS, e.getMessage()), e);
 		}
 
 		return projectList;
 	}
-	
+
 	/**
 	 * Fetch a single project directly by its ID using the project show command.
 	 * Returns null if the project cannot be retrieved.
 	 */
 	public Project getProjectById(String projectId) {
 		try {
-			CxWrapper cxWrapper = getWrapper();
-			if (cxWrapper != null && projectId != null && !projectId.isEmpty()) {
-				return cxWrapper.projectShow(UUID.fromString(projectId));
+			if (projectId != null && !projectId.isEmpty()) {
+				return wrapperProvider.projectShow(UUID.fromString(projectId));
 			}
 		} catch (Exception e) {
 			CxLogger.error(String.format(PluginConstants.ERROR_GETTING_PROJECTS, e.getMessage()), e);
@@ -136,101 +128,71 @@ public class DataProvider {
 	 */
 	public List<Project> getProjects(String projectName) throws Exception {
 		List<Project> projectList = new ArrayList<Project>();
-		
-		CxWrapper cxWrapper = authenticateWithAST();
-		String filterProject = NAME_FILTER+projectName;
-		
-		if (cxWrapper != null) {
-			try {
-				projectList = cxWrapper.projectList(filterProject);
 
-			} catch (IOException | InterruptedException | CxException e) {
-				CxLogger.error(String.format(PluginConstants.ERROR_GETTING_PROJECTS, e.getMessage()), e);
-			}
+		String filterProject = NAME_FILTER+projectName;
+
+		try {
+			projectList = wrapperProvider.getProjects(filterProject);
+
+		} catch (IOException | InterruptedException | CxException e) {
+			CxLogger.error(String.format(PluginConstants.ERROR_GETTING_PROJECTS, e.getMessage()), e);
 		}
 
 		return projectList;
 	}
-	
+
 	/**
 	 * Get the codeBashing link
-	 * @throws Exception 
+	 * @throws Exception
 	 */
-	
+
 	public CodeBashing getCodeBashingLink(String cwe, String language, String queryName) throws CxException, Exception  {
-		CxWrapper cxWrapper = getWrapper();
-		
-		return cxWrapper.codeBashingList(cwe, language, queryName).get(0);
+		return wrapperProvider.codeBashingList(cwe, language, queryName).get(0);
 	}
-	
+
 	/**
 	 * Get branches for a specific project
-	 * 
+	 *
 	 * @param projectId
 	 * @return
 	 */
 	public List<String> getBranchesForProject(String projectId) {
 		this.projectId = projectId;
 		List<String> branchList = new ArrayList<String>();
-		
+
 			try {
-				CxWrapper cxWrapper = getWrapper();
-				
 				if(!StringUtils.isEmptyOrNull(projectId)) {
-					branchList = cxWrapper.projectBranches(UUID.fromString(projectId), PluginConstants.EMPTY_STRING);
+					branchList = wrapperProvider.projectBranches(UUID.fromString(projectId), PluginConstants.EMPTY_STRING);
 				}
 
 			} catch (Exception e) {
 				CxLogger.error(String.format(PluginConstants.ERROR_GETTING_BRANCHES, projectId, e.getMessage()), e);
 			}
-	
+
 
 		return branchList;
 	}
-	
+
 	/**
 	 * Get scans for a specific project based on a provided branch
-	 * 
+	 *
 	 * @param branch
 	 * @return
 	 */
 	public List<Scan> getScansForProject(String branch) {
 		List<Scan> scanList = new ArrayList<>();
-		
+
 		try {
 			String filter = String.format(FILTER_SCANS_FOR_PROJECT, projectId, branch);
-			CxWrapper cxWrapper = getWrapper();
-			scanList = cxWrapper.scanList(filter);
+			scanList = wrapperProvider.scanList(filter);
 
 		} catch (Exception e) {
 			CxLogger.error(String.format(PluginConstants.ERROR_GETTING_SCANS, projectId, branch, e.getMessage()), e);
 		}
-	
+
 		return scanList;
 	}
-	
-	/**
-	 * Authenticate to One with current credentials
-	 * @throws Exception 
-	 */
-	private static CxWrapper authenticateWithAST() throws Exception {
-		CxWrapper cxWrapper = null;
-		
-		try {
-			
-			cxWrapper = getWrapper();
-			String validationResult = cxWrapper.authValidate();
 
-			CxLogger.info(String.format(PluginConstants.INFO_AUTHENTICATION_STATUS, validationResult));
-
-		} catch (CxException e) {
-			CxLogger.error(String.format(PluginConstants.ERROR_AUTHENTICATING_AST, e.getMessage()), e);
-			throw new Exception(e);
-		}
-		
-		return cxWrapper;
-	}
-	
 	/**
 	 * Get results for a specific scan id
 	 * 
@@ -249,10 +211,9 @@ public class DataProvider {
 			CxLogger.warning("Failed to fetch all platform states on scan load: " + e.getMessage());
 		}
 
-		try {						
+		try {
 			CxLogger.info(String.format(PluginConstants.INFO_FETCHING_RESULTS, scanId));
-			CxWrapper cxWrapper = getWrapper();
-			scanResults = cxWrapper.results(UUID.fromString(scanId), ECLIPSE_AGENT);
+			scanResults = wrapperProvider.results(UUID.fromString(scanId), ECLIPSE_AGENT);
 			setCurrentResults(scanResults);
 			CxLogger.info(String.format(PluginConstants.INFO_SCAN_RESULTS_COUNT, scanResults.getTotalCount()));
 
@@ -273,12 +234,10 @@ public class DataProvider {
 	 */
 	public Scan getScanInformation(String scanId) throws Exception {
 		Scan scan = null;
-		
-		CxWrapper cxWrapper = getWrapper();
-		
+
 		try {
 			CxLogger.info(String.format(PluginConstants.INFO_GETTING_SCAN_INFO, scanId));
-			scan = cxWrapper.scanShow(UUID.fromString(scanId));
+			scan = wrapperProvider.scanShow(UUID.fromString(scanId));
 		} catch (Exception e) {
 			CxLogger.error(String.format(PluginConstants.ERROR_GETTING_SCAN_INFO, e.getMessage()), e);
 			throw new Exception(e);
@@ -710,29 +669,6 @@ public class DataProvider {
 	
 	
 	/**
-	 * Create a CxWrapper with current credentials
-	 * 
-	 * @return
-	 * @throws Exception
-	 */
-	private static CxWrapper getWrapper() throws Exception {
-		CxWrapper cxWrapper = null;
-		
-		Logger log = LoggerFactory.getLogger(Authenticator.class.getName());
-
-		CxConfig config = CxConfig.builder().apiKey(Preferences.getApiKey()).additionalParameters(Preferences.getAdditionalOptions()).build();
-
-		try {
-			cxWrapper = new CxWrapper(config, log);
-		} catch (IOException e) {
-			CxLogger.error(String.format(PluginConstants.ERROR_BUILDING_CX_WRAPPER, e.getMessage()), e);
-			throw new Exception(e);
-		}
-		
-		return cxWrapper;
-	}
-	
-	/**
 	 * Check if plugin has results loaded
 	 * 
 	 * @return
@@ -746,37 +682,33 @@ public class DataProvider {
 	 */
 	
 	public int getBestFixLocation(UUID scanId, String queryId, List<Node> bflNodes) throws Exception {
-		CxWrapper cxWrapper = authenticateWithAST();
-		int bflNode = -1;
-		if(cxWrapper != null) {
-			bflNode = cxWrapper.getResultsBfl(scanId, queryId, bflNodes);
+		try{
+			return wrapperProvider.getResultsBfl(scanId, queryId, bflNodes);
+		}catch(Exception ex){
+			CxLogger.error(String.format("Exception occurred while getting resultsbfl. Root cause: %s", ex.getMessage()), ex);
+			return -1;
 		}
-		return bflNode;
 	}
-	
+
 	/**
 	 * Get One Triage details
-	 * 
+	 *
 	 * @return
-	 * @throws Exception 
+	 * @throws Exception
 	 */
 	public List<Predicate> getTriageShow(UUID projectID, String similarityID, String scanType) throws Exception {
 		List<Predicate> triageList = new ArrayList<Predicate>();
 
-		CxWrapper cxWrapper = authenticateWithAST();
-		
 		// TODO: remove this condition when CLI is updated to manage these checks
 		if(scanType.equals(PluginConstants.KICS_INFRASTRUCTURE)) {
 			scanType = "kics";
 		}
 
-		if (cxWrapper != null) {
-			try {
-				triageList = cxWrapper.triageShow(projectID, similarityID, scanType);
+		try {
+			triageList = wrapperProvider.triageShow(projectID, similarityID, scanType);
 
-			} catch (IOException | InterruptedException | CxException e) {
-				CxLogger.error(String.format(PluginConstants.ERROR_GETTING_TRIAGE_DETAILS, e.getMessage()), e);
-			}
+		} catch (IOException | InterruptedException | CxException e) {
+			CxLogger.error(String.format(PluginConstants.ERROR_GETTING_TRIAGE_DETAILS, e.getMessage()), e);
 		}
 
 		return triageList;
@@ -796,22 +728,18 @@ public class DataProvider {
 	public void triageUpdate(UUID projectId, String similarityId, String engineType, String state, String comment, String severity) throws Exception {
 
 		try {
-			CxWrapper cxWrapper = authenticateWithAST();
-			
-			if (cxWrapper != null) {
-				cxWrapper.triageUpdate(projectId, similarityId, engineType, state, comment, severity);
-			}
+			wrapperProvider.triageUpdate(projectId, similarityId, engineType, state, comment, severity);
 		} catch (Exception e) {
 			CxLogger.error(String.format(PluginConstants.ERROR_UPDATING_TRIAGE, e.getMessage()), e);
 			throw new Exception(e.getMessage());
-			
+
 		}
 	}
-	
-	public List<LearnMore> learnMore(String queryId) throws Exception {	
-		return authenticateWithAST().learnMore(queryId);
+
+	public List<LearnMore> learnMore(String queryId) throws Exception {
+		return wrapperProvider.learnMore(queryId);
 	}
-	
+
 	public Scan createScan(String sourcePath, String projectName, String branchName) throws IOException, InterruptedException, CxException, Exception {
 		Map<String, String> scanArguments = new HashMap<>();
         scanArguments.put("-s", sourcePath);
@@ -820,16 +748,16 @@ public class DataProvider {
 		scanArguments.put("--agent", ECLIPSE_AGENT);
 
         String additionalParameters = "--async --sast-incremental --resubmit";
-        
-        return authenticateWithAST().scanCreate(scanArguments, additionalParameters);
+
+        return wrapperProvider.scanCreate(scanArguments, additionalParameters);
 	}
-	
+
 	public void cancelScan(String scanId) throws IOException, InterruptedException, CxException, Exception {
-		authenticateWithAST().scanCancel(scanId);
+		wrapperProvider.scanCancel(scanId);
 	}
-	
+
 	public boolean isScanAllowed() throws CxException, IOException, InterruptedException, Exception {
-		return authenticateWithAST().ideScansEnabled();
+		return wrapperProvider.ideScansEnabled();
 	}
 
 	/**
@@ -841,11 +769,10 @@ public class DataProvider {
 			return Collections.emptyList();
 		}
 
-		CxWrapper cxWrapper = authenticateWithAST();
 		List<String> allStates = new ArrayList<>();
 
 		try {
-			List<CustomState> customStates = cxWrapper.triageGetStates(false);
+			List<CustomState> customStates = wrapperProvider.triageGetStates(false);
 			allStates = customStates.stream().map(CustomState::getName).collect(Collectors.toList());
 		} catch (Exception e) {
 			CxLogger.warning("Could not fetch platform states: " + e.getMessage());

@@ -36,6 +36,7 @@ public class ContainerScannerService extends BaseScannerService<ContainersRealti
     private static final String LOG_TAG = "[CONTAINER-SERVICE]";
     private static final String CONTAINER_DIR = "CxContainer";
     private static final Object SCAN_LOCK = new Object();
+    private final WrapperProvider wrapperProvider = new WrapperProvider();
 
     private static final List<String> CONTAINERS_FILE_PATTERNS = List.of(
             "**/dockerfile*",
@@ -158,7 +159,7 @@ public class ContainerScannerService extends BaseScannerService<ContainersRealti
 
                 ContainersRealtimeResults scanResults = null;
                 try {
-                    scanResults = CxWrapperFactory.build().containersRealtimeScan(tempFilePath.toString(), "");
+                    scanResults = wrapperProvider.containersRealtimeScan(tempFilePath.toString(), "");
                 } catch (Exception e) {
                     // TODO Auto-generated catch block
                     e.printStackTrace();
