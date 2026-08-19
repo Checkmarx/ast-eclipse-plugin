@@ -159,8 +159,9 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 			IProject[] projects = ResourcesPlugin.getWorkspace().getRoot().getProjects();
 			if (projects.length > 0 && projects[0].isOpen()) {
 				IProject project = projects[0];
-				ProblemHolderService problemHolder = (ProblemHolderService) project.getSessionProperty(
-						new QualifiedName("com.checkmarx.eclipse.plugin", "problem-holder"));
+				// Use getInstance() to get the correct ProblemHolderService instance
+				// (matches the same key used by getInstance() in ProblemHolderService)
+				ProblemHolderService problemHolder = ProblemHolderService.getInstance(project);
 
 				if (problemHolder != null) {
 					Map<String, List<ScanIssue>> existingIssues = problemHolder.getAllScanIssues();
@@ -178,8 +179,36 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 
 	/**
 	 * Renders the missing credentials panel centered inside the view parent.
+	 * Also clears all findings from the ProblemHolderService and editor annotations on logout.
 	 */
 	private void drawMissingCredentialsPanel(Composite parent) {
+		// Clear all findings from memory BEFORE disposing UI (to ensure tab title updates)
+		try {
+			IProject[] projects = ResourcesPlugin.getWorkspace().getRoot().getProjects();
+			if (projects.length > 0 && projects[0].isOpen()) {
+				IProject project = projects[0];
+				ProblemHolderService problemHolder = ProblemHolderService.getInstance(project);
+				if (problemHolder != null) {
+					problemHolder.clearAll();
+				}
+			}
+		} catch (Exception e) {
+			System.err.println("[FINDINGS] Error clearing findings on logout: " + e.getMessage());
+		}
+
+		// Reset current issues cache
+		currentIssues.clear();
+
+		// Update tab title immediately to remove problem count
+		setPartName(DevAssistConstants.DEVASSIST_TAB);
+
+		// Clear all annotations from open editors
+		try {
+			com.checkmarx.eclipse.devassist.problems.ProblemDecorator.clearAllAnnotations();
+		} catch (Exception e) {
+			System.err.println("[FINDINGS] Error clearing annotations on logout: " + e.getMessage());
+		}
+
 		// Dispose all existing UI components in the view container
 		for (Control child : parent.getChildren()) {
 			child.dispose();

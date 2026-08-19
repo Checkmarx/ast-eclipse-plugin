@@ -150,7 +150,7 @@ public class FindingsLabelProvider extends DelegatingStyledCellLabelProvider {
                             FontData[] fontData = originalFont.getFontData();
                             for (FontData fd : fontData) {
                                 fd.setStyle(fd.getStyle() | SWT.BOLD);
-                                fd.setHeight(10);
+                                fd.setHeight(9);
                             }
                             org.eclipse.swt.graphics.Font boldFont = new org.eclipse.swt.graphics.Font(event.display, fontData);
                             event.gc.setFont(boldFont);

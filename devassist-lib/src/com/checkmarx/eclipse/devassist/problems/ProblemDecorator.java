@@ -493,6 +493,70 @@ public class ProblemDecorator {
 	}
 
 	/**
+	 * Clear all annotations from all open editors (used on logout).
+	 * Removes all FindingsAnnotation objects from the annotation models
+	 * of currently open editors.
+	 */
+	public static void clearAllAnnotations() {
+		try {
+			IWorkbench workbench = PlatformUI.getWorkbench();
+			if (workbench == null) {
+				return;
+			}
+
+			for (var window : workbench.getWorkbenchWindows()) {
+				IWorkbenchPage page = window.getActivePage();
+				if (page == null) {
+					continue;
+				}
+
+				// Get all open editors
+				org.eclipse.ui.IEditorReference[] editors = page.getEditorReferences();
+				for (org.eclipse.ui.IEditorReference editorRef : editors) {
+					try {
+						org.eclipse.ui.IEditorPart editorPart = editorRef.getEditor(false);
+						if (editorPart == null) {
+							continue;
+						}
+
+						// Use adapter pattern to get ITextEditor
+						ITextEditor editor = editorPart.getAdapter(ITextEditor.class);
+						if (editor == null) {
+							continue;
+						}
+
+						IAnnotationModel annotationModel = editor.getDocumentProvider()
+								.getAnnotationModel(editor.getEditorInput());
+						if (annotationModel == null) {
+							continue;
+						}
+
+						// Remove all FindingsAnnotation objects
+						java.util.List<Annotation> toRemove = new java.util.ArrayList<>();
+						annotationModel.getAnnotationIterator().forEachRemaining(annotation -> {
+							if (annotation instanceof FindingsAnnotation) {
+								toRemove.add(annotation);
+							}
+						});
+
+						for (Annotation annotation : toRemove) {
+							annotationModel.removeAnnotation(annotation);
+						}
+					} catch (Exception e) {
+						CxLogger.warning(LOG_TAG + " Error clearing annotations from editor: " + e.getMessage());
+					}
+				}
+			}
+
+			// Clear the fileAnnotations map
+			fileAnnotations.clear();
+			CxLogger.info(LOG_TAG + " All annotations cleared from all open editors");
+		} catch (Exception e) {
+			CxLogger.warning(LOG_TAG + " Error clearing all annotations: " + e.getMessage());
+		}
+	}
+
+	/**
 	 * Find open text editor for a file.
 	 *
 	 * @param file File to find editor for
