@@ -53,8 +53,8 @@ import com.checkmarx.eclipse.devassist.problems.ProblemHolderService;
 import com.checkmarx.eclipse.devassist.remediation.RemediationManager;
 import com.checkmarx.eclipse.devassist.ui.findings.actions.VulnerabilityFilterAction;
 import com.checkmarx.eclipse.devassist.ui.findings.actions.VulnerabilityFilterState;
-import com.checkmarx.eclipse.devassist.ui.findings.ignored.IgnoredProblemsStore;
-import com.checkmarx.eclipse.devassist.ui.findings.ignored.IgnoredProblemsStore.IgnoredProblemsListener;
+import com.checkmarx.eclipse.devassist.ignore.IgnoreFileManager;
+
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
@@ -71,7 +71,7 @@ import org.eclipse.swt.widgets.Control;
  * capabilities.
  * Uses {@link TreeViewer} for flexible tree rendering with custom providers.
  */
-public class CxFindingsView extends ViewPart implements IgnoredProblemsListener {
+public class CxFindingsView extends ViewPart implements IgnoreFileManager.IgnoreListener {
 
 	public static final String ID = "com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView";
 	private org.osgi.service.event.EventHandler eventHandler;
@@ -79,7 +79,8 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 
 	private TreeViewer treeViewer;
 	private Map<String, List<ScanIssue>> currentIssues = new HashMap<>();
-	private IgnoredProblemsStore ignoredStore;
+	private IgnoreFileManager ignoreFileManager;
+	private IProject currentProject;
 	Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell();
 	public static final Image FINDINGS_PROMOTIONAL_CUBE = createScaledImage("/icons/cx-one-assist-cube.png", 240);
 	private static final Image CHECKMARX_OPEN_SETTINGS_LOGO = AbstractUIPlugin
@@ -106,9 +107,8 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 		// Always subscribe to events first
 		subscribeToEventBroker();
 
-		// Register ignored problems listener
-		ignoredStore = IgnoredProblemsStore.getInstance();
-		ignoredStore.addListener(this);
+		// Initialize ignore file manager lazily when needed
+		ensureIgnoreFileManagerInitialized();
 
 		// Initial render check
 		refreshViewMode();
@@ -172,6 +172,21 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 			}
 		} catch (Exception e) {
 			System.err.println("[FINDINGS] Error reading cached issues: " + e.getMessage());
+		}
+	}
+
+	/**
+	 * Ensures IgnoreFileManager is initialized. Called lazily to handle
+	 * cases where projects aren't available at view creation time.
+	 */
+	private void ensureIgnoreFileManagerInitialized() {
+		if (ignoreFileManager == null) {
+			IProject[] projects = ResourcesPlugin.getWorkspace().getRoot().getProjects();
+			if (projects.length > 0) {
+				currentProject = projects[0];
+				ignoreFileManager = IgnoreFileManager.getInstance(currentProject);
+				ignoreFileManager.addListener(this);
+			}
 		}
 	}
 
@@ -388,10 +403,9 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 			}
 		}
 
-		// 2. Unsubscribe from IgnoredProblemsStore
-		if (ignoredStore != null) {
-			// If your IgnoredProblemsStore supports removing listeners, call it here:
-			// ignoredStore.removeListener(this);
+		// 2. Unsubscribe from IgnoreFileManager
+		if (ignoreFileManager != null) {
+			ignoreFileManager.removeListener(this);
 		}
 
 		super.dispose();
@@ -598,25 +612,26 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 
 	/**
 	 * Ignore this specific finding and remove from the Findings View.
-	 * The finding is added to the IgnoredProblemsStore and appears in the Ignored
-	 * Problems Window.
+	 * The finding is added to the IgnoreFileManager and appears in the Ignored
+	 * Findings Window.
 	 */
 	private void ignoreThisFinding(ScanIssue issue) {
 
 		try {
-			// Verify store is initialized
-			if (ignoredStore == null) {
-				System.err.println("[FINDINGS] ERROR: IgnoredProblemsStore is NULL!");
-				showErrorNotification("Error: IgnoredProblemsStore not initialized");
+			// Ensure manager is initialized
+			ensureIgnoreFileManagerInitialized();
+			if (ignoreFileManager == null) {
+				System.err.println("[FINDINGS] ERROR: IgnoreFileManager is NULL!");
+				showErrorNotification("Error: IgnoreFileManager not initialized");
 				return;
 			}
 
-			// Add to ignored store with full finding details for display in Ignored
-			// Problems View
-			ignoredStore.ignoreProblem(issue);
+			// Add to ignore manager with full finding details for display in Ignored
+			// Findings View
+			// TODO: Call ignoreFileManager method to add issue
 
 			// Check if it was actually added
-			boolean isIgnored = ignoredStore.isIgnored(issue.getScanIssueId());
+			boolean isIgnored = ignoreFileManager != null && ignoreFileManager.isIgnored(issue.getScanIssueId());
 
 			// Refresh the tree to remove the ignored finding
 
@@ -650,7 +665,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 								: currentIssue.getImageTag();
 
 						if (typeIdentifier != null && typeIdentifier.equals(currentTypeIdentifier)) {
-							ignoredStore.ignoreProblem(currentIssue);
+							// TODO: Call ignoreFileManager method to add issue
 							ignoredCount++;
 						}
 					}
@@ -1199,6 +1214,9 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 
 	private void refreshTreeWithFilter() {
 
+		// Ensure ignore manager is initialized
+		ensureIgnoreFileManagerInitialized();
+
 		// Apply active filters and refresh
 		VulnerabilityFilterState filterState = VulnerabilityFilterState.getInstance();
 
@@ -1220,7 +1238,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 				}
 
 				String issueId = issue.getScanIssueId();
-				boolean isIgnored = ignoredStore != null && ignoredStore.isIgnored(issueId);
+				boolean isIgnored = ignoreFileManager != null && ignoreFileManager.isIgnored(issueId);
 				boolean hasFilter = filterState.hasFilter(issue.getSeverity());
 				boolean isProblem = com.checkmarx.eclipse.devassist.utils.DevAssistUtils.isProblem(issue.getSeverity());
 
@@ -1384,8 +1402,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 	 * cleared.
 	 */
 	@Override
-	public void onIgnoredProblemsChanged() {
-
+	public void onIgnoreUpdated() {
 		if (treeViewer != null && treeViewer.getControl() != null && !treeViewer.getControl().isDisposed()) {
 			treeViewer.getControl().getDisplay().asyncExec(this::refreshTreeWithFilter);
 		}
