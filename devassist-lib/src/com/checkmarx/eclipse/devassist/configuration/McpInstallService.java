@@ -60,13 +60,13 @@ public final class McpInstallService {
 		CxLogger.info(LOG_TAG + " Attempting auto-install of MCP configuration...");
 
 		try {
-			String apiKey = Preferences.getApiKey();
-			String additionalParams = Preferences.getAdditionalOptions();
-
-			if (apiKey == null || apiKey.isBlank()) {
-				CxLogger.info(LOG_TAG + " Skipping MCP auto-install: user not authenticated (no API key)");
+			if (!Preferences.isAuthenticated()) {
+				CxLogger.info(LOG_TAG + " Skipping MCP auto-install: user not authenticated");
 				return;
 			}
+
+			String apiKey = Preferences.getApiKey();
+			String additionalParams = Preferences.getAdditionalOptions();
 
 			attemptAutoInstall(apiKey, additionalParams);
 		} catch (Exception e) {

@@ -74,17 +74,22 @@ public class Preferences {
         STORE.setValue(key, value);
     }
 
-    public static void clearApiKey() {
-        STORE.setValue(API_KEY, "");
-        STORE.setValue(CREDENTIALS_VALIDATED, false);
-    }
-
     public static boolean isCredentialsValidated() {
         return STORE.getBoolean(CREDENTIALS_VALIDATED);
     }
 
     public static void setCredentialsValidated(boolean validated) {
         STORE.setValue(CREDENTIALS_VALIDATED, validated);
+    }
+
+    /**
+     * Single source of truth for "is the user logged in", independent of which credential
+     * type produced that state. Callers across the plugin should check this - not API key
+     * presence - so that a future auth method (e.g. OAuth) only needs to set/clear this same
+     * flag to plug into every existing authenticated-only code path.
+     */
+    public static boolean isAuthenticated() {
+        return isCredentialsValidated();
     }
 
     public static void setAuthenticationSuccessHandler(IAuthenticationSuccessHandler handler) {

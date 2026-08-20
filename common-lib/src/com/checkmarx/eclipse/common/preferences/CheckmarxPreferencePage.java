@@ -3,7 +3,6 @@ package com.checkmarx.eclipse.common.preferences;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPreferencePage;
 
-import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.preference.PreferenceDialog;
 import org.eclipse.jface.preference.PreferencePage;
@@ -80,7 +79,7 @@ public class CheckmarxPreferencePage extends PreferencePage implements IWorkbenc
     private void handlePreferenceChange(PropertyChangeEvent event) {
         // Re-check login state: if API key was cleared, we need to switch from
         // logged-in scanner checkboxes to logged-out message
-        boolean isNowLoggedIn = StringUtils.isNotBlank(Preferences.getApiKey());
+        boolean isNowLoggedIn = Preferences.isAuthenticated();
         if (loggedIn != isNowLoggedIn) {
             loggedIn = isNowLoggedIn;
         }
@@ -88,7 +87,7 @@ public class CheckmarxPreferencePage extends PreferencePage implements IWorkbenc
 
     @Override
     protected Control createContents(Composite parent) {
-        loggedIn = StringUtils.isNotBlank(Preferences.getApiKey());
+        loggedIn = Preferences.isAuthenticated();
         if (!loggedIn) {
             return createLoggedOutContent(parent);
         }
@@ -217,7 +216,7 @@ public class CheckmarxPreferencePage extends PreferencePage implements IWorkbenc
     protected void performDefaults() {
         // Check credentials fresh, not from captured field.
         // If user logged out while viewing another page, loggedIn would be stale.
-        boolean isCurrentlyLoggedIn = StringUtils.isNotBlank(Preferences.getApiKey());
+        boolean isCurrentlyLoggedIn = Preferences.isAuthenticated();
         if (!isCurrentlyLoggedIn) {
             super.performDefaults();
             return;
@@ -276,7 +275,7 @@ public class CheckmarxPreferencePage extends PreferencePage implements IWorkbenc
         // dialog session,
         // loggedIn would be stale and we'd save/notify with false authentication
         // status.
-        boolean isCurrentlyLoggedIn = StringUtils.isNotBlank(Preferences.getApiKey());
+        boolean isCurrentlyLoggedIn = Preferences.isAuthenticated();
         if (!isCurrentlyLoggedIn) {
             return super.performOk();
         }

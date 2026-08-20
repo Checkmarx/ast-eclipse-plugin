@@ -81,7 +81,7 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 	 */
 	private void refreshRealtimeScannersLink() {
 		if (realtimeScannersLink != null && !realtimeScannersLink.isDisposed()) {
-			boolean isLoggedIn = StringUtils.isNotBlank(Preferences.getApiKey());
+			boolean isLoggedIn = Preferences.isAuthenticated();
 
 			realtimeScannersLink.setVisible(isLoggedIn);
 
@@ -200,7 +200,7 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 		// load() called on them yet at this point in createFieldEditors(), so their
 		// text
 		// controls are still empty.
-		lastValidatedApiKey = (Preferences.isCredentialsValidated() && StringUtils.isNotBlank(Preferences.getApiKey()))
+		lastValidatedApiKey = (Preferences.isAuthenticated() && StringUtils.isNotBlank(Preferences.getApiKey()))
 				? Preferences.getApiKey()
 				: null;
 		boolean isConnected = lastValidatedApiKey != null;
@@ -419,9 +419,12 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 					return;
 				}
 
-				Preferences.clearApiKey();
-				apiKey.setStringValue("");
-//				textControl.setText("");
+				// Only mark the credentials as no longer validated - the API key itself stays
+				// stored and visible in the field. Every "am I logged in" check in the plugin
+				// now goes through Preferences.isAuthenticated() (not "API key non-blank"), so
+				// leaving the key in place here no longer makes any of them think the user is
+				// still logged in.
+				Preferences.setCredentialsValidated(false);
 				lastValidatedApiKey = null;
 				connectionButton.setEnabled(true);
 				textControl.setEnabled(true);

@@ -20,7 +20,6 @@ import org.eclipse.jface.action.Action;
 import org.eclipse.jface.viewers.ComboViewer;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.ui.PlatformUI;
-import org.apache.commons.lang3.StringUtils;
 import com.checkmarx.ast.results.result.Node;
 import com.checkmarx.ast.results.result.Result;
 import com.checkmarx.eclipse.enums.ActionName;
@@ -155,12 +154,12 @@ public class PluginUtils {
 	}
 
 	/**
-	 * Check if checkmarx credentials are defined in the Preferences
-	 * 
+	 * Check if the user is currently authenticated to Checkmarx One.
+	 *
 	 * @return
 	 */
 	public static boolean areCredentialsDefined() {
-		return StringUtils.isNotBlank(Preferences.getApiKey());
+		return Preferences.isAuthenticated();
 	}
 
 	/**
