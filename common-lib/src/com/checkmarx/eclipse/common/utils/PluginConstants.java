@@ -4,6 +4,7 @@ import com.checkmarx.eclipse.common.events.SettingsTopics;
 
 public class PluginConstants {
 	public static final String AGENT_NAME = "Eclipse";
+	public static final String CHECKMARX_ONE = "Checkmarx One";
 	public static final String EMPTY_STRING = "";
 	public static final String SAST = "sast";
 	public static final String SCA_DEPENDENCY = "sca";
