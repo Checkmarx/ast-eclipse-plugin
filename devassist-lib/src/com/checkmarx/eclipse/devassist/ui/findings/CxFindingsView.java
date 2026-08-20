@@ -59,6 +59,8 @@ import com.checkmarx.eclipse.common.utils.CxLogger;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Shell;
@@ -80,6 +82,12 @@ public class CxFindingsView extends ViewPart {
 
 	private TreeViewer treeViewer;
 	private Map<String, List<ScanIssue>> currentIssues = new HashMap<>();
+	// Files that had at least one active (non-ignored) finding as of the last
+	// applyDecorationsToOpenEditors() pass. Used to detect the "file just lost its
+	// last active finding" transition without having to re-decorate every file
+	// ever tracked in currentIssues on every single refresh - see
+	// applyDecorationsToOpenEditors() for details.
+	private Set<String> lastDecoratedFiles = new HashSet<>();
 	private IgnoreFileManager ignoreFileManager;
 	private IProject currentProject;
 	Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell();
@@ -1156,19 +1164,28 @@ public class CxFindingsView extends ViewPart {
 	}
 
 	/**
-	 * Apply decorations to all open editors that have (or previously had) findings.
-	 * This ensures annotations are present in the annotation model when the Findings View
-	 * displays cached results, so hover can find them without waiting for a new scan.
+	 * Apply decorations to open editors for files whose active-finding set needs
+	 * to change: files that currently have active findings, plus files that had
+	 * active findings as of the previous pass but have none now (e.g. every
+	 * finding in the file was just ignored).
 	 *
-	 * Iterates {@code currentIssues} (the unfiltered set) rather than just
-	 * {@code filteredIssues}, and defaults to an empty issue list for files that
-	 * dropped out of filteredIssues entirely (e.g. every finding in a file was just
-	 * ignored). Without this, decorateEditor() would never be called for that file
-	 * again, leaving its now-stale annotations/markers/gutter icons in place forever
-	 * instead of being cleared and replaced by the "ignored" gutter icon.
+	 * Deliberately does NOT iterate every file in {@code currentIssues} (which can
+	 * include every file ever scanned this session, most with nothing to do) -
+	 * every extra call here is a real decorateEditor() invocation that clears and
+	 * rebuilds that file's annotations, so visiting files with no actual state
+	 * change is not just wasted work but, combined with this plugin's existing
+	 * scan-result pipeline firing more than one update per scan, widens the
+	 * window for a stale/racing call to clobber a fresher one's annotations
+	 * ("flicker and lose results"). Restricting the set to only files whose
+	 * active-finding membership actually changed keeps the original
+	 * fully-ignored-file fix while not manufacturing extra no-op calls.
 	 */
 	private void applyDecorationsToOpenEditors(Map<String, List<ScanIssue>> filteredIssues) {
-		if (currentIssues == null || currentIssues.isEmpty()) {
+		Map<String, List<ScanIssue>> effectiveFiltered = filteredIssues != null
+				? filteredIssues
+				: java.util.Collections.emptyMap();
+
+		if (effectiveFiltered.isEmpty() && lastDecoratedFiles.isEmpty()) {
 			return;
 		}
 
@@ -1178,10 +1195,11 @@ public class CxFindingsView extends ViewPart {
 				return;
 			}
 
-			for (String filePath : currentIssues.keySet()) {
-				List<ScanIssue> issues = filteredIssues != null
-						? filteredIssues.getOrDefault(filePath, java.util.Collections.emptyList())
-						: java.util.Collections.emptyList();
+			Set<String> filesToDecorate = new HashSet<>(effectiveFiltered.keySet());
+			filesToDecorate.addAll(lastDecoratedFiles);
+
+			for (String filePath : filesToDecorate) {
+				List<ScanIssue> issues = effectiveFiltered.getOrDefault(filePath, java.util.Collections.emptyList());
 
 				// Find if this file is currently open in an editor
 				try {
@@ -1196,6 +1214,8 @@ public class CxFindingsView extends ViewPart {
 					System.err.println("[FINDINGS] Error decorating file " + filePath + ": " + e.getMessage());
 				}
 			}
+
+			lastDecoratedFiles = new HashSet<>(effectiveFiltered.keySet());
 		} catch (Exception e) {
 			System.err.println("[FINDINGS] Error applying decorations to open editors: " + e.getMessage());
 		}
