@@ -134,7 +134,11 @@ public final class IgnoreFileManager {
         if (similarityId == null || similarityId.isEmpty()) {
             return false;
         }
-        return ignoreData.containsKey(similarityId);
+        IgnoreEntry entry = ignoreData.get(similarityId);
+        if (entry == null || entry.getFiles() == null) {
+            return false;
+        }
+        return entry.getFiles().stream().anyMatch(f -> f.active);
     }
 
     /**
@@ -252,6 +256,12 @@ public final class IgnoreFileManager {
         String packageName = entryToRevive.getPackageName();
         for (IgnoreEntry.FileReference file : actualEntry.getFiles()) {
             file.active = false;
+        }
+        // Once no file reference is still active, drop the entry entirely instead of
+        // leaving a dead key behind - otherwise it lingers in the map/file forever.
+        boolean hasActive = actualEntry.getFiles().stream().anyMatch(f -> f.active);
+        if (!hasActive) {
+            ignoreData.remove(entryKey);
         }
         saveIgnoreFile();
         updateIgnoreTempList();
