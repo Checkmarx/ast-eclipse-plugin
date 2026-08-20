@@ -87,7 +87,20 @@ public class ScannerMarkerPurger {
 					if (file != null) {
 						List<com.checkmarx.eclipse.devassist.model.ScanIssue> remaining =
 							problemHolder.getScanIssuesByFile(filePath);
-						ProblemDecorator.decorateEditor(file, remaining);
+						// Filter to only exclude ignored issues - include OK/UNKNOWN gutter icons
+						com.checkmarx.eclipse.devassist.ignore.IgnoreManager ignoreManager =
+							com.checkmarx.eclipse.devassist.ignore.IgnoreManager.getInstance(project);
+						java.util.List<com.checkmarx.eclipse.devassist.model.ScanIssue> activeIssues =
+							new java.util.ArrayList<>();
+						for (com.checkmarx.eclipse.devassist.model.ScanIssue issue : remaining) {
+							if (issue == null) {
+								continue;
+							}
+							if (!ignoreManager.isIgnored(issue)) {
+								activeIssues.add(issue);
+							}
+						}
+						ProblemDecorator.decorateEditor(file, activeIssues);
 					}
 				}
 			} catch (Exception e) {

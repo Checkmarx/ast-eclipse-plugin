@@ -46,11 +46,23 @@ public class ProblemDecorator {
 	// Track annotations we've created so we can remove them later
 	private static final Map<String, List<Annotation>> fileAnnotations = new HashMap<>();
 
+	// Per-file locks to prevent race conditions when multiple threads decorate the same file
+	private static final Map<String, Object> fileLocks = new java.util.concurrent.ConcurrentHashMap<>();
+
+	private static Object getFileLock(String filePath) {
+		return fileLocks.computeIfAbsent(filePath, k -> new Object());
+	}
+
 	/**
 	 * Render scan results as annotations in the editor.
 	 *
 	 * Creates FindingsAnnotation objects for each issue and adds them
 	 * to the editor's annotation model for visual display.
+	 *
+	 * **SYNCHRONIZED**: Acquires a per-file lock to prevent race conditions when
+	 * multiple threads/paths try to decorate the same file simultaneously
+	 * (e.g., refreshTreeWithFilter() + CheckmarxEditorListener both calling decorateEditor
+	 * when ignoring a finding in an open editor).
 	 *
 	 * @param file       File that was scanned
 	 * @param scanIssues Issues to visualize
@@ -69,7 +81,9 @@ public class ProblemDecorator {
 		// throughout the codebase
 		String filePath = file.getLocation().toOSString();
 
-		try {
+		// Synchronize on a per-file lock to prevent concurrent decoration of the same file
+		synchronized (getFileLock(filePath)) {
+			try {
 			// Find open editor for this file
 			ITextEditor editor = findOpenEditor(file);
 			if (editor == null) {
@@ -162,10 +176,11 @@ public class ProblemDecorator {
 			CxLogger.info(LOG_TAG + "COMPLETE: Added " + annotations.size() +
 					" annotations to editor");
 
-		} catch (Exception e) {
-			CxLogger.warning(LOG_TAG + " Error decorating editor: " +
-					e.getMessage());
-			e.printStackTrace();
+			} catch (Exception e) {
+				CxLogger.warning(LOG_TAG + " Error decorating editor: " +
+						e.getMessage());
+				e.printStackTrace();
+			}
 		}
 	}
 
@@ -414,7 +429,17 @@ public class ProblemDecorator {
 			startIndex = Math.max(0, Math.min(startIndex, firstLineLength));
 			endIndex = Math.max(0, Math.min(endIndex, lastLineLength));
 
-			int startOffset = firstLineOffset + startIndex;
+			// For multi-line decorations (dependencies spanning multiple lines in pom.xml),
+			// start from the beginning of the first line (column 0), not from StartIndex.
+			// For single-line decorations, use StartIndex to highlight specific range.
+			int startOffset;
+			if (firstLineNumber != lastLineNumber) {
+				// Multi-line: start from beginning of first line
+				startOffset = firstLineOffset;
+			} else {
+				// Single-line: use StartIndex to highlight specific range
+				startOffset = firstLineOffset + startIndex;
+			}
 			int endOffset = lastLineOffset + endIndex;
 
 			while (startOffset < endOffset && startOffset < docLength

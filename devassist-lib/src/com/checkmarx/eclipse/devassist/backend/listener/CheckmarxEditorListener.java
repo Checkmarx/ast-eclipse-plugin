@@ -384,9 +384,22 @@ public class CheckmarxEditorListener implements IPartListener2 {
 				return;
 			}
 
-			// Apply decorations for cached findings
+			// Filter to only exclude ignored issues - include OK/UNKNOWN gutter icons
+			com.checkmarx.eclipse.devassist.ignore.IgnoreManager ignoreManager =
+				com.checkmarx.eclipse.devassist.ignore.IgnoreManager.getInstance(project);
+			java.util.List<com.checkmarx.eclipse.devassist.model.ScanIssue> activeIssues =
+				new java.util.ArrayList<>();
+			for (com.checkmarx.eclipse.devassist.model.ScanIssue issue : cachedIssues) {
+				if (issue == null) {
+					continue;
+				}
+				if (!ignoreManager.isIgnored(issue)) {
+					activeIssues.add(issue);
+				}
+			}
 
-			ProblemDecorator.decorateEditor(file, cachedIssues);
+			// Apply decorations for non-ignored findings
+			ProblemDecorator.decorateEditor(file, activeIssues);
 
 		} catch (Exception e) {
 			System.err.println("[REALTIME] Error applying cached decorations: " + e.getMessage());

@@ -856,18 +856,16 @@ public class CxFindingsView extends ViewPart {
 
 			java.util.List<ScanIssue> cachedIssues = problemHolder.getScanIssuesByFile(filePath);
 
-			// Filter out non-problem/ignored issues - ProblemDecorator only needs the
-			// still-active findings here; ignored ones get their own gutter icon via
-			// ProblemDecorator's internal ignored-entries pass.
+			// Filter to only exclude ignored issues - include OK/UNKNOWN gutter icons
+			// This matches the refreshTreeWithFilter() approach: pass all non-ignored
+			// issues to ProblemDecorator for proper gutter icon decoration
 			IgnoreManager ignoreManager = IgnoreManager.getInstance(project);
 			java.util.List<ScanIssue> activeIssues = new java.util.ArrayList<>();
 			for (ScanIssue issue : cachedIssues) {
 				if (issue == null || issue.getSeverity() == null) {
 					continue;
 				}
-				if (!com.checkmarx.eclipse.devassist.utils.DevAssistUtils.isProblem(issue.getSeverity())) {
-					continue;
-				}
+				// Only filter out ignored - keep OK/UNKNOWN for gutter icons
 				if (ignoreManager.isIgnored(issue)) {
 					continue;
 				}
@@ -1066,6 +1064,7 @@ public class CxFindingsView extends ViewPart {
 		VulnerabilityFilterState filterState = VulnerabilityFilterState.getInstance();
 
 		Map<String, List<ScanIssue>> filteredIssues = new HashMap<>();
+		Map<String, List<ScanIssue>> decorationIssues = new HashMap<>();
 		int totalAfter = 0;
 
 		for (String filePath : currentIssues.keySet()) {
@@ -1074,6 +1073,7 @@ public class CxFindingsView extends ViewPart {
 				continue;
 
 			List<ScanIssue> filtered = new java.util.ArrayList<>();
+			List<ScanIssue> forDecoration = new java.util.ArrayList<>();
 
 			for (ScanIssue issue : issues) {
 				// ✅ Safe null guard FIRST before calling any methods on issue
@@ -1089,19 +1089,21 @@ public class CxFindingsView extends ViewPart {
 				boolean hasFilter = filterState.hasFilter(issue.getSeverity());
 				boolean isProblem = com.checkmarx.eclipse.devassist.utils.DevAssistUtils.isProblem(issue.getSeverity());
 
-				// Filter by OK/UNKNOWN/IGNORED severity (Phase 3)
-				if (!isProblem) {
+				// For decoration: include OK/UNKNOWN gutter icons (only exclude ignored)
+				if (!isIgnored) {
+					forDecoration.add(issue);
+				}
 
+				// Filter by OK/UNKNOWN/IGNORED severity (Phase 3) - for Problems tree only
+				if (!isProblem) {
 					continue;
 				}
 				// Filter by severity preference
 				if (!hasFilter) {
-
 					continue;
 				}
 				// Filter out ignored problems
 				if (isIgnored) {
-
 					continue;
 				}
 
@@ -1111,6 +1113,10 @@ public class CxFindingsView extends ViewPart {
 			if (!filtered.isEmpty()) {
 				filteredIssues.put(filePath, filtered);
 				totalAfter += filtered.size();
+			}
+
+			if (!forDecoration.isEmpty()) {
+				decorationIssues.put(filePath, forDecoration);
 			}
 		}
 
@@ -1158,9 +1164,12 @@ public class CxFindingsView extends ViewPart {
 			setPartName(DevAssistConstants.DEVASSIST_TAB);
 		}
 
-		// Apply decorations to open editors for all filtered findings
-		// This ensures annotations are in the annotation model for hover to find them
-		applyDecorationsToOpenEditors(filteredIssues);
+		// Apply decorations to open editors with issues that include OK/UNKNOWN gutter icons
+		// but exclude ignored findings. This ensures:
+		// - Problems tree shows only actual problems (no OK/UNKNOWN)
+		// - Gutter icons appear for OK/UNKNOWN findings in the editor
+		// - Ignored findings have no gutter icon or severity underline
+		applyDecorationsToOpenEditors(decorationIssues);
 	}
 
 	/**
