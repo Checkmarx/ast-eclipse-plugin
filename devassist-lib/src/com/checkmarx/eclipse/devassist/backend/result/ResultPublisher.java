@@ -52,18 +52,69 @@ public class ResultPublisher {
 			return;
 		}
 		try {
+			// Filter out already-ignored issues BEFORE either downstream path sees them.
+			// Without this, a finding that reappears in a fresh scan result (e.g.
+			// because CLI-side ignore-file exclusion doesn't cover every engine, or the
+			// temp ignore list hasn't been regenerated yet) would still be cached and
+			// decorated as an ACTIVE finding by this method and by
+			// DevAssistInspectionMgr's own internal re-cache of the same list - even
+			// though CxFindingsView's tree correctly filters it out via IgnoreManager.
+			// That mismatch is exactly what previously caused an ignored finding to keep
+			// showing its severity gutter icon/squiggle in the editor while being
+			// (correctly) absent from the Findings tree. Filtering once here keeps both
+			// downstream consumers consistent, and ProblemDecorator's own
+			// ignored-entries pass then draws the "ignored" icon for these lines instead.
+			List<ScanIssue> filteredScanIssues = filterIgnoredIssues(file, scanIssues);
+
 			// Step 1: Update Findings View (try to display immediately if view is open)
 
-			updateFindingsView(file, scanIssues);
+			updateFindingsView(file, filteredScanIssues);
 
 			// Step 2: Create problem descriptors via DevAssistInspectionMgr
 
-			createAndRenderDecorations(file, scanIssues);
+			createAndRenderDecorations(file, filteredScanIssues);
 
 		} catch (Exception e) {
 			System.err.println(LOG_TAG + " [ERROR] " + e.getMessage());
 			e.printStackTrace();
 			CxLogger.error(LOG_TAG + " Error publishing results: " + e.getMessage(), e);
+		}
+	}
+
+	/**
+	 * Filters out issues that are already recorded as ignored in
+	 * {@code .checkmarxIgnored}, so downstream caching/decoration never treats an
+	 * ignored finding as active. Returns the original list unchanged (same
+	 * reference) if there's nothing to filter or the project/ignore state can't
+	 * be resolved, so this is a safe no-op when nothing is ignored.
+	 *
+	 * @param file       File the issues belong to
+	 * @param scanIssues Complete, unfiltered issue list for this scan cycle
+	 * @return Issue list with already-ignored entries removed
+	 */
+	private static List<ScanIssue> filterIgnoredIssues(IFile file, List<ScanIssue> scanIssues) {
+		if (scanIssues.isEmpty()) {
+			return scanIssues;
+		}
+		try {
+			org.eclipse.core.resources.IProject project = file.getProject();
+			if (project == null) {
+				return scanIssues;
+			}
+			com.checkmarx.eclipse.devassist.ignore.IgnoreManager ignoreManager = com.checkmarx.eclipse.devassist.ignore.IgnoreManager
+					.getInstance(project);
+
+			List<ScanIssue> filtered = new java.util.ArrayList<>(scanIssues.size());
+			for (ScanIssue issue : scanIssues) {
+				if (issue != null && ignoreManager.isIgnored(issue)) {
+					continue;
+				}
+				filtered.add(issue);
+			}
+			return filtered;
+		} catch (Exception e) {
+			CxLogger.warning(LOG_TAG + " Error filtering ignored issues, using unfiltered list: " + e.getMessage());
+			return scanIssues;
 		}
 	}
 
