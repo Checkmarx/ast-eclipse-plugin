@@ -54,7 +54,6 @@ public class PluginConstants {
 	public static final String INFO_CHANGE_BRANCH_EVENT_NOT_TRIGGERED = "Change branch event not triggered. Branch already selected";
 	public static final String INFO_CHANGE_PROJECT_EVENT_NOT_TRIGGERED = "Change project event not triggered. Project already selected";
 	public static final String AUTH_SUCCESS_PATTERN = "Successfully authenticated";
-	public static final String AUTH_SUCCESS_DISPLAY = "You are connected to Checkmarx One";
 	
 	/******************************** TREE MESSAGES ********************************/
 	public static final String TREE_INVALID_SCAN_ID_FORMAT = "Invalid scan id format.";
@@ -64,8 +63,16 @@ public class PluginConstants {
 	/******************************** PREFERENCES ********************************/
 	public static final String PREFERENCES_API_KEY = "API key:";
 	public static final String PREFERENCES_ADDITIONAL_OPTIONS = "Additional Params:";
-	public static final String PREFERENCES_TEST_CONNECTION = "Test Connection";
+	public static final String CONNECT_TO_CHECKMARX = "Connect to Checkmarx";
+	public static final String LOGOUT = "Logout";
+	public static final String GO_TO_CHECKMARX_ONE_ASSIST = "Go to Checkmarx One Assist";
+	public static final String PREFERENCES_HELP_LINK_TEXT = "Checkmarx One Eclipse Plugin Help Page";
+	public static final String PREFERENCES_HELP_LINK_URL = "https://checkmarx.com/resource/documents/en/34965-68728-checkmarx-one-eclipse-plugin.html";
 	public static final String PREFERENCES_VALIDATING_STATE = "Validating...";
+	public static final String LOGOUT_CONFIRM_TITLE = "Confirm Logout";
+	public static final String LOGOUT_CONFIRM_MESSAGE = "Are you sure you want to logout?";
+	public static final String LOGOUT_SUCCESS_MESSAGE = "You have been successfully logged out.";
+	public static final String AUTH_SUCCESS_DISPLAY = "You are connected to Checkmarx One";
 	public static final String TOPIC_APPLY_SETTINGS = SettingsTopics.TOPIC_APPLY_SETTINGS;
 	
 	/******************************** PROBLEMS VIEW ********************************/

@@ -5,7 +5,7 @@ import java.net.URL;
 import java.util.concurrent.CompletableFuture;
 
 import org.apache.commons.lang3.StringUtils;
-import org.eclipse.jface.preference.FieldEditor;
+import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.preference.FieldEditorPreferencePage;
 import org.eclipse.jface.preference.PreferenceDialog;
 import org.eclipse.jface.preference.StringFieldEditor;
@@ -107,14 +107,61 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 		parentLayout.marginWidth = 0;
 		topComposite.setLayout(parentLayout);
 
-		StringFieldEditor apiKey = new StringFieldEditor(Preferences.API_KEY, PluginConstants.PREFERENCES_API_KEY, topComposite);
+		// Every widget on this page is parented directly to topComposite, in the exact order
+		// it should visually appear. They used to be split between topComposite and
+		// getFieldEditorParent(), which made the on-screen order depend on which of the two
+		// composites was created first rather than on the order of the code below - keeping a
+		// single parent removes that ambiguity.
+
+		// helpLink lives in its own composite, isolated from the fields below, so its own
+		// sizing/margins can never influence the spacing between the API key / additional
+		// params labels and their input boxes.
+		Composite helpComposite = new Composite(topComposite, SWT.NONE);
+		GridLayout helpLayout = new GridLayout();
+		helpLayout.numColumns = 1;
+		helpLayout.marginHeight = 0;
+		helpLayout.marginWidth = 0;
+		helpComposite.setLayout(helpLayout);
+		helpComposite.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+
+		Link helpLink = new Link(helpComposite, SWT.NONE);
+		helpLink.setText("<a href=\"" + PluginConstants.PREFERENCES_HELP_LINK_URL + "\">" + PluginConstants.PREFERENCES_HELP_LINK_TEXT + "</a>");
+		helpLink.setLayoutData(new GridData(SWT.BEGINNING, SWT.CENTER, true, false));
+		helpLink.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				IWorkbenchBrowserSupport browserSupport = PlatformUI.getWorkbench().getBrowserSupport();
+				try {
+					browserSupport.getExternalBrowser().openURL(new URL(e.text));
+				} catch (PartInitException | MalformedURLException e1) {
+					CxLogger.error("Failed to open Checkmarx One Eclipse Plugin Help Page link.", e1);
+					e1.printStackTrace();
+				}
+			}
+		});
+
+		spacer(topComposite);
+
+		// apiKey and additionalParams get their own composite with a standard, fixed
+		// label-to-input gap - kept separate from topComposite (and from helpComposite above)
+		// so nothing else on the page can stretch or shrink that gap.
+		Composite fieldsComposite = new Composite(topComposite, SWT.NONE);
+		GridLayout fieldsLayout = new GridLayout();
+		fieldsLayout.numColumns = 1;
+		fieldsLayout.marginHeight = 0;
+		fieldsLayout.marginWidth = 0;
+		fieldsLayout.verticalSpacing = 4;
+		fieldsComposite.setLayout(fieldsLayout);
+		fieldsComposite.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+
+		StringFieldEditor apiKey = new StringFieldEditor(Preferences.API_KEY, PluginConstants.PREFERENCES_API_KEY, fieldsComposite);
 		apiKeyField = apiKey;
 		addField(apiKey);
-		Text textControl = apiKey.getTextControl(topComposite);
+		Text textControl = apiKey.getTextControl(fieldsComposite);
 		textControl.setEchoChar('*');
 
 		StringFieldEditor additionalParams = new StringFieldEditor(Preferences.ADDITIONAL_OPTIONS,
-		        PluginConstants.PREFERENCES_ADDITIONAL_OPTIONS, StringFieldEditor.UNLIMITED, StringFieldEditor.VALIDATE_ON_KEY_STROKE, topComposite);
+		        PluginConstants.PREFERENCES_ADDITIONAL_OPTIONS, StringFieldEditor.UNLIMITED, StringFieldEditor.VALIDATE_ON_KEY_STROKE, fieldsComposite);
 		additionalParamsField = additionalParams;
 		addField(additionalParams);
 
@@ -130,14 +177,11 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 		gridData.horizontalAlignment = GridData.FILL;
 		textControl.setLayoutData(gridData);
 
-		addField(space());
+		spacer(topComposite);
 
-
-        Link cliHelp = new Link(getFieldEditorParent(), SWT.NONE);
+        Link cliHelp = new Link(topComposite, SWT.NONE);
         cliHelp.setText("<a href=\"https://checkmarx.com/resource/documents/en/34965-68626-global-flags.html\">CLI command that supports a set of global flags</a>");
-        cliHelp.setLayoutData(new GridData(SWT.BEGINNING, SWT.CENTER, true, false));
-		GridData linkGridData = new GridData(SWT.END, SWT.CENTER, true, false);
-		cliHelp.setLayoutData(linkGridData);
+        cliHelp.setLayoutData(new GridData(SWT.END, SWT.CENTER, true, false));
 		cliHelp.addSelectionListener(new SelectionAdapter() {
 		    @Override
 		    public void widgetSelected(SelectionEvent e) {
@@ -151,20 +195,42 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 		    }
 		});
 
-        addField(space());
-
-        Label connectionLabel = new Label(getFieldEditorParent(), SWT.WRAP);
-        connectionLabel.setLayoutData(
-                new GridData(SWT.FILL, SWT.CENTER, true, false)
-        );
+        spacer(topComposite);
 
 		// Holds the Logout button reference so the Connect handler (defined before the
 		// Logout button is created below) can disable/enable it during the connect flow.
 		final Button[] logoutButtonHolder = new Button[1];
 
-		Button connectionButton = new Button(topComposite, SWT.PUSH);
-		connectionButton.setText(PluginConstants.PREFERENCES_TEST_CONNECTION);
+		Composite buttonsComposite = new Composite(topComposite, SWT.NONE);
+		GridLayout buttonsLayout = new GridLayout();
+		buttonsLayout.numColumns = 2;
+		buttonsLayout.marginHeight = 0;
+		buttonsLayout.marginWidth = 0;
+		buttonsLayout.horizontalSpacing = 10;
+		buttonsComposite.setLayout(buttonsLayout);
+		buttonsComposite.setLayoutData(new GridData(SWT.BEGINNING, SWT.CENTER, true, false));
+
+		// Give both buttons a fixed minimum width so they aren't sized to hug their text -
+		// without this, "Logout" ends up noticeably narrower than "Connect to Checkmarx".
+		final int buttonWidthHint = 140;
+
+		Button connectionButton = new Button(buttonsComposite, SWT.PUSH);
+		connectionButton.setText(PluginConstants.CONNECT_TO_CHECKMARX);
+		GridData connectionButtonGridData = new GridData(SWT.BEGINNING, SWT.CENTER, false, false);
+		connectionButtonGridData.widthHint = buttonWidthHint;
+		connectionButton.setLayoutData(connectionButtonGridData);
 		connectionButton.setEnabled(!apiKey.getStringValue().trim().isEmpty());
+
+		// connectionLabel (the "Validating.../Connected" status text) is created after
+		// buttonsComposite so it renders below the Connect/Logout buttons, per AUTH_SUCCESS_DISPLAY
+		// placement - it's declared here, before the listeners below that reference it.
+		spacer(topComposite);
+
+		Label connectionLabel = new Label(topComposite, SWT.WRAP);
+		connectionLabel.setLayoutData(
+		        new GridData(SWT.FILL, SWT.CENTER, true, false)
+		);
+
 		textControl.addModifyListener(e -> {
 		    connectionButton.setEnabled(!textControl.getText().trim().isEmpty());
 
@@ -274,18 +340,26 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 			}
 		});
 
-		addField(space());
-
-		Button logoutButton = new Button(topComposite, SWT.PUSH);
+		Button logoutButton = new Button(buttonsComposite, SWT.PUSH);
 		logoutButtonHolder[0] = logoutButton;
-		logoutButton.setText("Logout");
+		logoutButton.setText(PluginConstants.LOGOUT);
+		GridData logoutButtonGridData = new GridData(SWT.BEGINNING, SWT.CENTER, false, false);
+		logoutButtonGridData.widthHint = 80;
+		logoutButton.setLayoutData(logoutButtonGridData);
 		logoutButton.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
+				MessageDialog confirmDialog = new MessageDialog(getShell(), PluginConstants.LOGOUT_CONFIRM_TITLE, null,
+						PluginConstants.LOGOUT_CONFIRM_MESSAGE, MessageDialog.QUESTION,
+						new String[] { "Yes", "Cancel" }, 0);
+				if (confirmDialog.open() != 0) {
+					return;
+				}
+
 				Preferences.clearApiKey();
 				apiKey.setStringValue("");
 //				textControl.setText("");
-//				connectionLabel.setText("");
+				connectionLabel.setText(PluginConstants.LOGOUT_SUCCESS_MESSAGE);
 				refreshRealtimeScannersLink();
 				getFieldEditorParent().layout();
 
@@ -300,10 +374,10 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 			}
 		});
 
-		addField(space());
+		spacer(topComposite);
 
-		realtimeScannersLink = new Link(getFieldEditorParent(), SWT.NONE);
-		realtimeScannersLink.setText("<a>Go to Realtime Scanners</a>");
+		realtimeScannersLink = new Link(topComposite, SWT.NONE);
+		realtimeScannersLink.setText("<a>"+PluginConstants.GO_TO_CHECKMARX_ONE_ASSIST+"</a>");
 		realtimeScannersLink.setLayoutData(new GridData(SWT.BEGINNING, SWT.CENTER, true, false));
 
 		// Call refresh after setting the LayoutData
@@ -333,8 +407,8 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 		return result;
 	}
 
-	private FieldEditor space() {
-		return new LabelFieldEditor("", getFieldEditorParent());
+	private Label spacer(Composite parent) {
+		return new Label(parent, SWT.NONE);
 	}
 
 	@Override
