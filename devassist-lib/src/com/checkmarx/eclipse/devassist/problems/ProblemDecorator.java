@@ -1,10 +1,14 @@
 package com.checkmarx.eclipse.devassist.problems;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IProject;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jface.text.IRegion;
 import org.eclipse.jface.text.Position;
@@ -15,6 +19,8 @@ import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.texteditor.ITextEditor;
 
+import com.checkmarx.eclipse.devassist.ignore.IgnoreEntry;
+import com.checkmarx.eclipse.devassist.ignore.IgnoreFileManager;
 import com.checkmarx.eclipse.devassist.ui.findings.editor.FindingsAnnotation;
 import com.checkmarx.eclipse.devassist.ui.findings.marker.MarkerIssueMapper;
 import com.checkmarx.eclipse.devassist.model.Location;
@@ -90,13 +96,13 @@ public class ProblemDecorator {
 			// icon and Problems-view entry behind even though the squiggly is gone.
 			MarkerIssueMapper.clearAllMarkers(file);
 
-			// Early return if no issues to add
-			if (scanIssues.isEmpty()) {
-				return;
-			}
-
-			// Add new annotations for each issue
-			List<Annotation> annotations = new java.util.ArrayList<>();
+			// Add new annotations for each issue. Note: we do NOT early-return when
+			// scanIssues is empty - a file can go from "has active findings" to "fully
+			// ignored" (all findings ignored one-by-one), and we still need to run the
+			// ignored-entries pass below so the "ignored" gutter icon replaces the
+			// severity icon that was just cleared above.
+			List<Annotation> annotations = new ArrayList<>();
+			Set<Integer> activeLines = new HashSet<>();
 
 			for (ScanIssue issue : scanIssues) {
 				try {
@@ -106,6 +112,10 @@ public class ProblemDecorator {
 					// the
 					// user separately navigates to this finding from the Findings view.
 					MarkerIssueMapper.ensureMarker(file, issue);
+
+					if (issue.getLocations() != null && !issue.getLocations().isEmpty()) {
+						activeLines.add(issue.getLocations().get(0).getLine());
+					}
 
 					FindingsAnnotation annotation = createAnnotation(editor, issue);
 					if (annotation != null) {
@@ -140,6 +150,11 @@ public class ProblemDecorator {
 					e.printStackTrace();
 				}
 			}
+
+			// Draw the theme-aware "ignored" gutter icon for every active
+			// .checkmarxIgnored entry on this file whose line isn't already owned by an
+			// active (non-ignored) finding above.
+			annotations.addAll(decorateIgnoredEntries(file, editor, annotationModel, activeLines));
 
 			// Store annotations for later cleanup
 			fileAnnotations.put(filePath, annotations);
@@ -191,6 +206,87 @@ public class ProblemDecorator {
 					e.getMessage());
 			return null;
 		}
+	}
+
+	/**
+	 * Draw a theme-aware "ignored" gutter annotation for every active
+	 * {@code .checkmarxIgnored} entry that targets this file, skipping any line
+	 * that an active (non-ignored) finding already owns in this decoration pass.
+	 *
+	 * Uses a zero-length {@link Position} so only the vertical ruler/gutter icon
+	 * is rendered - no in-text squiggle - matching the requirement that an
+	 * ignored finding shows solely the "ignored" icon in place of its previous
+	 * severity icon.
+	 *
+	 * @param file            File being decorated
+	 * @param editor          Open text editor for the file
+	 * @param annotationModel Annotation model to add the ignored annotations to
+	 * @param activeLines     1-based line numbers already covered by an active
+	 *                        (non-ignored) finding in this same pass
+	 * @return The list of ignored annotations added, for later cleanup
+	 */
+	private static List<Annotation> decorateIgnoredEntries(IFile file, ITextEditor editor,
+			IAnnotationModel annotationModel, Set<Integer> activeLines) {
+		List<Annotation> result = new ArrayList<>();
+		try {
+			IProject project = file.getProject();
+			if (project == null) {
+				return result;
+			}
+
+			IgnoreFileManager ignoreFileManager = IgnoreFileManager.getInstance(project);
+			String normalizedPath = ignoreFileManager.normalizePath(file.getLocation().toOSString());
+
+			IDocument document = editor.getDocumentProvider().getDocument(editor.getEditorInput());
+			if (document == null) {
+				return result;
+			}
+
+			String annotationType = "com.checkmarx.eclipse.findings.ignored" +
+					(DevAssistUtils.isDarkTheme() ? "_dark" : "");
+
+			for (IgnoreEntry entry : ignoreFileManager.getAllIgnoreEntries()) {
+				if (entry.getFiles() == null) {
+					continue;
+				}
+				for (IgnoreEntry.FileReference ref : entry.getFiles()) {
+					if (!ref.isActive() || ref.getLine() == null) {
+						continue;
+					}
+					if (!normalizedPath.equals(ref.getPath())) {
+						continue;
+					}
+					if (activeLines.contains(ref.getLine())) {
+						// An active (non-ignored) finding already owns this line this pass.
+						continue;
+					}
+
+					int zeroBasedLine = ref.getLine() - 1;
+					if (zeroBasedLine < 0 || zeroBasedLine >= document.getNumberOfLines()) {
+						continue;
+					}
+
+					try {
+						IRegion lineInfo = document.getLineInformation(zeroBasedLine);
+						Position pos = new Position(lineInfo.getOffset(), 0);
+
+						String description = entry.getDescription() != null ? entry.getDescription()
+								: entry.getPackageName();
+						FindingsAnnotation annotation = new FindingsAnnotation(
+								annotationType,
+								entry.getTitle(),
+								"Ignored: " + description);
+						annotationModel.addAnnotation(annotation, pos);
+						result.add(annotation);
+					} catch (Exception e) {
+						CxLogger.warning(LOG_TAG + " Error adding ignored annotation: " + e.getMessage());
+					}
+				}
+			}
+		} catch (Exception e) {
+			CxLogger.warning(LOG_TAG + " Error decorating ignored entries: " + e.getMessage());
+		}
+		return result;
 	}
 
 	/**

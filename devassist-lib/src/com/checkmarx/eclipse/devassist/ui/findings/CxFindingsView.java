@@ -816,7 +816,12 @@ public class CxFindingsView extends ViewPart {
 	/**
 	 * Apply cached decorations (gutter icons, underlines) when editor is opened via
 	 * navigation.
-	 * Uses the provided editor directly instead of searching for it.
+	 *
+	 * Delegates to ProblemDecorator.decorateEditor() (the same entry point used by
+	 * refreshTreeWithFilter()) rather than duplicating annotation-creation logic,
+	 * so this path also gets marker creation, stale-annotation clearing, and the
+	 * "ignored" gutter-icon pass for any .checkmarxIgnored entries on this file -
+	 * matching the JetBrains plugin's restoreGutterIcons()-on-file-open behavior.
 	 */
 	private void applyCachedDecorationsForFile(org.eclipse.core.resources.IFile file,
 			org.eclipse.jface.text.IDocument document,
@@ -843,182 +848,29 @@ public class CxFindingsView extends ViewPart {
 
 			java.util.List<ScanIssue> cachedIssues = problemHolder.getScanIssuesByFile(filePath);
 
-			if (cachedIssues == null || cachedIssues.isEmpty()) {
-
-				return;
+			// Filter out non-problem/ignored issues - ProblemDecorator only needs the
+			// still-active findings here; ignored ones get their own gutter icon via
+			// ProblemDecorator's internal ignored-entries pass.
+			IgnoreManager ignoreManager = IgnoreManager.getInstance(project);
+			java.util.List<ScanIssue> activeIssues = new java.util.ArrayList<>();
+			for (ScanIssue issue : cachedIssues) {
+				if (issue == null || issue.getSeverity() == null) {
+					continue;
+				}
+				if (!com.checkmarx.eclipse.devassist.utils.DevAssistUtils.isProblem(issue.getSeverity())) {
+					continue;
+				}
+				if (ignoreManager.isIgnored(issue)) {
+					continue;
+				}
+				activeIssues.add(issue);
 			}
 
-			// Apply decorations directly using the provided editor
-
-			applyDecorationsDirectly(editor, file, cachedIssues);
+			com.checkmarx.eclipse.devassist.problems.ProblemDecorator.decorateEditor(file, activeIssues);
 
 		} catch (Exception e) {
 			System.err.println("[REALTIME-SETUP] Error applying cached decorations: " + e.getMessage());
 			e.printStackTrace();
-		}
-	}
-
-	/**
-	 * Apply decorations directly to the provided editor without searching for it.
-	 * This avoids issues with MavenPomEditor not being found by IFile comparison.
-	 */
-	private void applyDecorationsDirectly(org.eclipse.ui.IEditorPart editor,
-			org.eclipse.core.resources.IFile file,
-			java.util.List<ScanIssue> scanIssues) {
-		if (editor == null || file == null || scanIssues == null || scanIssues.isEmpty()) {
-			return;
-		}
-
-		try {
-			// Get the text editor
-			org.eclipse.ui.texteditor.ITextEditor textEditor = editor
-					.getAdapter(org.eclipse.ui.texteditor.ITextEditor.class);
-
-			if (textEditor == null) {
-
-				return;
-			}
-
-			// Get document provider and input
-			org.eclipse.ui.texteditor.IDocumentProvider docProvider = textEditor.getDocumentProvider();
-			if (docProvider == null) {
-
-				return;
-			}
-
-			// Get annotation model from the document provider (proper way for all editor
-			// types)
-			org.eclipse.jface.text.source.IAnnotationModel annotationModel = docProvider
-					.getAnnotationModel(textEditor.getEditorInput());
-
-			if (annotationModel == null) {
-
-				return;
-			}
-
-			// Get document from provider
-			org.eclipse.jface.text.IDocument document = docProvider.getDocument(textEditor.getEditorInput());
-
-			if (document == null) {
-
-				return;
-			}
-
-			// Apply each issue's decoration using OSS-specific logic
-			java.util.List<org.eclipse.jface.text.source.Annotation> annotations = new java.util.ArrayList<>();
-
-			for (ScanIssue issue : scanIssues) {
-				try {
-					// Create annotation
-					com.checkmarx.eclipse.devassist.ui.findings.editor.FindingsAnnotation annotation = createAnnotationForIssue(
-							issue);
-
-					if (annotation == null) {
-						continue;
-					}
-
-					// Calculate position (OSS = first line only)
-					org.eclipse.jface.text.Position pos = calculatePositionForIssue(document, issue);
-
-					if (pos != null && pos.getLength() > 0) {
-						annotationModel.addAnnotation(annotation, pos);
-						annotations.add(annotation);
-
-					}
-				} catch (Exception e) {
-					System.err.println("[REALTIME-SETUP-DIRECT] Error decorating issue: " + e.getMessage());
-				}
-			}
-
-		} catch (Exception e) {
-			System.err.println("[REALTIME-SETUP-DIRECT] ✗ Error applying decorations directly: " + e.getMessage());
-			e.printStackTrace();
-		}
-	}
-
-	/**
-	 * Create annotation for an issue.
-	 */
-	private com.checkmarx.eclipse.devassist.ui.findings.editor.FindingsAnnotation createAnnotationForIssue(
-			ScanIssue issue) {
-		try {
-			String annotationType = mapSeverityToAnnotationType(issue.getSeverity());
-			return new com.checkmarx.eclipse.devassist.ui.findings.editor.FindingsAnnotation(
-					annotationType,
-					issue.getTitle(),
-					issue.getDescription());
-		} catch (Exception e) {
-			return null;
-		}
-	}
-
-	/**
-	 * Map severity to annotation type.
-	 * Handles all 8 severity levels including OK, UNKNOWN, and IGNORED.
-	 */
-	private String mapSeverityToAnnotationType(String severity) {
-		if (severity == null) {
-			return "com.checkmarx.eclipse.findings.unknown";
-		}
-		String upper = severity.toUpperCase();
-		if (upper.contains("MALICIOUS")) {
-			return "com.checkmarx.eclipse.findings.malicious";
-		}
-		if (upper.contains("CRITICAL") || upper.contains("ERROR")) {
-			return "com.checkmarx.eclipse.findings.critical";
-		}
-		if (upper.contains("HIGH")) {
-			return "com.checkmarx.eclipse.findings.high";
-		}
-		if (upper.contains("MEDIUM")) {
-			return "com.checkmarx.eclipse.findings.medium";
-		}
-		if (upper.contains("LOW") || upper.contains("INFO")) {
-			return "com.checkmarx.eclipse.findings.low";
-		}
-		if (upper.contains("UNKNOWN")) {
-			return "com.checkmarx.eclipse.findings.unknown";
-		}
-		if (upper.contains("OK")) {
-			return "com.checkmarx.eclipse.findings.ok";
-		}
-		if (upper.contains("IGNORED")) {
-			return "com.checkmarx.eclipse.findings.ignored";
-		}
-		return "com.checkmarx.eclipse.findings.unknown";
-	}
-
-	/**
-	 * Calculate position for an issue (OSS = first line only).
-	 */
-	private org.eclipse.jface.text.Position calculatePositionForIssue(org.eclipse.jface.text.IDocument document,
-			ScanIssue issue) {
-		try {
-			if (issue.getLocations() == null || issue.getLocations().isEmpty()) {
-				return null;
-			}
-
-			com.checkmarx.eclipse.devassist.model.Location location = issue.getLocations().get(0);
-			int lineNumber = location.getLine() - 1; // 0-based
-
-			int lineCount = document.getNumberOfLines();
-			if (lineNumber < 0 || lineNumber >= lineCount) {
-				return null;
-			}
-
-			org.eclipse.jface.text.IRegion lineInfo = document.getLineInformation(lineNumber);
-			int offset = lineInfo.getOffset();
-			int length = lineInfo.getLength();
-
-			// FIX: Skip leading whitespace to match ProblemDecorator.calculateRange()
-			int trimOffset = getLeadingWhitespaceOffset(document, offset, length);
-			int adjustedOffset = offset + trimOffset;
-			int adjustedLength = Math.max(1, length - trimOffset);
-
-			return new org.eclipse.jface.text.Position(adjustedOffset, adjustedLength);
-
-		} catch (Exception e) {
-			return null;
 		}
 	}
 
@@ -1304,12 +1156,19 @@ public class CxFindingsView extends ViewPart {
 	}
 
 	/**
-	 * Apply decorations to all open editors that have findings in filteredIssues.
+	 * Apply decorations to all open editors that have (or previously had) findings.
 	 * This ensures annotations are present in the annotation model when the Findings View
 	 * displays cached results, so hover can find them without waiting for a new scan.
+	 *
+	 * Iterates {@code currentIssues} (the unfiltered set) rather than just
+	 * {@code filteredIssues}, and defaults to an empty issue list for files that
+	 * dropped out of filteredIssues entirely (e.g. every finding in a file was just
+	 * ignored). Without this, decorateEditor() would never be called for that file
+	 * again, leaving its now-stale annotations/markers/gutter icons in place forever
+	 * instead of being cleared and replaced by the "ignored" gutter icon.
 	 */
 	private void applyDecorationsToOpenEditors(Map<String, List<ScanIssue>> filteredIssues) {
-		if (filteredIssues == null || filteredIssues.isEmpty()) {
+		if (currentIssues == null || currentIssues.isEmpty()) {
 			return;
 		}
 
@@ -1319,11 +1178,10 @@ public class CxFindingsView extends ViewPart {
 				return;
 			}
 
-			for (String filePath : filteredIssues.keySet()) {
-				List<ScanIssue> issues = filteredIssues.get(filePath);
-				if (issues == null || issues.isEmpty()) {
-					continue;
-				}
+			for (String filePath : currentIssues.keySet()) {
+				List<ScanIssue> issues = filteredIssues != null
+						? filteredIssues.getOrDefault(filePath, java.util.Collections.emptyList())
+						: java.util.Collections.emptyList();
 
 				// Find if this file is currently open in an editor
 				try {
@@ -1382,21 +1240,6 @@ public class CxFindingsView extends ViewPart {
 
 	public TreeViewer getTreeViewer() {
 		return treeViewer;
-	}
-
-	private int getLeadingWhitespaceOffset(org.eclipse.jface.text.IDocument document, int lineOffset, int lineLength) {
-		try {
-			String lineText = document.get(lineOffset, lineLength);
-			int count = 0;
-			for (int i = 0; i < lineText.length(); i++) {
-				if (!Character.isWhitespace(lineText.charAt(i)))
-					break;
-				count++;
-			}
-			return count;
-		} catch (Exception e) {
-			return 0;
-		}
 	}
 
 }

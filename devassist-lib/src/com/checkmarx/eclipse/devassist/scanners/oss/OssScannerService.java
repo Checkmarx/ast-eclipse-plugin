@@ -112,7 +112,8 @@ public class OssScannerService extends BaseScannerService<OssRealtimeResults> {
 
 				CxLogger.info(LOG_TAG + " Starting Realtime OSS Scan on File: " + filePath);
 
-				OssRealtimeResults scanResults = CxWrapperFactory.build().ossRealtimeScan(mainTempPath.get(), "");
+				String ignoreFilePath = com.checkmarx.eclipse.devassist.utils.DevAssistUtils.getIgnoreFilePath(project);
+				OssRealtimeResults scanResults = CxWrapperFactory.build().ossRealtimeScan(mainTempPath.get(), ignoreFilePath);
 				if (scanResults == null) {
 					return null;
 				}
@@ -130,26 +131,6 @@ public class OssScannerService extends BaseScannerService<OssRealtimeResults> {
 			}
 		}
 	}
-
-	/**
-	 * Performs full scan without passing ignore file to update line numbers of ignored entries.
-	 */
-//	private void updateIgnoredFileDataOnLatestResult(String tempFilePath, IProject proj, String filePath) {
-//		try {
-//			// Extension point for ignore manager syncing when ignore files are active
-//			String ignoreFilePath = getIgnoreFilePath(proj);
-//			if (ignoreFilePath != null && !ignoreFilePath.isBlank() && new File(ignoreFilePath).exists()) {
-//				CxLogger.info(LOG_TAG + " Performing full scan to update line numbers for ignored packages");
-//				OssRealtimeResults fullScanResults = CxWrapperFactory.build().ossRealtimeScan(tempFilePath, "");
-//				if (fullScanResults != null && fullScanResults.getPackages() != null) {
-//					OssScanResultAdaptor fullScanResultAdaptor = new OssScanResultAdaptor(fullScanResults, filePath);
-//					// Connects with ignore manager line number updater if implemented
-//				}
-//			}
-//		} catch (Exception e) {
-//			CxLogger.warning(LOG_TAG + " Exception occurred while performing full scan without ignore file: " + e.getMessage());
-//		}
-//	}
 
 	/**
 	 * Persists the main manifest file into the temporary directory for scanning.
@@ -299,12 +280,4 @@ public class OssScannerService extends BaseScannerService<OssRealtimeResults> {
 		}
 		return null;
 	}
-
-//	private String getIgnoreFilePath(IProject proj) {
-//		try {
-//			return DevAssistUtils.getIgnoreFilePath(proj);
-//		} catch (Exception e) {
-//			return "";
-//		}
-//	}
 }

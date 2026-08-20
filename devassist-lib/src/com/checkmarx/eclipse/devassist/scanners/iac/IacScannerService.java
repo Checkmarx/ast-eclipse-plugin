@@ -138,12 +138,12 @@ public class IacScannerService extends BaseScannerService<IacRealtimeResults> {
                     CxLogger.info(LOG_TAG + " Start IAC Realtime Scan On File: " + filePath);
 
                     String containerTool = "docker";
-//                    String ignoreFilePath = getIgnoreFilePath(proj);
+                    String ignoreFilePath = DevAssistUtils.getIgnoreFilePath(proj);
 
                     IacRealtimeResults scanResults = null;
 					try {
 						scanResults = CxWrapperFactory.build()
-						        .iacRealtimeScan(tempFilePath, containerTool, "");
+						        .iacRealtimeScan(tempFilePath, containerTool, ignoreFilePath);
 					} catch (Exception e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
@@ -182,28 +182,6 @@ public class IacScannerService extends BaseScannerService<IacRealtimeResults> {
         }
         IDocument liveDocument = com.checkmarx.eclipse.devassist.utils.DevAssistUtils.getLiveDocumentForFile(filePath);
         return scan(filePath, liveDocument != null ? liveDocument : new Document(), project);
-    }
-
-    /**
-     * Performs a full scan without passing the ignore file to update line numbers of ignored entries.
-     */
-    private void updateIgnoredFileDataOnLatestResult(String tempFilePath, IProject proj, String filePath) {
-//        try {
-//            String ignoreFilePath = getIgnoreFilePath(proj);
-//            if (ignoreFilePath != null && !ignoreFilePath.isBlank() && new File(ignoreFilePath).exists()) {
-//                CxLogger.debug(LOG_TAG + " IaC: Performing full scan without ignore file to update line numbers");
-//                
-//                IacRealtimeResults fullScanResults = CxWrapperFactory.build()
-//                        .iacRealtimeScan(tempFilePath, DevAssistUtils.getContainerTool(), "");
-//
-//                if (fullScanResults != null) {
-//                    IacScanResultAdaptor fullScanResultAdaptor = new IacScanResultAdaptor(fullScanResults, fileType, filePath);
-//                    // Hook for updating ignored line markers if IgnoreManager is active
-//                }
-//            }
-//        } catch (IOException | CxException | InterruptedException e) {
-//            CxLogger.warning(LOG_TAG + " RTS-IaC: Exception occurred while performing full scan without ignore file: " + e.getMessage());
-//        }
     }
 
     /**
@@ -311,12 +289,4 @@ public class IacScannerService extends BaseScannerService<IacRealtimeResults> {
         }
         return null;
     }
-
-//    private String getIgnoreFilePath(IProject proj) {
-//        try {
-//            return DevAssistUtils.getIgnoreFilePath(proj);
-//        } catch (Exception e) {
-//            return "";
-//        }
-//    }
 }

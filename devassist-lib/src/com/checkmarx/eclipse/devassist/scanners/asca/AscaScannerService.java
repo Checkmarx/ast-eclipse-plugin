@@ -181,7 +181,7 @@ public class AscaScannerService extends BaseScannerService<ScanResult> {
 
 			try {
 				CxLogger.info(LOG_TAG + " Starting ASCA scan: " + filePath);
-				String ignoreFilePath = getIgnoreFilePath();
+				String ignoreFilePath = getIgnoreFilePath(project);
 				Object scanResult = executeAscaScanner(tempFilePath, ignoreFilePath);
 				CxLogger.info(LOG_TAG + " ASCA scan completed");
 				return scanResult;
@@ -205,11 +205,15 @@ public class AscaScannerService extends BaseScannerService<ScanResult> {
 
 	/**
 	 * Get ignore file path for ASCA scanning.
-	 * Returns empty string by default - can be extended to read from
-	 * .checkmarxIgnored file.
+	 * Note: matching the JetBrains plugin's behavior, ASCA's CLI invocation does
+	 * not currently accept a working ignore-file exclusion, so this path is
+	 * resolved but intentionally not forwarded to ScanAsca() below - ASCA-ignored
+	 * findings are instead excluded at the app level via
+	 * IgnoreManager/IgnoreFileManager#isIgnored() in the findings tree/decoration
+	 * filtering pipeline.
 	 */
-	private String getIgnoreFilePath() {
-		return "";
+	private String getIgnoreFilePath(IProject project) {
+		return com.checkmarx.eclipse.devassist.utils.DevAssistUtils.getIgnoreFilePath(project);
 	}
 
 	/**

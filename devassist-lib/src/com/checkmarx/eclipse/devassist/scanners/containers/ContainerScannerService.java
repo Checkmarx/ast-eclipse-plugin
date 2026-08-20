@@ -153,12 +153,11 @@ public class ContainerScannerService extends BaseScannerService<ContainersRealti
                 Files.writeString(tempFilePath, fileContent, StandardCharsets.UTF_8);
 
                 CxLogger.info(LOG_TAG + " Start Container Realtime Scan On File: " + filePath);
-                // String ignoreFilePath = DevAssistUtils.getIgnoreFilePath(proj != null ? proj
-                // : this.project);
+                String ignoreFilePath = DevAssistUtils.getIgnoreFilePath(proj != null ? proj : this.project);
 
                 ContainersRealtimeResults scanResults = null;
                 try {
-                    scanResults = CxWrapperFactory.build().containersRealtimeScan(tempFilePath.toString(), "");
+                    scanResults = CxWrapperFactory.build().containersRealtimeScan(tempFilePath.toString(), ignoreFilePath);
                 } catch (Exception e) {
                     // TODO Auto-generated catch block
                     e.printStackTrace();

@@ -412,6 +412,28 @@ public class DevAssistUtils {
 		return isDarkByBackgroundLuminance();
 	}
 
+	/**
+	 * Returns the CLI-facing ignore file path (the flattened
+	 * ".checkmarxIgnoredTempList.json") for the given project, so realtime
+	 * scanners can pass it to the CxWrapper scan methods and exclude
+	 * already-ignored findings from scan results.
+	 *
+	 * @param project Project whose ignore file path should be resolved
+	 * @return Absolute path to the temp ignore list, or "" if unavailable
+	 */
+	public static String getIgnoreFilePath(org.eclipse.core.resources.IProject project) {
+		if (project == null) {
+			return "";
+		}
+		try {
+			return com.checkmarx.eclipse.devassist.ignore.IgnoreFileManager.getInstance(project)
+					.getTempListPath().toString();
+		} catch (Exception e) {
+			CxLogger.warning(LOG_TAG + " Failed to resolve ignore file path: " + e.getMessage());
+			return "";
+		}
+	}
+
 	private static ITheme getActiveTheme() {
 		try {
 			Display display = Display.getCurrent();

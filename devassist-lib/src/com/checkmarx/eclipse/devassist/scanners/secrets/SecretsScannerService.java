@@ -125,10 +125,10 @@ public class SecretsScannerService extends BaseScannerService<SecretsRealtimeRes
                 }
 
                 CxLogger.info(LOG_TAG + " Starting scan: " + filePath);
-//                String ignoreFilePath = getIgnoreFilePath(proj);
+                String ignoreFilePath = DevAssistUtils.getIgnoreFilePath(proj);
 
                 SecretsRealtimeResults scanResults = CxWrapperFactory.build()
-                        .secretsRealtimeScan(tempFilePath.get(), "");
+                        .secretsRealtimeScan(tempFilePath.get(), ignoreFilePath);
 
                 if (scanResults == null) {
                     CxLogger.warning(LOG_TAG + " Secrets scanner: no results returned - " + filePath);
@@ -289,12 +289,4 @@ public class SecretsScannerService extends BaseScannerService<SecretsRealtimeRes
         }
         return null;
     }
-
-//    private String getIgnoreFilePath(IProject proj) {
-//        try {
-//            return DevAssistUtils.getIgnoreFilePath(proj);
-//        } catch (Exception e) {
-//            return "";
-//        }
-//    }
 }

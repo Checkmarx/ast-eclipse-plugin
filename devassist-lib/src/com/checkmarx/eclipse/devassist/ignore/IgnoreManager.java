@@ -139,7 +139,7 @@ public final class IgnoreManager {
             return;
         }
         // Trigger rescan for affected files
-//         triggerRescanForEntry(entryToRevive);
+        triggerRescanForEntry(entryToRevive);
         // Show notification with undo option
 //         showReviveUndoNotification(entryToRevive, fileCount, ignoredEntries);
         CxLogger.info(format("RTS-Ignore: Successfully revived entry: %s", entryToRevive.getPackageName()));
@@ -169,7 +169,7 @@ public final class IgnoreManager {
                 successCount++;
                 totalFileCount += fileCount;
                 // Trigger rescan for affected files
-//                 triggerRescanForEntry(entryToRevive);
+                triggerRescanForEntry(entryToRevive);
                 CxLogger.info(String.format("RTS-Ignore: Successfully revived entry: %s", entryToRevive.getTitle()));
             } else {
                 failedIgnoreEntry.add(entryToRevive);
@@ -192,6 +192,65 @@ public final class IgnoreManager {
             // Notification removed: use Eclipse MessageDialog instead
         } else {
             // Notification removed: use Eclipse MessageDialog instead
+        }
+    }
+
+    /**
+     * Checks whether the given scan issue is currently ignored, based on the same
+     * composite key used to add/lookup entries in the ignore file.
+     *
+     * @param issue The scan issue to check
+     * @return true if an active ignore entry exists for this issue
+     */
+    public boolean isIgnored(ScanIssue issue) {
+        if (issue == null) {
+            return false;
+        }
+        String key = createJsonKeyForIgnoreEntry(issue, "");
+        return !key.isEmpty() && ignoreFileManager.isIgnored(key);
+    }
+
+    /**
+     * Triggers an immediate real-time rescan for every file referenced by the
+     * given (just-revived) ignore entry, scoped to just those files - matching
+     * the JetBrains plugin's revive behavior of a per-file rescan rather than a
+     * full project rescan. Since the entry no longer exists (or is inactive) in
+     * {@code .checkmarxIgnored} by the time this runs, the scan's ignore-file
+     * exclusion no longer suppresses it, so the revived finding reappears.
+     *
+     * @param entry The ignore entry that was just revived
+     */
+    private void triggerRescanForEntry(IgnoreEntry entry) {
+        if (entry == null || entry.getFiles() == null || project == null) {
+            return;
+        }
+        org.eclipse.core.runtime.IPath projectLocation = project.getLocation();
+        if (projectLocation == null) {
+            return;
+        }
+        String basePath = projectLocation.toOSString();
+
+        for (IgnoreEntry.FileReference fileRef : entry.getFiles()) {
+            if (fileRef == null || fileRef.getPath() == null) {
+                continue;
+            }
+            try {
+                String absolutePath = Paths.get(basePath, fileRef.getPath()).toString();
+                org.eclipse.core.resources.IFile file = org.eclipse.core.resources.ResourcesPlugin.getWorkspace()
+                        .getRoot().getFileForLocation(new org.eclipse.core.runtime.Path(absolutePath));
+                if (file == null || !file.exists()) {
+                    CxLogger.warning("RTS-Ignore: Cannot trigger rescan, file not found: " + fileRef.getPath());
+                    continue;
+                }
+
+                com.checkmarx.eclipse.devassist.backend.listener.RealTimeScanJob scanJob =
+                        new com.checkmarx.eclipse.devassist.backend.listener.RealTimeScanJob(file, file.getName());
+                scanJob.schedule(0);
+                CxLogger.info("RTS-Ignore: Triggered rescan for revived entry file: " + fileRef.getPath());
+            } catch (Exception e) {
+                CxLogger.warning("RTS-Ignore: Failed to trigger rescan for file: " + fileRef.getPath()
+                        + " - " + e.getMessage());
+            }
         }
     }
 
