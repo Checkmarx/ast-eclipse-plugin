@@ -1,17 +1,26 @@
 name: Integration Tests
-on: 
+on:
   pull_request:
-    branches: 
+    branches:
       - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
 
   ui-tests:
+    name: UI Tests
     runs-on: cx-public-ubuntu-x64
     steps:
       - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
         with:
           lfs: true
+          persist-credentials: false
       - name: Checkout LFS objects
         run: git lfs checkout
       - uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4.8.0
@@ -44,11 +53,13 @@ jobs:
           jacoco-csv-file: checkmarx-ast-eclipse-plugin-tests/target/site/jacoco-aggregate/jacoco.csv
           generate-summary: true
   integration-tests:
+    name: Integration Tests
     runs-on: cx-public-ubuntu-x64
     steps:
       - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
         with:
           lfs: true
+          persist-credentials: false
       - name: Checkout LFS objects
         run: git lfs checkout
       - uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4.8.0
@@ -81,11 +92,13 @@ jobs:
           jacoco-csv-file: checkmarx-ast-eclipse-plugin-tests/target/site/jacoco-aggregate/jacoco.csv
           generate-summary: true
   unit-tests:
+    name: Unit Tests
     runs-on: cx-public-ubuntu-x64
     steps:
       - uses: actions/checkout@8e5e7e5ab8b370d6c329ec480221332ada57f0ab # v3.5.2
         with:
           lfs: true
+          persist-credentials: false
       - name: Checkout LFS objects
         run: git lfs checkout
       - uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4.8.0

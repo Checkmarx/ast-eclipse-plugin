@@ -30,22 +30,24 @@ on:
         required: true
         type: string
 
-permissions:
-  id-token: write
-  contents: write
-  packages: write
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions: {}
 
 jobs:
   deleteDevReleases:
-    uses: Checkmarx/ast-eclipse-plugin/.github/workflows/delete-dev-releases.yml@main
+    uses: Checkmarx/ast-eclipse-plugin/.github/workflows/delete-dev-releases.yml@a776dbbfa70cda798753bec14dd7c1f47d094595
     with:
       tag: ${{ inputs.rbranch }}
-    secrets: inherit
     if: inputs.rbranch
   release:
+    name: Release
     permissions:
-      id-token: write
-      contents: write
+      id-token: write  # for OIDC token generation
+      contents: write  # for git push and release creation
+      packages: write  # for publishing to artifact registry
     runs-on: cx-public-ubuntu-x64
     outputs:
       TAG_NAME: ${{ steps.generate_tag_name.outputs.TAG_NAME }}
@@ -56,20 +58,24 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           lfs: true
+          persist-credentials: false
 
       - name: Checkout LFS objects
         run: git lfs checkout
 
       - name: Create Release Name
         id: generate_tag_name
+        env:
+          TAG_INPUT: ${{ inputs.tag }}
+          RBRANCH_INPUT: ${{ inputs.rbranch }}
         run: |
           echo "Creating release name"
 
-          if [ -z "${{ inputs.rbranch }}" ]; then
-            export GH_RELEASE_TAG_NAME="${{ inputs.tag }}"
+          if [ -z "$RBRANCH_INPUT" ]; then
+            export GH_RELEASE_TAG_NAME="$TAG_INPUT"
             export GH_BRANCH_NAME="main"
           else
-            export GH_RELEASE_TAG_NAME="${{ inputs.tag }}-${{ inputs.rbranch }}"
+            export GH_RELEASE_TAG_NAME="$TAG_INPUT-$RBRANCH_INPUT"
             export GH_BRANCH_NAME="nightly"
           fi
 
@@ -101,8 +107,10 @@ jobs:
           sed -i 's|</settings>|<mirrors><mirror><id>echo</id><mirrorOf>central</mirrorOf><url>https://maven.echohq.com</url></mirror></mirrors></settings>|' ~/.m2/settings.xml
  
 
-      - name: Update the POM version.
-        run: mvn -B org.eclipse.tycho:tycho-versions-plugin:set-version -DnewVersion='${{ inputs.tag }}' --file pom.xml
+      - name: Update the POM version
+        env:
+          VERSION: ${{ inputs.tag }}
+        run: mvn -B org.eclipse.tycho:tycho-versions-plugin:set-version -DnewVersion='${VERSION}' --file pom.xml
 
       - name: Create release
         run: mvn -B clean install --file pom.xml  -DskipTests -pl "!checkmarx-ast-eclipse-plugin-tests"
@@ -115,8 +123,10 @@ jobs:
 
       - name: Echo CLI version to outputs
         id: set_outputs
+        env:
+          CLI_VERSION_ENV: ${{ env.CLI_VERSION }}
         run: |
-          echo "::set-output name=CLI_VERSION::${{ env.CLI_VERSION }}"
+          echo "CLI_VERSION=${CLI_VERSION_ENV}" >> $GITHUB_OUTPUT
 
       - name: Release
         uses: step-security/action-gh-release@277bfa82abcfdb73e5bbb19e213fd76532ee2be5 # v3.0.0
