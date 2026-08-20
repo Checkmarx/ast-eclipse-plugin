@@ -28,7 +28,6 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.ResourcesPlugin;
-import org.eclipse.core.runtime.QualifiedName;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Image;
@@ -54,6 +53,8 @@ import com.checkmarx.eclipse.devassist.remediation.RemediationManager;
 import com.checkmarx.eclipse.devassist.ui.findings.actions.VulnerabilityFilterAction;
 import com.checkmarx.eclipse.devassist.ui.findings.actions.VulnerabilityFilterState;
 import com.checkmarx.eclipse.devassist.ignore.IgnoreFileManager;
+import com.checkmarx.eclipse.devassist.ignore.IgnoreManager;
+import com.checkmarx.eclipse.common.utils.CxLogger;
 
 import java.util.List;
 import java.util.Map;
@@ -71,7 +72,7 @@ import org.eclipse.swt.widgets.Control;
  * capabilities.
  * Uses {@link TreeViewer} for flexible tree rendering with custom providers.
  */
-public class CxFindingsView extends ViewPart implements IgnoreFileManager.IgnoreListener {
+public class CxFindingsView extends ViewPart {
 
 	public static final String ID = "com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView";
 	private org.osgi.service.event.EventHandler eventHandler;
@@ -185,7 +186,6 @@ public class CxFindingsView extends ViewPart implements IgnoreFileManager.Ignore
 			if (projects.length > 0) {
 				currentProject = projects[0];
 				ignoreFileManager = IgnoreFileManager.getInstance(currentProject);
-				ignoreFileManager.addListener(this);
 			}
 		}
 	}
@@ -403,11 +403,6 @@ public class CxFindingsView extends ViewPart implements IgnoreFileManager.Ignore
 			}
 		}
 
-		// 2. Unsubscribe from IgnoreFileManager
-		if (ignoreFileManager != null) {
-			ignoreFileManager.removeListener(this);
-		}
-
 		super.dispose();
 	}
 
@@ -616,26 +611,22 @@ public class CxFindingsView extends ViewPart implements IgnoreFileManager.Ignore
 	 * Findings Window.
 	 */
 	private void ignoreThisFinding(ScanIssue issue) {
-
 		try {
-			// Ensure manager is initialized
+			// Ensure project is available
 			ensureIgnoreFileManagerInitialized();
-			if (ignoreFileManager == null) {
-				System.err.println("[FINDINGS] ERROR: IgnoreFileManager is NULL!");
-				showErrorNotification("Error: IgnoreFileManager not initialized");
+			if (currentProject == null) {
+				showErrorNotification("Error: No active project");
 				return;
 			}
 
-			// Add to ignore manager with full finding details for display in Ignored
-			// Findings View
-			// TODO: Call ignoreFileManager method to add issue
+			// Use IgnoreManager to add the issue (matches JetBrains implementation)
+			IgnoreManager ignoreManager = IgnoreManager.getInstance(currentProject);
+			ignoreManager.addIgnoredEntry(issue, DevAssistConstants.QUICK_FIX);
 
-			// Check if it was actually added
-			boolean isIgnored = ignoreFileManager != null && ignoreFileManager.isIgnored(issue.getScanIssueId());
-
-			// Refresh the tree to remove the ignored finding
-
+			// Refresh the tree to remove the ignored finding from the view
 			refreshTreeWithFilter();
+
+			CxLogger.info("Successfully ignored finding: " + issue.getTitle());
 
 		} catch (Exception e) {
 			System.err.println("[FINDINGS] ✗ Error ignoring finding: " + e.getMessage());
@@ -648,31 +639,25 @@ public class CxFindingsView extends ViewPart implements IgnoreFileManager.Ignore
 	 * Ignore all findings of the same type/package.
 	 * For OSS: ignores all findings with the same package version
 	 * For CONTAINERS: ignores all findings with the same image tag
+	 * Matches JetBrains implementation: addAllIgnoredEntry()
 	 */
 	private void ignoreAllOfType(ScanIssue issue) {
-
 		try {
-			int ignoredCount = 0;
-			String typeIdentifier = issue.getPackageVersion() != null ? issue.getPackageVersion() : issue.getImageTag();
-
-			// Iterate through all current issues and ignore matching ones
-			for (List<ScanIssue> issues : currentIssues.values()) {
-				for (ScanIssue currentIssue : issues) {
-					// Match by same type/package/image
-					if (currentIssue.getScanEngine() == issue.getScanEngine()) {
-						String currentTypeIdentifier = currentIssue.getPackageVersion() != null
-								? currentIssue.getPackageVersion()
-								: currentIssue.getImageTag();
-
-						if (typeIdentifier != null && typeIdentifier.equals(currentTypeIdentifier)) {
-							// TODO: Call ignoreFileManager method to add issue
-							ignoredCount++;
-						}
-					}
-				}
+			// Ensure project is available
+			ensureIgnoreFileManagerInitialized();
+			if (currentProject == null) {
+				showErrorNotification("Error: No active project");
+				return;
 			}
 
+			// Use IgnoreManager to add all matching issues (matches JetBrains implementation)
+			IgnoreManager ignoreManager = IgnoreManager.getInstance(currentProject);
+			ignoreManager.addAllIgnoredEntry(issue, DevAssistConstants.QUICK_FIX);
+
+			// Refresh the tree to remove the ignored findings from the view
 			refreshTreeWithFilter();
+
+			CxLogger.info("Successfully ignored all findings of type: " + issue.getTitle());
 
 		} catch (Exception e) {
 			System.err.println("[FINDINGS] ✗ Error ignoring findings of type: " + e.getMessage());
@@ -1395,17 +1380,6 @@ public class CxFindingsView extends ViewPart implements IgnoreFileManager.Ignore
 
 	public TreeViewer getTreeViewer() {
 		return treeViewer;
-	}
-
-	/**
-	 * Listener implementation: called when ignored problems are restored or
-	 * cleared.
-	 */
-	@Override
-	public void onIgnoreUpdated() {
-		if (treeViewer != null && treeViewer.getControl() != null && !treeViewer.getControl().isDisposed()) {
-			treeViewer.getControl().getDisplay().asyncExec(this::refreshTreeWithFilter);
-		}
 	}
 
 	private int getLeadingWhitespaceOffset(org.eclipse.jface.text.IDocument document, int lineOffset, int lineLength) {
