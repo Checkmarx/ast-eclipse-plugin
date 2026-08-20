@@ -8,6 +8,7 @@ import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.*;
 
+import com.checkmarx.eclipse.devassist.backend.DevAssistScanStateHolder;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.problems.ProblemHolderService;
 
@@ -243,6 +244,22 @@ public final class IgnoreManager {
                     continue;
                 }
 
+                // Reviving only mutates .checkmarxIgnored - the source file's content and
+                // mtime are untouched, so DevAssistScanStateHolder's cached state hash for
+                // it is still identical to what was last scanned. Without clearing it here,
+                // ScanManager.scanFileWithOutcome() would see hasChanged()==false and skip
+                // the scan entirely (no scanner ever runs), so the revived finding would
+                // never reappear. Clearing just this file's entry forces exactly one real
+                // scan cycle; the hash is repopulated normally once that scan succeeds, so
+                // ordinary edit-based caching for this file is unaffected afterwards.
+                // Use file.getLocation().toOSString() (not the manually-joined path above)
+                // since that is the exact key RealTimeScanJob/ScanManager use to read/write
+                // the cache - any formatting difference here would silently no-op the clear.
+                DevAssistScanStateHolder stateHolder = getOrCreateStateHolder();
+                if (stateHolder != null) {
+                    stateHolder.clearFileState(file.getLocation().toOSString());
+                }
+
                 com.checkmarx.eclipse.devassist.backend.listener.RealTimeScanJob scanJob =
                         new com.checkmarx.eclipse.devassist.backend.listener.RealTimeScanJob(file, file.getName());
                 scanJob.schedule(0);
@@ -251,6 +268,33 @@ public final class IgnoreManager {
                 CxLogger.warning("RTS-Ignore: Failed to trigger rescan for file: " + fileRef.getPath()
                         + " - " + e.getMessage());
             }
+        }
+    }
+
+    /**
+     * Fetches (or lazily creates) the same per-project {@link DevAssistScanStateHolder}
+     * instance that {@code RealTimeScanJob}/{@code ScanManager} use for edit-based
+     * caching, via the identical session-property key. Sharing the exact instance
+     * (rather than constructing a disconnected one) is required for
+     * {@link DevAssistScanStateHolder#clearFileState(String)} to have any effect on
+     * the subsequent scan cycle triggered by revive.
+     */
+    private DevAssistScanStateHolder getOrCreateStateHolder() {
+        if (project == null) {
+            return null;
+        }
+        try {
+            org.eclipse.core.runtime.QualifiedName stateHolderKey = new org.eclipse.core.runtime.QualifiedName(
+                    "com.checkmarx.eclipse.plugin", "state-holder");
+            DevAssistScanStateHolder stateHolder = (DevAssistScanStateHolder) project.getSessionProperty(stateHolderKey);
+            if (stateHolder == null) {
+                stateHolder = new DevAssistScanStateHolder();
+                project.setSessionProperty(stateHolderKey, stateHolder);
+            }
+            return stateHolder;
+        } catch (Exception e) {
+            CxLogger.warning("RTS-Ignore: Failed to access scan state holder: " + e.getMessage());
+            return null;
         }
     }
 
