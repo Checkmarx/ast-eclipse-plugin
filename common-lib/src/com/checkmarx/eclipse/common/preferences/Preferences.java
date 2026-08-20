@@ -11,6 +11,7 @@ import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.ui.preferences.ScopedPreferenceStore;
 
 import com.checkmarx.eclipse.common.listener.IAuthenticationSuccessHandler;
+import com.checkmarx.eclipse.common.listener.IMcpInstallHandler;
 import com.checkmarx.eclipse.common.listener.ISettingsChangeNotifier;
 import com.checkmarx.eclipse.common.listener.IWorkspaceScanService;
 
@@ -53,6 +54,9 @@ public class Preferences {
 
     // Service for triggering workspace scans (registered by main plugin)
     private static IWorkspaceScanService workspaceScanService;
+
+    // Handler for installing the Checkmarx MCP server configuration (registered by devassist-lib)
+    private static IMcpInstallHandler mcpInstallHandler;
 
     private Preferences() {
     }
@@ -114,6 +118,14 @@ public class Preferences {
 
     public static IWorkspaceScanService getWorkspaceScanService() {
         return workspaceScanService;
+    }
+
+    public static void setMcpInstallHandler(IMcpInstallHandler handler) {
+        mcpInstallHandler = handler;
+    }
+
+    public static IMcpInstallHandler getMcpInstallHandler() {
+        return mcpInstallHandler;
     }
 
     // ============================================================================

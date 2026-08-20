@@ -1,15 +1,21 @@
 package com.checkmarx.eclipse.devassist.utils;
 
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.Base64;
-import java.util.List;
 import java.util.Objects;
-import java.net.URL;
+
 import org.eclipse.core.resources.IFile;
+import org.eclipse.e4.ui.css.swt.theme.ITheme;
+import org.eclipse.e4.ui.css.swt.theme.IThemeEngine;
 import org.eclipse.jface.text.IDocument;
 import org.eclipse.jgit.annotations.NonNull;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.dnd.Clipboard;
+import org.eclipse.swt.dnd.TextTransfer;
 import org.eclipse.swt.dnd.Transfer;
+import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IEditorReference;
@@ -18,20 +24,13 @@ import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.texteditor.ITextEditor;
-import org.eclipse.swt.SWT;
-import org.eclipse.swt.dnd.Clipboard;
-import org.eclipse.swt.dnd.TextTransfer;
-import org.eclipse.swt.graphics.Color;
-import org.eclipse.e4.ui.css.swt.theme.ITheme;
-import org.eclipse.e4.ui.css.swt.theme.IThemeEngine;
 
-import org.eclipse.swt.dnd.Clipboard;
-import org.eclipse.swt.dnd.TextTransfer;
+import com.checkmarx.eclipse.common.preferences.Preferences;
+import com.checkmarx.eclipse.common.utils.CxLogger;
 import com.checkmarx.eclipse.devassist.backend.SeverityLevel;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.model.Vulnerability;
 import com.checkmarx.eclipse.devassist.remediation.NotificationPopup;
-import com.checkmarx.eclipse.common.utils.CxLogger;
 
 /**
  * Utility class for DevAssist operations. Provides methods for encoding,
@@ -437,4 +436,25 @@ public class DevAssistUtils {
 				/ 255.0;
 		return luminance < 0.5;
 	}
+	
+	/**
+	 * Returns the container tool configured in the global settings.
+	 * @return
+	 */
+	public static String getContainerTool() {
+		try {
+			// Prefer the typed preference store access which returns the stored value
+			// or an empty string if not present. Fall back to the generic getPref
+			// only if needed. Always return a sensible default when empty/null.
+			String value = Preferences.STORE.getString(Preferences.PREF_CONTAINERS_TOOL);
+			if (value == null || value.isBlank()) {
+				// Try the legacy getter which may consult the preference service
+				value = Preferences.getPref(Preferences.PREF_CONTAINERS_TOOL);
+			}
+			return (value == null || value.isBlank()) ? "docker" : value;
+		} catch (Exception e) {
+			CxLogger.error(LOG_TAG + " Error retrieving container tool preference: " + e.getMessage(), e);
+			return "docker"; // default to docker if preference retrieval fails
+		}
+    }
 }

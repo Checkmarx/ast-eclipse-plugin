@@ -30,6 +30,7 @@ import com.checkmarx.eclipse.devassist.common.ScanResult;
 import com.checkmarx.eclipse.devassist.common.ScannerConfig;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
+import com.checkmarx.eclipse.devassist.utils.DevAssistUtils;
 
 /**
  * Realtime IaC scanner service for Eclipse.
@@ -143,13 +144,12 @@ public class IacScannerService extends BaseScannerService<IacRealtimeResults> {
                     String tempFilePath = saveResult.getLeft().toString();
                     CxLogger.info(LOG_TAG + " Start IAC Realtime Scan On File: " + filePath);
 
-                    String containerTool = "docker";
 //                    String ignoreFilePath = getIgnoreFilePath(proj);
 
                     IacRealtimeResults scanResults = null;
 					try {
 						scanResults = wrapperProvider
-						        .iacRealtimeScan(tempFilePath, containerTool, "");
+						        .iacRealtimeScan(tempFilePath, DevAssistUtils.getContainerTool(), "");
 					} catch (Exception e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();

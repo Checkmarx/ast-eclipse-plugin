@@ -275,6 +275,7 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 		connectionLabel.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
 		if (isConnected) {
 			connectionLabel.setText(PluginConstants.AUTH_SUCCESS_DISPLAY);
+			setStatusLabelColor(connectionLabel, true);
 		}
 
 		textControl.addModifyListener(e -> {
@@ -300,6 +301,7 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 				String additionalParams_str = additionalParams.getStringValue();
 				connectionButton.setEnabled(false);
 				connectionLabel.setText(PluginConstants.PREFERENCES_VALIDATING_STATE);
+				setStatusLabelColor(connectionLabel, null);
 				getFieldEditorParent().layout();
 
 				// Disable Logout for the duration of the connect/validate flow so a user can't
@@ -363,6 +365,7 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 						}).thenAccept((mcpEnabled) -> Display.getDefault().syncExec(() -> {
 							if (!connectionLabel.isDisposed()) {
 								connectionLabel.setText(mapAuthResult(result));
+								setStatusLabelColor(connectionLabel, true);
 							}
 							if (!getFieldEditorParent().isDisposed()) {
 								getFieldEditorParent().layout();
@@ -389,6 +392,7 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 						}
 						if (!connectionLabel.isDisposed()) {
 							connectionLabel.setText(mapAuthResult(result));
+							setStatusLabelColor(connectionLabel, false);
 						}
 						if (!getFieldEditorParent().isDisposed()) {
 							getFieldEditorParent().layout();
@@ -430,6 +434,7 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 				textControl.setEnabled(true);
 				logoutButton.setEnabled(false);
 				connectionLabel.setText(PluginConstants.LOGOUT_SUCCESS_MESSAGE);
+				setStatusLabelColor(connectionLabel, true);
 				refreshRealtimeScannersLink();
 				getFieldEditorParent().layout();
 
@@ -478,11 +483,34 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 		if (result != null && result.contains(PluginConstants.AUTH_SUCCESS_PATTERN)) {
 			return PluginConstants.AUTH_SUCCESS_DISPLAY;
 		}
-		return result;
+		// Log the actual failure reason (invalid key, network error, tenant misconfiguration,
+		// etc.) for diagnosis, but always show the user the same fixed message - the raw
+		// reason isn't reliably meaningful/actionable to them and may leak backend details.
+		CxLogger.error(String.format(PluginConstants.ERROR_AUTHENTICATING_AST, result), new Exception(result));
+		return PluginConstants.AUTH_FAILURE_DISPLAY;
 	}
 
 	private Label spacer(Composite parent) {
 		return new Label(parent, SWT.NONE);
+	}
+
+	/**
+	 * Colors the login/logout status label: green for a success message (connected,
+	 * logged out), red for a failure message, or the default color while a message is
+	 * neutral (e.g. "Validating...").
+	 */
+	private void setStatusLabelColor(Label label, Boolean success) {
+		if (label == null || label.isDisposed()) {
+			return;
+		}
+		Display display = label.getDisplay();
+		if (success == null) {
+			label.setForeground(null);
+		} else if (success) {
+			label.setForeground(display.getSystemColor(SWT.COLOR_DARK_GREEN));
+		} else {
+			label.setForeground(display.getSystemColor(SWT.COLOR_RED));
+		}
 	}
 
 	@Override

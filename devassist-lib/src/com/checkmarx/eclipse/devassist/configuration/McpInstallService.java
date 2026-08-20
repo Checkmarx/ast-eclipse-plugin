@@ -2,9 +2,11 @@ package com.checkmarx.eclipse.devassist.configuration;
 
 import java.util.concurrent.CompletableFuture;
 
+import com.checkmarx.eclipse.common.listener.IMcpInstallCallback;
 import com.checkmarx.eclipse.common.preferences.Preferences;
 import com.checkmarx.eclipse.common.runner.TenantSettingsProvider;
 import com.checkmarx.eclipse.common.utils.CxLogger;
+import com.checkmarx.eclipse.common.utils.PluginConstants;
 
 
 /**
@@ -39,6 +41,10 @@ public final class McpInstallService {
 
 			// Register handler for post-authentication UI (welcome dialog, workspace scan)
 			Preferences.setAuthenticationSuccessHandler(new AuthenticationSuccessHandler());
+
+			// Register handler so common-lib preference pages (e.g. CheckmarxPreferencePage)
+			// can trigger MCP install without depending on this bundle directly.
+			Preferences.setMcpInstallHandler(McpInstallService::installFromUi);
 
 			authListenerRegistered = true;
 			CxLogger.info(LOG_TAG + " Authentication handlers registered");
@@ -117,6 +123,62 @@ public final class McpInstallService {
 		CxLogger.error(LOG_TAG + " Unexpected error during auto-install attempt: " + e.getMessage(), e);
 	}
 }
+
+	/**
+	 * Installs MCP configuration in response to a user-initiated action (the "Install MCP"
+	 * link on CheckmarxPreferencePage), reporting the outcome to {@code callback} instead of
+	 * only logging it - unlike {@link #attemptAutoInstall()}, which is silent by design.
+	 *
+	 * @param callback notified of success or failure; may be called from a background thread
+	 */
+	public static void installFromUi(IMcpInstallCallback callback) {
+		CxLogger.info(LOG_TAG + " Install MCP requested from preferences page...");
+
+		try {
+			if (!Preferences.isAuthenticated()) {
+				callback.onFailure(PluginConstants.MCP_NOT_AUTHENTICATED_MESSAGE);
+				return;
+			}
+
+			String apiKey = Preferences.getApiKey();
+			String additionalParams = Preferences.getAdditionalOptions();
+
+			if (apiKey == null || apiKey.isBlank()) {
+				callback.onFailure(PluginConstants.MCP_NOT_AUTHENTICATED_MESSAGE);
+				return;
+			}
+
+			boolean aiMcpEnabled;
+			try {
+				aiMcpEnabled = TenantSettingsProvider.INSTANCE.isAiMcpServerEnabled(apiKey, additionalParams);
+			} catch (Exception e) {
+				CxLogger.error(LOG_TAG + " Failed to check MCP server status: " + e.getMessage(), e);
+				callback.onFailure(PluginConstants.MCP_INSTALL_GENERIC_FAILURE_MESSAGE);
+				return;
+			}
+
+			if (!aiMcpEnabled) {
+				callback.onFailure(PluginConstants.MCP_NOT_ENABLED_FOR_TENANT_MESSAGE);
+				return;
+			}
+
+			installSilentlyAsync(apiKey).thenAccept(changed -> {
+				if (changed == null) {
+					CxLogger.info(LOG_TAG + " Install MCP (from preferences page) failed");
+					callback.onFailure(PluginConstants.MCP_INSTALL_GENERIC_FAILURE_MESSAGE);
+				} else if (changed) {
+					CxLogger.info(LOG_TAG + " Install MCP (from preferences page) succeeded");
+					callback.onSuccess();
+				} else {
+					CxLogger.info(LOG_TAG + " Install MCP (from preferences page): already up to date");
+					callback.onAlreadyUpToDate();
+				}
+			});
+		} catch (Exception e) {
+			CxLogger.error(LOG_TAG + " Unexpected error while installing MCP from preferences page: " + e.getMessage(), e);
+			callback.onFailure(PluginConstants.MCP_INSTALL_GENERIC_FAILURE_MESSAGE);
+		}
+	}
 
 	/**
 	 * Asynchronously installs MCP configuration without user notifications.
