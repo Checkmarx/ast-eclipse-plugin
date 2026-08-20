@@ -1222,8 +1222,10 @@ public class CxFindingsView extends ViewPart {
 					continue;
 				}
 
-				String issueId = issue.getScanIssueId();
-				boolean isIgnored = ignoreFileManager != null && ignoreFileManager.isIgnored(issueId);
+				String vulnerabilityKey = currentProject != null
+						? IgnoreManager.getInstance(currentProject).createJsonKeyForIgnoreEntry(issue, DevAssistConstants.QUICK_FIX)
+						: "";
+				boolean isIgnored = ignoreFileManager != null && ignoreFileManager.isIgnored(vulnerabilityKey);
 				boolean hasFilter = filterState.hasFilter(issue.getSeverity());
 				boolean isProblem = com.checkmarx.eclipse.devassist.utils.DevAssistUtils.isProblem(issue.getSeverity());
 

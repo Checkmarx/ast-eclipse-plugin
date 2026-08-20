@@ -84,6 +84,12 @@ public class ProblemDecorator {
 			// This ensures stale annotations are cleared even if file is now clean
 			clearAnnotations(filePath, annotationModel);
 
+			// Remove previous IMarkers for this file too - ensureMarker() below only adds
+			// markers, so without this, issues that were ignored/resolved/filtered out
+			// since the last decoration (e.g. via the ignore action) leave a stale gutter
+			// icon and Problems-view entry behind even though the squiggly is gone.
+			MarkerIssueMapper.clearAllMarkers(file);
+
 			// Early return if no issues to add
 			if (scanIssues.isEmpty()) {
 				return;

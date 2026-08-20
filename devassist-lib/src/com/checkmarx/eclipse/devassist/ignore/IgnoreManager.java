@@ -200,16 +200,29 @@ public final class IgnoreManager {
         if (issue != null) {
             // Convert model.ScanEngine to utils.ScanEngine
             com.checkmarx.eclipse.devassist.model.ScanEngine modelEngine = issue.getScanEngine();
+            com.checkmarx.eclipse.devassist.utils.ScanEngine engine = null;
             if (modelEngine != null) {
-                entry.type = com.checkmarx.eclipse.devassist.utils.ScanEngine.valueOf(modelEngine.toString());
+                engine = com.checkmarx.eclipse.devassist.utils.ScanEngine.valueOf(modelEngine.toString());
+                entry.type = engine;
             }
             entry.title = issue.getTitle();
             entry.severity = issue.getSeverity();
             entry.description = issue.getDescription();
             entry.ruleId = issue.getRuleId();
+            entry.packageManager = issue.getPackageManager();
+            entry.packageVersion = issue.getPackageVersion();
+            entry.similarityId = issue.getSimilarityId();
+            entry.secretValue = issue.getSecretValue();
+            if (engine == com.checkmarx.eclipse.devassist.utils.ScanEngine.CONTAINERS) {
+                entry.packageName = issue.getTitle() + ":" + issue.getImageTag();
+                entry.imageName = issue.getTitle();
+                entry.imageTag = issue.getImageTag();
+            } else {
+                entry.packageName = issue.getTitle();
+            }
             if (!issue.getLocations().isEmpty()) {
                 IgnoreEntry.FileReference ref = new IgnoreEntry.FileReference(
-                    issue.getFilePath(),
+                    ignoreFileManager.normalizePath(issue.getFilePath()),
                     true,
                     issue.getLocations().get(0).getLine(),
                     ""
@@ -220,8 +233,40 @@ public final class IgnoreManager {
         return entry;
     }
 
-    private String createJsonKeyForIgnoreEntry(ScanIssue issue, String clickId) {
-        if (issue == null) return "";
-        return issue.getSimilarityId() != null ? issue.getSimilarityId() : "";
+    /**
+     * Builds a unique key identifying the given scan issue's vulnerability, matching the
+     * composite key format used by the JetBrains plugin so ignore/revive/isIgnored checks
+     * are consistent across scan engines (OSS, CONTAINERS, SECRETS, IAC, ASCA).
+     */
+    public String createJsonKeyForIgnoreEntry(ScanIssue issue, String clickId) {
+        if (issue == null || issue.getScanEngine() == null) return "";
+        String relativePath = ignoreFileManager.normalizePath(issue.getFilePath());
+        com.checkmarx.eclipse.devassist.utils.ScanEngine engine =
+                com.checkmarx.eclipse.devassist.utils.ScanEngine.valueOf(issue.getScanEngine().toString());
+        switch (engine) {
+            case OSS:
+                return formatJsonKeyForIgnoreEntry(engine, issue.getPackageManager(), issue.getTitle(), issue.getPackageVersion());
+            case CONTAINERS:
+                return formatJsonKeyForIgnoreEntry(engine, issue.getTitle(), issue.getImageTag(), "");
+            case SECRETS:
+                return formatJsonKeyForIgnoreEntry(engine, issue.getTitle(), issue.getSecretValue(), relativePath);
+            case IAC:
+                return issue.getSimilarityId() != null ?
+                        formatJsonKeyForIgnoreEntry(engine, issue.getTitle(), issue.getSimilarityId(), relativePath) : "";
+            case ASCA:
+                return issue.getRuleId() != null ?
+                        formatJsonKeyForIgnoreEntry(engine, issue.getTitle(), String.valueOf(issue.getRuleId()), relativePath) : "";
+            default:
+                return formatJsonKeyForIgnoreEntry(engine, "", "", issue.getTitle());
+        }
+    }
+
+    private String formatJsonKeyForIgnoreEntry(com.checkmarx.eclipse.devassist.utils.ScanEngine scanEngine,
+                                                String title, String secondary, String path) {
+        if (scanEngine == com.checkmarx.eclipse.devassist.utils.ScanEngine.CONTAINERS) {
+            return format("%s:%s:%s", scanEngine, title, secondary);
+        } else {
+            return format("%s:%s:%s:%s", scanEngine, title, secondary, path);
+        }
     }
 }

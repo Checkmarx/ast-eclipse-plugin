@@ -231,6 +231,26 @@ public class MarkerIssueMapper {
     }
 
     /**
+     * Deletes every {@value #MARKER_TYPE} marker on the given file.
+     * Called before re-creating markers for the current (post-filter) issue list so
+     * that findings which were ignored/resolved/filtered out don't leave a stale
+     * gutter icon and Problems-view entry behind - ensureMarker() only ever adds,
+     * it never removes markers for issues no longer present.
+     *
+     * @param file the file to clear markers from
+     */
+    public static void clearAllMarkers(IFile file) {
+        if (file == null || !file.exists()) {
+            return;
+        }
+        try {
+            file.deleteMarkers(MARKER_TYPE, true, IResource.DEPTH_ZERO);
+        } catch (Exception e) {
+            // best-effort
+        }
+    }
+
+    /**
      * Finds the existing {@value #MARKER_TYPE} marker for a ScanIssue, matching by
      * the stable
      * scanIssueId when available and falling back to line+title for findings
