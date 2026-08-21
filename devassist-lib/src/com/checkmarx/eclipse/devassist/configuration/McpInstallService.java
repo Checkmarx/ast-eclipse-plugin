@@ -249,16 +249,19 @@ public final class McpInstallService {
 
 		try {
 			uninstallSilentlyAsync().thenAccept(removed -> {
-				if (removed == null) {
-					CxLogger.info(LOG_TAG + " Uninstall MCP (from logout) failed");
-					callback.onFailure(PluginConstants.MCP_INSTALL_GENERIC_FAILURE_MESSAGE);
-				} else if (removed) {
-					CxLogger.info(LOG_TAG + " Uninstall MCP (from logout) succeeded - entry removed");
-					callback.onSuccess();
-				} else {
-					CxLogger.info(LOG_TAG + " Uninstall MCP (from logout) - no entry found");
-					callback.onNotFound();
-				}
+				// Marshal callback back to UI thread - uninstallSilentlyAsync completes on a thread pool
+				org.eclipse.swt.widgets.Display.getDefault().asyncExec(() -> {
+					if (removed == null) {
+						CxLogger.info(LOG_TAG + " Uninstall MCP (from logout) failed");
+						callback.onFailure(PluginConstants.MCP_INSTALL_GENERIC_FAILURE_MESSAGE);
+					} else if (removed) {
+						CxLogger.info(LOG_TAG + " Uninstall MCP (from logout) succeeded - entry removed");
+						callback.onSuccess();
+					} else {
+						CxLogger.info(LOG_TAG + " Uninstall MCP (from logout) - no entry found");
+						callback.onNotFound();
+					}
+				});
 			});
 		} catch (Exception e) {
 			CxLogger.error(LOG_TAG + " Unexpected error while uninstalling MCP from logout: " + e.getMessage(), e);

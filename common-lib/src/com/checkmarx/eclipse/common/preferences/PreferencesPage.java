@@ -543,20 +543,21 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 			return;
 		}
 
+		CxLogger.info("[PREFS] Triggering MCP uninstall after logout...");
 		handler.uninstallMcp(new IMcpUninstallCallback() {
 			@Override
 			public void onSuccess() {
-				CxLogger.info("[PREFS] Checkmarx MCP uninstalled successfully.");
+				CxLogger.info("[PREFS] ✓ Checkmarx MCP uninstalled successfully from Copilot preferences.");
 			}
 
 			@Override
 			public void onNotFound() {
-				CxLogger.info("[PREFS] No Checkmarx MCP configuration found to uninstall.");
+				CxLogger.info("[PREFS] No Checkmarx MCP configuration entry found to uninstall (may not have been installed).");
 			}
 
 			@Override
 			public void onFailure(String errorMessage) {
-				CxLogger.error("[PREFS] Failed to uninstall Checkmarx MCP: " + errorMessage);
+				CxLogger.error("[PREFS] ✗ Failed to uninstall Checkmarx MCP: " + errorMessage, new Exception(errorMessage));
 			}
 		});
 	}
