@@ -69,6 +69,8 @@ public class PluginConstants {
 	public static final String GO_TO_CHECKMARX_ONE_ASSIST = "Go to Checkmarx One Assist";
 	public static final String PREFERENCES_HELP_LINK_TEXT = "Checkmarx One Eclipse Plugin Help Page";
 	public static final String PREFERENCES_HELP_LINK_URL = "https://checkmarx.com/resource/documents/en/34965-68728-checkmarx-one-eclipse-plugin.html";
+	public static final String PREFERENCES_CLI_HELP_LINK_TEXT = "CLI command that supports a set of global flags";
+	public static final String PREFERENCES_CLI_HELP_LINK = "https://checkmarx.com/resource/documents/en/34965-68626-global-flags.html";
 	public static final String PREFERENCES_VALIDATING_STATE = "Validating...";
 	public static final String LOGOUT_CONFIRM_TITLE = "Confirm Logout";
 	public static final String LOGOUT_CONFIRM_MESSAGE = "Are you sure you want to logout?";

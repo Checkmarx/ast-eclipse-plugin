@@ -169,7 +169,10 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 		// so nothing else on the page can stretch or shrink that gap.
 		Composite fieldsComposite = new Composite(topComposite, SWT.NONE);
 		GridLayout fieldsLayout = new GridLayout();
-		fieldsLayout.numColumns = 1;
+		// Use 2 columns so each FieldEditor places its label in column 1 and the
+		// input control in column 2. This allows us to set a widthHint on the
+		// input control without the control stretching to the full dialog width.
+		fieldsLayout.numColumns = 2;
 		fieldsLayout.marginHeight = 0;
 		fieldsLayout.marginWidth = 0;
 		fieldsLayout.verticalSpacing = 4;
@@ -182,12 +185,30 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 		addField(apiKey);
 		Text textControl = apiKey.getTextControl(fieldsComposite);
 		textControl.setEchoChar('*');
+		// Set fixed width for apiKey field
+		GridData apiKeyGridData = new GridData(SWT.BEGINNING, SWT.CENTER, true, false);
+		apiKeyGridData.widthHint = 500;
+		apiKeyGridData.grabExcessHorizontalSpace = false;
+		apiKeyGridData.horizontalAlignment = GridData.FILL;
+		if (textControl != null && !textControl.isDisposed()) {
+			textControl.setLayoutData(apiKeyGridData);
+		}
 
 		StringFieldEditor additionalParams = new StringFieldEditor(Preferences.ADDITIONAL_OPTIONS,
 				PluginConstants.PREFERENCES_ADDITIONAL_OPTIONS, StringFieldEditor.UNLIMITED,
 				StringFieldEditor.VALIDATE_ON_KEY_STROKE, fieldsComposite);
 		additionalParamsField = additionalParams;
 		addField(additionalParams);
+
+		// Ensure the Additional Params text control has a fixed width similar to the API key
+		Text additionalTextControl = additionalParams.getTextControl(fieldsComposite);
+		GridData additionalGridData = new GridData(SWT.BEGINNING, SWT.CENTER, true, false);
+		additionalGridData.widthHint = 500; // match apiKey width
+		additionalGridData.grabExcessHorizontalSpace = false;
+		additionalGridData.horizontalAlignment = GridData.FILL;
+		if (additionalTextControl != null && !additionalTextControl.isDisposed()) {
+			additionalTextControl.setLayoutData(additionalGridData);
+		}
 
 		// Baseline for the change-detection guard in performOk() - captured now that
 		// both fields have loaded their values from the preference store.
@@ -215,12 +236,10 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 		gridData.horizontalAlignment = GridData.FILL;
 		textControl.setLayoutData(gridData);
 
-		spacer(topComposite);
-
 		Link cliHelp = new Link(topComposite, SWT.NONE);
-		cliHelp.setText(
-				"<a href=\"https://checkmarx.com/resource/documents/en/34965-68626-global-flags.html\">CLI command that supports a set of global flags</a>");
-		cliHelp.setLayoutData(new GridData(SWT.END, SWT.CENTER, true, false));
+		cliHelp.setText("<a href=\"" + PluginConstants.PREFERENCES_CLI_HELP_LINK + "\">"
+				+ PluginConstants.PREFERENCES_CLI_HELP_LINK_TEXT + "</a>");
+		cliHelp.setLayoutData(new GridData(SWT.END, SWT.CENTER, false, false));
 		cliHelp.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
@@ -451,6 +470,13 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 
 		spacer(topComposite);
 
+		Label mcpSeparator = new Label(topComposite, SWT.SEPARATOR | SWT.HORIZONTAL);
+		GridData mcpSeparatorData = new GridData(GridData.FILL_HORIZONTAL);
+		mcpSeparatorData.verticalIndent = 6;
+		mcpSeparator.setLayoutData(mcpSeparatorData);
+
+		spacer(topComposite);
+		
 		realtimeScannersLink = new Link(topComposite, SWT.NONE);
 		realtimeScannersLink.setText("<a>" + PluginConstants.GO_TO_CHECKMARX_ONE_ASSIST + "</a>");
 		realtimeScannersLink.setLayoutData(new GridData(SWT.BEGINNING, SWT.CENTER, true, false));
