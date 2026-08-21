@@ -30,6 +30,8 @@ import org.eclipse.ui.dialogs.PreferencesUtil;
 
 import com.checkmarx.eclipse.common.utils.PluginConstants;
 import com.checkmarx.eclipse.common.listener.IAuthenticationSuccessHandler;
+import com.checkmarx.eclipse.common.listener.IMcpUninstallCallback;
+import com.checkmarx.eclipse.common.listener.IMcpUninstallHandler;
 import com.checkmarx.eclipse.common.listener.ISettingsChangeNotifier;
 import com.checkmarx.eclipse.common.runner.Authenticator;
 import com.checkmarx.eclipse.common.runner.TenantSettingsProvider;
@@ -388,6 +390,8 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 				for (ISettingsChangeNotifier notifier : Preferences.getSettingsChangeNotifiers()) {
 					notifier.notifySettingsApplied();
 				}
+
+				uninstallMCP();
 			}
 		});
 
@@ -526,5 +530,34 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 				}
 			}
 		}));
+	}
+	
+	/**
+	 * Uninstalls the Checkmarx MCP configuration after a successful logout.
+	 * Delegates to the handler registered by devassist-lib.
+	 */
+	private void uninstallMCP() {
+		IMcpUninstallHandler handler = Preferences.getMcpUninstallHandler();
+		if (handler == null) {
+			CxLogger.info("[PREFS] MCP uninstall handler not registered - skipping MCP uninstall");
+			return;
+		}
+
+		handler.uninstallMcp(new IMcpUninstallCallback() {
+			@Override
+			public void onSuccess() {
+				CxLogger.info("[PREFS] Checkmarx MCP uninstalled successfully.");
+			}
+
+			@Override
+			public void onNotFound() {
+				CxLogger.info("[PREFS] No Checkmarx MCP configuration found to uninstall.");
+			}
+
+			@Override
+			public void onFailure(String errorMessage) {
+				CxLogger.error("[PREFS] Failed to uninstall Checkmarx MCP: " + errorMessage);
+			}
+		});
 	}
 }

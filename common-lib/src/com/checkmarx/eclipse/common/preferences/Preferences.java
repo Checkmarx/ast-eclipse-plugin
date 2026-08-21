@@ -12,6 +12,7 @@ import org.eclipse.ui.preferences.ScopedPreferenceStore;
 
 import com.checkmarx.eclipse.common.listener.IAuthenticationSuccessHandler;
 import com.checkmarx.eclipse.common.listener.IMcpInstallHandler;
+import com.checkmarx.eclipse.common.listener.IMcpUninstallHandler;
 import com.checkmarx.eclipse.common.listener.ISettingsChangeNotifier;
 import com.checkmarx.eclipse.common.listener.IWorkspaceScanService;
 
@@ -57,6 +58,9 @@ public class Preferences {
 
     // Handler for installing the Checkmarx MCP server configuration (registered by devassist-lib)
     private static IMcpInstallHandler mcpInstallHandler;
+
+    // Handler for uninstalling the Checkmarx MCP server configuration (registered by devassist-lib)
+    private static IMcpUninstallHandler mcpUninstallHandler;
 
     private Preferences() {
     }
@@ -126,6 +130,14 @@ public class Preferences {
 
     public static IMcpInstallHandler getMcpInstallHandler() {
         return mcpInstallHandler;
+    }
+
+    public static void setMcpUninstallHandler(IMcpUninstallHandler handler) {
+        mcpUninstallHandler = handler;
+    }
+
+    public static IMcpUninstallHandler getMcpUninstallHandler() {
+        return mcpUninstallHandler;
     }
 
     // ============================================================================

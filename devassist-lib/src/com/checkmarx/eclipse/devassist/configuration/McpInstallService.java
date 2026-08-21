@@ -3,6 +3,7 @@ package com.checkmarx.eclipse.devassist.configuration;
 import java.util.concurrent.CompletableFuture;
 
 import com.checkmarx.eclipse.common.listener.IMcpInstallCallback;
+import com.checkmarx.eclipse.common.listener.IMcpUninstallCallback;
 import com.checkmarx.eclipse.common.preferences.Preferences;
 import com.checkmarx.eclipse.common.runner.TenantSettingsProvider;
 import com.checkmarx.eclipse.common.utils.CxLogger;
@@ -45,6 +46,10 @@ public final class McpInstallService {
 			// Register handler so common-lib preference pages (e.g. CheckmarxPreferencePage)
 			// can trigger MCP install without depending on this bundle directly.
 			Preferences.setMcpInstallHandler(McpInstallService::installFromUi);
+
+			// Register handler so common-lib preference pages (e.g. PreferencesPage)
+			// can trigger MCP uninstall on logout without depending on this bundle directly.
+			Preferences.setMcpUninstallHandler(McpInstallService::uninstallFromUi);
 
 			authListenerRegistered = true;
 			CxLogger.info(LOG_TAG + " Authentication handlers registered");
@@ -230,6 +235,55 @@ public final class McpInstallService {
 		String msg = LOG_TAG + " Background MCP installation failed: " + ex.getClass().getName() + ": " + ex.getMessage();
 		Exception loggable = (ex instanceof Exception) ? (Exception) ex : new RuntimeException(ex);
 		CxLogger.error(msg, loggable);
+	}
+
+	/**
+	 * Uninstalls MCP configuration in response to a user-initiated logout, reporting the
+	 * outcome to {@code callback} instead of only logging it - unlike {@link #uninstall()},
+	 * which is silent by design.
+	 *
+	 * @param callback notified of success, not-found, or failure; may be called from a background thread
+	 */
+	public static void uninstallFromUi(IMcpUninstallCallback callback) {
+		CxLogger.info(LOG_TAG + " Uninstall MCP requested after logout...");
+
+		try {
+			uninstallSilentlyAsync().thenAccept(removed -> {
+				if (removed == null) {
+					CxLogger.info(LOG_TAG + " Uninstall MCP (from logout) failed");
+					callback.onFailure(PluginConstants.MCP_INSTALL_GENERIC_FAILURE_MESSAGE);
+				} else if (removed) {
+					CxLogger.info(LOG_TAG + " Uninstall MCP (from logout) succeeded - entry removed");
+					callback.onSuccess();
+				} else {
+					CxLogger.info(LOG_TAG + " Uninstall MCP (from logout) - no entry found");
+					callback.onNotFound();
+				}
+			});
+		} catch (Exception e) {
+			CxLogger.error(LOG_TAG + " Unexpected error while uninstalling MCP from logout: " + e.getMessage(), e);
+			callback.onFailure(PluginConstants.MCP_INSTALL_GENERIC_FAILURE_MESSAGE);
+		}
+	}
+
+	/**
+	 * Asynchronously uninstalls MCP configuration.
+	 *
+	 * @return future resolving to Boolean (true=removed, false=not found, null=error)
+	 */
+	public static CompletableFuture<Boolean> uninstallSilentlyAsync() {
+		return CompletableFuture.supplyAsync(() -> {
+			try {
+				CxLogger.info(LOG_TAG + " Background thread started, uninstalling MCP...");
+				return uninstall();
+			} catch (Throwable ex) {
+				logBackgroundFailure(ex);
+				return null; // null signals failure
+			}
+		}).exceptionally(ex -> {
+			logBackgroundFailure(ex);
+			return null;
+		});
 	}
 
 	/**
