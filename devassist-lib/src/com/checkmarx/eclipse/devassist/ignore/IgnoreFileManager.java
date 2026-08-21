@@ -4,6 +4,11 @@ import com.checkmarx.eclipse.common.utils.CxLogger;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.IResourceChangeEvent;
+import org.eclipse.core.resources.IResourceChangeListener;
+import org.eclipse.core.resources.IResourceDelta;
+import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.swt.widgets.Display;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -54,6 +59,34 @@ public final class IgnoreFileManager {
             loadIgnoreData();
             this.previousIgnoreData = copyIgnoreData(ignoreData);
         }
+        if (!skipFileWatcherForTests) {
+            startFileWatcher();
+        }
+    }
+
+    private void startFileWatcher() {
+        org.eclipse.core.resources.IFile ignoreIFile = ResourcesPlugin.getWorkspace().getRoot()
+                .getFileForLocation(new org.eclipse.core.runtime.Path(getIgnoreFilePath().toString()));
+        if (ignoreIFile == null) {
+            return;
+        }
+        ResourcesPlugin.getWorkspace().addResourceChangeListener((IResourceChangeListener) event -> {
+            IResourceDelta delta = event.getDelta();
+            if (delta == null) {
+                return;
+            }
+            IResourceDelta ignoreDelta = delta.findMember(ignoreIFile.getFullPath());
+            if (ignoreDelta != null && (ignoreDelta.getFlags() & IResourceDelta.CONTENT) != 0) {
+                // Marshal onto the UI thread: ignoreData is a plain HashMap and every
+                // existing reader/writer (isIgnored, addIgnoredEntry, reviveEntry) already
+                // only ever runs on the SWT UI thread; this keeps that invariant intact
+                // instead of introducing a background-thread race on the map.
+                Display display = Display.getDefault();
+                if (display != null && !display.isDisposed()) {
+                    display.asyncExec(this::handleFileChange);
+                }
+            }
+        }, IResourceChangeEvent.POST_CHANGE);
     }
 
     public void updateIgnoreData(String vulnerabilityKey, IgnoreEntry newData) {
@@ -134,11 +167,7 @@ public final class IgnoreFileManager {
         if (similarityId == null || similarityId.isEmpty()) {
             return false;
         }
-        IgnoreEntry entry = ignoreData.get(similarityId);
-        if (entry == null || entry.getFiles() == null) {
-            return false;
-        }
-        return entry.getFiles().stream().anyMatch(f -> f.active);
+        return ignoreData.containsKey(similarityId);
     }
 
     /**
@@ -256,12 +285,6 @@ public final class IgnoreFileManager {
         String packageName = entryToRevive.getPackageName();
         for (IgnoreEntry.FileReference file : actualEntry.getFiles()) {
             file.active = false;
-        }
-        // Once no file reference is still active, drop the entry entirely instead of
-        // leaving a dead key behind - otherwise it lingers in the map/file forever.
-        boolean hasActive = actualEntry.getFiles().stream().anyMatch(f -> f.active);
-        if (!hasActive) {
-            ignoreData.remove(entryKey);
         }
         saveIgnoreFile();
         updateIgnoreTempList();
