@@ -186,8 +186,7 @@ public class ProjectLifecycleListener implements IResourceChangeListener, IProje
 	}
 
 	private boolean isUserAuthenticated() {
-		String apiKey = com.checkmarx.eclipse.common.preferences.Preferences.getApiKey();
-		return apiKey != null && !apiKey.trim().isEmpty();
+		return com.checkmarx.eclipse.common.preferences.Preferences.isAuthenticated();
 	}
 
 	private void onProjectClose(IProject project) {

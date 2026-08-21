@@ -26,6 +26,7 @@ import com.checkmarx.eclipse.devassist.common.ScanResult;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.problems.ProblemHolderService;
 import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
+import com.checkmarx.eclipse.devassist.utils.PackageManager;
 import com.checkmarx.eclipse.common.utils.CxLogger;
 
 /**
@@ -79,7 +80,7 @@ public class OssScannerCommand extends BaseScannerCommand {
 
         List<IFile> matchedFiles = new ArrayList<>();
 
-        List<PathMatcher> pathMatchers = DevAssistConstants.MANIFEST_FILE_PATTERNS.stream()
+        List<PathMatcher> pathMatchers = PackageManager.getAllPatterns().stream()
                 .map(p -> FileSystems.getDefault().getPathMatcher("glob:" + p))
                 .collect(Collectors.toList());
 

@@ -3,7 +3,6 @@ package com.checkmarx.eclipse.common.preferences;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPreferencePage;
 
-import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.preference.PreferenceDialog;
 import org.eclipse.jface.preference.PreferencePage;
@@ -19,6 +18,9 @@ import org.eclipse.swt.widgets.*;
 import org.eclipse.ui.dialogs.PreferencesUtil;
 
 import com.checkmarx.eclipse.common.utils.CxLogger;
+import com.checkmarx.eclipse.common.utils.PluginConstants;
+import com.checkmarx.eclipse.common.listener.IMcpInstallCallback;
+import com.checkmarx.eclipse.common.listener.IMcpInstallHandler;
 import com.checkmarx.eclipse.common.listener.ISettingsChangeNotifier;
 
 /**
@@ -43,21 +45,9 @@ public class CheckmarxPreferencePage extends PreferencePage implements IWorkbenc
     private Button containersCheckbox;
     private Button iacCheckbox;
     private Combo containersToolCombo;
+    private Label mcpStatusLabel;
     private boolean loggedIn;
 
-    public static final String DEVASSIST_PLUGIN_REALTIME_SCANNERS_OSS_TITLE = "Checkmarx Developer Assist Open Source Realtime Scanner (OSS-Realtime): Activate OSS-Realtime";
-    public static final String DEVASSIST_PLUGIN_REALTIME_SCANNERS_SECRETS_TITLE = "Checkmarx Developer Assist Secret Detection Realtime Scanner: Activate Secret Detection Realtime";
-    public static final String DEVASSIST_PLUGIN_REALTIME_SCANNERS_CONTAINERS_TITLE = "Checkmarx Developer Assist Containers Realtime Scanner: Activate Containers Realtime";
-    public static final String DEVASSIST_PLUGIN_REALTIME_SCANNERS_IAC_TITLE = "Checkmarx Developer Assist IAC Realtime Scanner: Activate IAC Realtime";
-    public static final String DEVASSIST_PLUGIN_REALTIME_SCANNERS_ASCA_TITLE = "Checkmarx Developer Assist AI Secure Coding Assistant (ASCA): Activate ASCA";
-    public static final String DEVASSIST_PLUGIN_REALTIME_SCANNERS_IAC_PREFIX = "Checkmarx Developer Assist IAC Realtime Scanner: Containers Management Tool";
-    public static final String DEVASSIST_PLUGIN_WELCOME_TITLE = "Welcome to Checkmarx Developer Assist";
-    public static final String CONTAINERS_TOOL_DESCRIPTION = "Select the Containers Management Tool to use for IaC scanning.";
-    public static final String OSS_REALTIME_CHECKBOX = "Scans your manifest files as you code";
-    public static final String SECRETS_REALTIME_CHECKBOX = "Scans your files for potential secrets and credentials as you code";
-    public static final String CONTAINERS_REALTIME_CHECKBOX = "Scans your Docker files and container configurations as you code";
-    public static final String IAC_REALTIME_CHECKBOX = "Scans your Infrastructure as Code files as you code";
-    public static final String ASCA_CHECKBOX = "Scan your file as you code";
 
     public CheckmarxPreferencePage() {
         super();
@@ -80,7 +70,7 @@ public class CheckmarxPreferencePage extends PreferencePage implements IWorkbenc
     private void handlePreferenceChange(PropertyChangeEvent event) {
         // Re-check login state: if API key was cleared, we need to switch from
         // logged-in scanner checkboxes to logged-out message
-        boolean isNowLoggedIn = StringUtils.isNotBlank(Preferences.getApiKey());
+        boolean isNowLoggedIn = Preferences.isAuthenticated();
         if (loggedIn != isNowLoggedIn) {
             loggedIn = isNowLoggedIn;
         }
@@ -88,7 +78,7 @@ public class CheckmarxPreferencePage extends PreferencePage implements IWorkbenc
 
     @Override
     protected Control createContents(Composite parent) {
-        loggedIn = StringUtils.isNotBlank(Preferences.getApiKey());
+        loggedIn = Preferences.isAuthenticated();
         if (!loggedIn) {
             return createLoggedOutContent(parent);
         }
@@ -109,49 +99,166 @@ public class CheckmarxPreferencePage extends PreferencePage implements IWorkbenc
         assistMessageLabel.setVisible(false);
 
         // --- ASCA Section ---
-        createSectionHeader(mainPanel, DEVASSIST_PLUGIN_REALTIME_SCANNERS_ASCA_TITLE);
+        createSectionHeader(mainPanel, PluginConstants.DEVASSIST_PLUGIN_REALTIME_SCANNERS_ASCA_TITLE);
         Composite ascaComp = createIndentComposite(mainPanel);
         ascaCheckbox = new Button(ascaComp, SWT.CHECK);
-        ascaCheckbox.setText(ASCA_CHECKBOX);
+        ascaCheckbox.setText(PluginConstants.ASCA_CHECKBOX);
 
         // --- OSS Section ---
-        createSectionHeader(mainPanel, DEVASSIST_PLUGIN_REALTIME_SCANNERS_OSS_TITLE);
+        createSectionHeader(mainPanel, PluginConstants.DEVASSIST_PLUGIN_REALTIME_SCANNERS_OSS_TITLE);
         Composite ossComp = createIndentComposite(mainPanel);
         ossCheckbox = new Button(ossComp, SWT.CHECK);
-        ossCheckbox.setText(OSS_REALTIME_CHECKBOX);
+        ossCheckbox.setText(PluginConstants.OSS_REALTIME_CHECKBOX);
 
         // --- Secrets Section ---
-        createSectionHeader(mainPanel, DEVASSIST_PLUGIN_REALTIME_SCANNERS_SECRETS_TITLE);
+        createSectionHeader(mainPanel, PluginConstants.DEVASSIST_PLUGIN_REALTIME_SCANNERS_SECRETS_TITLE);
         Composite secretsComp = createIndentComposite(mainPanel);
         secretsCheckbox = new Button(secretsComp, SWT.CHECK);
-        secretsCheckbox.setText(SECRETS_REALTIME_CHECKBOX);
+        secretsCheckbox.setText(PluginConstants.SECRETS_REALTIME_CHECKBOX);
 
         // --- Containers Section ---
-        createSectionHeader(mainPanel, DEVASSIST_PLUGIN_REALTIME_SCANNERS_CONTAINERS_TITLE);
+        createSectionHeader(mainPanel, PluginConstants.DEVASSIST_PLUGIN_REALTIME_SCANNERS_CONTAINERS_TITLE);
         Composite containersComp = createIndentComposite(mainPanel);
         containersCheckbox = new Button(containersComp, SWT.CHECK);
-        containersCheckbox.setText(CONTAINERS_REALTIME_CHECKBOX);
+        containersCheckbox.setText(PluginConstants.CONTAINERS_REALTIME_CHECKBOX);
 
         // --- IaC Section ---
-        createSectionHeader(mainPanel, DEVASSIST_PLUGIN_REALTIME_SCANNERS_IAC_TITLE);
+        createSectionHeader(mainPanel, PluginConstants.DEVASSIST_PLUGIN_REALTIME_SCANNERS_IAC_TITLE);
         Composite iacComp = createIndentComposite(mainPanel);
         iacCheckbox = new Button(iacComp, SWT.CHECK);
-        iacCheckbox.setText(IAC_REALTIME_CHECKBOX);
+        iacCheckbox.setText(PluginConstants.IAC_REALTIME_CHECKBOX);
 
         // --- Container Tool Selection Section ---
-        createSectionHeader(mainPanel, DEVASSIST_PLUGIN_REALTIME_SCANNERS_IAC_PREFIX);
+        createSectionHeader(mainPanel, PluginConstants.DEVASSIST_PLUGIN_REALTIME_SCANNERS_IAC_PREFIX);
         Composite containerToolComp = createIndentComposite(mainPanel);
         Label containerDesc = new Label(containerToolComp, SWT.WRAP);
-        containerDesc.setText(CONTAINERS_TOOL_DESCRIPTION);
+        containerDesc.setText(PluginConstants.CONTAINERS_TOOL_DESCRIPTION);
         GridData descData = new GridData(GridData.FILL_HORIZONTAL);
         containerDesc.setLayoutData(descData);
 
         containersToolCombo = new Combo(containerToolComp, SWT.READ_ONLY);
-        containersToolCombo.setItems(new String[] { "docker", "podman" });
+        containersToolCombo.setItems(PluginConstants.CONTAINERS_TOOLS);
         containersToolCombo.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
+
+        // --- Checkmarx MCP Section ---
+        // A horizontal rule marks this as a distinct settings group, separate from the
+        // Realtime Scanner sections above.
+        Label mcpSeparator = new Label(mainPanel, SWT.SEPARATOR | SWT.HORIZONTAL);
+        GridData mcpSeparatorData = new GridData(GridData.FILL_HORIZONTAL);
+        mcpSeparatorData.verticalIndent = 6;
+        mcpSeparator.setLayoutData(mcpSeparatorData);
+
+        createSectionHeader(mainPanel, PluginConstants.CHECKMARX_MCP_SECTION_TITLE);
+        Composite mcpComp = createIndentComposite(mainPanel);
+        
+        Label mcpDesc = new Label(mcpComp, SWT.WRAP);
+        mcpDesc.setText(PluginConstants.MCP_DESCRIPTION);
+        mcpDesc.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+
+        // installMcpLink and mcpStatusLabel share a row so the result message appears
+        // right next to the link that triggered it, rather than on its own line.
+        Composite installMcpRow = new Composite(mcpComp, SWT.NONE);
+        GridLayout installMcpRowLayout = new GridLayout(2, false);
+        installMcpRowLayout.marginWidth = 0;
+        installMcpRowLayout.marginHeight = 0;
+        installMcpRowLayout.horizontalSpacing = 10;
+        installMcpRow.setLayout(installMcpRowLayout);
+        installMcpRow.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+
+        Link installMcpLink = new Link(installMcpRow, SWT.NONE);
+        installMcpLink.setText("<a>" + PluginConstants.INSTALL_MCP_LINK_TEXT + "</a>");
+        installMcpLink.setLayoutData(new GridData(SWT.BEGINNING, SWT.CENTER, false, false));
+
+        mcpStatusLabel = new Label(installMcpRow, SWT.WRAP);
+        mcpStatusLabel.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+
+        installMcpLink.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                installMcp();
+            }
+        });
+
+        Link editMcpSettingsLink = new Link(mcpComp, SWT.NONE);
+        editMcpSettingsLink.setText("<a>" + PluginConstants.EDIT_MCP_SETTINGS_LINK_TEXT + "</a>");
+        editMcpSettingsLink.setLayoutData(new GridData(SWT.BEGINNING, SWT.CENTER, true, false));
+        editMcpSettingsLink.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                editMcpSettings();
+            }
+        });
 
         loadValues();
         return mainPanel;
+    }
+
+    /**
+     * Installs/updates the Checkmarx MCP server configuration. Delegates to the handler
+     * registered by devassist-lib (this bundle - common-lib - doesn't depend on it directly),
+     * and shows the result right next to the "Install MCP" link.
+     */
+    private void installMcp() {
+        IMcpInstallHandler handler = Preferences.getMcpInstallHandler();
+        if (handler == null) {
+            CxLogger.warning("[PREFS] MCP install requested before the handler was registered");
+            showMcpStatus(false, PluginConstants.MCP_INSTALL_UNAVAILABLE_MESSAGE);
+            return;
+        }
+
+        showMcpStatus(null, PluginConstants.MCP_INSTALLING_STATE);
+
+        handler.installMcp(new IMcpInstallCallback() {
+            @Override
+            public void onSuccess() {
+                Display.getDefault().asyncExec(() -> showMcpStatus(true, PluginConstants.MCP_INSTALL_SUCCESS_MESSAGE));
+            }
+
+            @Override
+            public void onAlreadyUpToDate() {
+                Display.getDefault().asyncExec(() -> showMcpStatus(true, PluginConstants.MCP_ALREADY_UP_TO_DATE_MESSAGE));
+            }
+
+            @Override
+            public void onFailure(String errorMessage) {
+                Display.getDefault().asyncExec(() -> showMcpStatus(false, errorMessage));
+            }
+        });
+    }
+
+    /**
+     * Updates mcpStatusLabel with an install result/progress message.
+     *
+     * @param success true = success (green), false = failure (red), null = in-progress
+     *                (default color)
+     */
+    private void showMcpStatus(Boolean success, String message) {
+        if (mcpStatusLabel == null || mcpStatusLabel.isDisposed()) {
+            return;
+        }
+
+        Display display = mcpStatusLabel.getDisplay();
+        if (success == null) {
+            mcpStatusLabel.setForeground(null);
+        } else if (success) {
+            mcpStatusLabel.setForeground(display.getSystemColor(SWT.COLOR_DARK_GREEN));
+        } else {
+            mcpStatusLabel.setForeground(display.getSystemColor(SWT.COLOR_RED));
+        }
+        mcpStatusLabel.setText(message);
+        mcpStatusLabel.getParent().layout(true, true);
+    }
+
+    /**
+     * Opens GitHub Copilot for Eclipse's own MCP preference page, where the Checkmarx MCP
+     * server entry (once installed) can be reviewed/edited alongside any other MCP servers.
+     */
+    private void editMcpSettings() {
+        PreferenceDialog dialog = PreferencesUtil.createPreferenceDialogOn(getShell(),
+                PluginConstants.COPILOT_MCP_PREFERENCE_PAGE_ID, null, null);
+        if (dialog != null) {
+            dialog.open();
+        }
     }
 
     /**
@@ -167,11 +274,11 @@ public class CheckmarxPreferencePage extends PreferencePage implements IWorkbenc
         composite.setLayoutData(new GridData(GridData.FILL_BOTH));
 
         Label message = new Label(composite, SWT.WRAP);
-        message.setText("Log in to Checkmarx One to configure Realtime Scanners.");
+        message.setText(PluginConstants.LOGIN_NOTE_CXONE_ASSIST);
         message.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
 
         Link goToLoginLink = new Link(composite, SWT.NONE);
-        goToLoginLink.setText("<a>Go to Checkmarx One preferences</a>");
+        goToLoginLink.setText("<a>"+PluginConstants.GO_TO_CHECKMARX_ONE+"</a>");
         goToLoginLink.setLayoutData(new GridData(SWT.BEGINNING, SWT.CENTER, true, false));
         goToLoginLink.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -217,7 +324,7 @@ public class CheckmarxPreferencePage extends PreferencePage implements IWorkbenc
     protected void performDefaults() {
         // Check credentials fresh, not from captured field.
         // If user logged out while viewing another page, loggedIn would be stale.
-        boolean isCurrentlyLoggedIn = StringUtils.isNotBlank(Preferences.getApiKey());
+        boolean isCurrentlyLoggedIn = Preferences.isAuthenticated();
         if (!isCurrentlyLoggedIn) {
             super.performDefaults();
             return;
@@ -276,19 +383,54 @@ public class CheckmarxPreferencePage extends PreferencePage implements IWorkbenc
         // dialog session,
         // loggedIn would be stale and we'd save/notify with false authentication
         // status.
-        boolean isCurrentlyLoggedIn = StringUtils.isNotBlank(Preferences.getApiKey());
+        boolean isCurrentlyLoggedIn = Preferences.isAuthenticated();
         if (!isCurrentlyLoggedIn) {
             return super.performOk();
         }
         IPreferenceStore store = getPreferenceStore();
 
-        // Get current UI selections
-        boolean ascaSelected = ascaCheckbox.getSelection();
-        boolean ossSelected = ossCheckbox.getSelection();
-        boolean secretsSelected = secretsCheckbox.getSelection();
-        boolean containersSelected = containersCheckbox.getSelection();
-        boolean iacSelected = iacCheckbox.getSelection();
-        String containersTool = containersToolCombo.getText();
+        // Get current UI selections. It's possible this page's controls were never
+        // created (Eclipse may call performOk() on pages that haven't had
+        // createContents() invoked), or the controls may have been disposed. In
+        // that case fall back to the stored preference values instead of
+        // dereferencing null controls which caused an NPE in the field.
+        boolean ascaSelected = store.getBoolean(PREF_ASCA_ENABLED);
+        if (ascaCheckbox != null && !ascaCheckbox.isDisposed()) {
+            ascaSelected = ascaCheckbox.getSelection();
+        }
+
+        boolean ossSelected = store.getBoolean(PREF_OSS_ENABLED);
+        if (ossCheckbox != null && !ossCheckbox.isDisposed()) {
+            ossSelected = ossCheckbox.getSelection();
+        }
+
+        boolean secretsSelected = store.getBoolean(PREF_SECRETS_ENABLED);
+        if (secretsCheckbox != null && !secretsCheckbox.isDisposed()) {
+            secretsSelected = secretsCheckbox.getSelection();
+        }
+
+        boolean containersSelected = store.getBoolean(PREF_CONTAINERS_ENABLED);
+        if (containersCheckbox != null && !containersCheckbox.isDisposed()) {
+            containersSelected = containersCheckbox.getSelection();
+        }
+
+        boolean iacSelected = store.getBoolean(PREF_IAC_ENABLED);
+        if (iacCheckbox != null && !iacCheckbox.isDisposed()) {
+            iacSelected = iacCheckbox.getSelection();
+        }
+
+        String containersTool = store.getString(PREF_CONTAINERS_TOOL);
+        if (containersToolCombo != null && !containersToolCombo.isDisposed()) {
+            try {
+                String text = containersToolCombo.getText();
+                if (text != null && !text.isBlank()) {
+                    containersTool = text;
+                }
+            } catch (Exception ex) {
+                // Defensive: protect against any SWT oddities; fall back to store value
+                CxLogger.warning("[PREFS-PAGE] Failed to read containersToolCombo text, using stored value: " + ex.getMessage());
+            }
+        }
 
         // Step 1: Save current UI state to preference store
         store.setValue(PREF_ASCA_ENABLED, ascaSelected);

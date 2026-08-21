@@ -3,7 +3,7 @@
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="con" path="org.eclipse.pde.core.requiredPlugins"/>
 	<classpathentry kind="src" path="src"/>
-	<classpathentry kind="lib" path="../common-lib/lib/ast-cli-java-wrapper-2.4.24.jar"/>
+	<classpathentry kind="lib" path="../common-lib/lib/ast-cli-java-wrapper-2.4.27.jar"/>
 	<classpathentry kind="lib" path="../common-lib/lib/commons-lang3-3.18.0.jar"/>
 	<classpathentry kind="lib" path="../common-lib/lib/jackson-core-2.21.4.jar"/>
 	<classpathentry kind="lib" path="../common-lib/lib/jackson-databind-2.21.5.jar"/>

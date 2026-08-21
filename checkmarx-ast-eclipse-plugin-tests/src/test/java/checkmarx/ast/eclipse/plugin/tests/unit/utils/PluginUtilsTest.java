@@ -167,7 +167,7 @@ public class PluginUtilsTest {
 
         try (MockedStatic<Preferences> prefs = Mockito.mockStatic(Preferences.class)) {
 
-            prefs.when(Preferences::getApiKey).thenReturn("apikey");
+            prefs.when(Preferences::isAuthenticated).thenReturn(true);
 
             boolean result = PluginUtils.areCredentialsDefined();
 
@@ -180,7 +180,7 @@ public class PluginUtilsTest {
 
         try (MockedStatic<Preferences> prefs = Mockito.mockStatic(Preferences.class)) {
 
-            prefs.when(Preferences::getApiKey).thenReturn("");
+            prefs.when(Preferences::isAuthenticated).thenReturn(false);
 
             boolean result = PluginUtils.areCredentialsDefined();
 
