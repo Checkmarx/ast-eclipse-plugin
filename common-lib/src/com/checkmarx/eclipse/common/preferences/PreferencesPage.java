@@ -40,30 +40,21 @@ import com.checkmarx.eclipse.common.utils.CxLogger;
  */
 public class PreferencesPage extends FieldEditorPreferencePage implements IWorkbenchPreferencePage {
 
-	// Captured once the fields are loaded, so performOk() can tell whether THIS
-	// page's own settings actually changed. Needed because Eclipse's shared
-	// Preferences dialog calls performOk() on every page the user visited during
-	// the session - not just the one they edited - so simply opening/looking at
-	// "Checkmarx One" while really only changing "Checkmarx One Assist"
-	// (Realtime Scanners) would otherwise still unconditionally fire
-	// TOPIC_APPLY_SETTINGS below and refresh the unrelated Checkmarx One scan view.
+	/*
+	 * Captured once the fields are loaded, so performOk() can tell whether THIS
+	 * page's own settings actually changed. Needed because Eclipse's shared 
+	 * Preferences dialog calls performOk() on every page the user visited during 
+	 * the session - not just the one they edited - so simply opening/looking at
+	 * "Checkmarx One" while really only changing "Checkmarx One Assist"
+	 * (Realtime Scanners) would otherwise still unconditionally fire
+	 * TOPIC_APPLY_SETTINGS below and refresh the unrelated Checkmarx One scan view.
+	 */	
 	private StringFieldEditor apiKeyField;
 	private StringFieldEditor additionalParamsField;
 	private String initialApiKey;
 	private String initialAdditionalOptions;
 	private Link realtimeScannersLink;
 
-	// The API key that was actually confirmed against the server (set on successful
-	// login,
-	// cleared on logout). Comparing the current field value against this - rather
-	// than
-	// clearing Preferences.CREDENTIALS_VALIDATED from a text ModifyListener -
-	// avoids reacting
-	// to StringFieldEditor.load() re-populating the field from the store on every
-	// page open,
-	// which would otherwise wipe the "connected" flag before the user ever touched
-	// anything.
-	private String lastValidatedApiKey;
 
 	public PreferencesPage() {
 		super(GRID);
@@ -122,20 +113,8 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 		parentLayout.marginWidth = 0;
 		topComposite.setLayout(parentLayout);
 
-		// Every widget on this page is parented directly to topComposite, in the exact
-		// order
-		// it should visually appear. They used to be split between topComposite and
-		// getFieldEditorParent(), which made the on-screen order depend on which of the
-		// two
-		// composites was created first rather than on the order of the code below -
-		// keeping a
-		// single parent removes that ambiguity.
-
-		// helpLink lives in its own composite, isolated from the fields below, so its
-		// own
-		// sizing/margins can never influence the spacing between the API key /
-		// additional
-		// params labels and their input boxes.
+		// helpLink lives in its own composite, isolated from the fields below, so its own
+		// sizing/margins can never influence the spacing between the API key / additional params labels and their input boxes.
 		Composite helpComposite = new Composite(topComposite, SWT.NONE);
 		GridLayout helpLayout = new GridLayout();
 		helpLayout.numColumns = 1;
@@ -164,8 +143,7 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 		spacer(topComposite);
 
 		// apiKey and additionalParams get their own composite with a standard, fixed
-		// label-to-input gap - kept separate from topComposite (and from helpComposite
-		// above)
+		// label-to-input gap - kept separate from topComposite (and from helpComposite above)
 		// so nothing else on the page can stretch or shrink that gap.
 		Composite fieldsComposite = new Composite(topComposite, SWT.NONE);
 		GridLayout fieldsLayout = new GridLayout();
@@ -179,20 +157,11 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 		fieldsComposite.setLayout(fieldsLayout);
 		fieldsComposite.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
 
-		StringFieldEditor apiKey = new StringFieldEditor(Preferences.API_KEY, PluginConstants.PREFERENCES_API_KEY,
-				fieldsComposite);
+		StringFieldEditor apiKey = new StringFieldEditor(Preferences.API_KEY, PluginConstants.PREFERENCES_API_KEY, fieldsComposite);
 		apiKeyField = apiKey;
 		addField(apiKey);
 		Text textControl = apiKey.getTextControl(fieldsComposite);
 		textControl.setEchoChar('*');
-		// Set fixed width for apiKey field
-		GridData apiKeyGridData = new GridData(SWT.BEGINNING, SWT.CENTER, true, false);
-		apiKeyGridData.widthHint = 500;
-		apiKeyGridData.grabExcessHorizontalSpace = false;
-		apiKeyGridData.horizontalAlignment = GridData.FILL;
-		if (textControl != null && !textControl.isDisposed()) {
-			textControl.setLayoutData(apiKeyGridData);
-		}
 
 		StringFieldEditor additionalParams = new StringFieldEditor(Preferences.ADDITIONAL_OPTIONS,
 				PluginConstants.PREFERENCES_ADDITIONAL_OPTIONS, StringFieldEditor.UNLIMITED,
@@ -200,31 +169,14 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 		additionalParamsField = additionalParams;
 		addField(additionalParams);
 
-		// Ensure the Additional Params text control has a fixed width similar to the API key
-		Text additionalTextControl = additionalParams.getTextControl(fieldsComposite);
-		GridData additionalGridData = new GridData(SWT.BEGINNING, SWT.CENTER, true, false);
-		additionalGridData.widthHint = 500; // match apiKey width
-		additionalGridData.grabExcessHorizontalSpace = false;
-		additionalGridData.horizontalAlignment = GridData.FILL;
-		if (additionalTextControl != null && !additionalTextControl.isDisposed()) {
-			additionalTextControl.setLayoutData(additionalGridData);
-		}
-
 		// Baseline for the change-detection guard in performOk() - captured now that
 		// both fields have loaded their values from the preference store.
 		initialApiKey = apiKey.getStringValue();
 		initialAdditionalOptions = additionalParams.getStringValue();
 
-		// Restore the "connected" state on reopening the page. Read directly from the
-		// preference store (not apiKey.getStringValue()) - the field editors haven't
-		// had
-		// load() called on them yet at this point in createFieldEditors(), so their
-		// text
-		// controls are still empty.
-		lastValidatedApiKey = (Preferences.isAuthenticated() && StringUtils.isNotBlank(Preferences.getApiKey()))
-				? Preferences.getApiKey()
-				: null;
-		boolean isConnected = lastValidatedApiKey != null;
+
+		boolean isConnected = (Preferences.isAuthenticated() && StringUtils.isNotBlank(Preferences.getApiKey()));
+		
 		// Locked while connected, so the validated key can't be edited out from under the
 		// "connected" state - re-enabled on logout.
 		textControl.setEnabled(!isConnected);
@@ -280,8 +232,7 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 		GridData connectionButtonGridData = new GridData(SWT.BEGINNING, SWT.CENTER, false, false);
 		connectionButtonGridData.widthHint = buttonWidthHint;
 		connectionButton.setLayoutData(connectionButtonGridData);
-		// Disabled while already connected - re-enabled on logout (see logoutButton
-		// below).
+		// Disabled while already connected - re-enabled on logout (see logoutButton below).
 		connectionButton.setEnabled(!isConnected);
 
 		// connectionLabel (the "Validating.../Connected" status text) is created after
@@ -295,27 +246,30 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 		if (isConnected) {
 			connectionLabel.setText(PluginConstants.AUTH_SUCCESS_DISPLAY);
 			setStatusLabelColor(connectionLabel, true);
+			connectionButton.setEnabled(false);
+
 		}
 
 		textControl.addModifyListener(e -> {
-			// This also fires when StringFieldEditor.load() programmatically repopulates
-			// the
-			// text field from the store on every page open - that's not a user edit.
-			// Comparing
-			// against lastValidatedApiKey (a value fixed for this page's lifetime, not
-			// re-read
-			// from the store) rather than clearing Preferences.CREDENTIALS_VALIDATED here
-			// keeps
-			// that load() from ever wiping the persisted "connected" flag.
-			boolean stillMatchesValidatedKey = lastValidatedApiKey != null
-					&& textControl.getText().equals(lastValidatedApiKey);
-			connectionButton.setEnabled(!stillMatchesValidatedKey);
+			boolean hasApiKey = StringUtils.isNotBlank(textControl.getText());
+			// API key is mandatory to enable Connect; also disable Connect if the key
+			// matches the already-validated key (it stays connected in that case).
+			connectionButton.setEnabled(isConnected ? false : hasApiKey);
 		});
 		connectionButton.addSelectionListener(new SelectionAdapter() {
 
 			public void widgetSelected(SelectionEvent e) {
 
 				String apiKey_str = apiKey.getStringValue();
+
+				// API key is mandatory — don't attempt authentication without it.
+				if (StringUtils.isBlank(apiKey_str)) {
+					MessageDialog.openWarning(getShell(), "Missing API Key",
+							"Please enter an API key before attempting to connect.");
+					// Ensure Connect remains disabled until user enters a key
+					connectionButton.setEnabled(false);
+					return;
+				}
 
 				String additionalParams_str = additionalParams.getStringValue();
 				connectionButton.setEnabled(false);
@@ -335,7 +289,7 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 					try {
 						return Authenticator.INSTANCE.doAuthentication(apiKey_str, additionalParams_str);
 					} catch (Throwable t) {
-						CxLogger.error(PluginConstants.ERROR_AUTHENTICATING_AST, new Exception(t));
+						CxLogger.error(String.format(PluginConstants.ERROR_AUTHENTICATING_AST, t.getMessage()), new Exception(t));
 						return t.getMessage();
 					}
 				}).thenAccept((result) -> Display.getDefault().syncExec(() -> {
@@ -357,7 +311,6 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 						Preferences.STORE.setValue(Preferences.API_KEY, apiKey_str);
 						Preferences.STORE.setValue(Preferences.ADDITIONAL_OPTIONS, additionalParams_str);
 						Preferences.setCredentialsValidated(true);
-						lastValidatedApiKey = apiKey_str;
 						// connectionButton stays disabled - it's only re-enabled on logout, or
 						// below if this attempt actually failed.
 						if (!textControl.isDisposed()) {
@@ -372,36 +325,7 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 							notifier.notifySettingsApplied();
 						}
 
-						// Fetch MCP enabled status from server asynchronously
-						CompletableFuture.supplyAsync(() -> {
-							try {
-								return TenantSettingsProvider.INSTANCE.isAiMcpServerEnabled(apiKey_str,
-										additionalParams_str);
-							} catch (Exception ex) {
-								CxLogger.error("Failed to fetch MCP status", ex);
-								return false;
-							}
-						}).thenAccept((mcpEnabled) -> Display.getDefault().syncExec(() -> {
-							if (!connectionLabel.isDisposed()) {
-								connectionLabel.setText(mapAuthResult(result));
-								setStatusLabelColor(connectionLabel, true);
-							}
-							if (!getFieldEditorParent().isDisposed()) {
-								getFieldEditorParent().layout();
-							}
-							// Delegate to handler registered by devassist-lib (if available)
-							IAuthenticationSuccessHandler handler = Preferences.getAuthenticationSuccessHandler();
-							if (handler != null) {
-								handler.onAuthenticationSuccess(mcpEnabled, logoutButtonHolder[0], apiKey_str,
-										additionalParams_str);
-							} else {
-								CxLogger.warning(
-										"[PREFS] No authentication success handler registered - welcome dialog skipped");
-								if (logoutButtonHolder[0] != null && !logoutButtonHolder[0].isDisposed()) {
-									logoutButtonHolder[0].setEnabled(true);
-								}
-							}
-						}));
+						checkMCPStatus(logoutButtonHolder, connectionLabel, apiKey_str, additionalParams_str, result);
 					} else {
 						// Authentication failed - the flow ends here with no welcome dialog,
 						// so show the failure message right away, restore Logout, and let the
@@ -417,7 +341,7 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 							getFieldEditorParent().layout();
 						}
 						if (logoutButtonHolder[0] != null && !logoutButtonHolder[0].isDisposed()) {
-							logoutButtonHolder[0].setEnabled(true);
+							logoutButtonHolder[0].setEnabled(false);
 						}
 					}
 				}));
@@ -448,7 +372,6 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 				// leaving the key in place here no longer makes any of them think the user is
 				// still logged in.
 				Preferences.setCredentialsValidated(false);
-				lastValidatedApiKey = null;
 				connectionButton.setEnabled(true);
 				textControl.setEnabled(true);
 				logoutButton.setEnabled(false);
@@ -469,12 +392,6 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 		});
 
 		spacer(topComposite);
-
-		Label mcpSeparator = new Label(topComposite, SWT.SEPARATOR | SWT.HORIZONTAL);
-		GridData mcpSeparatorData = new GridData(GridData.FILL_HORIZONTAL);
-		mcpSeparatorData.verticalIndent = 6;
-		mcpSeparator.setLayoutData(mcpSeparatorData);
-
 		spacer(topComposite);
 		
 		realtimeScannersLink = new Link(topComposite, SWT.NONE);
@@ -544,27 +461,19 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 		boolean ok = super.performOk();
 
 		if (ok) {
-			// Only notify listeners (e.g. the Checkmarx One scan view refresh) if this
-			// page's own settings actually changed in this session. Without this guard,
-			// merely having visited this page in the same Preferences dialog session as
-			// the unrelated "Checkmarx Scanner Configuration" (Realtime Scanners) page -
-			// a sibling top-level page in the same tree - is enough for Eclipse to call
-			// this performOk() too when the user only meant to save realtime scanner
-			// settings, spuriously refreshing the Checkmarx One scan window.
+			/*
+			 * Only notify listeners (e.g. the Checkmarx One scan view refresh) if this
+			 * page's own settings actually changed in this session. Without this guard,
+			 * merely having visited this page in the same Preferences dialog session as
+			 * the unrelated "Checkmarx Scanner Configuration" (Realtime Scanners) page -
+			 * a sibling top-level page in the same tree - is enough for Eclipse to call
+			 * this performOk() too when the user only meant to save realtime scanner //
+			 * settings, spuriously refreshing the Checkmarx One scan window.
+			 */			
 			String currentApiKey = apiKeyField != null ? apiKeyField.getStringValue() : null;
-			String currentAdditionalOptions = additionalParamsField != null ? additionalParamsField.getStringValue()
-					: null;
+			String currentAdditionalOptions = additionalParamsField != null ? additionalParamsField.getStringValue(): null;
 			boolean settingsActuallyChanged = !java.util.Objects.equals(currentApiKey, initialApiKey)
 					|| !java.util.Objects.equals(currentAdditionalOptions, initialAdditionalOptions);
-
-			// The key being saved here is only "connected" if it's the exact one that was
-			// actually validated (via Connect) this session - if the user typed something
-			// different and hit OK/Apply without testing it, the persisted flag must not
-			// keep
-			// claiming it's validated.
-			if (!java.util.Objects.equals(currentApiKey, lastValidatedApiKey)) {
-				Preferences.setCredentialsValidated(false);
-			}
 
 			if (settingsActuallyChanged) {
 				// Notify main plugin that settings have changed
@@ -575,5 +484,47 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 		}
 
 		return ok;
+	}
+	
+	/**
+	 * Checks the MCP (Checkmarx One Assist) status from the server asynchronously and updates the UI accordingly.
+	 * @param logoutButtonHolder
+	 * @param connectionLabel
+	 * @param apiKey_str
+	 * @param additionalParams_str
+	 * @param result
+	 */
+	private void checkMCPStatus(final Button[] logoutButtonHolder, Label connectionLabel, String apiKey_str,
+			String additionalParams_str, String result) {
+		// Fetch MCP enabled status from server asynchronously
+		CompletableFuture.supplyAsync(() -> {
+			try {
+				return TenantSettingsProvider.INSTANCE.isAiMcpServerEnabled(apiKey_str,
+						additionalParams_str);
+			} catch (Exception ex) {
+				CxLogger.error("Failed to fetch MCP status", ex);
+				return false;
+			}
+		}).thenAccept((mcpEnabled) -> Display.getDefault().syncExec(() -> {
+			if (!connectionLabel.isDisposed()) {
+				connectionLabel.setText(mapAuthResult(result));
+				setStatusLabelColor(connectionLabel, true);
+			}
+			if (!getFieldEditorParent().isDisposed()) {
+				getFieldEditorParent().layout();
+			}
+			// Delegate to handler registered by devassist-lib (if available)
+			IAuthenticationSuccessHandler handler = Preferences.getAuthenticationSuccessHandler();
+			if (handler != null) {
+				handler.onAuthenticationSuccess(mcpEnabled, logoutButtonHolder[0], apiKey_str,
+						additionalParams_str);
+			} else {
+				CxLogger.warning(
+						"[PREFS] No authentication success handler registered - welcome dialog skipped");
+				if (logoutButtonHolder[0] != null && !logoutButtonHolder[0].isDisposed()) {
+					logoutButtonHolder[0].setEnabled(true);
+				}
+			}
+		}));
 	}
 }
