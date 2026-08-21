@@ -133,6 +133,13 @@ public class DevAssistIgnoredFindings extends ViewPart {
         if (ignoreFileManager == null) {
             return;
         }
+        // Force a fresh read of .checkmarxIgnored from disk rather than trusting
+        // that the workspace file watcher already picked up every change. If the
+        // user edits .checkmarxIgnored externally (or Eclipse's native/polling
+        // refresh doesn't fire promptly), this view would otherwise keep showing
+        // stale in-memory entries until some unrelated event happened to trigger
+        // the watcher.
+        ignoreFileManager.refreshFromDisk();
         List<IgnoreEntry> entries = ignoreFileManager.getAllIgnoreEntries().stream()
                 .filter(entry -> activeFileCount(entry) > 0)
                 .collect(java.util.stream.Collectors.toList());
@@ -177,6 +184,9 @@ public class DevAssistIgnoredFindings extends ViewPart {
 
     @Override
     public void setFocus() {
+        // Pick up any external edits to .checkmarxIgnored made while this view
+        // wasn't in focus, rather than relying solely on the file watcher.
+        refreshTable();
         if (tableViewer != null && tableViewer.getTable() != null && !tableViewer.getTable().isDisposed()) {
             tableViewer.getTable().setFocus();
         }

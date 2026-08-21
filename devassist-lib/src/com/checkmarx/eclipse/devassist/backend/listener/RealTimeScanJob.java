@@ -143,6 +143,14 @@ public class RealTimeScanJob extends Job {
 
 				}
 
+				// Force the ignore file/temp list to reconcile with disk before scanning,
+				// rather than relying solely on the workspace resource-change watcher
+				// having already fired for the latest .checkmarxIgnored edit. Without
+				// this, a manual/external edit to .checkmarxIgnored that the watcher
+				// missed (or hasn't processed yet) would leave the CLI-facing
+				// .checkmarxIgnoredTempList.json stale for this scan cycle.
+				com.checkmarx.eclipse.devassist.ignore.IgnoreFileManager.getInstance(project).refreshFromDisk();
+
 				// Execute backend scanners
 				com.checkmarx.eclipse.devassist.common.ScanManager scanManager = new com.checkmarx.eclipse.devassist.common.ScanManager(
 						registry, stateHolder);

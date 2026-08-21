@@ -42,6 +42,7 @@ import com.checkmarx.eclipse.common.events.SettingsTopics;
 import com.checkmarx.eclipse.common.preferences.Preferences;
 import com.checkmarx.eclipse.devassist.backend.Constants;
 import com.checkmarx.eclipse.devassist.backend.listener.CheckmarxDocumentListener;
+import com.checkmarx.eclipse.devassist.backend.listener.CheckmarxEditorListener;
 import com.checkmarx.eclipse.devassist.backend.listener.RealTimeScanJob;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.ui.findings.model.FileNodeLabel;
@@ -750,68 +751,40 @@ public class CxFindingsView extends ViewPart {
 		}
 
 		try {
-			// Extract document for real-time scanning
+			// Delegate registration/dedup to the single, shared CheckmarxEditorListener
+			// (registered once at plugin startup) instead of creating a second,
+			// independent CheckmarxDocumentListener/RealTimeScanJob pair here. Two
+			// independent pairs attached to the same document each debounce and
+			// reschedule scans on their own, colliding on the shared per-file
+			// in-flight lock in DevAssistScanStateHolder - an edit's scan can get
+			// silently BLOCKED by an unrelated duplicate job that is still in-flight,
+			// with nothing left to reschedule it, making scans appear to trigger only
+			// after a further edit.
+			CheckmarxEditorListener sharedListener = CheckmarxEditorListener.getInstance();
 			org.eclipse.jface.text.IDocument document = null;
-			String fileName = file.getName();
-
-			// Try method 1: Direct ITextEditor instance check
-			if (editor instanceof org.eclipse.ui.texteditor.ITextEditor) {
-
-				org.eclipse.ui.texteditor.ITextEditor textEditor = (org.eclipse.ui.texteditor.ITextEditor) editor;
-				document = textEditor.getDocumentProvider().getDocument(textEditor.getEditorInput());
-			}
-
-			// Try method 2: ITextEditor Adapter pattern (for MavenPomEditor, etc.)
-			if (document == null) {
-
-				org.eclipse.ui.texteditor.ITextEditor textEditor = editor
-						.getAdapter(org.eclipse.ui.texteditor.ITextEditor.class);
-				if (textEditor != null) {
-
-					document = textEditor.getDocumentProvider().getDocument(textEditor.getEditorInput());
-				}
-			}
-
-			// Try method 3: Direct IDocument adapter (some editors provide this directly)
-			if (document == null) {
-
-				document = editor.getAdapter(org.eclipse.jface.text.IDocument.class);
+			if (sharedListener != null) {
+				sharedListener.ensureRealtimeScanningForEditor(editor);
+			} else {
+				// Fallback: shared listener not initialized yet (should not happen once
+				// PluginStartup has run) - register a listener directly so scanning still
+				// works.
+				document = getDocumentFromEditorFallback(editor);
 				if (document != null) {
-
+					String fileName = file.getName();
+					RealTimeScanJob scanJob = new RealTimeScanJob(file, fileName);
+					CheckmarxDocumentListener docListener = new CheckmarxDocumentListener(fileName, scanJob, file, null);
+					document.addDocumentListener(docListener);
 				}
 			}
-
-			if (document == null) {
-
-				return;
-			}
-
-			// Create a scan job for this file
-			RealTimeScanJob scanJob = new RealTimeScanJob(file, fileName);
-
-			// Create a document listener that reschedules the job on every keystroke
-			com.checkmarx.eclipse.devassist.inspection.DevAssistScanScheduler scheduler = null;
-			if (file != null) {
-				try {
-					org.eclipse.core.resources.IProject project = file.getProject();
-					if (project != null) {
-						scheduler = (com.checkmarx.eclipse.devassist.inspection.DevAssistScanScheduler) project
-								.getSessionProperty(
-										new org.eclipse.core.runtime.QualifiedName("com.checkmarx.eclipse.plugin",
-												"scan-scheduler"));
-					}
-				} catch (Exception e) {
-					// Ignore if scheduler not available
-				}
-			}
-			CheckmarxDocumentListener docListener = new CheckmarxDocumentListener(fileName, scanJob, file, scheduler);
-
-			// Register the document listener
-			document.addDocumentListener(docListener);
 
 			// Apply cached decorations if findings exist for this file
 			// Pass the editor directly to avoid search issues with MavenPomEditor
-			applyCachedDecorationsForFile(file, document, editor);
+			if (document == null) {
+				document = getDocumentFromEditorFallback(editor);
+			}
+			if (document != null) {
+				applyCachedDecorationsForFile(file, document, editor);
+			}
 
 		} catch (Exception e) {
 			System.err.println("[REALTIME-SETUP] ✗ EXCEPTION during setup: " + e.getMessage());
@@ -819,6 +792,41 @@ public class CxFindingsView extends ViewPart {
 			System.err.println("[REALTIME-SETUP] Stack trace:");
 			e.printStackTrace();
 		}
+	}
+
+	/**
+	 * Extract the IDocument from an editor, trying the same fallback chain as
+	 * CheckmarxEditorListener (direct ITextEditor, adapter, IDocument adapter) -
+	 * needed here only to feed applyCachedDecorationsForFile(), which requires a
+	 * document even though listener registration itself is now delegated.
+	 */
+	private org.eclipse.jface.text.IDocument getDocumentFromEditorFallback(IEditorPart editor) {
+		if (editor instanceof org.eclipse.ui.texteditor.ITextEditor) {
+			org.eclipse.ui.texteditor.ITextEditor textEditor = (org.eclipse.ui.texteditor.ITextEditor) editor;
+			try {
+				org.eclipse.jface.text.IDocument doc = textEditor.getDocumentProvider()
+						.getDocument(textEditor.getEditorInput());
+				if (doc != null) {
+					return doc;
+				}
+			} catch (Exception e) {
+				// fall through
+			}
+		}
+		org.eclipse.ui.texteditor.ITextEditor textEditor = editor
+				.getAdapter(org.eclipse.ui.texteditor.ITextEditor.class);
+		if (textEditor != null) {
+			try {
+				org.eclipse.jface.text.IDocument doc = textEditor.getDocumentProvider()
+						.getDocument(textEditor.getEditorInput());
+				if (doc != null) {
+					return doc;
+				}
+			} catch (Exception e) {
+				// fall through
+			}
+		}
+		return editor.getAdapter(org.eclipse.jface.text.IDocument.class);
 	}
 
 	/**

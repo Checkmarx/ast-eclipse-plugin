@@ -47,8 +47,58 @@ public class CheckmarxEditorListener implements IPartListener2 {
 	 */
 	private final Map<Integer, RealTimeScanJob> activeScanJobs = new HashMap<>();
 
-	public CheckmarxEditorListener() {
+	// Strong reference to the single instance registered by PluginStartup at
+	// earlyStartup(). Lets other devassist-lib code (e.g. CxFindingsView's
+	// "navigate to finding" flow, which opens/activates an editor directly
+	// without going through the workbench's IPartListener2 events) reuse this
+	// listener's per-document dedup bookkeeping instead of registering a second,
+	// independent CheckmarxDocumentListener/RealTimeScanJob pair on the same
+	// document - duplicate pairs each independently debounce and reschedule
+	// scans for the same file, colliding on the shared per-file in-flight lock
+	// in DevAssistScanStateHolder and causing scans to appear to trigger late
+	// (an edit's scan gets silently BLOCKED by an unrelated duplicate job that
+	// is still in-flight, with nothing rescheduling it afterwards).
+	private static volatile CheckmarxEditorListener instance;
 
+	public CheckmarxEditorListener() {
+		instance = this;
+	}
+
+	/**
+	 * @return the single CheckmarxEditorListener registered at plugin startup,
+	 *         or null if it has not been created yet.
+	 */
+	public static CheckmarxEditorListener getInstance() {
+		return instance;
+	}
+
+	/**
+	 * Ensure real-time scanning is set up for the given editor, reusing an
+	 * existing document listener/scan job if one is already registered for its
+	 * document instead of creating a duplicate.
+	 *
+	 * This is the same dedup logic as {@link #partActivated}, exposed for
+	 * callers that open/activate an editor programmatically (bypassing
+	 * IPartListener2 events), such as CxFindingsView's navigate-to-finding flow.
+	 *
+	 * @param editor the editor part to ensure scanning is set up for
+	 */
+	public void ensureRealtimeScanningForEditor(IEditorPart editor) {
+		if (editor == null) {
+			return;
+		}
+		IDocument document = getDocumentFromEditor(editor);
+		if (document != null) {
+			int documentId = document.hashCode();
+			if (activeListeners.containsKey(documentId)) {
+				RealTimeScanJob scanJob = activeScanJobs.get(documentId);
+				if (scanJob != null) {
+					scanJob.reschedule(0);
+				}
+				return;
+			}
+		}
+		setupRealtimeScanning(editor);
 	}
 
 	/**
@@ -85,22 +135,7 @@ public class CheckmarxEditorListener implements IPartListener2 {
 		try {
 			Object part = partRef.getPart(false);
 			if (part instanceof IEditorPart) {
-				IEditorPart editor = (IEditorPart) part;
-				IDocument document = getDocumentFromEditor(editor);
-				if (document != null) {
-					int documentId = document.hashCode();
-					// If already set up, trigger a rescan when user switches to tab
-					if (activeListeners.containsKey(documentId)) {
-						RealTimeScanJob scanJob = activeScanJobs.get(documentId);
-						if (scanJob != null) {
-
-							scanJob.reschedule(0);
-						}
-						return;
-					}
-				}
-				// Not yet set up - do initial setup
-				setupRealtimeScanning(editor);
+				ensureRealtimeScanningForEditor((IEditorPart) part);
 			}
 		} catch (Exception e) {
 			System.err.println("[REALTIME] Error in partActivated: " + e.getMessage());

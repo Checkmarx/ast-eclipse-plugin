@@ -108,9 +108,15 @@ public class DevAssistInspectionMgr extends ScanManager {
 			problemHelperBuilder.scanIssueList(allScanIssues);
 			ProblemHelper helperWithIssues = problemHelperBuilder.build();
 
-			// Cache issues
-			helperWithIssues.getProblemHolderService().addScanIssues(
-					problemHelper.getFilePath(), allScanIssues);
+			// NOTE: do NOT call problemHolderService.addScanIssues() here. The
+			// only caller of this method (ResultPublisher.createAndRenderDecorations)
+			// already cached this exact issue list via ResultPublisher.updateFindingsView()
+			// moments earlier. Re-caching the same list here re-publishes
+			// ISSUES_UPDATED_TOPIC a second time for the same scan cycle, causing
+			// CxFindingsView to run a second, redundant applyDecorationsToOpenEditors()
+			// pass concurrently with the direct decorateUI() call below - widening the
+			// race window with IgnoreFileManager's async file-watcher callback and
+			// producing inconsistent ignored/severity icon states on the same line.
 
 			// Create problems with decoration
 			List<ProblemDescriptor> allProblems = createProblemDescriptorsWithDecoration(helperWithIssues);

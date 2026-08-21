@@ -118,11 +118,27 @@ public final class IgnoreFileManager {
     }
 
     public void loadIgnoreData() {
+        loadIgnoreDataInternal();
+    }
+
+    /**
+     * Loads ignore data from disk into {@link #ignoreData}.
+     *
+     * @return true if the file was read and parsed successfully (or genuinely
+     *         doesn't exist yet, which is a legitimate empty state), false if a
+     *         read/parse error occurred. On false, {@link #ignoreData} is left
+     *         untouched - a transient read error (e.g. the file watcher observing
+     *         our own write mid-flight) must never be treated as "the file is now
+     *         empty", or every previously-ignored entry appears to vanish from
+     *         the Ignored Findings window and reappears as an active finding in
+     *         the editor until the next successful reload.
+     */
+    private boolean loadIgnoreDataInternal() {
         Path ignoreFile = getIgnoreFilePath();
         if (!Files.exists(ignoreFile)) {
             CxLogger.info(String.format("RTS-Ignore: Ignore file doesn't exist: %s", ignoreFile));
             ignoreData = new HashMap<>();
-            return;
+            return true;
         }
         try (InputStream inputStream = Files.newInputStream(ignoreFile)) {
             ObjectMapper mapper = new ObjectMapper();
@@ -131,9 +147,11 @@ public final class IgnoreFileManager {
                     });
             ignoreData.clear();
             ignoreData.putAll(data);
+            return true;
         } catch (IOException e) {
-            CxLogger.error("Failed to read ignore file: " + ignoreFile, e);
-            ignoreData = new HashMap<>();
+            CxLogger.warning("RTS-Ignore: Failed to read ignore file (keeping previous in-memory state): "
+                    + ignoreFile + " - " + e.getMessage());
+            return false;
         }
     }
 
@@ -180,11 +198,42 @@ public final class IgnoreFileManager {
     private void saveIgnoreFile() {
         try {
             String json = MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(ignoreData);
-            Files.writeString(getIgnoreFilePath(), json, StandardCharsets.UTF_8,
-                    StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            writeAtomically(getIgnoreFilePath(), json);
             notifyListeners();
         } catch (IOException e) {
             CxLogger.warning("RTS-Ignore: Exception occurred while adding ignore entry into file: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Writes content to the target path atomically: write to a sibling temp
+     * file, then move it into place with ATOMIC_MOVE.
+     *
+     * Files.writeString(..., TRUNCATE_EXISTING) truncates the file to zero
+     * length before writing the new content, which is observable as two
+     * separate filesystem events (truncate, then write). Eclipse's resource
+     * watcher (native hooks or polling refresh) can fire on that intermediate,
+     * momentarily-empty state, causing a concurrent loadIgnoreData() call to
+     * throw MismatchedInputException on a file that was never actually
+     * corrupted on disk - just read mid-write. An atomic rename never exposes
+     * that intermediate state: a reader always sees either the complete old
+     * content or the complete new content.
+     */
+    private void writeAtomically(Path target, String content) throws IOException {
+        Path tempFile = target.resolveSibling(target.getFileName().toString() + "." + UUID.randomUUID() + ".tmp");
+        try {
+            Files.writeString(tempFile, content, StandardCharsets.UTF_8,
+                    StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            try {
+                Files.move(tempFile, target, java.nio.file.StandardCopyOption.ATOMIC_MOVE,
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            } catch (java.nio.file.AtomicMoveNotSupportedException e) {
+                // Some filesystems (e.g. certain network drives) don't support atomic
+                // moves across the temp/target pair - fall back to a plain replace.
+                Files.move(tempFile, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
+        } finally {
+            Files.deleteIfExists(tempFile);
         }
     }
 
@@ -257,8 +306,7 @@ public final class IgnoreFileManager {
         }
         try {
             String json = MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(tempList);
-            Files.writeString(getTempListPath(), json, StandardCharsets.UTF_8,
-                    StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            writeAtomically(getTempListPath(), json);
         } catch (IOException e) {
             CxLogger.error("RTS-Ignore: Failed to update temp list: " + e.getMessage(), e);
         }
@@ -378,10 +426,35 @@ public final class IgnoreFileManager {
     }
 
     private void handleFileChange() {
-        loadIgnoreData();
+        refreshFromDisk();
+    }
+
+    /**
+     * Re-reads .checkmarxIgnored from disk and reconciles derived state
+     * (.checkmarxIgnoredTempList.json, listeners) against it.
+     *
+     * This is the same reconciliation the file watcher triggers on a detected
+     * change, exposed so callers that can't rely on Eclipse's resource-change
+     * notification firing reliably for every edit (e.g. a genuinely external
+     * edit made while native/polling refresh is disabled, or before a
+     * time-sensitive read like kicking off a scan) can force it explicitly.
+     *
+     * @return true if the file was read successfully (or doesn't exist),
+     *         false if a transient read/parse error occurred - in which case
+     *         in-memory state was left untouched and no reconciliation ran.
+     */
+    public boolean refreshFromDisk() {
+        if (!loadIgnoreDataInternal()) {
+            // Transient read failure (e.g. watcher observed a mid-write state) -
+            // ignoreData was left untouched, so there is nothing real to react to
+            // this cycle. Bail out without cascading a false "everything
+            // deactivated" into detectAndHandleActiveChanges()/updateIgnoreTempList().
+            return false;
+        }
         detectAndHandleActiveChanges();
         previousIgnoreData = copyIgnoreData(ignoreData);
         notifyListeners();
+        return true;
     }
 
 
