@@ -48,6 +48,25 @@ public class ProblemDecorator {
 	private static final Map<String, List<Annotation>> fileAnnotations = new HashMap<>();
 
 	/**
+	 * Normalize file path for consistent key lookups in fileAnnotations map.
+	 * Converts to lowercase on Windows and uses forward slashes.
+	 * This prevents path key mismatches between different code paths that might
+	 * format paths differently (e.g. Maven editor vs regular editor).
+	 */
+	private static String normalizeFilePath(String filePath) {
+		if (filePath == null || filePath.isEmpty()) {
+			return "";
+		}
+		String normalized = filePath.replace("\\", "/");
+		// On Windows, normalize to lowercase for case-insensitive matching
+		if (System.getProperty("os.name").toLowerCase().contains("win")) {
+			normalized = normalized.toLowerCase();
+		}
+		CxLogger.info(LOG_TAG + "[PATH_NORMALIZE] Original: " + filePath + " -> Normalized: " + normalized);
+		return normalized;
+	}
+
+	/**
 	 * Render scan results as annotations in the editor.
 	 *
 	 * Creates FindingsAnnotation objects for each issue and adds them
@@ -69,12 +88,19 @@ public class ProblemDecorator {
 		// This ensures fileAnnotations map keys match the same path format used
 		// throughout the codebase
 		String filePath = file.getLocation().toOSString();
+		String normalizedFilePath = normalizeFilePath(filePath);
+
+		CxLogger.info(LOG_TAG + "============================================");
+		CxLogger.info(LOG_TAG + "[DECORATE_START] File: " + filePath);
+		CxLogger.info(LOG_TAG + "[DECORATE_START] Normalized: " + normalizedFilePath);
+		CxLogger.info(LOG_TAG + "[DECORATE_START] ScanIssues count: " + scanIssues.size());
+		CxLogger.info(LOG_TAG + "[DECORATE_START] Current fileAnnotations keys: " + fileAnnotations.keySet());
 
 		try {
 			// Find open editor for this file
 			ITextEditor editor = findOpenEditor(file);
 			if (editor == null) {
-				CxLogger.info(LOG_TAG + "No open editor for: " + filePath);
+				CxLogger.info(LOG_TAG + "[DECORATE_SKIP] No open editor for: " + filePath);
 				return;
 			}
 
@@ -83,13 +109,14 @@ public class ProblemDecorator {
 					.getAnnotationModel(editor.getEditorInput());
 
 			if (annotationModel == null) {
-				CxLogger.warning(LOG_TAG + "No annotation model available");
+				CxLogger.warning(LOG_TAG + "[DECORATE_FAIL] No annotation model available");
 				return;
 			}
 
 			// Remove previous annotations for this file (BEFORE isEmpty check)
 			// This ensures stale annotations are cleared even if file is now clean
-			clearAnnotations(filePath, annotationModel);
+			CxLogger.info(LOG_TAG + "[CLEAR_START] Clearing previous annotations for: " + normalizedFilePath);
+			clearAnnotations(normalizedFilePath, annotationModel);
 
 			// Remove previous IMarkers for this file too - ensureMarker() below only adds
 			// markers, so without this, issues that were ignored/resolved/filtered out
@@ -163,16 +190,19 @@ public class ProblemDecorator {
 			// active (non-ignored) finding above.
 			annotations.addAll(decorateIgnoredEntries(file, editor, annotationModel, activeLines));
 
-			// Store annotations for later cleanup
-			fileAnnotations.put(filePath, annotations);
+			// Store annotations for later cleanup (using normalized path)
+			fileAnnotations.put(normalizedFilePath, annotations);
 
-			CxLogger.info(LOG_TAG + "COMPLETE: Added " + annotations.size() +
+			CxLogger.info(LOG_TAG + "[DECORATE_COMPLETE] Added " + annotations.size() +
 					" annotations to editor");
+			CxLogger.info(LOG_TAG + "[DECORATE_COMPLETE] FileAnnotations now has: " + fileAnnotations.size() + " entries");
+			CxLogger.info(LOG_TAG + "============================================");
 
 		} catch (Exception e) {
-			CxLogger.warning(LOG_TAG + " Error decorating editor: " +
+			CxLogger.warning(LOG_TAG + "[DECORATE_ERROR] Error decorating editor: " +
 					e.getMessage());
 			e.printStackTrace();
+			CxLogger.info(LOG_TAG + "============================================");
 		}
 	}
 
@@ -585,19 +615,43 @@ public class ProblemDecorator {
 			IAnnotationModel annotationModel) {
 
 		try {
-			List<Annotation> previousAnnotations = fileAnnotations.get(filePath);
+			String normalizedPath = normalizeFilePath(filePath);
+			CxLogger.info(LOG_TAG + "[CLEAR_DEBUG] Looking up with normalized path: " + normalizedPath);
+			CxLogger.info(LOG_TAG + "[CLEAR_DEBUG] Available keys in fileAnnotations: " + fileAnnotations.keySet());
+
+			List<Annotation> previousAnnotations = fileAnnotations.get(normalizedPath);
 			if (previousAnnotations != null) {
+				CxLogger.info(LOG_TAG + "[CLEAR_DEBUG] Found " + previousAnnotations.size() + " annotations to remove");
 				for (Annotation annotation : previousAnnotations) {
 					annotationModel.removeAnnotation(annotation);
+					CxLogger.info(LOG_TAG + "[CLEAR_DEBUG] Removed annotation: " + annotation);
 				}
-				fileAnnotations.remove(filePath);
+				fileAnnotations.remove(normalizedPath);
 
-				CxLogger.info(LOG_TAG + " Cleared " + previousAnnotations.size() +
-						" previous annotations");
+				CxLogger.info(LOG_TAG + "[CLEAR_SUCCESS] Cleared " + previousAnnotations.size() +
+						" previous annotations for: " + normalizedPath);
+			} else {
+				// FALLBACK: If lookup failed, try direct removal from annotation model
+				CxLogger.warning(LOG_TAG + "[CLEAR_FALLBACK] No annotations found in map for: " + normalizedPath);
+				CxLogger.warning(LOG_TAG + "[CLEAR_FALLBACK] Attempting direct removal of FindingsAnnotations from model");
+				List<Annotation> toRemove = new ArrayList<>();
+				annotationModel.getAnnotationIterator().forEachRemaining(ann -> {
+					if (ann instanceof FindingsAnnotation) {
+						toRemove.add(ann);
+						CxLogger.info(LOG_TAG + "[CLEAR_FALLBACK] Will remove FindingsAnnotation: " + ann);
+					}
+				});
+				for (Annotation ann : toRemove) {
+					annotationModel.removeAnnotation(ann);
+				}
+				if (!toRemove.isEmpty()) {
+					CxLogger.info(LOG_TAG + "[CLEAR_FALLBACK] Removed " + toRemove.size() + " FindingsAnnotations directly from model");
+				}
 			}
 		} catch (Exception e) {
-			CxLogger.warning(LOG_TAG + " Error clearing annotations: " +
+			CxLogger.warning(LOG_TAG + "[CLEAR_ERROR] Error clearing annotations: " +
 					e.getMessage());
+			e.printStackTrace();
 		}
 	}
 
@@ -608,10 +662,15 @@ public class ProblemDecorator {
 	 */
 	public static void clearAllAnnotations() {
 		try {
+			CxLogger.info(LOG_TAG + "[CLEAR_ALL_START] Clearing all annotations from all open editors");
 			IWorkbench workbench = PlatformUI.getWorkbench();
 			if (workbench == null) {
+				CxLogger.warning(LOG_TAG + "[CLEAR_ALL] Workbench is null");
 				return;
 			}
+
+			int editorCount = 0;
+			int annotationCount = 0;
 
 			for (var window : workbench.getWorkbenchWindows()) {
 				IWorkbenchPage page = window.getActivePage();
@@ -634,6 +693,7 @@ public class ProblemDecorator {
 							continue;
 						}
 
+						editorCount++;
 						IAnnotationModel annotationModel = editor.getDocumentProvider()
 								.getAnnotationModel(editor.getEditorInput());
 						if (annotationModel == null) {
@@ -650,18 +710,21 @@ public class ProblemDecorator {
 
 						for (Annotation annotation : toRemove) {
 							annotationModel.removeAnnotation(annotation);
+							annotationCount++;
 						}
+						CxLogger.info(LOG_TAG + "[CLEAR_ALL] Cleared " + toRemove.size() + " annotations from editor " + editorCount);
 					} catch (Exception e) {
-						CxLogger.warning(LOG_TAG + " Error clearing annotations from editor: " + e.getMessage());
+						CxLogger.warning(LOG_TAG + "[CLEAR_ALL_ERROR] Error clearing annotations from editor: " + e.getMessage());
 					}
 				}
 			}
 
 			// Clear the fileAnnotations map
+			CxLogger.info(LOG_TAG + "[CLEAR_ALL] Clearing fileAnnotations map with " + fileAnnotations.size() + " entries");
 			fileAnnotations.clear();
-			CxLogger.info(LOG_TAG + " All annotations cleared from all open editors");
+			CxLogger.info(LOG_TAG + "[CLEAR_ALL_COMPLETE] All annotations cleared - Editors: " + editorCount + ", Annotations removed: " + annotationCount);
 		} catch (Exception e) {
-			CxLogger.warning(LOG_TAG + " Error clearing all annotations: " + e.getMessage());
+			CxLogger.warning(LOG_TAG + "[CLEAR_ALL_ERROR] Error clearing all annotations: " + e.getMessage());
 		}
 	}
 

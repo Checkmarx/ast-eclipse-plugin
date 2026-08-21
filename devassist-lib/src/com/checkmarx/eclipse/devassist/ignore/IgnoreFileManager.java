@@ -271,21 +271,29 @@ public final class IgnoreFileManager {
      */
     public void updateIgnoreTempList() {
         List<TempItem> tempList = new ArrayList<>();
-        CxLogger.info(String.format("RTS-Ignore: Updating temp list with %d ignore entries", ignoreData.size()));
+        CxLogger.info(String.format("RTS-Ignore: [TEMP_LIST_UPDATE] Updating temp list with %d ignore entries", ignoreData.size()));
+
         for (IgnoreEntry entry : ignoreData.values()) {
             boolean hasActive = entry.files.stream().anyMatch(f -> f.active);
-            if (!hasActive) continue;
+            if (!hasActive) {
+                CxLogger.info("RTS-Ignore: [TEMP_LIST_UPDATE] Skipping entry with no active files: " + entry.getPackageName());
+                continue;
+            }
             switch (entry.type) {
                 case OSS:
+                    CxLogger.info("RTS-Ignore: [TEMP_LIST_UPDATE] Adding OSS entry: " + entry.getPackageName());
                     tempList.add(TempItem.forOss(entry.packageManager, entry.packageName, entry.packageVersion));
                     break;
                 case SECRETS:
+                    CxLogger.info("RTS-Ignore: [TEMP_LIST_UPDATE] Adding SECRETS entry: " + entry.getPackageName());
                     tempList.add(TempItem.forSecret(entry.packageName, entry.secretValue));
                     break;
                 case IAC:
+                    CxLogger.info("RTS-Ignore: [TEMP_LIST_UPDATE] Adding IAC entry: " + entry.getPackageName());
                     tempList.add(TempItem.forIac(entry.packageName, entry.similarityId));
                     break;
                 case CONTAINERS:
+                    CxLogger.info("RTS-Ignore: [TEMP_LIST_UPDATE] Adding CONTAINERS entry: " + entry.getImageName());
                     tempList.add(TempItem.forContainer(entry.imageName, entry.imageTag));
                     break;
                 case ASCA:
@@ -293,6 +301,7 @@ public final class IgnoreFileManager {
                         if (!file.active) continue;
                         String originalPath = Paths.get(workspaceRootPath, file.path).toAbsolutePath().toString();
                         String scannedTempPath = scannedFileMap.getOrDefault(originalPath, originalPath);
+                        CxLogger.info("RTS-Ignore: [TEMP_LIST_UPDATE] Adding ASCA entry: " + entry.getPackageName() + " at line " + file.line);
                         tempList.add(TempItem.forAsca(
                                 Paths.get(scannedTempPath).getFileName().toString(),
                                 file.line,
@@ -304,11 +313,19 @@ public final class IgnoreFileManager {
                     break;
             }
         }
+
         try {
+            CxLogger.info("RTS-Ignore: [TEMP_LIST_UPDATE] Writing " + tempList.size() + " items to temp list file");
             String json = MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(tempList);
             writeAtomically(getTempListPath(), json);
+            CxLogger.info("RTS-Ignore: [TEMP_LIST_UPDATE_SUCCESS] Temp list updated successfully with " + tempList.size() + " items");
+
+            // If tempList is empty, verify the file is actually empty
+            if (tempList.isEmpty()) {
+                CxLogger.info("RTS-Ignore: [TEMP_LIST_UPDATE] Temp list is empty - file should contain empty array []");
+            }
         } catch (IOException e) {
-            CxLogger.error("RTS-Ignore: Failed to update temp list: " + e.getMessage(), e);
+            CxLogger.error("RTS-Ignore: [TEMP_LIST_UPDATE_ERROR] Failed to update temp list: " + e.getMessage(), e);
         }
     }
 
@@ -426,7 +443,10 @@ public final class IgnoreFileManager {
     }
 
     private void handleFileChange() {
+        CxLogger.info("RTS-Ignore: [FILE_WATCHER] File change detected in .checkmarxIgnored");
+        CxLogger.info("RTS-Ignore: [FILE_WATCHER] Current ignoreData size: " + ignoreData.size());
         refreshFromDisk();
+        CxLogger.info("RTS-Ignore: [FILE_WATCHER] After refresh, ignoreData size: " + ignoreData.size());
     }
 
     /**
@@ -459,34 +479,46 @@ public final class IgnoreFileManager {
 
 
     private void detectAndHandleActiveChanges() {
+        CxLogger.info("RTS-Ignore: [DETECT_CHANGES] Detecting active changes in ignore data");
         List<ActiveFile> previousActiveFiles = getActiveFilesList(previousIgnoreData);
         List<ActiveFile> currentActiveFiles = getActiveFilesList(ignoreData);
+
+        CxLogger.info("RTS-Ignore: [DETECT_CHANGES] Previous active files: " + previousActiveFiles.size());
+        CxLogger.info("RTS-Ignore: [DETECT_CHANGES] Current active files: " + currentActiveFiles.size());
 
         List<ActiveFile> deactivatedFiles = previousActiveFiles.stream()
                 .filter(prev -> currentActiveFiles.stream()
                         .noneMatch(cur -> cur.packageKey.equals(prev.packageKey) && cur.path.equals(prev.path)))
                 .collect(Collectors.toList());
+
         if (!deactivatedFiles.isEmpty()) {
+            CxLogger.info("RTS-Ignore: [DETECT_CHANGES] Found " + deactivatedFiles.size() + " deactivated files");
             for (ActiveFile f : deactivatedFiles) {
+                CxLogger.info("RTS-Ignore: [DETECT_CHANGES] Removing deactivated entry: " + f.packageKey + " at " + f.path);
                 removeIgnoredEntryWithoutTempUpdate(f.packageKey, f.path);
             }
             updateIgnoreTempList();
         }
+
         // Remove entries where all files are inactive
         List<String> keysToRemove = new ArrayList<>();
         for (Map.Entry<String, IgnoreEntry> entry : ignoreData.entrySet()) {
             boolean hasActive = entry.getValue().files.stream().anyMatch(f -> f.active);
             if (!hasActive) {
+                CxLogger.info("RTS-Ignore: [DETECT_CHANGES] Entry has no active files, marking for removal: " + entry.getKey());
                 keysToRemove.add(entry.getKey());
             }
         }
         if (!keysToRemove.isEmpty()) {
+            CxLogger.info("RTS-Ignore: [DETECT_CHANGES] Removing " + keysToRemove.size() + " entries with no active files");
             for (String key : keysToRemove) {
+                CxLogger.info("RTS-Ignore: [DETECT_CHANGES] Removing key: " + key);
                 ignoreData.remove(key);
             }
             saveIgnoreFile();
         }
 
+        CxLogger.info("RTS-Ignore: [DETECT_CHANGES_COMPLETE] After changes, ignoreData size: " + ignoreData.size());
     }
 
     private static final class ActiveFile {
