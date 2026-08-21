@@ -241,17 +241,36 @@ public class DevAssistIgnoredFindings extends ViewPart {
     }
 
     private void reviveSelected() {
+        CxLogger.info("[IGNORED_FINDINGS] ============================================");
         CxLogger.info("[IGNORED_FINDINGS] Reviving " + selectedEntries.size() + " selected entries");
         ensureProjectAndIgnoreManager();
-        if (currentProject == null || selectedEntries.isEmpty()) {
+        if (currentProject == null) {
+            CxLogger.warning("[IGNORED_FINDINGS] currentProject is null");
+            return;
+        }
+        if (selectedEntries.isEmpty()) {
+            CxLogger.warning("[IGNORED_FINDINGS] selectedEntries is empty");
             return;
         }
 
-        for (IgnoreEntry entry : new ArrayList<>(selectedEntries)) {
-            CxLogger.info("[IGNORED_FINDINGS] Reviving: " + entry.getPackageName());
-            IgnoreManager.getInstance(currentProject).reviveSingleEntry(entry);
+        // Create a copy to iterate over (selection might change during iteration)
+        List<IgnoreEntry> entriesToRevive = new ArrayList<>(selectedEntries);
+        CxLogger.info("[IGNORED_FINDINGS] Created copy of selectedEntries: " + entriesToRevive.size() + " entries");
+
+        for (IgnoreEntry entry : entriesToRevive) {
+            try {
+                CxLogger.info("[IGNORED_FINDINGS] Reviving entry: " + entry.getPackageName() + " (type: " + entry.getType() + ")");
+                IgnoreManager.getInstance(currentProject).reviveSingleEntry(entry);
+                CxLogger.info("[IGNORED_FINDINGS] Successfully revived: " + entry.getPackageName());
+            } catch (Exception e) {
+                CxLogger.warning("[IGNORED_FINDINGS] Error reviving " + entry.getPackageName() + ": " + e.getMessage());
+            }
         }
+
+        CxLogger.info("[IGNORED_FINDINGS] All " + entriesToRevive.size() + " entries processed");
+        CxLogger.info("[IGNORED_FINDINGS] Refreshing table...");
         refreshTable();
+        CxLogger.info("[IGNORED_FINDINGS] ============================================");
     }
 
     private void onIgnoreDataUpdated() {
@@ -269,6 +288,7 @@ public class DevAssistIgnoredFindings extends ViewPart {
     public void setFocus() {
         // Pick up any external edits to .checkmarxIgnored made while this view
         // wasn't in focus, rather than relying solely on the file watcher.
+        CxLogger.info("[IGNORED_FINDINGS] setFocus() called - will refresh to catch external file changes");
         refreshTable();
         if (cardsContainer != null && !cardsContainer.isDisposed()) {
             cardsContainer.setFocus();
@@ -298,6 +318,7 @@ public class DevAssistIgnoredFindings extends ViewPart {
         private final Button checkboxButton;
         private final IgnoreEntry entry;
         private final DevAssistIgnoredFindings parent;
+        private final org.eclipse.swt.graphics.Font boldFont;
         private boolean isSelected = false;
 
         public IgnoreEntryCard(Composite parent, IgnoreEntry entry, DevAssistIgnoredFindings parentView) {
@@ -324,11 +345,12 @@ public class DevAssistIgnoredFindings extends ViewPart {
                 }
             });
 
-            // Package name (column 2)
+            // Package name (column 2) - with bold font
             Label nameLabel = new Label(cardComposite, SWT.NONE);
             nameLabel.setText(entry.getPackageName() != null ? entry.getPackageName() : "Unknown");
             nameLabel.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
-            org.eclipse.swt.graphics.Font boldFont = new org.eclipse.swt.graphics.Font(parent.getDisplay(),
+            // Create bold font and store reference for disposal
+            this.boldFont = new org.eclipse.swt.graphics.Font(parent.getDisplay(),
                     nameLabel.getFont().getFontData()[0].getName(),
                     nameLabel.getFont().getFontData()[0].getHeight(),
                     SWT.BOLD);
@@ -365,6 +387,10 @@ public class DevAssistIgnoredFindings extends ViewPart {
         }
 
         public void dispose() {
+            if (boldFont != null && !boldFont.isDisposed()) {
+                boldFont.dispose();
+                CxLogger.info("[CARD] Disposed bold font for: " + entry.getPackageName());
+            }
             if (cardComposite != null && !cardComposite.isDisposed()) {
                 cardComposite.dispose();
             }
