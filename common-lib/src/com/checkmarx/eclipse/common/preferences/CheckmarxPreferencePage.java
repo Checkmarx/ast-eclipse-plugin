@@ -389,13 +389,48 @@ public class CheckmarxPreferencePage extends PreferencePage implements IWorkbenc
         }
         IPreferenceStore store = getPreferenceStore();
 
-        // Get current UI selections
-        boolean ascaSelected = ascaCheckbox.getSelection();
-        boolean ossSelected = ossCheckbox.getSelection();
-        boolean secretsSelected = secretsCheckbox.getSelection();
-        boolean containersSelected = containersCheckbox.getSelection();
-        boolean iacSelected = iacCheckbox.getSelection();
-        String containersTool = containersToolCombo.getText();
+        // Get current UI selections. It's possible this page's controls were never
+        // created (Eclipse may call performOk() on pages that haven't had
+        // createContents() invoked), or the controls may have been disposed. In
+        // that case fall back to the stored preference values instead of
+        // dereferencing null controls which caused an NPE in the field.
+        boolean ascaSelected = store.getBoolean(PREF_ASCA_ENABLED);
+        if (ascaCheckbox != null && !ascaCheckbox.isDisposed()) {
+            ascaSelected = ascaCheckbox.getSelection();
+        }
+
+        boolean ossSelected = store.getBoolean(PREF_OSS_ENABLED);
+        if (ossCheckbox != null && !ossCheckbox.isDisposed()) {
+            ossSelected = ossCheckbox.getSelection();
+        }
+
+        boolean secretsSelected = store.getBoolean(PREF_SECRETS_ENABLED);
+        if (secretsCheckbox != null && !secretsCheckbox.isDisposed()) {
+            secretsSelected = secretsCheckbox.getSelection();
+        }
+
+        boolean containersSelected = store.getBoolean(PREF_CONTAINERS_ENABLED);
+        if (containersCheckbox != null && !containersCheckbox.isDisposed()) {
+            containersSelected = containersCheckbox.getSelection();
+        }
+
+        boolean iacSelected = store.getBoolean(PREF_IAC_ENABLED);
+        if (iacCheckbox != null && !iacCheckbox.isDisposed()) {
+            iacSelected = iacCheckbox.getSelection();
+        }
+
+        String containersTool = store.getString(PREF_CONTAINERS_TOOL);
+        if (containersToolCombo != null && !containersToolCombo.isDisposed()) {
+            try {
+                String text = containersToolCombo.getText();
+                if (text != null && !text.isBlank()) {
+                    containersTool = text;
+                }
+            } catch (Exception ex) {
+                // Defensive: protect against any SWT oddities; fall back to store value
+                CxLogger.warning("[PREFS-PAGE] Failed to read containersToolCombo text, using stored value: " + ex.getMessage());
+            }
+        }
 
         // Step 1: Save current UI state to preference store
         store.setValue(PREF_ASCA_ENABLED, ascaSelected);
