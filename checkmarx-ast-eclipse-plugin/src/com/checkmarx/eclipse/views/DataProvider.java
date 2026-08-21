@@ -98,8 +98,9 @@ public class DataProvider {
 		try {
 			projectList = wrapperProvider.getProjects(LIMIT_FILTER);
 
-		} catch (IOException | InterruptedException | CxException e) {
-			CxLogger.error(String.format(PluginConstants.ERROR_GETTING_PROJECTS, e.getMessage()), e);
+		} catch (IOException | InterruptedException | CxException exception) {
+			CxLogger.error(String.format(PluginConstants.ERROR_GETTING_PROJECTS, exception.getMessage()), exception);
+			throw exception;
 		}
 
 		return projectList;
@@ -134,8 +135,9 @@ public class DataProvider {
 		try {
 			projectList = wrapperProvider.getProjects(filterProject);
 
-		} catch (IOException | InterruptedException | CxException e) {
-			CxLogger.error(String.format(PluginConstants.ERROR_GETTING_PROJECTS, e.getMessage()), e);
+		} catch (IOException | InterruptedException | CxException exception) {
+			CxLogger.error(String.format(PluginConstants.ERROR_GETTING_PROJECTS, exception.getMessage()), exception);
+			throw exception;
 		}
 
 		return projectList;

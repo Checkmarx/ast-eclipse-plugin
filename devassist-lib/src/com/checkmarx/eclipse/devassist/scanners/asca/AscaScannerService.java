@@ -341,13 +341,13 @@ public class AscaScannerService extends BaseScannerService<ScanResult> {
 		try {
 			scanResult = wrapperProvider.scanAsca(path, ascaLatestVersion, agent, null);
 		} catch (IOException e) {
-			e.printStackTrace();
+			 CxLogger.warning(String.format("%s IOException occurred while ASCA scan for file %s: %s", LOG_TAG, path, e.getMessage()));
 		} catch (InterruptedException e) {
-			e.printStackTrace();
+			 CxLogger.warning(String.format("%s InterruptedException occurred while ASCA scan for file %s: %s", LOG_TAG, path, e.getMessage()));
 		} catch (CxException e) {
-			e.printStackTrace();
+			 CxLogger.warning(String.format("%s CxException occurred while ASCA scan for file %s: %s", LOG_TAG, path, e.getMessage()));
 		} catch (Exception e) {
-			e.printStackTrace();
+			 CxLogger.warning(String.format("%s Exception occurred while ASCA scan for file %s: %s", LOG_TAG, path, e.getMessage()));
 		}
 		return scanResult;
 	}

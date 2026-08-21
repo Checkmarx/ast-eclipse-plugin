@@ -38,13 +38,13 @@ public class WrapperProvider {
 	}
 
 	/**
-	 * Gets the list of projects from the Checkmarx API, optionally limiting the number of results.
-	 * @param limit
+	 * Gets the list of projects from the Checkmarx API, optionally filter the results.
+	 * @param filter
 	 * @return
 	 * @throws Exception
 	 */
-	public List<Project> getProjects(String limit) throws Exception {
-		return CxWrapperFactory.build().projectList(limit);
+	public List<Project> getProjects(String filter) throws Exception {
+		return CxWrapperFactory.build().projectList(filter);
 	}
 
 	/**

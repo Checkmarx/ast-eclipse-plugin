@@ -152,7 +152,7 @@ public class IacScannerService extends BaseScannerService<IacRealtimeResults> {
 						        .iacRealtimeScan(tempFilePath, DevAssistUtils.getContainerTool(), "");
 					} catch (Exception e) {
 						// TODO Auto-generated catch block
-						e.printStackTrace();
+						CxLogger.warning(String.format("%s Exception occurred while IAC scan for file %s: %s", LOG_TAG, filePath, e.getMessage()));
 					}
 
                     if (scanResults == null) {
