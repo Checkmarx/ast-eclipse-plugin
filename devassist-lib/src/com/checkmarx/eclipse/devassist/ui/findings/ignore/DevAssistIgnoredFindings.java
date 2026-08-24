@@ -9,14 +9,20 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.ScrolledComposite;
+import org.eclipse.swt.events.MouseTrackAdapter;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.Color;
+import org.eclipse.swt.graphics.Font;
+import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.graphics.RGB;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Label;
 import org.eclipse.ui.part.ViewPart;
 
 import com.checkmarx.eclipse.common.utils.CxLogger;
@@ -27,46 +33,77 @@ import com.checkmarx.eclipse.devassist.ui.findings.icons.IconRegistry;
 
 /**
  * Tool window panel for viewing ignored vulnerability findings.
- * Displays ignored entries as individual cards in a flow layout.
- * Each card has a checkbox for selection and a revive button.
- * Selected cards can be revived using a "Revive Selected" button that appears at the top.
+ * Features strict column alignment, badge styling, and theme/hover-aware buttons.
  */
 public class DevAssistIgnoredFindings extends ViewPart {
 
     public static final String ID = "com.checkmarx.eclipse.devassist.ui.findings.ignore.DevAssistIgnoredFindings";
 
     private Composite container;
+
+    // Top selection action bar
+    private Composite selectionActionBar;
+    private Label selectionCountLabel;
+    private Button clearSelectionButton;
+    private Button reviveSelectedButton;
+
+    // Header row components
+    private Button selectAllButton;
+    private Label riskHeaderLabel;
+    private Label lastUpdatedHeaderLabel;
+    private Composite headerComposite;
+
     private ScrolledComposite scrolledContainer;
     private Composite cardsContainer;
     private Label emptyLabel;
-    private Label reviveSelectedLabel;
-    private Button reviveSelectedButton;
+
     private IProject currentProject;
     private IgnoreFileManager ignoreFileManager;
     private final IgnoreFileManager.IgnoreListener ignoreListener = this::onIgnoreDataUpdated;
 
-    // Track cards and their selected state
     private List<IgnoreEntryCard> cards = new ArrayList<>();
     private Set<IgnoreEntry> selectedEntries = new HashSet<>();
+    private boolean isProgrammaticSelectionChange = false;
 
     @Override
     public void createPartControl(Composite parent) {
         container = new Composite(parent, SWT.NONE);
-        container.setLayout(new GridLayout(1, false));
+        GridLayout containerLayout = new GridLayout(1, false);
+        containerLayout.marginWidth = 12;
+        containerLayout.marginHeight = 10;
+        container.setLayout(containerLayout);
 
-        // Title/Header with "Revive Selected" button
-        Composite headerComposite = new Composite(container, SWT.NONE);
-        headerComposite.setLayout(new GridLayout(2, false));
-        headerComposite.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
+        // -----------------------------------------------------------------
+        // 1. TOP SELECTION ACTION BAR (Visible only when items are selected)
+        // -----------------------------------------------------------------
+        selectionActionBar = new Composite(container, SWT.NONE);
+        GridLayout actionBarLayout = new GridLayout(3, false);
+        actionBarLayout.marginWidth = 0;
+        actionBarLayout.marginHeight = 0;
+        selectionActionBar.setLayout(actionBarLayout);
 
-        reviveSelectedLabel = new Label(headerComposite, SWT.NONE);
-        reviveSelectedLabel.setText("Ignored Vulnerabilities");
-        reviveSelectedLabel.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+        GridData actionBarData = new GridData(SWT.FILL, SWT.TOP, true, false);
+        actionBarData.exclude = true;
+        selectionActionBar.setLayoutData(actionBarData);
+        selectionActionBar.setVisible(false);
 
-        reviveSelectedButton = new Button(headerComposite, SWT.PUSH);
-        reviveSelectedButton.setText("Revive Selected");
+        selectionCountLabel = new Label(selectionActionBar, SWT.NONE);
+        selectionCountLabel.setText("0 Risk selected  |");
+        selectionCountLabel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
+
+        clearSelectionButton = new Button(selectionActionBar, SWT.PUSH | SWT.FLAT);
+        clearSelectionButton.setText("✕ Clear Selections");
+        clearSelectionButton.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false));
+        clearSelectionButton.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                clearAllSelections();
+            }
+        });
+
+        reviveSelectedButton = new Button(selectionActionBar, SWT.PUSH);
+        reviveSelectedButton.setText("« Revive Selected");
         reviveSelectedButton.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
-        reviveSelectedButton.setEnabled(false);
         reviveSelectedButton.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
@@ -74,13 +111,63 @@ public class DevAssistIgnoredFindings extends ViewPart {
             }
         });
 
-        // Empty state label
-        emptyLabel = new Label(container, SWT.WRAP);
-        emptyLabel.setText("No ignored vulnerabilities. Ignored findings will be listed here.");
-        emptyLabel.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
-        emptyLabel.setVisible(true);
+        // -----------------------------------------------------------------
+        // 2. COLUMN HEADERS ROW (Strict Grid Alignment)
+        // -----------------------------------------------------------------
+        headerComposite = new Composite(container, SWT.NONE);
+        GridLayout headerLayout = new GridLayout(4, false);
+        headerLayout.marginWidth = 0;
+        headerLayout.marginHeight = 4;
+        headerLayout.horizontalSpacing = 16;
+        headerComposite.setLayout(headerLayout);
+        headerComposite.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
 
-        // Scrolled container for cards
+        // Col 1 Header: Checkbox (Fixed 24px)
+        selectAllButton = new Button(headerComposite, SWT.CHECK);
+        GridData col1HeaderData = new GridData(SWT.LEFT, SWT.CENTER, false, false);
+        col1HeaderData.widthHint = 24;
+        selectAllButton.setLayoutData(col1HeaderData);
+        selectAllButton.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                onSelectAllToggled(selectAllButton.getSelection());
+            }
+        });
+
+        // Col 2 Header: Risk (Flexible Width)
+        riskHeaderLabel = new Label(headerComposite, SWT.NONE);
+        riskHeaderLabel.setText("Risk");
+        riskHeaderLabel.setForeground(parent.getDisplay().getSystemColor(SWT.COLOR_DARK_GRAY));
+        GridData col2HeaderData = new GridData(SWT.FILL, SWT.CENTER, true, false);
+        col2HeaderData.horizontalIndent = 16; // <--- Increase space after Checkbox
+        riskHeaderLabel.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
+
+        // Col 3 Header: Last Updated (Fixed 110px)
+        lastUpdatedHeaderLabel = new Label(headerComposite, SWT.NONE);
+        lastUpdatedHeaderLabel.setText("Last Updated");
+        lastUpdatedHeaderLabel.setForeground(parent.getDisplay().getSystemColor(SWT.COLOR_DARK_GRAY));
+        GridData col3HeaderData = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
+        col3HeaderData.widthHint = 110;
+        lastUpdatedHeaderLabel.setLayoutData(col3HeaderData);
+
+        // Col 4 Header: Action Spacer (Fixed 95px)
+        Label reviveHeaderPlaceholder = new Label(headerComposite, SWT.NONE);
+        GridData col4HeaderData = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
+        col4HeaderData.widthHint = 95;
+        reviveHeaderPlaceholder.setLayoutData(col4HeaderData);
+
+        // -----------------------------------------------------------------
+        // 3. EMPTY STATE & SCROLLED CARDS CONTAINER
+        // -----------------------------------------------------------------
+     // Centered Empty State Label
+        emptyLabel = new Label(container, SWT.CENTER | SWT.WRAP);
+        emptyLabel.setText("No ignored Findings");
+        emptyLabel.setForeground(parent.getDisplay().getSystemColor(SWT.COLOR_DARK_GRAY));
+
+        GridData emptyData = new GridData(SWT.CENTER, SWT.CENTER, true, true);
+        emptyLabel.setLayoutData(emptyData);
+        emptyLabel.setVisible(true);
+        
         scrolledContainer = new ScrolledComposite(container, SWT.V_SCROLL | SWT.H_SCROLL);
         scrolledContainer.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
         scrolledContainer.setExpandHorizontal(true);
@@ -88,11 +175,9 @@ public class DevAssistIgnoredFindings extends ViewPart {
 
         cardsContainer = new Composite(scrolledContainer, SWT.NONE);
         GridLayout cardLayout = new GridLayout(1, true);
-        cardLayout.marginLeft = 10;
-        cardLayout.marginRight = 10;
-        cardLayout.marginTop = 10;
-        cardLayout.marginBottom = 10;
-        cardLayout.verticalSpacing = 8;
+        cardLayout.marginWidth = 0;
+        cardLayout.marginHeight = 0;
+        cardLayout.verticalSpacing = 16;
         cardsContainer.setLayout(cardLayout);
 
         scrolledContainer.setContent(cardsContainer);
@@ -103,8 +188,6 @@ public class DevAssistIgnoredFindings extends ViewPart {
             ignoreFileManager.addListener(ignoreListener);
         }
         refreshTable();
-
-        CxLogger.info("[IGNORED_FINDINGS] View created with card-based UI");
     }
 
     private static int activeFileCount(IgnoreEntry entry) {
@@ -126,145 +209,135 @@ public class DevAssistIgnoredFindings extends ViewPart {
         }
     }
 
-    /**
-     * Reloads the ignored entries from disk and refreshes the card view.
-     * Called on initial view creation and whenever the ignore file changes
-     * (new ignore added, entry revived from elsewhere, file watcher update).
-     */
     public void refreshTable() {
-        CxLogger.info("[IGNORED_FINDINGS] Refreshing ignored findings view");
         ensureProjectAndIgnoreManager();
         if (ignoreFileManager == null) {
-            CxLogger.warning("[IGNORED_FINDINGS] ignoreFileManager is null");
             return;
         }
 
-        // Force a fresh read of .checkmarxIgnored from disk
         ignoreFileManager.refreshFromDisk();
         List<IgnoreEntry> entries = ignoreFileManager.getAllIgnoreEntries().stream()
                 .filter(entry -> activeFileCount(entry) > 0)
                 .collect(java.util.stream.Collectors.toList());
 
-        CxLogger.info("[IGNORED_FINDINGS] Found " + entries.size() + " ignored entries");
-
         if (container == null || container.isDisposed()) {
             return;
         }
 
-        // Reconstruct cards
         reconstructCards(entries);
 
-        boolean hasEntries = !entries.isEmpty();
-        emptyLabel.setVisible(!hasEntries);
-        ((GridData) emptyLabel.getLayoutData()).exclude = hasEntries;
-        scrolledContainer.setVisible(hasEntries);
-        ((GridData) scrolledContainer.getLayoutData()).exclude = !hasEntries;
-        container.layout(true, true);
+		boolean hasEntries = !entries.isEmpty();
+		emptyLabel.setVisible(!hasEntries);
+		((GridData) emptyLabel.getLayoutData()).exclude = hasEntries;
+		scrolledContainer.setVisible(hasEntries);
+		((GridData) scrolledContainer.getLayoutData()).exclude = !hasEntries;
+		// Hide headers when empty so message is perfectly centered
+		headerComposite.setVisible(hasEntries);
+		((GridData) headerComposite.getLayoutData()).exclude = !hasEntries;
+		if (!hasEntries) {
+			selectAllButton.setSelection(false);
+			selectAllButton.setEnabled(false);
+		} else {
+			selectAllButton.setEnabled(true);
+		}
 
-        CxLogger.info("[IGNORED_FINDINGS] Refresh complete - " + entries.size() + " entries displayed");
+		container.layout(true, true);
     }
 
-    /**
-     * Reconstruct the card view with current entries.
-     */
     private void reconstructCards(List<IgnoreEntry> entries) {
-        CxLogger.info("[IGNORED_FINDINGS] Reconstructing " + entries.size() + " card(s)");
-
-        // Dispose old cards
         for (IgnoreEntryCard card : cards) {
             card.dispose();
         }
         cards.clear();
         selectedEntries.clear();
 
-        // Dispose old children in cardsContainer
-        for (org.eclipse.swt.widgets.Control child : cardsContainer.getChildren()) {
+        for (Control child : cardsContainer.getChildren()) {
             child.dispose();
         }
 
-        // Create new cards
         for (IgnoreEntry entry : entries) {
             IgnoreEntryCard card = new IgnoreEntryCard(cardsContainer, entry, this);
             cards.add(card);
-            CxLogger.info("[IGNORED_FINDINGS] Created card for: " + entry.getPackageName());
         }
 
         cardsContainer.layout(true, true);
         scrolledContainer.setMinHeight(cardsContainer.computeSize(SWT.DEFAULT, SWT.DEFAULT).y);
-
-        // Update "Revive Selected" button visibility
-        updateReviveSelectedButton();
+        updateSelectionStateUI();
     }
 
-    /**
-     * Called when a card's checkbox state changes.
-     */
+    private void onSelectAllToggled(boolean selectAll) {
+        isProgrammaticSelectionChange = true;
+        try {
+            selectedEntries.clear();
+            for (IgnoreEntryCard card : cards) {
+                card.setSelected(selectAll);
+                if (selectAll) {
+                    selectedEntries.add(card.getEntry());
+                }
+            }
+            updateSelectionStateUI();
+        } finally {
+            isProgrammaticSelectionChange = false;
+        }
+    }
+
     public void onCardSelectionChanged(IgnoreEntry entry, boolean selected) {
-        CxLogger.info("[IGNORED_FINDINGS] Card selection changed: " + entry.getPackageName() + " = " + selected);
+        if (isProgrammaticSelectionChange) {
+            return;
+        }
+
         if (selected) {
             selectedEntries.add(entry);
         } else {
             selectedEntries.remove(entry);
         }
-        updateReviveSelectedButton();
+
+        if (selectedEntries.size() == cards.size() && !cards.isEmpty()) {
+            selectAllButton.setSelection(true);
+        } else {
+            selectAllButton.setSelection(false);
+        }
+
+        updateSelectionStateUI();
     }
 
-    /**
-     * Called when a card's revive button is clicked.
-     */
+    private void clearAllSelections() {
+        onSelectAllToggled(false);
+        selectAllButton.setSelection(false);
+    }
+
+    private void updateSelectionStateUI() {
+        boolean hasSelection = !selectedEntries.isEmpty();
+
+        selectionActionBar.setVisible(hasSelection);
+        ((GridData) selectionActionBar.getLayoutData()).exclude = !hasSelection;
+
+        if (hasSelection) {
+            int count = selectedEntries.size();
+            selectionCountLabel.setText(count + (count == 1 ? " Risk selected  |" : " Risks selected  |"));
+        }
+
+        container.layout(true, true);
+    }
+
     public void onCardRevive(IgnoreEntry entry) {
-        CxLogger.info("[IGNORED_FINDINGS] Reviving entry from card: " + entry.getPackageName());
         ensureProjectAndIgnoreManager();
         if (currentProject == null) {
-            CxLogger.warning("[IGNORED_FINDINGS] currentProject is null");
             return;
         }
         IgnoreManager.getInstance(currentProject).reviveSingleEntry(entry);
         refreshTable();
     }
 
-    /**
-     * Update "Revive Selected" button visibility and enablement.
-     */
-    private void updateReviveSelectedButton() {
-        if (reviveSelectedButton == null || reviveSelectedButton.isDisposed()) {
-            return;
-        }
-
-        boolean hasSelection = !selectedEntries.isEmpty();
-        reviveSelectedButton.setEnabled(hasSelection);
-
-        if (hasSelection) {
-            reviveSelectedButton.setText("Revive Selected (" + selectedEntries.size() + ")");
-        } else {
-            reviveSelectedButton.setText("Revive Selected");
-        }
-    }
-
     private void reviveSelected() {
-        CxLogger.info("[IGNORED_FINDINGS] ============================================");
-        CxLogger.info("[IGNORED_FINDINGS] Reviving " + selectedEntries.size() + " selected entries");
         ensureProjectAndIgnoreManager();
-        if (currentProject == null) {
-            CxLogger.warning("[IGNORED_FINDINGS] currentProject is null");
-            return;
-        }
-        if (selectedEntries.isEmpty()) {
-            CxLogger.warning("[IGNORED_FINDINGS] selectedEntries is empty");
+        if (currentProject == null || selectedEntries.isEmpty()) {
             return;
         }
 
-        // Create a copy to iterate over (selection might change during iteration)
         List<IgnoreEntry> entriesToRevive = new ArrayList<>(selectedEntries);
-        CxLogger.info("[IGNORED_FINDINGS] Created copy of selectedEntries: " + entriesToRevive.size() + " entries");
-
-        // Use bulk revive instead of single revive to batch save operations
         IgnoreManager.getInstance(currentProject).reviveMultipleEntries(entriesToRevive);
-
-        CxLogger.info("[IGNORED_FINDINGS] All " + entriesToRevive.size() + " entries processed");
-        CxLogger.info("[IGNORED_FINDINGS] Refreshing table...");
         refreshTable();
-        CxLogger.info("[IGNORED_FINDINGS] ============================================");
     }
 
     private void onIgnoreDataUpdated() {
@@ -280,9 +353,6 @@ public class DevAssistIgnoredFindings extends ViewPart {
 
     @Override
     public void setFocus() {
-        // Pick up any external edits to .checkmarxIgnored made while this view
-        // wasn't in focus, rather than relying solely on the file watcher.
-        CxLogger.info("[IGNORED_FINDINGS] setFocus() called - will refresh to catch external file changes");
         refreshTable();
         if (cardsContainer != null && !cardsContainer.isDisposed()) {
             cardsContainer.setFocus();
@@ -304,177 +374,194 @@ public class DevAssistIgnoredFindings extends ViewPart {
     }
 
     /**
-     * Inner class representing a single ignored entry card.
-     * Displays entry details with checkbox and revive button in a card-like container.
+     * Inner class representing a single row item with native hover and theme dynamic buttons.
      */
     private static class IgnoreEntryCard {
         private final Composite cardComposite;
         private final Button checkboxButton;
         private final IgnoreEntry entry;
-        private final DevAssistIgnoredFindings parent;
-        private final org.eclipse.swt.graphics.Font boldFont;
+        private final Font boldFont;
         private boolean isSelected = false;
 
         public IgnoreEntryCard(Composite parent, IgnoreEntry entry, DevAssistIgnoredFindings parentView) {
             this.entry = entry;
-            this.parent = parentView;
 
-            // Card container with border-like appearance (now 3 columns: checkbox, content, revive)
-            cardComposite = new Composite(parent, SWT.BORDER);
+            // Borderless row container
+            cardComposite = new Composite(parent, SWT.NONE);
             cardComposite.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
-            cardComposite.setLayout(new GridLayout(3, false));
 
-            // Add some styling (background)
-            cardComposite.setBackground(parent.getDisplay().getSystemColor(SWT.COLOR_WHITE));
+            GridLayout layout = new GridLayout(4, false);
+            layout.marginWidth = 0;
+            layout.marginHeight = 4;
+            layout.horizontalSpacing = 18;
+            cardComposite.setLayout(layout);
 
-            // Checkbox (column 1)
+            // Column 1: Checkbox (Fixed 24px)
             checkboxButton = new Button(cardComposite, SWT.CHECK);
-            checkboxButton.setLayoutData(new GridData(SWT.LEFT, SWT.TOP, false, false));
+            GridData col1Data = new GridData(SWT.LEFT, SWT.TOP, false, false);
+            col1Data.widthHint = 24;
+            checkboxButton.setLayoutData(col1Data);
             checkboxButton.addSelectionListener(new SelectionAdapter() {
                 @Override
                 public void widgetSelected(SelectionEvent e) {
                     isSelected = checkboxButton.getSelection();
-                    CxLogger.info("[CARD] Checkbox toggled: " + entry.getPackageName() + " = " + isSelected);
                     parentView.onCardSelectionChanged(entry, isSelected);
                 }
             });
 
-            // Middle column: content (icons + name + description + files)
+            // Column 2: Content (Flexible width)
             Composite contentComposite = new Composite(cardComposite, SWT.NONE);
+            GridData col2Data = new GridData(SWT.FILL, SWT.FILL, true, false);
+            col2Data.horizontalIndent = 16;
             contentComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
             GridLayout contentLayout = new GridLayout(1, false);
             contentLayout.marginWidth = 0;
             contentLayout.marginHeight = 0;
+            contentLayout.verticalSpacing = 4;
             contentComposite.setLayout(contentLayout);
 
-            // Title row: card icon + severity icon + name
+            // Title Line: Icons + Name
             Composite titleComposite = new Composite(contentComposite, SWT.NONE);
             titleComposite.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
-            GridLayout titleLayout = new GridLayout(4, false);
+            GridLayout titleLayout = new GridLayout(3, false);
             titleLayout.marginWidth = 0;
             titleLayout.marginHeight = 0;
-            titleLayout.horizontalSpacing = 4;
+            titleLayout.horizontalSpacing = 6;
             titleComposite.setLayout(titleLayout);
 
-            // Card icon (based on type and severity)
             Label cardIconLabel = new Label(titleComposite, SWT.NONE);
-            org.eclipse.swt.graphics.Image cardIcon = IconRegistry.getCardIcon(
+            Image cardIcon = IconRegistry.getCardIcon(
                     entry.getType() != null ? entry.getType().toString() : "VULNERABILITY",
                     entry.getSeverity() != null ? entry.getSeverity() : "MEDIUM");
             if (cardIcon != null) {
                 cardIconLabel.setImage(cardIcon);
             }
-            cardIconLabel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
 
-            // Severity icon
             Label severityIconLabel = new Label(titleComposite, SWT.NONE);
-            org.eclipse.swt.graphics.Image severityIcon = IconRegistry.getThemeAwareIcon(
+            Image severityIcon = IconRegistry.getThemeAwareIcon(
                     entry.getSeverity() != null ? entry.getSeverity() : "MEDIUM",
                     IconRegistry.Size.MEDIUM);
             if (severityIcon != null) {
                 severityIconLabel.setImage(severityIcon);
             }
-            severityIconLabel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
 
-            // Package name (with bold font)
             Label nameLabel = new Label(titleComposite, SWT.NONE);
-            nameLabel.setText(entry.getPackageName() != null ? entry.getPackageName() : "Unknown");
+            nameLabel.setText(entry.getPackageName() != null ? entry.getPackageName() : "Unknown Risk");
             nameLabel.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
-            // Create bold font and store reference for disposal
-            this.boldFont = new org.eclipse.swt.graphics.Font(parent.getDisplay(),
+            this.boldFont = new Font(parent.getDisplay(),
                     nameLabel.getFont().getFontData()[0].getName(),
                     nameLabel.getFont().getFontData()[0].getHeight(),
                     SWT.BOLD);
             nameLabel.setFont(boldFont);
 
-            // Type label (small, on title row, right-aligned)
-            Label typeLabel = new Label(titleComposite, SWT.NONE);
-            typeLabel.setText(entry.getType() != null ? "[" + entry.getType().toString() + "]" : "");
-            typeLabel.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
+            // Description Label
+            Label descLabel = new Label(contentComposite, SWT.WRAP);
+            String desc = entry.getDescription() != null && !entry.getDescription().isEmpty()
+                    ? entry.getDescription()
+                    : "Description not available";
+            descLabel.setText(desc);
+            descLabel.setForeground(parent.getDisplay().getSystemColor(SWT.COLOR_DARK_GRAY));
+            descLabel.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
 
-            // File names row - show active files instead of file count
+            // Tags Line
+         // Tags Line (Flat 1px borders instead of 3D inset shadow)
             if (entry.getFiles() != null && !entry.getFiles().isEmpty()) {
                 List<IgnoreEntry.FileReference> activeFiles = entry.getFiles().stream()
                         .filter(IgnoreEntry.FileReference::isActive)
                         .collect(java.util.stream.Collectors.toList());
 
-                if (!activeFiles.isEmpty()) {
-                    Composite filesComposite = new Composite(contentComposite, SWT.NONE);
-                    filesComposite.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
-                    GridLayout filesLayout = new GridLayout(activeFiles.size() > 2 ? 2 : activeFiles.size(), false);
-                    filesLayout.marginWidth = 0;
-                    filesLayout.marginHeight = 2;
-                    filesLayout.horizontalSpacing = 4;
-                    filesComposite.setLayout(filesLayout);
+                Composite tagsComposite = new Composite(contentComposite, SWT.NONE);
+                tagsComposite.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
+                GridLayout tagsLayout = new GridLayout(activeFiles.size() + 1, false);
+                tagsLayout.marginWidth = 0;
+                tagsLayout.marginHeight = 2;
+                tagsLayout.horizontalSpacing = 6;
+                tagsComposite.setLayout(tagsLayout);
 
-                    for (IgnoreEntry.FileReference file : activeFiles.stream().limit(3).collect(java.util.stream.Collectors.toList())) {
-                        Label fileLabel = new Label(filesComposite, SWT.NONE);
-                        String displayName = file.getPath() != null ?
-                                java.nio.file.Paths.get(file.getPath()).getFileName().toString() : "unknown";
-                        if (file.getLine() != null) {
-                            displayName += ":" + file.getLine();
-                        }
-                        fileLabel.setText("• " + displayName);
-                        fileLabel.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
-                        fileLabel.setForeground(parent.getDisplay().getSystemColor(SWT.COLOR_DARK_GRAY));
+				Color tagBorderColor = parent.getDisplay().getSystemColor(SWT.COLOR_GRAY);
+				Color tagTextColor = parent.getDisplay().getSystemColor(SWT.COLOR_DARK_GRAY);
 
-                        // Set smaller font for file labels
-                        org.eclipse.swt.graphics.FontData[] fontData = fileLabel.getFont().getFontData();
-                        fontData[0].setHeight(fontData[0].getHeight() - 2);
-                        org.eclipse.swt.graphics.Font smallFont = new org.eclipse.swt.graphics.Font(
-                                parent.getDisplay(), fontData);
-                        fileLabel.setFont(smallFont);
-                    }
+				// 1. Type Badge (Slight rounding: 4px)
+				createFlatBadge(tagsComposite, entry.getType() != null ? entry.getType().toString() : "VULNERABILITY",
+						tagBorderColor, tagTextColor, 4);
+				
+				// 2. File Badges (More rounded pill style: 10px)
+				for (IgnoreEntry.FileReference file : activeFiles.stream().limit(2)
+						.collect(java.util.stream.Collectors.toList())) {
+					String fileName = file.getPath() != null
+							? java.nio.file.Paths.get(file.getPath()).getFileName().toString()
+							: "unknown";
+					createFlatBadge(tagsComposite, "📄 " + fileName, tagBorderColor, tagTextColor, 10);
+				}
+			}
 
-                    if (activeFiles.size() > 3) {
-                        Label moreLabel = new Label(filesComposite, SWT.NONE);
-                        moreLabel.setText("+ " + (activeFiles.size() - 3) + " more");
-                        moreLabel.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
-                        moreLabel.setForeground(parent.getDisplay().getSystemColor(SWT.COLOR_DARK_GRAY));
+            // Column 3: Last Updated Label (Fixed 110px Width)
+            Label lastUpdatedLabel = new Label(cardComposite, SWT.NONE);
+            lastUpdatedLabel.setText("Today");
+            lastUpdatedLabel.setForeground(parent.getDisplay().getSystemColor(SWT.COLOR_DARK_GRAY));
+            GridData col3Data = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
+            col3Data.widthHint = 110;
+            lastUpdatedLabel.setLayoutData(col3Data);
 
-                        org.eclipse.swt.graphics.FontData[] fontData = moreLabel.getFont().getFontData();
-                        fontData[0].setHeight(fontData[0].getHeight() - 2);
-                        org.eclipse.swt.graphics.Font smallFont = new org.eclipse.swt.graphics.Font(
-                                parent.getDisplay(), fontData);
-                        moreLabel.setFont(smallFont);
-                    }
-                }
-            }
-
-            // Revive button (column 3)
+            // Column 4: Single Revive Button with Inline Dynamic Hover Color Logic
+         // Column 4: Single Revive Button (Native PUSH style matching "Revive Selected")
             Button reviveButton = new Button(cardComposite, SWT.PUSH);
-            reviveButton.setText("Revive");
-            reviveButton.setLayoutData(new GridData(SWT.RIGHT, SWT.TOP, false, false));
+            reviveButton.setText("« Revive");
+            GridData col4Data = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
+            col4Data.widthHint = 95;
+            reviveButton.setLayoutData(col4Data);
+
             reviveButton.addSelectionListener(new SelectionAdapter() {
                 @Override
                 public void widgetSelected(SelectionEvent e) {
-                    CxLogger.info("[CARD] Revive button clicked: " + entry.getPackageName());
                     parentView.onCardRevive(entry);
                 }
             });
+        }
 
-            CxLogger.info("[CARD] Created card for: " + entry.getPackageName());
+        public void setSelected(boolean selected) {
+            this.isSelected = selected;
+            if (checkboxButton != null && !checkboxButton.isDisposed()) {
+                checkboxButton.setSelection(selected);
+            }
+        }
+
+        public IgnoreEntry getEntry() {
+            return entry;
         }
 
         public void dispose() {
             if (boldFont != null && !boldFont.isDisposed()) {
                 boldFont.dispose();
-                CxLogger.info("[CARD] Disposed bold font for: " + entry.getPackageName());
             }
             if (cardComposite != null && !cardComposite.isDisposed()) {
                 cardComposite.dispose();
             }
         }
+    }
+    private static void createFlatBadge(Composite parent, String text, Color borderColor, Color textColor, int cornerRadius) {
+        Composite badgeContainer = new Composite(parent, SWT.NONE);
+        GridLayout containerLayout = new GridLayout(1, false);
+        containerLayout.marginWidth = 6;
+        containerLayout.marginHeight = 2;
+        badgeContainer.setLayout(containerLayout);
 
-        public boolean isSelected() {
-            return isSelected;
-        }
+        Label label = new Label(badgeContainer, SWT.NONE);
+        label.setText(text);
+        label.setForeground(textColor);
+        label.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false, false));
 
-        private static int activeFileCount(IgnoreEntry entry) {
-            if (entry.getFiles() == null) {
-                return 0;
-            }
-            return (int) entry.getFiles().stream().filter(IgnoreEntry.FileReference::isActive).count();
-        }
+        // Paint rounded rectangle with antialiasing
+        badgeContainer.addPaintListener(e -> {
+            e.gc.setAntialias(SWT.ON);
+            e.gc.setForeground(borderColor);
+            
+            int width = badgeContainer.getBounds().width - 1;
+            int height = badgeContainer.getBounds().height - 1;
+            
+            e.gc.drawRoundRectangle(0, 0, width, height, cornerRadius, cornerRadius);
+        });
+
+        label.setBackground(badgeContainer.getBackground());
     }
 }
