@@ -23,6 +23,7 @@ import com.checkmarx.eclipse.common.utils.CxLogger;
 import com.checkmarx.eclipse.devassist.ignore.IgnoreEntry;
 import com.checkmarx.eclipse.devassist.ignore.IgnoreFileManager;
 import com.checkmarx.eclipse.devassist.ignore.IgnoreManager;
+import com.checkmarx.eclipse.devassist.ui.findings.icons.IconRegistry;
 
 /**
  * Tool window panel for viewing ignored vulnerability findings.
@@ -318,17 +319,17 @@ public class DevAssistIgnoredFindings extends ViewPart {
             this.entry = entry;
             this.parent = parentView;
 
-            // Card container with border-like appearance
+            // Card container with border-like appearance (now 3 columns: checkbox, content, revive)
             cardComposite = new Composite(parent, SWT.BORDER);
             cardComposite.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
-            cardComposite.setLayout(new GridLayout(6, false));
+            cardComposite.setLayout(new GridLayout(3, false));
 
             // Add some styling (background)
             cardComposite.setBackground(parent.getDisplay().getSystemColor(SWT.COLOR_WHITE));
 
             // Checkbox (column 1)
             checkboxButton = new Button(cardComposite, SWT.CHECK);
-            checkboxButton.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
+            checkboxButton.setLayoutData(new GridData(SWT.LEFT, SWT.TOP, false, false));
             checkboxButton.addSelectionListener(new SelectionAdapter() {
                 @Override
                 public void widgetSelected(SelectionEvent e) {
@@ -338,8 +339,45 @@ public class DevAssistIgnoredFindings extends ViewPart {
                 }
             });
 
-            // Package name (column 2) - with bold font
-            Label nameLabel = new Label(cardComposite, SWT.NONE);
+            // Middle column: content (icons + name + description + files)
+            Composite contentComposite = new Composite(cardComposite, SWT.NONE);
+            contentComposite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false));
+            GridLayout contentLayout = new GridLayout(1, false);
+            contentLayout.marginWidth = 0;
+            contentLayout.marginHeight = 0;
+            contentComposite.setLayout(contentLayout);
+
+            // Title row: card icon + severity icon + name
+            Composite titleComposite = new Composite(contentComposite, SWT.NONE);
+            titleComposite.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
+            GridLayout titleLayout = new GridLayout(4, false);
+            titleLayout.marginWidth = 0;
+            titleLayout.marginHeight = 0;
+            titleLayout.horizontalSpacing = 4;
+            titleComposite.setLayout(titleLayout);
+
+            // Card icon (based on type and severity)
+            Label cardIconLabel = new Label(titleComposite, SWT.NONE);
+            org.eclipse.swt.graphics.Image cardIcon = IconRegistry.getCardIcon(
+                    entry.getType() != null ? entry.getType().toString() : "VULNERABILITY",
+                    entry.getSeverity() != null ? entry.getSeverity() : "MEDIUM");
+            if (cardIcon != null) {
+                cardIconLabel.setImage(cardIcon);
+            }
+            cardIconLabel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
+
+            // Severity icon
+            Label severityIconLabel = new Label(titleComposite, SWT.NONE);
+            org.eclipse.swt.graphics.Image severityIcon = IconRegistry.getThemeAwareIcon(
+                    entry.getSeverity() != null ? entry.getSeverity() : "MEDIUM",
+                    IconRegistry.Size.MEDIUM);
+            if (severityIcon != null) {
+                severityIconLabel.setImage(severityIcon);
+            }
+            severityIconLabel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
+
+            // Package name (with bold font)
+            Label nameLabel = new Label(titleComposite, SWT.NONE);
             nameLabel.setText(entry.getPackageName() != null ? entry.getPackageName() : "Unknown");
             nameLabel.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
             // Create bold font and store reference for disposal
@@ -349,25 +387,64 @@ public class DevAssistIgnoredFindings extends ViewPart {
                     SWT.BOLD);
             nameLabel.setFont(boldFont);
 
-            // Type (column 3)
-            Label typeLabel = new Label(cardComposite, SWT.NONE);
-            typeLabel.setText(entry.getType() != null ? entry.getType().toString() : "");
-            typeLabel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
+            // Type label (small, on title row, right-aligned)
+            Label typeLabel = new Label(titleComposite, SWT.NONE);
+            typeLabel.setText(entry.getType() != null ? "[" + entry.getType().toString() + "]" : "");
+            typeLabel.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
 
-            // Severity (column 4)
-            Label severityLabel = new Label(cardComposite, SWT.NONE);
-            severityLabel.setText(entry.getSeverity() != null ? entry.getSeverity() : "");
-            severityLabel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
+            // File names row - show active files instead of file count
+            if (entry.getFiles() != null && !entry.getFiles().isEmpty()) {
+                List<IgnoreEntry.FileReference> activeFiles = entry.getFiles().stream()
+                        .filter(IgnoreEntry.FileReference::isActive)
+                        .collect(java.util.stream.Collectors.toList());
 
-            // Files count (column 5)
-            Label filesLabel = new Label(cardComposite, SWT.NONE);
-            filesLabel.setText(activeFileCount(entry) + " file(s)");
-            filesLabel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
+                if (!activeFiles.isEmpty()) {
+                    Composite filesComposite = new Composite(contentComposite, SWT.NONE);
+                    filesComposite.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
+                    GridLayout filesLayout = new GridLayout(activeFiles.size() > 2 ? 2 : activeFiles.size(), false);
+                    filesLayout.marginWidth = 0;
+                    filesLayout.marginHeight = 2;
+                    filesLayout.horizontalSpacing = 4;
+                    filesComposite.setLayout(filesLayout);
 
-            // Revive button (column 6)
+                    for (IgnoreEntry.FileReference file : activeFiles.stream().limit(3).collect(java.util.stream.Collectors.toList())) {
+                        Label fileLabel = new Label(filesComposite, SWT.NONE);
+                        String displayName = file.getPath() != null ?
+                                java.nio.file.Paths.get(file.getPath()).getFileName().toString() : "unknown";
+                        if (file.getLine() != null) {
+                            displayName += ":" + file.getLine();
+                        }
+                        fileLabel.setText("• " + displayName);
+                        fileLabel.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
+                        fileLabel.setForeground(parent.getDisplay().getSystemColor(SWT.COLOR_DARK_GRAY));
+
+                        // Set smaller font for file labels
+                        org.eclipse.swt.graphics.FontData[] fontData = fileLabel.getFont().getFontData();
+                        fontData[0].setHeight(fontData[0].getHeight() - 2);
+                        org.eclipse.swt.graphics.Font smallFont = new org.eclipse.swt.graphics.Font(
+                                parent.getDisplay(), fontData);
+                        fileLabel.setFont(smallFont);
+                    }
+
+                    if (activeFiles.size() > 3) {
+                        Label moreLabel = new Label(filesComposite, SWT.NONE);
+                        moreLabel.setText("+ " + (activeFiles.size() - 3) + " more");
+                        moreLabel.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
+                        moreLabel.setForeground(parent.getDisplay().getSystemColor(SWT.COLOR_DARK_GRAY));
+
+                        org.eclipse.swt.graphics.FontData[] fontData = moreLabel.getFont().getFontData();
+                        fontData[0].setHeight(fontData[0].getHeight() - 2);
+                        org.eclipse.swt.graphics.Font smallFont = new org.eclipse.swt.graphics.Font(
+                                parent.getDisplay(), fontData);
+                        moreLabel.setFont(smallFont);
+                    }
+                }
+            }
+
+            // Revive button (column 3)
             Button reviveButton = new Button(cardComposite, SWT.PUSH);
             reviveButton.setText("Revive");
-            reviveButton.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false));
+            reviveButton.setLayoutData(new GridData(SWT.RIGHT, SWT.TOP, false, false));
             reviveButton.addSelectionListener(new SelectionAdapter() {
                 @Override
                 public void widgetSelected(SelectionEvent e) {

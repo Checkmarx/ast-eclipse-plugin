@@ -95,6 +95,55 @@ public class IconRegistry {
 
         registerIcon("star_action", "icons/start-action.svg");
         registerIcon("devassistBadge", "icons/devassist_badge.svg");
+
+        // Register card icons for ignored findings (package, secret, containers, vulnerability)
+        // Package icons (OSS)
+        registerIcon("card_package_critical", "icons/ignored_card/card-package-critical.svg");
+        registerIcon("card_package_critical_dark", "icons/ignored_card/card-package-critical_dark.svg");
+        registerIcon("card_package_high", "icons/ignored_card/card-package-high.svg");
+        registerIcon("card_package_high_dark", "icons/ignored_card/card-package-high_dark.svg");
+        registerIcon("card_package_medium", "icons/ignored_card/card-package-medium.svg");
+        registerIcon("card_package_medium_dark", "icons/ignored_card/card-package-medium_dark.svg");
+        registerIcon("card_package_low", "icons/ignored_card/card-package-low.svg");
+        registerIcon("card_package_low_dark", "icons/ignored_card/card-package-low_dark.svg");
+        registerIcon("card_package_malicious", "icons/ignored_card/card-package-malicious.svg");
+        registerIcon("card_package_malicious_dark", "icons/ignored_card/card-package-malicious_dark.svg");
+
+        // Secret icons (SECRETS)
+        registerIcon("card_secret_critical", "icons/ignored_card/card-secret-critical.svg");
+        registerIcon("card_secret_critical_dark", "icons/ignored_card/card-secret-critical_dark.svg");
+        registerIcon("card_secret_high", "icons/ignored_card/card-secret-high.svg");
+        registerIcon("card_secret_high_dark", "icons/ignored_card/card-secret-high_dark.svg");
+        registerIcon("card_secret_medium", "icons/ignored_card/card-secret-medium.svg");
+        registerIcon("card_secret_medium_dark", "icons/ignored_card/card-secret-medium_dark.svg");
+        registerIcon("card_secret_low", "icons/ignored_card/card-secret-low.svg");
+        registerIcon("card_secret_low_dark", "icons/ignored_card/card-secret-low_dark.svg");
+        registerIcon("card_secret_malicious", "icons/ignored_card/card-secret-malicious.svg");
+        registerIcon("card_secret_malicious_dark", "icons/ignored_card/card-secret-malicious_dark.svg");
+
+        // Container icons (CONTAINERS)
+        registerIcon("card_containers_critical", "icons/ignored_card/card-containers-critical.svg");
+        registerIcon("card_containers_critical_dark", "icons/ignored_card/card-containers-critical_dark.svg");
+        registerIcon("card_containers_high", "icons/ignored_card/card-containers-high.svg");
+        registerIcon("card_containers_high_dark", "icons/ignored_card/card-containers-high_dark.svg");
+        registerIcon("card_containers_medium", "icons/ignored_card/card-containers-medium.svg");
+        registerIcon("card_containers_medium_dark", "icons/ignored_card/card-containers-medium_dark.svg");
+        registerIcon("card_containers_low", "icons/ignored_card/card-containers-low.svg");
+        registerIcon("card_containers_low_dark", "icons/ignored_card/card-containers-low_dark.svg");
+        registerIcon("card_containers_malicious", "icons/ignored_card/card-containers-malicious.svg");
+        registerIcon("card_containers_malicious_dark", "icons/ignored_card/card-containers-malicious_dark.svg");
+
+        // Vulnerability icons (IAC/ASCA)
+        registerIcon("card_vulnerability_critical", "icons/ignored_card/card-vulnerability-critical.svg");
+        registerIcon("card_vulnerability_critical_dark", "icons/ignored_card/card-vulnerability-critical_dark.svg");
+        registerIcon("card_vulnerability_high", "icons/ignored_card/card-vulnerability-high.svg");
+        registerIcon("card_vulnerability_high_dark", "icons/ignored_card/card-vulnerability-high_dark.svg");
+        registerIcon("card_vulnerability_medium", "icons/ignored_card/card-vulnerability-medium.svg");
+        registerIcon("card_vulnerability_medium_dark", "icons/ignored_card/card-vulnerability-medium_dark.svg");
+        registerIcon("card_vulnerability_low", "icons/ignored_card/card-vulnerability-low.svg");
+        registerIcon("card_vulnerability_low_dark", "icons/ignored_card/card-vulnerability-low_dark.svg");
+        registerIcon("card_vulnerability_malicious", "icons/ignored_card/card-vulnerability-malicious.svg");
+        registerIcon("card_vulnerability_malicious_dark", "icons/ignored_card/card-vulnerability-malicious_dark.svg");
     }
 
     private static void registerIcon(String key, String path) {
@@ -158,5 +207,35 @@ public class IconRegistry {
      */
     public static ImageRegistry getRegistry() {
         return imageRegistry;
+    }
+
+    /**
+     * Get card icon for a given type and severity (theme-aware).
+     *
+     * @param type     Type of scan (OSS, SECRETS, CONTAINERS, ASCA, IAC)
+     * @param severity Severity level
+     * @return Image instance or null if not found
+     */
+    public static Image getCardIcon(String type, String severity) {
+        if (type == null || severity == null) {
+            return null;
+        }
+
+        String prefix = switch (type.toUpperCase()) {
+            case "OSS" -> "card_package";
+            case "SECRETS" -> "card_secret";
+            case "CONTAINERS" -> "card_containers";
+            case "ASCA", "IAC" -> "card_vulnerability";
+            default -> "card_vulnerability";
+        };
+
+        String key = prefix + "_" + severity.toLowerCase();
+
+        // Append _dark suffix if dark theme is active
+        if (DevAssistUtils.isDarkTheme()) {
+            key += "_dark";
+        }
+
+        return imageRegistry.get(key);
     }
 }
