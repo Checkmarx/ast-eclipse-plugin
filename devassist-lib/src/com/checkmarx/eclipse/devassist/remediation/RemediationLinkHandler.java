@@ -10,6 +10,7 @@ import org.eclipse.jgit.annotations.Nullable;
 import com.checkmarx.eclipse.common.utils.CxLogger;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.problems.ProblemHolderService;
+import com.checkmarx.eclipse.devassist.telemetry.TelemetryService;
 
 import static com.checkmarx.eclipse.devassist.utils.DevAssistConstants.SEPERATOR;
 import static java.lang.String.format;
@@ -129,9 +130,11 @@ public class RemediationLinkHandler {
         switch (action) {
             case FIX:
                 remediationManager.fixWithCxOneAssist(scanIssue, actionId);
+                TelemetryService.logFixWithCxOneAssistAction(scanIssue);
                 break;
             case VIEW_DETAILS:
                 remediationManager.viewDetails(scanIssue, actionId);
+                TelemetryService.logViewDetailsAction(scanIssue);
                 break;
             case IGNORE_THIS_TYPE: {
                 org.eclipse.core.resources.IProject project = getActiveProject();
@@ -140,6 +143,7 @@ public class RemediationLinkHandler {
                     return false;
                 }
                 com.checkmarx.eclipse.devassist.ignore.IgnoreManager.getInstance(project).addIgnoredEntry(scanIssue, actionId);
+                TelemetryService.logIgnorePackageAction(scanIssue);
                 break;
             }
             case IGNORE_ALL_OF_THIS_TYPE: {
@@ -149,6 +153,7 @@ public class RemediationLinkHandler {
                     return false;
                 }
                 com.checkmarx.eclipse.devassist.ignore.IgnoreManager.getInstance(project).addAllIgnoredEntry(scanIssue, actionId);
+                TelemetryService.logIgnoreAllAction(scanIssue);
                 break;
             }
             default:
