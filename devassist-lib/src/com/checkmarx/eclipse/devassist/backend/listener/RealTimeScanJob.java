@@ -94,13 +94,11 @@ public class RealTimeScanJob extends Job {
 		try {
 			// Check if file still exists and is accessible
 			if (file == null || !file.exists()) {
-
 				return Status.CANCEL_STATUS;
 			}
 
 			// Check if the job was cancelled while waiting
 			if (monitor.isCanceled()) {
-
 				return Status.CANCEL_STATUS;
 			}
 
@@ -114,7 +112,6 @@ public class RealTimeScanJob extends Job {
 			try {
 				org.eclipse.core.resources.IProject project = file.getProject();
 				if (project == null || !project.isOpen()) {
-
 					return Status.OK_STATUS;
 				}
 
@@ -154,8 +151,8 @@ public class RealTimeScanJob extends Job {
 
 				// Pass progress monitor into scanFile to support cancellation during scan
 				// execution
-				java.util.List<com.checkmarx.eclipse.devassist.model.ScanIssue> issues = scanManager.scanFile(filePath,
-						monitor);
+				com.checkmarx.eclipse.devassist.common.ScanManager.ScanOutcome outcome = scanManager
+						.scanFileWithOutcome(filePath, monitor);
 
 				// Re-check cancellation status right before updating UI/markers to avoid
 				// publishing stale results
@@ -163,9 +160,20 @@ public class RealTimeScanJob extends Job {
 					return Status.CANCEL_STATUS;
 				}
 
-				// Publish results to UI
-				if (issues != null && !issues.isEmpty()) {
-					com.checkmarx.eclipse.devassist.backend.result.ResultPublisher.publishResults(file, issues);
+				// ✅ CRITICAL FIX: Publish results whenever a REAL scan ran, even if the
+				// result is empty. When a vulnerable line is DELETED, the scan returns
+				// 0 issues - if we skip publishResults() here, the old findings never
+				// get cleared from ProblemHolderService, so CxFindingsView and editor
+				// annotations are never updated (stale data).
+				//
+				// But we must NOT publish when the cycle was merely SKIPPED (file
+				// unchanged since last scan - e.g. a hover-triggered editor
+				// reactivation rescheduling this job with nothing actually different).
+				// Publishing an empty list in that case would incorrectly wipe out
+				// valid, still-current results/annotations for this file.
+				if (outcome.isScanned()) {
+					com.checkmarx.eclipse.devassist.backend.result.ResultPublisher.publishResults(file,
+							outcome.getIssues());
 				}
 
 			} catch (Exception e) {
@@ -193,11 +201,10 @@ public class RealTimeScanJob extends Job {
 	}
 
 	/**
-	 * Check if user is authenticated by checking if API key is configured.
+	 * Check if user is authenticated to Checkmarx One.
 	 */
 	private boolean isUserAuthenticated() {
-		String apiKey = com.checkmarx.eclipse.common.preferences.Preferences.getApiKey();
-		return apiKey != null && !apiKey.trim().isEmpty();
+		return com.checkmarx.eclipse.common.preferences.Preferences.isAuthenticated();
 	}
 
 	@Override

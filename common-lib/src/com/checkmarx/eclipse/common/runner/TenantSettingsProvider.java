@@ -1,21 +1,14 @@
 package com.checkmarx.eclipse.common.runner;
 
-import java.io.IOException;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.checkmarx.ast.wrapper.CxConfig;
-import com.checkmarx.ast.wrapper.CxException;
-import com.checkmarx.ast.wrapper.CxWrapper;
 import com.checkmarx.eclipse.common.utils.CxLogger;
+import com.checkmarx.eclipse.common.wrapper.WrapperProvider;
 
 /**
  * Provides tenant-specific settings from the Checkmarx API.
  * Fetches configuration details like MCP enablement status.
  */
 public class TenantSettingsProvider {
-	private static final Logger log = LoggerFactory.getLogger(TenantSettingsProvider.class);
+	private static final String LOG_PREFIX = "[TENANT_SETTINGS_PROVIDER] ";
 	public static final TenantSettingsProvider INSTANCE = new TenantSettingsProvider();
 
 	private TenantSettingsProvider() {
@@ -32,19 +25,12 @@ public class TenantSettingsProvider {
 		if (apiKey == null || apiKey.trim().isEmpty()) {
 			return false;
 		}
-
 		try {
-			CxConfig config = CxConfig.builder()
-					.apiKey(apiKey)
-					.additionalParameters(additionalParams)
-					.build();
-
-			CxWrapper wrapper = new CxWrapper(config, log);
-			boolean mcpEnabled = wrapper.aiMcpServerEnabled();
+			boolean mcpEnabled = new WrapperProvider().isAiMcpServerEnabled(apiKey, additionalParams);
 			CxLogger.info(String.format("MCP Server Status: %s", mcpEnabled ? "ENABLED" : "DISABLED"));
 			return mcpEnabled;
-		} catch (IOException | InterruptedException | CxException e) {
-			CxLogger.error("Failed to check MCP server status: " + e.getMessage(), e);
+		} catch (Exception e) {
+			CxLogger.error(String.format("%s Failed to check MCP server status: %s", LOG_PREFIX, e.getMessage()), e);
 			// Default to false on error to be conservative
 			return false;
 		}

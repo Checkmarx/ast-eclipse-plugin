@@ -12,7 +12,7 @@
         <page
                 class="com.checkmarx.eclipse.common.preferences.CheckmarxPreferencePage"
                 id="com.checkmarx.eclipse.devassist.prefs.checkmarxpreferencepage"
-                name="Checkmarx Scanner Configuration"
+                name="Checkmarx One Assist"
                 category="com.checkmarx.eclipse.properties.preferencespage">
         </page>
     </extension>

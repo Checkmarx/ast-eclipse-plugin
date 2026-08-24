@@ -17,7 +17,7 @@ public class ScanDetailWithPath {
         this.filePath = filePath;
         this.parentNode = parentNode;
     }
-    
+
     public FileNodeLabel getParentNode() {
         return parentNode;
     }

@@ -1,26 +1,36 @@
 package com.checkmarx.eclipse.devassist.scanners.oss;
 
-import com.checkmarx.ast.ossrealtime.OssRealtimeResults;
-import com.checkmarx.eclipse.devassist.basescanner.BaseScannerService;
-import com.checkmarx.eclipse.devassist.common.ScanResult;
-import com.checkmarx.eclipse.devassist.common.ScannerConfig;
-import com.checkmarx.eclipse.devassist.factory.CxWrapperFactory;
-import com.checkmarx.eclipse.devassist.model.ScanEngine;
-import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
-import com.checkmarx.eclipse.common.utils.CxLogger;
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.PathMatcher;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.time.LocalTime;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
 import org.eclipse.core.resources.IProject;
 import org.eclipse.jface.text.Document;
 import org.eclipse.jface.text.IDocument;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.*;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.time.LocalTime;
-import java.util.*;
-import java.util.stream.Collectors;
+import com.checkmarx.ast.ossrealtime.OssRealtimeResults;
+import com.checkmarx.eclipse.common.utils.CxLogger;
+import com.checkmarx.eclipse.common.wrapper.WrapperProvider;
+import com.checkmarx.eclipse.devassist.basescanner.BaseScannerService;
+import com.checkmarx.eclipse.devassist.common.ScanResult;
+import com.checkmarx.eclipse.devassist.common.ScannerConfig;
+import com.checkmarx.eclipse.devassist.model.ScanEngine;
+import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
+import com.checkmarx.eclipse.devassist.utils.PackageManager;
 
 /**
  * Realtime OSS manifest scanner service for Eclipse that handles temporary file isolation,
@@ -33,6 +43,7 @@ public class OssScannerService extends BaseScannerService<OssRealtimeResults> {
 	private static final String LOG_TAG = "[OSS-SERVICE]";
 	private static final String OSS_DIR = "CxOSS";
 	private static final Object SCAN_LOCK = new Object();
+	private final WrapperProvider wrapperProvider = new WrapperProvider();
 
 	public OssScannerService(IProject project) {
 		super(project, createConfig());
@@ -59,7 +70,7 @@ public class OssScannerService extends BaseScannerService<OssRealtimeResults> {
 		}
 
 		Path path = Paths.get(filePath);
-		List<PathMatcher> pathMatchers = DevAssistConstants.MANIFEST_FILE_PATTERNS.stream()
+		List<PathMatcher> pathMatchers = PackageManager.getAllPatterns().stream()
 				.map(p -> FileSystems.getDefault().getPathMatcher("glob:" + p))
 				.collect(Collectors.toList());
 
@@ -112,7 +123,7 @@ public class OssScannerService extends BaseScannerService<OssRealtimeResults> {
 
 				CxLogger.info(LOG_TAG + " Starting Realtime OSS Scan on File: " + filePath);
 
-				OssRealtimeResults scanResults = CxWrapperFactory.build().ossRealtimeScan(mainTempPath.get(), "");
+				OssRealtimeResults scanResults = wrapperProvider.ossRealtimeScan(mainTempPath.get(), "");
 				if (scanResults == null) {
 					return null;
 				}
@@ -167,19 +178,21 @@ public class OssScannerService extends BaseScannerService<OssRealtimeResults> {
 	}
 
 	/**
-	 * Copies a companion lock file (e.g., package-lock.json) into the temporary directory
-	 * when it exists alongside the scanned manifest.
-	 */
+     * Copies companion lock files (e.g., package-lock.json, yarn.lock) into the temporary directory
+     * when they exist alongside the scanned manifest.
+     *
+     * @param tempFolderPath   temp directory where companion files should be written
+     * @param originalFilePath original manifest path used to locate companion files
+     */
 	private void saveCompanionFile(Path tempFolderPath, String originalFilePath) {
 		if (originalFilePath == null || originalFilePath.isEmpty() || tempFolderPath == null) {
 			return;
 		}
-
 		Path originalPath = Paths.get(originalFilePath);
 		String parentFileName = originalPath.getFileName().toString();
-		String companionFileName = getCompanionFileName(parentFileName);
+		List<String> companionFileNameList = PackageManager.getCompanionFileNames(parentFileName);
 
-		if (companionFileName.isEmpty()) {
+		if (companionFileNameList.isEmpty()) {
 			return;
 		}
 
@@ -187,32 +200,20 @@ public class OssScannerService extends BaseScannerService<OssRealtimeResults> {
 		if (parentPath == null) {
 			return;
 		}
+		for (String companionFileName : companionFileNameList) {
+			Path companionOriginalPath = parentPath.resolve(companionFileName);
+			if (!Files.exists(companionOriginalPath)) {
+				continue;
+			}
 
-		Path companionOriginalPath = parentPath.resolve(companionFileName);
-		if (!Files.exists(companionOriginalPath)) {
-			return;
+			Path companionTempPath = tempFolderPath.resolve(companionFileName);
+			try {
+				Files.copy(companionOriginalPath, companionTempPath, StandardCopyOption.REPLACE_EXISTING);
+				CxLogger.info(LOG_TAG + " Copied companion file: " + companionFileName);
+			} catch (IOException e) {
+				CxLogger.warning(LOG_TAG + " Error occurred while saving companion file: " + e.getMessage());
+			}
 		}
-
-		Path companionTempPath = tempFolderPath.resolve(companionFileName);
-		try {
-			Files.copy(companionOriginalPath, companionTempPath, StandardCopyOption.REPLACE_EXISTING);
-			CxLogger.info(LOG_TAG + " Copied companion file: " + companionFileName);
-		} catch (IOException e) {
-			CxLogger.warning(LOG_TAG + " Error occurred while saving companion file: " + e.getMessage());
-		}
-	}
-
-	/**
-	 * Infers companion lock file name based on manifest file name.
-	 */
-	private String getCompanionFileName(String fileName) {
-		if ("package.json".equalsIgnoreCase(fileName)) {
-			return "package-lock.json";
-		}
-		if (fileName.toLowerCase().endsWith(".csproj")) {
-			return "package.lock.json";
-		}
-		return "";
 	}
 
 	/**
@@ -299,12 +300,4 @@ public class OssScannerService extends BaseScannerService<OssRealtimeResults> {
 		}
 		return null;
 	}
-
-//	private String getIgnoreFilePath(IProject proj) {
-//		try {
-//			return DevAssistUtils.getIgnoreFilePath(proj);
-//		} catch (Exception e) {
-//			return "";
-//		}
-//	}
 }

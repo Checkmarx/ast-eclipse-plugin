@@ -29,9 +29,7 @@ Import-Package: org.eclipse.core.resources,
 Bundle-ActivationPolicy: lazy
 Bundle-Activator: com.checkmarx.eclipse.Activator
 Export-Package: com.checkmarx.eclipse.enums,
- com.checkmarx.eclipse.properties,
  com.checkmarx.eclipse.utils
 Bundle-ClassPath: .,
  lib/org.eclipse.mylyn.commons.ui_4.9.0.v20251121-0615.jar,
  lib/org-eclipse-mylyn-commons-core.jar
- 

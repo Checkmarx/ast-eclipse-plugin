@@ -3,6 +3,8 @@ package com.checkmarx.eclipse.common.utils;
 import com.checkmarx.eclipse.common.events.SettingsTopics;
 
 public class PluginConstants {
+	public static final String AGENT_NAME = "Eclipse";
+	public static final String CHECKMARX_ONE = "Checkmarx One";
 	public static final String EMPTY_STRING = "";
 	public static final String SAST = "sast";
 	public static final String SCA_DEPENDENCY = "sca";
@@ -53,7 +55,6 @@ public class PluginConstants {
 	public static final String INFO_CHANGE_BRANCH_EVENT_NOT_TRIGGERED = "Change branch event not triggered. Branch already selected";
 	public static final String INFO_CHANGE_PROJECT_EVENT_NOT_TRIGGERED = "Change project event not triggered. Project already selected";
 	public static final String AUTH_SUCCESS_PATTERN = "Successfully authenticated";
-	public static final String AUTH_SUCCESS_DISPLAY = "You are connected to Checkmarx One";
 	
 	/******************************** TREE MESSAGES ********************************/
 	public static final String TREE_INVALID_SCAN_ID_FORMAT = "Invalid scan id format.";
@@ -63,8 +64,21 @@ public class PluginConstants {
 	/******************************** PREFERENCES ********************************/
 	public static final String PREFERENCES_API_KEY = "API key:";
 	public static final String PREFERENCES_ADDITIONAL_OPTIONS = "Additional Params:";
-	public static final String PREFERENCES_TEST_CONNECTION = "Test Connection";
+	public static final String CONNECT_TO_CHECKMARX = "Connect to Checkmarx";
+	public static final String LOGOUT = "Logout";
+	public static final String GO_TO_CHECKMARX_ONE_ASSIST = "Go to Checkmarx One Assist";
+	public static final String PREFERENCES_HELP_LINK_TEXT = "Checkmarx One Eclipse Plugin Help Page";
+	public static final String PREFERENCES_HELP_LINK_URL = "https://checkmarx.com/resource/documents/en/34965-68728-checkmarx-one-eclipse-plugin.html";
+	public static final String PREFERENCES_CLI_HELP_LINK_TEXT = "CLI command that supports a set of global flags";
+	public static final String PREFERENCES_CLI_HELP_LINK = "https://checkmarx.com/resource/documents/en/34965-68626-global-flags.html";
 	public static final String PREFERENCES_VALIDATING_STATE = "Validating...";
+	public static final String LOGOUT_CONFIRM_TITLE = "Confirm Logout";
+	public static final String LOGOUT_CONFIRM_MESSAGE = "Are you sure you want to logout?";
+	public static final String LOGOUT_SUCCESS_MESSAGE = "You have been successfully logged out.";
+	public static final String AUTH_SUCCESS_DISPLAY = "You are connected to Checkmarx One";
+	// Shown to the user for any authentication failure, regardless of cause - the actual
+	// reason is logged (see PreferencesPage.mapAuthResult()), not surfaced in the UI.
+	public static final String AUTH_FAILURE_DISPLAY = "Failed to connect to Checkmarx One. Please check your credentials and try again.";
 	public static final String TOPIC_APPLY_SETTINGS = SettingsTopics.TOPIC_APPLY_SETTINGS;
 	
 	/******************************** PROBLEMS VIEW ********************************/
@@ -137,4 +151,37 @@ public class PluginConstants {
 	public static final String CX_PROJECT_MISMATCH = "Project mismatch";	
 	public static final String CX_PROJECT_MISMATCH_QUESTION = "The files open in your workspace don't match the files previously scanned in this Checkmarx project. Do you want to scan anyway?";	
 	public static final String CX_REFRESHING_TOOLBAR = "Checkmarx: Refreshing toolbar...";	
+	
+	/**********************************Checkmarx One Assist************************************/
+	public static final String GO_TO_CHECKMARX_ONE = "Go to Checkmarx One";
+	public static final String LOGIN_NOTE_CXONE_ASSIST = "To configure Checkmarx One Assist settings, log in to Checkmarx One.";
+	public static final String DEVASSIST_PLUGIN_REALTIME_SCANNERS_OSS_TITLE = "Checkmarx Developer Assist Open Source Realtime Scanner (OSS-Realtime): Activate OSS-Realtime";
+	public static final String DEVASSIST_PLUGIN_REALTIME_SCANNERS_SECRETS_TITLE = "Checkmarx Developer Assist Secret Detection Realtime Scanner: Activate Secret Detection Realtime";
+	public static final String DEVASSIST_PLUGIN_REALTIME_SCANNERS_CONTAINERS_TITLE = "Checkmarx Developer Assist Containers Realtime Scanner: Activate Containers Realtime";
+	public static final String DEVASSIST_PLUGIN_REALTIME_SCANNERS_IAC_TITLE = "Checkmarx Developer Assist IAC Realtime Scanner: Activate IAC Realtime";
+	public static final String DEVASSIST_PLUGIN_REALTIME_SCANNERS_ASCA_TITLE = "Checkmarx Developer Assist AI Secure Coding Assistant (ASCA): Activate ASCA";
+	public static final String DEVASSIST_PLUGIN_REALTIME_SCANNERS_IAC_PREFIX = "Checkmarx Developer Assist IAC Realtime Scanner: Containers Management Tool";
+	public static final String DEVASSIST_PLUGIN_WELCOME_TITLE = "Welcome to Checkmarx Developer Assist";
+	public static final String CONTAINERS_TOOL_DESCRIPTION = "Select the Containers Management Tool to use for IaC scanning.";
+	public static final String OSS_REALTIME_CHECKBOX = "Scans your manifest files as you code";
+	public static final String SECRETS_REALTIME_CHECKBOX = "Scans your files for potential secrets and credentials as you code";
+	public static final String CONTAINERS_REALTIME_CHECKBOX = "Scans your Docker files and container configurations as you code";
+	public static final String IAC_REALTIME_CHECKBOX = "Scans your Infrastructure as Code files as you code";
+	public static final String ASCA_CHECKBOX = "Scan your file as you code";
+	public static final String[] CONTAINERS_TOOLS = new String[] { "docker", "podman" };
+
+	/**********************************Checkmarx MCP************************************/
+	public static final String CHECKMARX_MCP_SECTION_TITLE = "Checkmarx : MCP";
+	public static final String MCP_DESCRIPTION = "The Model Context Protocol (MCP) provides advanced contextual analysis for secure coding.";
+	public static final String INSTALL_MCP_LINK_TEXT = "Install MCP";
+	public static final String EDIT_MCP_SETTINGS_LINK_TEXT = "Edit MCP Settings";
+	public static final String MCP_INSTALL_UNAVAILABLE_MESSAGE = "MCP install is not available right now. Please try again after the plugin has fully started.";
+	public static final String MCP_INSTALLING_STATE = "Installing...";
+	public static final String MCP_INSTALL_SUCCESS_MESSAGE = "Checkmarx MCP installed successfully";
+	public static final String MCP_ALREADY_UP_TO_DATE_MESSAGE = "MCP configuration is already up to date.";
+	public static final String MCP_INSTALL_GENERIC_FAILURE_MESSAGE = "Failed to install Checkmarx MCP. Please try again.";
+	public static final String MCP_NOT_AUTHENTICATED_MESSAGE = "You must be connected to Checkmarx One before installing MCP.";
+	public static final String MCP_NOT_ENABLED_FOR_TENANT_MESSAGE = "MCP is not enabled for your Checkmarx One tenant.";
+	// GitHub Copilot for Eclipse's own MCP preference page - opened by "Edit MCP Settings".
+	public static final String COPILOT_MCP_PREFERENCE_PAGE_ID = "com.microsoft.copilot.eclipse.ui.preferences.McpPreferencePage";
 }

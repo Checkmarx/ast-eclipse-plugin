@@ -27,8 +27,7 @@ public class GlobalScannerController {
 	private static GlobalScannerController instance;
 
 	// Global enable/disable state for each scanner
-	private final ConcurrentHashMap<ScannerType, Boolean> scannerState =
-		new ConcurrentHashMap<>();
+	private final ConcurrentHashMap<ScannerType, Boolean> scannerState = new ConcurrentHashMap<>();
 
 	// Listeners notified when scanner state changes
 	// Using CopyOnWriteArrayList for thread-safe concurrent iteration and mutation
@@ -161,9 +160,10 @@ public class GlobalScannerController {
 
 	/**
 	 * Notify all listeners of a scanner state change.
-	 * Thread-safe: listeners can register/unregister concurrently without ConcurrentModificationException.
+	 * Thread-safe: listeners can register/unregister concurrently without
+	 * ConcurrentModificationException.
 	 *
-	 * @param type Changed scanner type
+	 * @param type    Changed scanner type
 	 * @param enabled New enabled state
 	 */
 	private void notifyScannerStateChanged(ScannerType type, boolean enabled) {
@@ -188,11 +188,11 @@ public class GlobalScannerController {
 		for (ScannerType type : ScannerType.values()) {
 			boolean enabled = isScannerEnabled(type);
 			sb.append("  ").append(type.getDisplayName()).append(": ")
-				.append(enabled ? "ENABLED" : "DISABLED").append("\n");
+					.append(enabled ? "ENABLED" : "DISABLED").append("\n");
 		}
 
 		sb.append("  Total Enabled: ").append(getEnabledScannerCount()).append("/")
-			.append(ScannerType.values().length);
+				.append(ScannerType.values().length);
 
 		return sb.toString();
 	}
@@ -205,7 +205,7 @@ public class GlobalScannerController {
 		/**
 		 * Called when a scanner's enabled state changes globally.
 		 *
-		 * @param type Changed scanner type
+		 * @param type    Changed scanner type
 		 * @param enabled New enabled state
 		 */
 		void onScannerStateChanged(ScannerType type, boolean enabled);

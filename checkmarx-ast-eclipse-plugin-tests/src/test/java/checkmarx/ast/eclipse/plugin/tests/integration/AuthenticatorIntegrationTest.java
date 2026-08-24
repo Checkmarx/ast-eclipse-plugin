@@ -1,23 +1,19 @@
 package checkmarx.ast.eclipse.plugin.tests.integration;
 
 
-import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import com.checkmarx.eclipse.common.runner.Authenticator;
-
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 
+import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
+
+import com.checkmarx.eclipse.common.runner.Authenticator;
+
 public class AuthenticatorIntegrationTest extends BaseIntegrationTest {
-    
-    private static final Logger logger = LoggerFactory.getLogger(AuthenticatorIntegrationTest.class);
-    
-    @Mock
+   
     private Authenticator authenticator; 
 
     @Test

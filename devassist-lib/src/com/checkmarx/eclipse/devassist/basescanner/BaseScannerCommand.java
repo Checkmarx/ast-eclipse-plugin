@@ -6,7 +6,8 @@ import com.checkmarx.eclipse.common.utils.CxLogger;
 import org.eclipse.core.resources.IProject;
 
 /**
- * BaseScannerCommand is an abstract implementation of the ScannerCommand interface
+ * BaseScannerCommand is an abstract implementation of the ScannerCommand
+ * interface
  * that provides foundational functionality for registering, deregistering, and
  * managing a scanner's lifecycle for a given project. This class serves as a
  * base implementation for custom scanner commands.
@@ -22,7 +23,7 @@ public abstract class BaseScannerCommand implements ScannerCommand {
 	 * Create a scanner command with configuration.
 	 *
 	 * @param project Eclipse project
-	 * @param config Scanner configuration
+	 * @param config  Scanner configuration
 	 */
 	protected BaseScannerCommand(IProject project, ScannerConfig config) {
 		this.project = project;
@@ -50,7 +51,8 @@ public abstract class BaseScannerCommand implements ScannerCommand {
 
 	/**
 	 * De-registers the project for the scanner.
-	 * This method is called in two cases: either project is closed by the user, or scanner is disabled
+	 * This method is called in two cases: either project is closed by the user, or
+	 * scanner is disabled
 	 *
 	 * @param project - the project that is registered
 	 */

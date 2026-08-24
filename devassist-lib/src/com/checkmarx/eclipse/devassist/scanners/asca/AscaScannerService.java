@@ -1,22 +1,24 @@
 package com.checkmarx.eclipse.devassist.scanners.asca;
 
-import com.checkmarx.ast.asca.ScanResult;
-import com.checkmarx.ast.wrapper.CxException;
-import com.checkmarx.eclipse.devassist.basescanner.BaseScannerService;
-import com.checkmarx.eclipse.devassist.common.ScannerConfig;
-import com.checkmarx.eclipse.devassist.factory.CxWrapperFactory;
-import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
-import com.checkmarx.eclipse.devassist.model.ScanEngine;
-import com.checkmarx.eclipse.common.utils.CxLogger;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.jface.text.Document;
 import org.eclipse.jface.text.IDocument;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+
+import com.checkmarx.ast.wrapper.CxException;
+import com.checkmarx.eclipse.common.utils.CxLogger;
+import com.checkmarx.eclipse.common.wrapper.WrapperProvider;
+import com.checkmarx.eclipse.devassist.basescanner.BaseScannerService;
+import com.checkmarx.eclipse.devassist.common.ScanResult;
+import com.checkmarx.eclipse.devassist.common.ScannerConfig;
+import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
+import com.checkmarx.eclipse.devassist.utils.ScanEngine;
 
 /**
  * ASCA (Application Source Code Analysis) scanner service.
@@ -32,6 +34,7 @@ public class AscaScannerService extends BaseScannerService<ScanResult> {
 	private static final String LOG_TAG = "[ASCA-SERVICE]";
 	private static final String ASCA_DIR = "CxASCA";
 	private static final Object SCAN_LOCK = new Object();
+	private final WrapperProvider wrapperProvider = new WrapperProvider();
 
 	public AscaScannerService(IProject project) {
 		super(project, createConfig());
@@ -77,7 +80,8 @@ public class AscaScannerService extends BaseScannerService<ScanResult> {
 	/**
 	 * Primary scan method - gets file content and executes scan.
 	 */
-	public com.checkmarx.eclipse.devassist.common.ScanResult<Object> scanWithDocument(String filePath, IDocument document) {
+	public com.checkmarx.eclipse.devassist.common.ScanResult<Object> scanWithDocument(String filePath,
+			IDocument document) {
 		return scanInternal(filePath, document, project);
 	}
 
@@ -86,7 +90,8 @@ public class AscaScannerService extends BaseScannerService<ScanResult> {
 		// No resources to close
 	}
 
-	private com.checkmarx.eclipse.devassist.common.ScanResult<Object> scanInternal(String filePath, IDocument document, IProject proj) {
+	private com.checkmarx.eclipse.devassist.common.ScanResult<Object> scanInternal(String filePath, IDocument document,
+			IProject proj) {
 		if (!shouldScanFile(filePath)) {
 			return null;
 		}
@@ -203,7 +208,8 @@ public class AscaScannerService extends BaseScannerService<ScanResult> {
 
 	/**
 	 * Get ignore file path for ASCA scanning.
-	 * Returns empty string by default - can be extended to read from .checkmarxIgnored file.
+	 * Returns empty string by default - can be extended to read from
+	 * .checkmarxIgnored file.
 	 */
 	private String getIgnoreFilePath() {
 		return "";
@@ -265,7 +271,6 @@ public class AscaScannerService extends BaseScannerService<ScanResult> {
 			return null;
 		}
 	}
-
 
 	/**
 	 * Sanitize file name to prevent directory traversal attacks.
@@ -330,20 +335,19 @@ public class AscaScannerService extends BaseScannerService<ScanResult> {
 		}
 	}
 
-
 	private com.checkmarx.ast.asca.ScanResult scanAscaFile(String path, boolean ascaLatestVersion, String agent,
 			String ignoreFilePath) throws IOException, CxException, InterruptedException {
 		com.checkmarx.ast.asca.ScanResult scanResult = null;
 		try {
-			scanResult = CxWrapperFactory.build().ScanAsca(path, ascaLatestVersion, agent, null);
+			scanResult = wrapperProvider.scanAsca(path, ascaLatestVersion, agent, null);
 		} catch (IOException e) {
-			e.printStackTrace();
+			 CxLogger.warning(String.format("%s IOException occurred while ASCA scan for file %s: %s", LOG_TAG, path, e.getMessage()));
 		} catch (InterruptedException e) {
-			e.printStackTrace();
+			 CxLogger.warning(String.format("%s InterruptedException occurred while ASCA scan for file %s: %s", LOG_TAG, path, e.getMessage()));
 		} catch (CxException e) {
-			e.printStackTrace();
+			 CxLogger.warning(String.format("%s CxException occurred while ASCA scan for file %s: %s", LOG_TAG, path, e.getMessage()));
 		} catch (Exception e) {
-			e.printStackTrace();
+			 CxLogger.warning(String.format("%s Exception occurred while ASCA scan for file %s: %s", LOG_TAG, path, e.getMessage()));
 		}
 		return scanResult;
 	}

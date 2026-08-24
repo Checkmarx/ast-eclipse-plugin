@@ -20,7 +20,6 @@ import org.eclipse.jface.action.Action;
 import org.eclipse.jface.viewers.ComboViewer;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.ui.PlatformUI;
-import org.apache.commons.lang3.StringUtils;
 import com.checkmarx.ast.results.result.Node;
 import com.checkmarx.ast.results.result.Result;
 import com.checkmarx.eclipse.enums.ActionName;
@@ -51,7 +50,8 @@ public class PluginUtils {
 
 			Instant instant = Instant.parse(timestamp);
 
-			DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(PARAM_TIMESTAMP_PATTERN).withZone(ZoneId.systemDefault());
+			DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(PARAM_TIMESTAMP_PATTERN)
+					.withZone(ZoneId.systemDefault());
 			parsedDate = dateTimeFormatter.format(instant);
 		} catch (Exception e) {
 			CxLogger.warning(String.format("[TIME-STAMP] Returning time stamp", e.getMessage()));
@@ -99,19 +99,21 @@ public class PluginUtils {
 	 */
 	public static void updateFiltersEnabledAndCheckedState(List<Action> filterActions) {
 		for (Action action : filterActions) {
-			// avoid to disable group by severity , group by query name and group by state actions
-			if (!action.getId().equals(ActionName.GROUP_BY_SEVERITY.name()) && !action.getId().equals(ActionName.GROUP_BY_QUERY_NAME.name()) && !action.getId().equals(ActionName.GROUP_BY_STATE_NAME.name()) ) {
+			// avoid to disable group by severity , group by query name and group by state
+			// actions
+			if (!action.getId().equals(ActionName.GROUP_BY_SEVERITY.name())
+					&& !action.getId().equals(ActionName.GROUP_BY_QUERY_NAME.name())
+					&& !action.getId().equals(ActionName.GROUP_BY_STATE_NAME.name())) {
 				action.setEnabled(DataProvider.getInstance().containsResults());
 			}
-			
-			if(!action.getId().equals(ActionName.FILTER_CHANGED.name())) {
+
+			if (!action.getId().equals(ActionName.FILTER_CHANGED.name())) {
 				action.setChecked(FilterState.isSeverityEnabled(action.getId()));
 			}
 
-			
 		}
 	}
-	
+
 	/**
 	 * Create a display model to be presented in the tree
 	 * 
@@ -121,7 +123,7 @@ public class PluginUtils {
 	public static DisplayModel message(String message) {
 		return new DisplayModel.DisplayModelBuilder(message).build();
 	}
-	
+
 	/**
 	 * Show message in the tree
 	 * 
@@ -132,17 +134,16 @@ public class PluginUtils {
 		rootModel.children.add(PluginUtils.message(message));
 		viewer.refresh();
 	}
-	
-	
+
 	/**
 	 * Clear message in the tree
 	 * 
 	 */
-	public static void clearMessage(DisplayModel rootModel,TreeViewer viewer) {
+	public static void clearMessage(DisplayModel rootModel, TreeViewer viewer) {
 		rootModel.children.clear();
 		viewer.refresh();
 	}
-		
+
 	/**
 	 * Get Event Broker
 	 * 
@@ -151,16 +152,16 @@ public class PluginUtils {
 	public static IEventBroker getEventBroker() {
 		return (IEventBroker) PlatformUI.getWorkbench().getService(IEventBroker.class);
 	}
-	
+
 	/**
-	 * Check if checkmarx credentials are defined in the Preferences
-	 * 
+	 * Check if the user is currently authenticated to Checkmarx One.
+	 *
 	 * @return
 	 */
 	public static boolean areCredentialsDefined() {
-		return StringUtils.isNotBlank(Preferences.getApiKey());
+		return Preferences.isAuthenticated();
 	}
-	
+
 	/**
 	 * Add Checkmarx vulnerabilities to Problems View
 	 * 
@@ -194,7 +195,7 @@ public class PluginUtils {
 			}
 		}
 	}
-	
+
 	/**
 	 * Get IMarker severity based on each checkmarx result severity
 	 * 
@@ -203,25 +204,25 @@ public class PluginUtils {
 	 */
 	private static Integer getIMarkerSeverity(String resultSeverity) {
 		Severity severity = Severity.getSeverity(resultSeverity);
-		
+
 		switch (severity) {
-		case CRITICAL:
-			return IMarker.SEVERITY_ERROR;
-		case HIGH:
-			return IMarker.SEVERITY_ERROR;
-		case MEDIUM:
-			return IMarker.SEVERITY_WARNING;
-		case LOW:
-			return IMarker.SEVERITY_INFO;
-		case INFO:
-			return IMarker.SEVERITY_INFO;
-		default:
-			break;
+			case CRITICAL:
+				return IMarker.SEVERITY_ERROR;
+			case HIGH:
+				return IMarker.SEVERITY_ERROR;
+			case MEDIUM:
+				return IMarker.SEVERITY_WARNING;
+			case LOW:
+				return IMarker.SEVERITY_INFO;
+			case INFO:
+				return IMarker.SEVERITY_INFO;
+			default:
+				break;
 		}
-		
+
 		return IMarker.SEVERITY_INFO;
 	}
-	
+
 	/**
 	 * Find files in workspace
 	 * 
@@ -231,7 +232,8 @@ public class PluginUtils {
 	public static List<IFile> findFileInWorkspace(final String fileName) {
 		final List<IFile> foundFiles = new ArrayList<IFile>();
 		try {
-			// visiting only resources proxy because we obtain the resource only when matching name, thus the workspace traversal is much faster
+			// visiting only resources proxy because we obtain the resource only when
+			// matching name, thus the workspace traversal is much faster
 			ResourcesPlugin.getWorkspace().getRoot().accept(new IResourceProxyVisitor() {
 				@Override
 				public boolean visit(IResourceProxy resourceProxy) throws CoreException {
@@ -250,7 +252,7 @@ public class PluginUtils {
 		}
 		return foundFiles;
 	}
-	
+
 	/**
 	 * Clear checkmarx vulnerabilities from Problems View
 	 */
@@ -258,15 +260,16 @@ public class PluginUtils {
 		IWorkspace workspace = ResourcesPlugin.getWorkspace();
 		IResource resource = workspace.getRoot();
 		IMarker[] markers;
-		
+
 		try {
 			markers = resource.findMarkers(IMarker.MARKER, true, IResource.DEPTH_INFINITE);
-			
+
 			for (IMarker m : markers) {
-				if(m.getAttribute(IMarker.SOURCE_ID) != null && m.getAttribute(IMarker.SOURCE_ID).equals(PluginConstants.PROBLEM_SOURCE_ID)) {
+				if (m.getAttribute(IMarker.SOURCE_ID) != null
+						&& m.getAttribute(IMarker.SOURCE_ID).equals(PluginConstants.PROBLEM_SOURCE_ID)) {
 					m.delete();
 				}
-			}			
+			}
 		} catch (CoreException e) {
 			CxLogger.error(String.format(PluginConstants.ERROR_FINDING_OR_DELETING_MARKER, e.getMessage()), e);
 		}

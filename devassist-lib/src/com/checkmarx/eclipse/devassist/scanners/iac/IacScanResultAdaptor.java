@@ -7,15 +7,18 @@ import com.checkmarx.eclipse.devassist.model.Location;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.model.Vulnerability;
+import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
 import com.checkmarx.eclipse.devassist.utils.DevAssistUtils;
 import com.checkmarx.eclipse.common.utils.CxLogger;
 import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Adapter class for handling IaC scan results and converting them into a standardized format.
+ * Adapter class for handling IaC scan results and converting them into a
+ * standardized format.
  *
- * This class wraps an IaC {@link IacRealtimeResults} instance and provides methods to process and extract
+ * This class wraps an IaC {@link IacRealtimeResults} instance and provides
+ * methods to process and extract
  * meaningful scan issues based on IaC misconfigurations detected in the files.
  *
  * Features:
@@ -29,7 +32,6 @@ import java.util.stream.Collectors;
 public class IacScanResultAdaptor implements ScanResult<IacRealtimeResults> {
 
 	private static final String LOG_TAG = "[IAC-ADAPTOR]";
-	private static final String MULTIPLE_ISSUES_SUFFIX = " IaC misconfigurations";
 
 	private final IacRealtimeResults iacRealtimeResults;
 	private final String filePath;
@@ -73,11 +75,10 @@ public class IacScanResultAdaptor implements ScanResult<IacRealtimeResults> {
 							return 1;
 						},
 						Collectors.collectingAndThen(Collectors.toList(), issuesList -> {
-							issuesList.sort(Comparator.comparingInt(issue ->
-									getSeverityPrecedence(issue.getSeverity())));
+							issuesList
+									.sort(Comparator.comparingInt(issue -> getSeverityPrecedence(issue.getSeverity())));
 							return issuesList;
-						})
-				));
+						})));
 
 		List<ScanIssue> scanIssues = groupedIssues.values().stream()
 				.map(this::createScanIssueForGroup)
@@ -129,7 +130,7 @@ public class IacScanResultAdaptor implements ScanResult<IacRealtimeResults> {
 		// Set title based on whether there are multiple issues on the same line
 		String title;
 		if (iacIssues.size() > 1) {
-			title = iacIssues.size() + MULTIPLE_ISSUES_SUFFIX;
+			title = iacIssues.size() + DevAssistConstants.MULTIPLE_IAC_ISSUES;
 		} else {
 			title = firstIssue.getTitle();
 		}
@@ -176,7 +177,7 @@ public class IacScanResultAdaptor implements ScanResult<IacRealtimeResults> {
 		if (scanIssue.getVulnerabilities().size() == 1) {
 			scanIssue.setTitle(scanIssue.getVulnerabilities().get(0).getTitle());
 		} else if (scanIssue.getVulnerabilities().size() > 1) {
-			scanIssue.setTitle(scanIssue.getVulnerabilities().size() + MULTIPLE_ISSUES_SUFFIX);
+			scanIssue.setTitle(scanIssue.getVulnerabilities().size() + DevAssistConstants.MULTIPLE_IAC_ISSUES);
 		}
 
 		// Add location information from issues
@@ -184,7 +185,7 @@ public class IacScanResultAdaptor implements ScanResult<IacRealtimeResults> {
 			if (iacIssue.getLocations() != null) {
 				for (RealtimeLocation loc : iacIssue.getLocations()) {
 					Location location = new Location();
-					location.setLine(loc.getLine()+1);
+					location.setLine(loc.getLine() + 1);
 					location.setStartIndex(loc.getStartIndex());
 					location.setEndIndex(loc.getEndIndex());
 					scanIssue.getLocations().add(location);

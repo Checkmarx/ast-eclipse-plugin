@@ -71,28 +71,28 @@ public class FilterState {
 			return;
 		}
 		switch (severity) {
-		case CRITICAL:
-			critical = !critical;
-			GlobalSettings.storeInPreferences(Severity.CRITICAL.name(), String.valueOf(critical));
-			break;
-		case HIGH:
-			high = !high;
-			GlobalSettings.storeInPreferences(Severity.HIGH.name(), String.valueOf(high));
-			break;
-		case MEDIUM:
-			medium = !medium;
-			GlobalSettings.storeInPreferences(Severity.MEDIUM.name(), String.valueOf(medium));
-			break;
-		case LOW:
-			low = !low;
-			GlobalSettings.storeInPreferences(Severity.LOW.name(), String.valueOf(low));
-			break;
-		case INFO:
-			info = !info;
-			GlobalSettings.storeInPreferences(Severity.INFO.name(), String.valueOf(info));
-			break;
-		default:
-			break;
+			case CRITICAL:
+				critical = !critical;
+				GlobalSettings.storeInPreferences(Severity.CRITICAL.name(), String.valueOf(critical));
+				break;
+			case HIGH:
+				high = !high;
+				GlobalSettings.storeInPreferences(Severity.HIGH.name(), String.valueOf(high));
+				break;
+			case MEDIUM:
+				medium = !medium;
+				GlobalSettings.storeInPreferences(Severity.MEDIUM.name(), String.valueOf(medium));
+				break;
+			case LOW:
+				low = !low;
+				GlobalSettings.storeInPreferences(Severity.LOW.name(), String.valueOf(low));
+				break;
+			case INFO:
+				info = !info;
+				GlobalSettings.storeInPreferences(Severity.INFO.name(), String.valueOf(info));
+				break;
+			default:
+				break;
 		}
 	}
 
@@ -104,57 +104,57 @@ public class FilterState {
 			return;
 		}
 		switch (mode) {
-		case SEVERITY:
-			groupBySeverity = !groupBySeverity;
-			GlobalSettings.storeInPreferences(GroupingMode.SEVERITY.name(), String.valueOf(groupBySeverity));
-			break;
-		case QUERY_NAME:
-			groupByQueryName = !groupByQueryName;
-			GlobalSettings.storeInPreferences(GroupingMode.QUERY_NAME.name(), String.valueOf(groupByQueryName));
-			break;
-		case STATE_NAME:
-			groupByStateName = !groupByStateName;
-			GlobalSettings.storeInPreferences(GroupingMode.STATE_NAME.name(), String.valueOf(groupByStateName));
-			break;
-		default:
-			break;
+			case SEVERITY:
+				groupBySeverity = !groupBySeverity;
+				GlobalSettings.storeInPreferences(GroupingMode.SEVERITY.name(), String.valueOf(groupBySeverity));
+				break;
+			case QUERY_NAME:
+				groupByQueryName = !groupByQueryName;
+				GlobalSettings.storeInPreferences(GroupingMode.QUERY_NAME.name(), String.valueOf(groupByQueryName));
+				break;
+			case STATE_NAME:
+				groupByStateName = !groupByStateName;
+				GlobalSettings.storeInPreferences(GroupingMode.STATE_NAME.name(), String.valueOf(groupByStateName));
+				break;
+			default:
+				break;
 		}
 	}
 
 	public static void setFilterState(State state) {
 		switch (state.getName()) {
-		case "NOT_EXPLOITABLE":
-			notExploitable = !notExploitable;
-			GlobalSettings.storeInPreferences("NOT_EXPLOITABLE", String.valueOf(notExploitable));
-			break;
-		case "PROPOSED_NOT_EXPLOITABLE":
-			proposedNotExploitable = !proposedNotExploitable;
-			GlobalSettings.storeInPreferences("PROPOSED_NOT_EXPLOITABLE", String.valueOf(proposedNotExploitable));
-			break;
-		case "URGENT":
-			urgent = !urgent;
-			GlobalSettings.storeInPreferences("URGENT", String.valueOf(urgent));
-			break;
-		case "IGNORED":
-			ignored = !ignored;
-			GlobalSettings.storeInPreferences("IGNORED", String.valueOf(ignored));
-			break;
-		case "CONFIRMED":
-			confirmed = !confirmed;
-			GlobalSettings.storeInPreferences("CONFIRMED", String.valueOf(confirmed));
-			break;
-		case "NOT_IGNORED":
-			not_ignored = !not_ignored;
-			GlobalSettings.storeInPreferences("NOT_IGNORED", String.valueOf(not_ignored));
-			break;
-		case "TO_VERIFY":
-			to_verify = !to_verify;
-			GlobalSettings.storeInPreferences("TO_VERIFY", String.valueOf(to_verify));
-			break;
-		default:
-			// For custom states, toggle the global customState flag
-			setCustomStateFilter();
-			break;
+			case "NOT_EXPLOITABLE":
+				notExploitable = !notExploitable;
+				GlobalSettings.storeInPreferences("NOT_EXPLOITABLE", String.valueOf(notExploitable));
+				break;
+			case "PROPOSED_NOT_EXPLOITABLE":
+				proposedNotExploitable = !proposedNotExploitable;
+				GlobalSettings.storeInPreferences("PROPOSED_NOT_EXPLOITABLE", String.valueOf(proposedNotExploitable));
+				break;
+			case "URGENT":
+				urgent = !urgent;
+				GlobalSettings.storeInPreferences("URGENT", String.valueOf(urgent));
+				break;
+			case "IGNORED":
+				ignored = !ignored;
+				GlobalSettings.storeInPreferences("IGNORED", String.valueOf(ignored));
+				break;
+			case "CONFIRMED":
+				confirmed = !confirmed;
+				GlobalSettings.storeInPreferences("CONFIRMED", String.valueOf(confirmed));
+				break;
+			case "NOT_IGNORED":
+				not_ignored = !not_ignored;
+				GlobalSettings.storeInPreferences("NOT_IGNORED", String.valueOf(not_ignored));
+				break;
+			case "TO_VERIFY":
+				to_verify = !to_verify;
+				GlobalSettings.storeInPreferences("TO_VERIFY", String.valueOf(to_verify));
+				break;
+			default:
+				// For custom states, toggle the global customState flag
+				setCustomStateFilter();
+				break;
 		}
 	}
 
@@ -177,22 +177,22 @@ public class FilterState {
 		String normalized = state.trim().toUpperCase();
 		if (PREDEFINED_STATE_SET.contains(normalized)) {
 			switch (normalized) {
-			case "NOT_EXPLOITABLE":
-				return notExploitable;
-			case "PROPOSED_NOT_EXPLOITABLE":
-				return proposedNotExploitable;
-			case "TO_VERIFY":
-				return to_verify;
-			case "CONFIRMED":
-				return confirmed;
-			case "URGENT":
-				return urgent;
-			case "NOT_IGNORED":
-				return not_ignored;
-			case "IGNORED":
-				return ignored;
-			default:
-				break;
+				case "NOT_EXPLOITABLE":
+					return notExploitable;
+				case "PROPOSED_NOT_EXPLOITABLE":
+					return proposedNotExploitable;
+				case "TO_VERIFY":
+					return to_verify;
+				case "CONFIRMED":
+					return confirmed;
+				case "URGENT":
+					return urgent;
+				case "NOT_IGNORED":
+					return not_ignored;
+				case "IGNORED":
+					return ignored;
+				default:
+					break;
 			}
 		} else {
 			// [AST-92100] Not a predefined state, check if this custom state is enabled
@@ -210,18 +210,18 @@ public class FilterState {
 		}
 		try {
 			switch (Severity.getSeverity(severity)) {
-			case CRITICAL:
-				return critical;
-			case HIGH:
-				return high;
-			case MEDIUM:
-				return medium;
-			case LOW:
-				return low;
-			case INFO:
-				return info;
-			default:
-				break;
+				case CRITICAL:
+					return critical;
+				case HIGH:
+					return high;
+				case MEDIUM:
+					return medium;
+				case LOW:
+					return low;
+				case INFO:
+					return info;
+				default:
+					break;
 			}
 		} catch (IllegalArgumentException e) {
 			// Invalid severity string
@@ -238,14 +238,14 @@ public class FilterState {
 			return false;
 		}
 		switch (mode) {
-		case SEVERITY:
-			return groupBySeverity;
-		case QUERY_NAME:
-			return groupByQueryName;
-		case STATE_NAME:
-			return groupByStateName;
-		default:
-			return false;
+			case SEVERITY:
+				return groupBySeverity;
+			case QUERY_NAME:
+				return groupByQueryName;
+			case STATE_NAME:
+				return groupByStateName;
+			default:
+				return false;
 		}
 	}
 
