@@ -9,7 +9,11 @@ import java.util.Set;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
+import org.eclipse.jface.text.BadLocationException;
+import org.eclipse.jface.text.BadPositionCategoryException;
+import org.eclipse.jface.text.DefaultPositionUpdater;
 import org.eclipse.jface.text.IDocument;
+import org.eclipse.jface.text.IPositionUpdater;
 import org.eclipse.jface.text.IRegion;
 import org.eclipse.jface.text.Position;
 import org.eclipse.jface.text.source.Annotation;
@@ -46,6 +50,52 @@ public class ProblemDecorator {
 
 	// Track annotations we've created so we can remove them later
 	private static final Map<String, List<Annotation>> fileAnnotations = new HashMap<>();
+
+	// Live-tracked line positions for ignored entries, keyed by
+	// "<normalizedPath>#<title>#<originalIgnoreFileLine>". Registered on the
+	// document via Position/PositionUpdater so edits made above an ignored line
+	// shift it automatically (Eclipse's equivalent of JetBrains' RangeMarker),
+	// instead of re-reading the static line number stored in .checkmarxIgnored
+	// on every redecoration pass.
+	private static final String IGNORED_POSITION_CATEGORY = "com.checkmarx.eclipse.ignoredLineTracking";
+	private static final Map<String, TrackedPosition> ignoredLinePositions = new HashMap<>();
+
+	private static final class TrackedPosition {
+		final IDocument document;
+		final Position position;
+
+		TrackedPosition(IDocument document, Position position) {
+			this.document = document;
+			this.position = position;
+		}
+	}
+
+	/**
+	 * Returns the current (edit-tracked) offset for an ignored entry's line,
+	 * creating and registering a tracked {@link Position} the first time this
+	 * entry is seen for the given document. Falls back to the given original
+	 * line's offset if tracking can't be set up.
+	 */
+	private static int resolveTrackedIgnoredOffset(IDocument document, String key, int originalLineOffset) {
+		TrackedPosition tracked = ignoredLinePositions.get(key);
+		if (tracked != null && tracked.document == document && !tracked.position.isDeleted()) {
+			return Math.max(0, Math.min(tracked.position.getOffset(), document.getLength()));
+		}
+
+		try {
+			if (!document.containsPositionCategory(IGNORED_POSITION_CATEGORY)) {
+				document.addPositionCategory(IGNORED_POSITION_CATEGORY);
+				IPositionUpdater updater = new DefaultPositionUpdater(IGNORED_POSITION_CATEGORY);
+				document.addPositionUpdater(updater);
+			}
+			Position position = new Position(originalLineOffset, 0);
+			document.addPosition(IGNORED_POSITION_CATEGORY, position);
+			ignoredLinePositions.put(key, new TrackedPosition(document, position));
+			return originalLineOffset;
+		} catch (BadLocationException | BadPositionCategoryException e) {
+			return originalLineOffset;
+		}
+	}
 
 	/**
 	 * Normalize file path for consistent key lookups in fileAnnotations map.
@@ -293,10 +343,6 @@ public class ProblemDecorator {
 					if (!normalizedPath.equals(ref.getPath())) {
 						continue;
 					}
-					if (activeLines.contains(ref.getLine())) {
-						// An active (non-ignored) finding already owns this line this pass.
-						continue;
-					}
 
 					int zeroBasedLine = ref.getLine() - 1;
 					if (zeroBasedLine < 0 || zeroBasedLine >= document.getNumberOfLines()) {
@@ -305,7 +351,16 @@ public class ProblemDecorator {
 
 					try {
 						IRegion lineInfo = document.getLineInformation(zeroBasedLine);
-						Position pos = new Position(lineInfo.getOffset(), 0);
+						String trackingKey = normalizedPath + "#" + entry.getTitle() + "#" + ref.getLine();
+						int trackedOffset = resolveTrackedIgnoredOffset(document, trackingKey, lineInfo.getOffset());
+						int currentLine = document.getLineOfOffset(trackedOffset) + 1;
+
+						if (activeLines.contains(currentLine)) {
+							// An active (non-ignored) finding already owns this line this pass.
+							continue;
+						}
+
+						Position pos = new Position(trackedOffset, 0);
 
 						String description = entry.getDescription() != null ? entry.getDescription()
 								: entry.getPackageName();

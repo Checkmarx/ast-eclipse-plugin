@@ -41,9 +41,11 @@ public final class IgnoreManager {
     }
 
     /**
-     * Adds an entry to the ignore file.
-     * After clicking on the ignore this vulnerability butten
-     * Removes the corresponding scan issue from the problem holder.
+     * Adds an entry to the ignore file for this specific occurrence only (this
+     * file). If the same vulnerability (by key) is already ignored elsewhere
+     * (e.g. via "ignore all" or a previous "ignore this" in another file), the
+     * existing entry's file list is merged into rather than replaced, so
+     * ignoring in one file never clears an ignore already recorded for another.
      *
      * @param issueToIgnore The scan issue to ignore
      * @param clickId       The ID of the clicked action or vulnerability, used to retrieve additional details
@@ -56,8 +58,15 @@ public final class IgnoreManager {
             CxLogger.info("RTS-Ignore: Ignoring vulnerability failed. Vulnerability key is empty.");
             return;
         }
-        // Convert ScanIssue → IgnoreEntry
-        IgnoreEntry ignoreEntry = buildIgnoreEntry(issueToIgnore, clickId);
+        IgnoreEntry existingEntry = ignoreFileManager.getIgnoreData().get(vulnerabilityKey);
+        IgnoreEntry ignoreEntry;
+        if (existingEntry != null) {
+            ignoreEntry = existingEntry;
+            upsertFileReference(ignoreEntry, issueToIgnore);
+        } else {
+            // Convert ScanIssue → IgnoreEntry (includes this occurrence's file reference)
+            ignoreEntry = buildIgnoreEntry(issueToIgnore, clickId);
+        }
         if (Objects.isNull(ignoreEntry)) {
             // Notification removed: use Eclipse MessageDialog instead
             return;
@@ -67,6 +76,30 @@ public final class IgnoreManager {
 //         scanFileAndUpdateResults(issueToIgnore.getFilePath(), issueToIgnore.getScanEngine());
 //         showIgnoreSuccessNotification(project, issueToIgnore, vulnerabilityKey);
         CxLogger.info(String.format("RTS-Ignore: Successfully added ignore entry for issue: %s", issueToIgnore.getTitle()));
+    }
+
+    /**
+     * Adds (or reactivates) a single file reference on an existing ignore
+     * entry for the given issue's file, without touching any other file's
+     * reference already recorded on that entry.
+     */
+    private void upsertFileReference(IgnoreEntry entry, ScanIssue issue) {
+        if (issue.getLocations() == null || issue.getLocations().isEmpty()) {
+            return;
+        }
+        String path = ignoreFileManager.normalizePath(issue.getFilePath());
+        int line = issue.getLocations().get(0).getLine();
+        if (entry.files == null) {
+            entry.files = new ArrayList<>();
+        }
+        for (IgnoreEntry.FileReference ref : entry.files) {
+            if (path.equals(ref.getPath())) {
+                ref.setActive(true);
+                ref.setLine(line);
+                return;
+            }
+        }
+        entry.files.add(new IgnoreEntry.FileReference(path, true, line, ""));
     }
 
 
@@ -83,36 +116,57 @@ public final class IgnoreManager {
      * @param clickId       The ID that was clicked to trigger the ignore action
      */
     public void addAllIgnoredEntry(ScanIssue issueToIgnore, String clickId) {
-        CxLogger.info(String.format("RTS-Ignore: Adding ignore entry for issue: %s", issueToIgnore.getTitle()));
-        String vulnerabilityKey = createJsonKeyForIgnoreEntry(issueToIgnore, clickId);
-        CxLogger.info("RTS-Ignore: Ignoring all vulnerabilities for: " + vulnerabilityKey);
-        Map<String, List<ScanIssue>> allIssues = new HashMap<>();
-        for (Map.Entry<String, List<ScanIssue>> entry : problemHolder.getAllScanIssues().entrySet()) {
-            allIssues.put(entry.getKey(), new ArrayList<>(entry.getValue()));
-        }
-        if (allIssues.isEmpty()) return;
-        IgnoreEntry ignoreEntry = buildIgnoreEntry(issueToIgnore, clickId);
-        if (Objects.isNull(ignoreEntry)) {
-            // Notification removed: use Eclipse MessageDialog instead
-            return;
-        }
-        List<IgnoreEntry.FileReference> fileRefs = new ArrayList<>();
-        for (List<ScanIssue> issues : allIssues.values()) {  // Safe: allIssues never mutates
-            issues.removeIf(issue -> {
-                if (!createJsonKeyForIgnoreEntry(issue, clickId).equals(vulnerabilityKey)) return false;
-                // Mutate LIVE problemHolder (async-safe)
+        try {
+            CxLogger.info(String.format("RTS-Ignore: Adding ignore entry for issue: %s", issueToIgnore.getTitle()));
+            String vulnerabilityKey = createJsonKeyForIgnoreEntry(issueToIgnore, clickId);
+            CxLogger.info("RTS-Ignore: Ignoring all vulnerabilities for: " + vulnerabilityKey);
+            if (vulnerabilityKey.isEmpty()) {
+                CxLogger.info("RTS-Ignore: Ignoring all vulnerabilities failed. Vulnerability key is empty.");
+                return;
+            }
+            Map<String, List<ScanIssue>> allIssues = new HashMap<>();
+            for (Map.Entry<String, List<ScanIssue>> entry : problemHolder.getAllScanIssues().entrySet()) {
+                allIssues.put(entry.getKey(), new ArrayList<>(entry.getValue()));
+            }
+            if (allIssues.isEmpty()) return;
+            IgnoreEntry ignoreEntry = buildIgnoreEntry(issueToIgnore, clickId);
+            if (Objects.isNull(ignoreEntry)) {
+                // Notification removed: use Eclipse MessageDialog instead
+                return;
+            }
+            List<IgnoreEntry.FileReference> fileRefs = new ArrayList<>();
+            for (List<ScanIssue> issues : allIssues.values()) {  // Safe: allIssues never mutates
+                for (ScanIssue issue : issues) {
+                    // Issues missing a location (e.g. malformed/partial entries) can't be
+                    // matched by key reliably and have no line to record - skip them
+                    // instead of letting a single bad issue abort ignoring every match.
+                    if (issue == null || issue.getLocations() == null || issue.getLocations().isEmpty()) {
+                        continue;
+                    }
+                    if (!createJsonKeyForIgnoreEntry(issue, clickId).equals(vulnerabilityKey)) {
+                        continue;
+                    }
+                    fileRefs.add(new IgnoreEntry.FileReference(
+                            ignoreFileManager.normalizePath(issue.getFilePath()),
+                            true,
+                            issue.getLocations().get(0).getLine(), ""));
+                }
+            }
+            // Guarantee the clicked occurrence itself is covered even if it was
+            // somehow absent from the problemHolder snapshot above.
+            String clickedPath = ignoreFileManager.normalizePath(issueToIgnore.getFilePath());
+            boolean clickedCovered = fileRefs.stream().anyMatch(ref -> clickedPath.equals(ref.getPath()));
+            if (!clickedCovered && issueToIgnore.getLocations() != null && !issueToIgnore.getLocations().isEmpty()) {
                 fileRefs.add(new IgnoreEntry.FileReference(
-                        ignoreFileManager.normalizePath(issue.getFilePath()),
-                        true,
-                        issue.getLocations().get(0).getLine(), ""));
-//                 scanFileAndUpdateResults(issue.getFilePath(), issue.getScanEngine());
-                return true;
-            });
+                        clickedPath, true, issueToIgnore.getLocations().get(0).getLine(), ""));
+            }
+            ignoreEntry.files = fileRefs;
+            ignoreFileManager.updateIgnoreData(vulnerabilityKey, ignoreEntry);
+            CxLogger.info(String.format("RTS-Ignore: Successfully added ignore entry for issue: %s", issueToIgnore.getTitle()));
+        } catch (Exception e) {
+            CxLogger.warning("RTS-Ignore: Failed to add ignore-all entry for issue: "
+                    + (issueToIgnore != null ? issueToIgnore.getTitle() : "unknown") + " - " + e.getMessage());
         }
-        ignoreEntry.files = fileRefs;
-        ignoreFileManager.updateIgnoreData(vulnerabilityKey, ignoreEntry);
-        CxLogger.info(String.format("RTS-Ignore: Successfully added ignore entry for issue: %s", issueToIgnore.getTitle()));
-//         showIgnoreSuccessNotification(project, issueToIgnore, vulnerabilityKey);
     }
 
 
@@ -243,18 +297,33 @@ public final class IgnoreManager {
     }
 
     /**
-     * Checks whether the given scan issue is currently ignored, based on the same
-     * composite key used to add/lookup entries in the ignore file.
+     * Checks whether the given scan issue is currently ignored: the composite
+     * vulnerability key must match AND the entry must have an active file
+     * reference for this issue's specific file. This makes "ignore this" scoped
+     * to the file it was ignored from (an entry with one active file reference
+     * only hides the finding in that file), while "ignore all of this type"
+     * (which records an active reference per matching file) hides it everywhere,
+     * matching the {@code .checkmarxIgnored} files array's path/active/line
+     * per-occurrence tracking.
      *
      * @param issue The scan issue to check
-     * @return true if an active ignore entry exists for this issue
+     * @return true if an active ignore entry exists for this issue's file
      */
     public boolean isIgnored(ScanIssue issue) {
         if (issue == null) {
             return false;
         }
         String key = createJsonKeyForIgnoreEntry(issue, "");
-        return !key.isEmpty() && ignoreFileManager.isIgnored(key);
+        if (key.isEmpty()) {
+            return false;
+        }
+        IgnoreEntry entry = ignoreFileManager.getIgnoreData().get(key);
+        if (entry == null || entry.files == null) {
+            return false;
+        }
+        String normalizedPath = ignoreFileManager.normalizePath(issue.getFilePath());
+        return entry.files.stream()
+                .anyMatch(ref -> ref.isActive() && normalizedPath.equals(ref.getPath()));
     }
 
     /**

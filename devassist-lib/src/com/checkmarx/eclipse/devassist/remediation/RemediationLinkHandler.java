@@ -60,11 +60,10 @@ public class RemediationLinkHandler {
             return false;
         }
 
+        // Note: the scanIssue is already known here, so unlike the other handleLink()
+        // overload, a missing engine-name segment (e.g. links built without it, such as
+        // "ignorethis"/"ignoreallofthis") must not block the action from running.
         String engineName = extractEngineName(linkData);
-        if (Objects.isNull(engineName) || engineName.isEmpty()) {
-            CxLogger.warning("RTS-Fix: Remediation action failed, Scan engine name not found in remediation link: " + link);
-            return false;
-        }
 
         CxLogger.info(format("RTS-Fix: %s Remediation action called for engine: %s with issue id: %s", action, engineName, scanIssueId));
 
@@ -127,35 +126,51 @@ public class RemediationLinkHandler {
      * @return true if the action is successfully handled, false otherwise
      */
     private boolean handleActions(@NonNull String action, @NonNull ScanIssue scanIssue, @NonNull String actionId) {
-        // Note: Commented code sections below are preserved as requested for future use
-        // when dependencies become available (IgnoreManager, TelemetryService)
-
         switch (action) {
             case FIX:
-//                TelemetryService.logFixWithCxOneAssistAction(scanIssue);
                 remediationManager.fixWithCxOneAssist(scanIssue, actionId);
                 break;
             case VIEW_DETAILS:
-//                TelemetryService.logViewDetailsAction(scanIssue);
                 remediationManager.viewDetails(scanIssue, actionId);
                 break;
-            case IGNORE_THIS_TYPE:
-//                IgnoreManager ignoremanager = IgnoreManager.getInstance(project);
-//                ignoremanager.addIgnoredEntry(scanIssue, actionId);
-//                TelemetryService.logIgnorePackageAction(scanIssue);
-                CxLogger.warning("RTS-Fix: IGNORE_THIS_TYPE action not yet implemented");
+            case IGNORE_THIS_TYPE: {
+                org.eclipse.core.resources.IProject project = getActiveProject();
+                if (Objects.isNull(project)) {
+                    CxLogger.warning("RTS-Fix: Remediation action failed, no active project found for IGNORE_THIS_TYPE");
+                    return false;
+                }
+                com.checkmarx.eclipse.devassist.ignore.IgnoreManager.getInstance(project).addIgnoredEntry(scanIssue, actionId);
                 break;
-            case IGNORE_ALL_OF_THIS_TYPE:
-//                IgnoreManager ignoremanager = IgnoreManager.getInstance(project);
-//                ignoremanager.addAllIgnoredEntry(scanIssue, actionId);
-//                TelemetryService.logIgnoreAllAction(scanIssue);
-                CxLogger.warning("RTS-Fix: IGNORE_ALL_OF_THIS_TYPE action not yet implemented");
+            }
+            case IGNORE_ALL_OF_THIS_TYPE: {
+                org.eclipse.core.resources.IProject project = getActiveProject();
+                if (Objects.isNull(project)) {
+                    CxLogger.warning("RTS-Fix: Remediation action failed, no active project found for IGNORE_ALL_OF_THIS_TYPE");
+                    return false;
+                }
+                com.checkmarx.eclipse.devassist.ignore.IgnoreManager.getInstance(project).addAllIgnoredEntry(scanIssue, actionId);
                 break;
+            }
             default:
                 CxLogger.warning(format("RTS-Fix: Remediation action %s is not supported", action));
                 return false;
         }
         return true;
+    }
+
+    /**
+     * Resolves the active project the same way {@code CxFindingsView} does
+     * (single-project workspace assumption used throughout the ignore/revive feature).
+     */
+    @Nullable
+    private org.eclipse.core.resources.IProject getActiveProject() {
+        org.eclipse.core.resources.IProject[] projects = ResourcesPlugin.getWorkspace().getRoot().getProjects();
+        for (org.eclipse.core.resources.IProject project : projects) {
+            if (project.isOpen()) {
+                return project;
+            }
+        }
+        return null;
     }
 
     /**

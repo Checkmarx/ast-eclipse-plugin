@@ -450,10 +450,20 @@ public final class IgnoreFileManager {
      * @return
      */
     public String normalizePath(String filePath) {
-        return Path.of(workspaceRootPath)
-                .relativize(Paths.get(filePath))
-                .toString()
-                .replace("\\", "/");
+        if (filePath == null || filePath.isEmpty()) {
+            return "";
+        }
+        try {
+            return Path.of(workspaceRootPath)
+                    .relativize(Paths.get(filePath))
+                    .toString()
+                    .replace("\\", "/");
+        } catch (Exception e) {
+            // Malformed/foreign path (e.g. a different filesystem root) - fall back to
+            // the raw path rather than throwing, so callers that iterate over many
+            // issues (e.g. "ignore all of this type") don't abort partway through.
+            return filePath.replace("\\", "/");
+        }
     }
 
     private void handleFileChange() {
