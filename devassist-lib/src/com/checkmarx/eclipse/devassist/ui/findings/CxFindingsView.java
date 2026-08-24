@@ -55,6 +55,7 @@ import com.checkmarx.eclipse.devassist.ui.findings.actions.VulnerabilityFilterAc
 import com.checkmarx.eclipse.devassist.ui.findings.actions.VulnerabilityFilterState;
 import com.checkmarx.eclipse.devassist.ignore.IgnoreFileManager;
 import com.checkmarx.eclipse.devassist.ignore.IgnoreManager;
+import com.checkmarx.eclipse.devassist.telemetry.TelemetryService;
 import com.checkmarx.eclipse.common.utils.CxLogger;
 
 import java.util.List;
@@ -631,6 +632,7 @@ public class CxFindingsView extends ViewPart {
 			// Use IgnoreManager to add the issue (matches JetBrains implementation)
 			IgnoreManager ignoreManager = IgnoreManager.getInstance(currentProject);
 			ignoreManager.addIgnoredEntry(issue, DevAssistConstants.QUICK_FIX);
+			TelemetryService.logIgnorePackageAction(issue);
 
 			// Refresh the tree to remove the ignored finding from the view
 			refreshTreeWithFilter();
@@ -662,6 +664,7 @@ public class CxFindingsView extends ViewPart {
 			// Use IgnoreManager to add all matching issues (matches JetBrains implementation)
 			IgnoreManager ignoreManager = IgnoreManager.getInstance(currentProject);
 			ignoreManager.addAllIgnoredEntry(issue, DevAssistConstants.QUICK_FIX);
+			TelemetryService.logIgnoreAllAction(issue);
 
 			// Refresh the tree to remove the ignored findings from the view
 			refreshTreeWithFilter();
@@ -994,6 +997,7 @@ public class CxFindingsView extends ViewPart {
 			@Override
 			public void widgetSelected(org.eclipse.swt.events.SelectionEvent e) {
 				new RemediationManager().fixWithCxOneAssist(issue, DevAssistConstants.QUICK_FIX);
+				TelemetryService.logFixWithCxOneAssistAction(issue);
 			}
 		});
 
@@ -1005,6 +1009,7 @@ public class CxFindingsView extends ViewPart {
 			@Override
 			public void widgetSelected(org.eclipse.swt.events.SelectionEvent e) {
 				new RemediationManager().viewDetails(issue, DevAssistConstants.QUICK_FIX);
+				TelemetryService.logViewDetailsAction(issue);
 			}
 		});
 
