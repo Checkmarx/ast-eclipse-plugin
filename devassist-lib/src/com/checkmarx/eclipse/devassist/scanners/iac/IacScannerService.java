@@ -1,30 +1,36 @@
 package com.checkmarx.eclipse.devassist.scanners.iac;
 
-import com.checkmarx.ast.iacrealtime.IacRealtimeResults;
-import com.checkmarx.ast.wrapper.CxException;
-import com.checkmarx.eclipse.devassist.basescanner.BaseScannerService;
-import com.checkmarx.eclipse.devassist.common.ScanResult;
-import com.checkmarx.eclipse.devassist.common.ScannerConfig;
-import com.checkmarx.eclipse.devassist.factory.CxWrapperFactory;
-import com.checkmarx.eclipse.devassist.model.ScanIssue;
-import com.checkmarx.eclipse.devassist.model.ScanEngine;
-import com.checkmarx.eclipse.devassist.utils.DevAssistUtils;
-import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
-import com.checkmarx.eclipse.common.utils.CxLogger;
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.PathMatcher;
+import java.nio.file.Paths;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.time.LocalTime;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import org.apache.commons.lang3.tuple.Pair;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.jface.text.Document;
 import org.eclipse.jface.text.IDocument;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.*;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.time.LocalTime;
-import java.util.*;
-import java.util.stream.Collectors;
+import com.checkmarx.ast.iacrealtime.IacRealtimeResults;
+import com.checkmarx.eclipse.common.utils.CxLogger;
+import com.checkmarx.eclipse.common.wrapper.WrapperProvider;
+import com.checkmarx.eclipse.devassist.basescanner.BaseScannerService;
+import com.checkmarx.eclipse.devassist.common.ScanResult;
+import com.checkmarx.eclipse.devassist.common.ScannerConfig;
+import com.checkmarx.eclipse.devassist.model.ScanEngine;
+import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
+import com.checkmarx.eclipse.devassist.utils.DevAssistUtils;
 
 /**
  * Realtime IaC scanner service for Eclipse.
@@ -39,6 +45,7 @@ public class IacScannerService extends BaseScannerService<IacRealtimeResults> {
     private static final String IAC_DIR = "CxIaC";
     private static final String DOCKERFILE = "dockerfile";
     private static final Object SCAN_LOCK = new Object();
+    private final WrapperProvider wrapperProvider = new WrapperProvider();
 
     // Supported glob patterns for IaC files
     private static final List<String> IAC_SUPPORTED_PATTERNS = List.of(
@@ -137,16 +144,15 @@ public class IacScannerService extends BaseScannerService<IacRealtimeResults> {
                     String tempFilePath = saveResult.getLeft().toString();
                     CxLogger.info(LOG_TAG + " Start IAC Realtime Scan On File: " + filePath);
 
-                    String containerTool = "docker";
 //                    String ignoreFilePath = getIgnoreFilePath(proj);
 
                     IacRealtimeResults scanResults = null;
 					try {
-						scanResults = CxWrapperFactory.build()
-						        .iacRealtimeScan(tempFilePath, containerTool, "");
+						scanResults = wrapperProvider
+						        .iacRealtimeScan(tempFilePath, DevAssistUtils.getContainerTool(), "");
 					} catch (Exception e) {
 						// TODO Auto-generated catch block
-						e.printStackTrace();
+						CxLogger.warning(String.format("%s Exception occurred while IAC scan for file %s: %s", LOG_TAG, filePath, e.getMessage()));
 					}
 
                     if (scanResults == null) {

@@ -201,11 +201,10 @@ public class RealTimeScanJob extends Job {
 	}
 
 	/**
-	 * Check if user is authenticated by checking if API key is configured.
+	 * Check if user is authenticated to Checkmarx One.
 	 */
 	private boolean isUserAuthenticated() {
-		String apiKey = com.checkmarx.eclipse.common.preferences.Preferences.getApiKey();
-		return apiKey != null && !apiKey.trim().isEmpty();
+		return com.checkmarx.eclipse.common.preferences.Preferences.isAuthenticated();
 	}
 
 	@Override

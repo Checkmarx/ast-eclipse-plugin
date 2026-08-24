@@ -11,6 +11,8 @@ import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.ui.preferences.ScopedPreferenceStore;
 
 import com.checkmarx.eclipse.common.listener.IAuthenticationSuccessHandler;
+import com.checkmarx.eclipse.common.listener.IMcpInstallHandler;
+import com.checkmarx.eclipse.common.listener.IMcpUninstallHandler;
 import com.checkmarx.eclipse.common.listener.ISettingsChangeNotifier;
 import com.checkmarx.eclipse.common.listener.IWorkspaceScanService;
 
@@ -54,6 +56,12 @@ public class Preferences {
     // Service for triggering workspace scans (registered by main plugin)
     private static IWorkspaceScanService workspaceScanService;
 
+    // Handler for installing the Checkmarx MCP server configuration (registered by devassist-lib)
+    private static IMcpInstallHandler mcpInstallHandler;
+
+    // Handler for uninstalling the Checkmarx MCP server configuration (registered by devassist-lib)
+    private static IMcpUninstallHandler mcpUninstallHandler;
+
     private Preferences() {
     }
 
@@ -74,17 +82,22 @@ public class Preferences {
         STORE.setValue(key, value);
     }
 
-    public static void clearApiKey() {
-        STORE.setValue(API_KEY, "");
-        STORE.setValue(CREDENTIALS_VALIDATED, false);
-    }
-
     public static boolean isCredentialsValidated() {
         return STORE.getBoolean(CREDENTIALS_VALIDATED);
     }
 
     public static void setCredentialsValidated(boolean validated) {
         STORE.setValue(CREDENTIALS_VALIDATED, validated);
+    }
+
+    /**
+     * Single source of truth for "is the user logged in", independent of which credential
+     * type produced that state. Callers across the plugin should check this - not API key
+     * presence - so that a future auth method (e.g. OAuth) only needs to set/clear this same
+     * flag to plug into every existing authenticated-only code path.
+     */
+    public static boolean isAuthenticated() {
+        return isCredentialsValidated();
     }
 
     public static void setAuthenticationSuccessHandler(IAuthenticationSuccessHandler handler) {
@@ -109,6 +122,22 @@ public class Preferences {
 
     public static IWorkspaceScanService getWorkspaceScanService() {
         return workspaceScanService;
+    }
+
+    public static void setMcpInstallHandler(IMcpInstallHandler handler) {
+        mcpInstallHandler = handler;
+    }
+
+    public static IMcpInstallHandler getMcpInstallHandler() {
+        return mcpInstallHandler;
+    }
+
+    public static void setMcpUninstallHandler(IMcpUninstallHandler handler) {
+        mcpUninstallHandler = handler;
+    }
+
+    public static IMcpUninstallHandler getMcpUninstallHandler() {
+        return mcpUninstallHandler;
     }
 
     // ============================================================================

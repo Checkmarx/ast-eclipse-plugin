@@ -2898,9 +2898,10 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				return;
 			}
 			String currentApiKey = Preferences.STORE.getString(Preferences.API_KEY);
+			boolean isAuthenticated = Preferences.isAuthenticated();
 
 			// Handle case: credentials just set (plugin panel not yet drawn)
-			if (!currentApiKey.isEmpty() && !isPluginDraw) {
+			if (isAuthenticated && !isPluginDraw) {
 				CxLogger.info("Credentials detected, drawing plugin panel");
 				drawPluginPanel();
 				lastApiKey = currentApiKey;
@@ -2908,7 +2909,7 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 			}
 
 			// Handle case: credentials just removed (plugin panel is drawn)
-			if (currentApiKey.isEmpty() && isPluginDraw) {
+			if (!isAuthenticated && isPluginDraw) {
 				CxLogger.info("Credentials removed, showing missing credentials panel");
 				updateStartScanButton(false);
 				drawMissingCredentialsPanel();
@@ -2922,15 +2923,15 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				return;
 			}
 
-			// Handle case: no credentials and panel not drawn (initial state)
-			if (currentApiKey.isEmpty() && !isPluginDraw) {
+			// Handle case: not authenticated and panel not drawn (initial state)
+			if (!isAuthenticated && !isPluginDraw) {
 				// Already showing missing credentials panel, nothing to do
 				lastApiKey = currentApiKey;
 				return;
 			}
 
 			// Handle case: API key changed but still authenticated (plugin already drawn)
-			if (!currentApiKey.isEmpty() && isPluginDraw) {
+			if (isAuthenticated && isPluginDraw) {
 				if (lastApiKey != null && lastApiKey.equalsIgnoreCase(currentApiKey)) {
 					// Same credentials, no reload needed
 					return;

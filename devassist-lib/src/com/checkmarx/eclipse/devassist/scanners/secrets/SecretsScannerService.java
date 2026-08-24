@@ -1,29 +1,34 @@
 package com.checkmarx.eclipse.devassist.scanners.secrets;
 
-import com.checkmarx.ast.secretsrealtime.SecretsRealtimeResults;
-import com.checkmarx.ast.wrapper.CxException;
-import com.checkmarx.eclipse.devassist.basescanner.BaseScannerService;
-import com.checkmarx.eclipse.devassist.common.ScanResult;
-import com.checkmarx.eclipse.devassist.common.ScannerConfig;
-import com.checkmarx.eclipse.devassist.factory.CxWrapperFactory;
-import com.checkmarx.eclipse.devassist.model.ScanIssue;
-import com.checkmarx.eclipse.devassist.model.ScanEngine;
-import com.checkmarx.eclipse.devassist.utils.DevAssistUtils;
-import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
-import com.checkmarx.eclipse.common.utils.CxLogger;
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.PathMatcher;
+import java.nio.file.Paths;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.time.LocalTime;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
 import org.eclipse.core.resources.IProject;
 import org.eclipse.jface.text.Document;
 import org.eclipse.jface.text.IDocument;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.*;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.time.LocalTime;
-import java.util.*;
-import java.util.stream.Collectors;
+import com.checkmarx.ast.secretsrealtime.SecretsRealtimeResults;
+import com.checkmarx.eclipse.common.utils.CxLogger;
+import com.checkmarx.eclipse.common.wrapper.WrapperProvider;
+import com.checkmarx.eclipse.devassist.basescanner.BaseScannerService;
+import com.checkmarx.eclipse.devassist.common.ScanResult;
+import com.checkmarx.eclipse.devassist.common.ScannerConfig;
+import com.checkmarx.eclipse.devassist.model.ScanEngine;
+import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
 
 /**
  * Realtime Secrets scanner service for Eclipse.
@@ -37,6 +42,7 @@ public class SecretsScannerService extends BaseScannerService<SecretsRealtimeRes
     private static final String LOG_TAG = "[SECRETS-SERVICE]";
     private static final String SECRETS_DIR = "CxSecrets";
     private static final Object SCAN_LOCK = new Object();
+    private final WrapperProvider wrapperProvider = new WrapperProvider();
 
     // Glob patterns for manifest files that should be excluded from Secrets scanning
     private static final List<String> MANIFEST_FILE_PATTERNS = List.of(
@@ -127,7 +133,7 @@ public class SecretsScannerService extends BaseScannerService<SecretsRealtimeRes
                 CxLogger.info(LOG_TAG + " Starting scan: " + filePath);
 //                String ignoreFilePath = getIgnoreFilePath(proj);
 
-                SecretsRealtimeResults scanResults = CxWrapperFactory.build()
+                SecretsRealtimeResults scanResults = wrapperProvider
                         .secretsRealtimeScan(tempFilePath.get(), "");
 
                 if (scanResults == null) {

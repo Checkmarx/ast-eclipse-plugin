@@ -34,7 +34,6 @@ import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.ImageData;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
-import org.apache.commons.lang3.StringUtils;
 
 import com.checkmarx.eclipse.devassist.ui.findings.provider.FindingsContentProvider;
 import com.checkmarx.eclipse.devassist.ui.findings.provider.FindingsLabelProvider;
@@ -143,7 +142,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 			return;
 		}
 
-		if (StringUtils.isBlank(Preferences.getApiKey())) {
+		if (!Preferences.isAuthenticated()) {
 			drawMissingCredentialsPanel(parentComposite);
 		} else {
 			loadCachedIssues();

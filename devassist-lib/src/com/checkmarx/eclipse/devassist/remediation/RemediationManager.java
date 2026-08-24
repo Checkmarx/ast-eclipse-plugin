@@ -8,13 +8,13 @@ import java.util.Objects;
 import org.eclipse.jgit.annotations.NonNull;
 import org.eclipse.jgit.annotations.Nullable;
 import org.eclipse.swt.widgets.Display;
-import org.slf4j.Logger;
 
 import com.checkmarx.eclipse.common.utils.CxLogger;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.model.Vulnerability;
 import com.checkmarx.eclipse.devassist.utils.DevAssistUtils;
+import com.checkmarx.eclipse.devassist.utils.PackageManager;
 
 /**
  * RemediationManager provides remediation options for issues identified during
@@ -209,8 +209,9 @@ public final class RemediationManager {
 	 * Builds remediation prompt for an OSS issue.
 	 */
 	private String buildOSSRemediationPrompt(ScanIssue scanIssue) {
+
 		return DevAssistFixPrompts.buildSCARemediationPrompt(scanIssue.getTitle(), scanIssue.getPackageVersion(),
-				scanIssue.getPackageManager(), scanIssue.getSeverity());
+				PackageManager.mapToRemediationFormat(scanIssue.getPackageManager()), scanIssue.getSeverity());
 	}
 
 	/**
