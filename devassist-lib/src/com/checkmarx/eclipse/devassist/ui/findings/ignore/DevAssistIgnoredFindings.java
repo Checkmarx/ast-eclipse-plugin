@@ -257,15 +257,8 @@ public class DevAssistIgnoredFindings extends ViewPart {
         List<IgnoreEntry> entriesToRevive = new ArrayList<>(selectedEntries);
         CxLogger.info("[IGNORED_FINDINGS] Created copy of selectedEntries: " + entriesToRevive.size() + " entries");
 
-        for (IgnoreEntry entry : entriesToRevive) {
-            try {
-                CxLogger.info("[IGNORED_FINDINGS] Reviving entry: " + entry.getPackageName() + " (type: " + entry.getType() + ")");
-                IgnoreManager.getInstance(currentProject).reviveSingleEntry(entry);
-                CxLogger.info("[IGNORED_FINDINGS] Successfully revived: " + entry.getPackageName());
-            } catch (Exception e) {
-                CxLogger.warning("[IGNORED_FINDINGS] Error reviving " + entry.getPackageName() + ": " + e.getMessage());
-            }
-        }
+        // Use bulk revive instead of single revive to batch save operations
+        IgnoreManager.getInstance(currentProject).reviveMultipleEntries(entriesToRevive);
 
         CxLogger.info("[IGNORED_FINDINGS] All " + entriesToRevive.size() + " entries processed");
         CxLogger.info("[IGNORED_FINDINGS] Refreshing table...");

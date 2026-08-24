@@ -337,6 +337,22 @@ public final class IgnoreFileManager {
      * @return true if the package was found and revived, false otherwise
      */
     public boolean reviveEntry(IgnoreEntry entryToRevive) {
+        boolean success = reviveEntryInternal(entryToRevive);
+        if (success) {
+            saveIgnoreFile();
+            updateIgnoreTempList();
+        }
+        return success;
+    }
+
+    /**
+     * Internal method to revive an entry without saving to disk.
+     * Used by batch operations that need to revive multiple entries before saving once.
+     *
+     * @param entryToRevive The unique key identifying the ignored package
+     * @return true if the package was found and revived, false otherwise
+     */
+    private boolean reviveEntryInternal(IgnoreEntry entryToRevive) {
         String entryKey = ignoreData.entrySet().stream()
                 .filter(e -> matchesEntry(e.getValue(), entryToRevive))
                 .map(Map.Entry::getKey)
@@ -351,8 +367,6 @@ public final class IgnoreFileManager {
         for (IgnoreEntry.FileReference file : actualEntry.getFiles()) {
             file.active = false;
         }
-        saveIgnoreFile();
-        updateIgnoreTempList();
         CxLogger.info("RTS-Ignore: Revived package: " + packageName);
         return true;
     }
@@ -464,6 +478,7 @@ public final class IgnoreFileManager {
      *         in-memory state was left untouched and no reconciliation ran.
      */
     public boolean refreshFromDisk() {
+        Map<String, IgnoreEntry> beforeIgnoreData = copyIgnoreData(ignoreData);
         if (!loadIgnoreDataInternal()) {
             // Transient read failure (e.g. watcher observed a mid-write state) -
             // ignoreData was left untouched, so there is nothing real to react to
@@ -473,7 +488,33 @@ public final class IgnoreFileManager {
         }
         detectAndHandleActiveChanges();
         previousIgnoreData = copyIgnoreData(ignoreData);
-        notifyListeners();
+
+        // Only notify listeners if the ignore data actually changed
+        if (!ignoreDataEquals(beforeIgnoreData, ignoreData)) {
+            notifyListeners();
+        }
+        return true;
+    }
+
+    private boolean ignoreDataEquals(Map<String, IgnoreEntry> map1, Map<String, IgnoreEntry> map2) {
+        if (map1.size() != map2.size()) {
+            return false;
+        }
+        for (String key : map1.keySet()) {
+            if (!map2.containsKey(key)) {
+                return false;
+            }
+            // Compare JSON serialization for deep equality
+            try {
+                String json1 = MAPPER.writeValueAsString(map1.get(key));
+                String json2 = MAPPER.writeValueAsString(map2.get(key));
+                if (!json1.equals(json2)) {
+                    return false;
+                }
+            } catch (IOException e) {
+                return false;
+            }
+        }
         return true;
     }
 

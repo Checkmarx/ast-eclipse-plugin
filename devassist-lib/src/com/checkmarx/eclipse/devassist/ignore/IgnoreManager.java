@@ -148,52 +148,98 @@ public final class IgnoreManager {
 
     /**
      * Revives multiple ignored vulnerabilities in bulk.
-     * Shows a summary notification to the user and triggers rescans for all affected files.
+     * Batches all the revive operations together and saves to disk once at the end,
+     * then triggers rescans for all affected files.
      *
-     * @param entriesToRevive List of package keys to revive
+     * @param entriesToRevive List of entries to revive
      */
     public void reviveMultipleEntries(List<IgnoreEntry> entriesToRevive) {
         if (entriesToRevive == null || entriesToRevive.isEmpty()) {
             CxLogger.warning("RTS-Ignore: No package keys provided for bulk revive");
             return;
         }
+        CxLogger.info(format("RTS-Ignore: Bulk reviving %d entries", entriesToRevive.size()));
+
         int successCount = 0;
         int totalFileCount = 0;
         List<IgnoreEntry> failedIgnoreEntry = new ArrayList<>();
+        List<IgnoreEntry> revivedEntries = new ArrayList<>();
 
+        // Revive all entries in memory first (without individual saves)
         for (IgnoreEntry entryToRevive : entriesToRevive) {
             int fileCount = (int) entryToRevive.files.stream()
                     .filter(f -> f.active)
                     .count();
-            boolean success = ignoreFileManager.reviveEntry(entryToRevive);
+            // Use internal revive that doesn't save to disk
+            boolean success = reviveSingleEntryInternal(entryToRevive);
             if (success) {
                 successCount++;
                 totalFileCount += fileCount;
-                // Trigger rescan for affected files
-                triggerRescanForEntry(entryToRevive);
-                CxLogger.info(String.format("RTS-Ignore: Successfully revived entry: %s", entryToRevive.getTitle()));
+                revivedEntries.add(entryToRevive);
+                CxLogger.info(String.format("RTS-Ignore: Successfully revived in memory: %s", entryToRevive.getPackageName()));
             } else {
                 failedIgnoreEntry.add(entryToRevive);
-                CxLogger.warning(String.format("RTS-Ignore: Failed to revive entry: %s", entryToRevive.getTitle()));
+                CxLogger.warning(String.format("RTS-Ignore: Failed to revive entry: %s", entryToRevive.getPackageName()));
             }
         }
-        // Show summary notification
+
+        // Save to disk once after all revives
         if (successCount > 0) {
-            String message;
-            if (successCount == 1) {
-                message = String.format("Revived 1 vulnerability in %d file%s",
-                        totalFileCount, totalFileCount == 1 ? "" : "s");
-            } else {
-                message = String.format("Revived %d vulnerabilities in %d file%s",
-                        successCount, totalFileCount, totalFileCount == 1 ? "" : "s");
-            }
-            if (!failedIgnoreEntry.isEmpty()) {
-                message += String.format(" (%d failed)", failedIgnoreEntry.size());
-            }
-            // Notification removed: use Eclipse MessageDialog instead
-        } else {
-            // Notification removed: use Eclipse MessageDialog instead
+            ignoreFileManager.saveIgnoreDataToDisk();
+            CxLogger.info(format("RTS-Ignore: Saved all %d revived entries to disk", successCount));
         }
+
+        // Trigger rescans for all revived entries
+        for (IgnoreEntry entry : revivedEntries) {
+            triggerRescanForEntry(entry);
+        }
+
+        // Log summary
+        String message;
+        if (successCount == 1) {
+            message = String.format("Revived 1 vulnerability in %d file%s",
+                    totalFileCount, totalFileCount == 1 ? "" : "s");
+        } else if (successCount > 1) {
+            message = String.format("Revived %d vulnerabilities in %d file%s",
+                    successCount, totalFileCount, totalFileCount == 1 ? "" : "s");
+        } else {
+            message = "No vulnerabilities revived";
+        }
+        if (!failedIgnoreEntry.isEmpty()) {
+            message += String.format(" (%d failed)", failedIgnoreEntry.size());
+        }
+        CxLogger.info(format("RTS-Ignore: Bulk revive summary: %s", message));
+    }
+
+    /**
+     * Internal method to revive a single entry without saving to disk.
+     * Used by bulk operations that batch multiple revives before a single save.
+     *
+     * @param entryToRevive The ignore entry to revive
+     * @return true if the entry was found and revived, false otherwise
+     */
+    private boolean reviveSingleEntryInternal(IgnoreEntry entryToRevive) {
+        CxLogger.info(format("RTS-Ignore: Reviving entry (internal): %s", entryToRevive.getPackageName()));
+
+        // Find the entry in ignoreData map by matching properties
+        String entryKey = ignoreFileManager.getIgnoreData().entrySet().stream()
+                .filter(e -> ignoreFileManager.matchesEntry(e.getValue(), entryToRevive))
+                .map(Map.Entry::getKey)
+                .findFirst()
+                .orElse(null);
+
+        if (entryKey == null) {
+            CxLogger.warning(format("RTS-Ignore: Entry not found in ignoreData: %s", entryToRevive.getPackageName()));
+            return false;
+        }
+
+        IgnoreEntry actualEntry = ignoreFileManager.getIgnoreData().get(entryKey);
+        // Set all file references to inactive
+        for (IgnoreEntry.FileReference file : actualEntry.getFiles()) {
+            file.active = false;
+        }
+        CxLogger.info(format("RTS-Ignore: Marked all files as inactive for: %s", entryToRevive.getPackageName()));
+        return true;
     }
 
     /**
