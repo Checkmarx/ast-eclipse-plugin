@@ -49,7 +49,7 @@ public class ProblemHolderService {
 		}
 		try {
 			org.eclipse.core.runtime.QualifiedName key = new org.eclipse.core.runtime.QualifiedName(
-				"com.checkmarx.eclipse.plugin", "problem-holder-service");
+				"com.checkmarx.eclipse.plugin", "problem-holder");
 			ProblemHolderService instance = (ProblemHolderService) project.getSessionProperty(key);
 			if (instance == null) {
 				instance = new ProblemHolderService();
