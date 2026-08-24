@@ -124,15 +124,19 @@ public final class IgnoreManager {
                 CxLogger.info("RTS-Ignore: Ignoring all vulnerabilities failed. Vulnerability key is empty.");
                 return;
             }
-            Map<String, List<ScanIssue>> allIssues = new HashMap<>();
-            for (Map.Entry<String, List<ScanIssue>> entry : problemHolder.getAllScanIssues().entrySet()) {
-                allIssues.put(entry.getKey(), new ArrayList<>(entry.getValue()));
-            }
-            if (allIssues.isEmpty()) return;
             IgnoreEntry ignoreEntry = buildIgnoreEntry(issueToIgnore, clickId);
             if (Objects.isNull(ignoreEntry)) {
                 // Notification removed: use Eclipse MessageDialog instead
                 return;
+            }
+            // Best-effort: pick up every other currently-known occurrence of this
+            // vulnerability from the problem holder. This may legitimately be empty
+            // (e.g. a file whose scan was skipped as unchanged since the holder was
+            // last populated) - that must NOT stop the clicked occurrence itself from
+            // being ignored, so no early-return on an empty/no-match snapshot here.
+            Map<String, List<ScanIssue>> allIssues = new HashMap<>();
+            for (Map.Entry<String, List<ScanIssue>> entry : problemHolder.getAllScanIssues().entrySet()) {
+                allIssues.put(entry.getKey(), new ArrayList<>(entry.getValue()));
             }
             List<IgnoreEntry.FileReference> fileRefs = new ArrayList<>();
             for (List<ScanIssue> issues : allIssues.values()) {  // Safe: allIssues never mutates
