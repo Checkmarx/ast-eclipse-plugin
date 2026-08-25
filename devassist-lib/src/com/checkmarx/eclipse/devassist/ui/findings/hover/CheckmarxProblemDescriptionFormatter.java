@@ -354,7 +354,7 @@ public final class CheckmarxProblemDescriptionFormatter {
 				.append(buttonStyle).append(TITLE_FONT_FAMILY).append("'>")
 				.append(DevAssistUtils.getAssistQuickFixName()).append("</a></td>")
 				.append("<td style='padding:0 10px 0 0;margin:0;'>").append("<a href=\"#cxonedevassist/viewdetails")
-				.append(SEPERATOR).append(scanIssueId).append(SEPERATOR).append("\" style='").append(buttonStyle)
+				.append(SEPERATOR).append(scanIssueId).append(SEPERATOR).append(engineName).append("\" style='").append(buttonStyle)
 				.append(TITLE_FONT_FAMILY).append("'>").append(DevAssistConstants.VIEW_DETAILS_FIX_NAME)
 				.append("</a></td>").append("<td style='padding:0 10px 0 0;margin:0;'>")
 				.append("<a href=\"#cxonedevassist/ignorethis").append(SEPERATOR).append(scanIssueId).append(SEPERATOR)
