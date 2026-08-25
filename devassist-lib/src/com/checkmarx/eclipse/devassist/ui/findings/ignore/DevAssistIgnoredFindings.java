@@ -29,6 +29,7 @@ import com.checkmarx.eclipse.devassist.ignore.IgnoreEntry;
 import com.checkmarx.eclipse.devassist.ignore.IgnoreFileManager;
 import com.checkmarx.eclipse.devassist.ignore.IgnoreManager;
 import com.checkmarx.eclipse.devassist.ui.findings.icons.IconRegistry;
+import com.checkmarx.eclipse.devassist.utils.DateFormatUtil;
 
 /**
  * Tool window panel for viewing ignored vulnerability findings. Features strict
@@ -482,7 +483,8 @@ public class DevAssistIgnoredFindings extends ViewPart {
 
 			// Column 3: Dynamic Last Updated Date
 			Label lastUpdatedLabel = new Label(cardComposite, SWT.NONE);
-			lastUpdatedLabel.setText("Today");
+			String relativeDate = DateFormatUtil.formatRelativeDate(entry.getDateAdded());
+			lastUpdatedLabel.setText(relativeDate);
 			lastUpdatedLabel.setForeground(parent.getDisplay().getSystemColor(SWT.COLOR_DARK_GRAY));
 			GridData col3Data = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
 			col3Data.widthHint = 110;

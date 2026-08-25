@@ -435,6 +435,7 @@ public final class IgnoreManager {
             entry.packageVersion = issue.getPackageVersion();
             entry.similarityId = issue.getSimilarityId();
             entry.secretValue = issue.getSecretValue();
+            entry.dateAdded = java.time.Instant.now().toString();
             if (engine == com.checkmarx.eclipse.devassist.utils.ScanEngine.CONTAINERS) {
                 entry.packageName = issue.getTitle() + ":" + issue.getImageTag();
                 entry.imageName = issue.getTitle();
