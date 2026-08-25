@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
 
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -28,6 +29,8 @@ import org.eclipse.ui.part.ViewPart;
 import com.checkmarx.eclipse.devassist.ignore.IgnoreEntry;
 import com.checkmarx.eclipse.devassist.ignore.IgnoreFileManager;
 import com.checkmarx.eclipse.devassist.ignore.IgnoreManager;
+import com.checkmarx.eclipse.devassist.ui.findings.actions.VulnerabilityFilterAction;
+import com.checkmarx.eclipse.devassist.ui.findings.actions.VulnerabilityFilterState;
 import com.checkmarx.eclipse.devassist.ui.findings.icons.IconRegistry;
 import com.checkmarx.eclipse.devassist.utils.DateFormatUtil;
 
@@ -61,6 +64,10 @@ public class DevAssistIgnoredFindings extends ViewPart {
 	private IProject currentProject;
 	private IgnoreFileManager ignoreFileManager;
 	private final IgnoreFileManager.IgnoreListener ignoreListener = this::onIgnoreDataUpdated;
+
+	// Independent from VulnerabilityFilterState.getInstance() (used by the main
+	// Findings view) so toggling a severity here doesn't also filter that view.
+	private final VulnerabilityFilterState filterState = new VulnerabilityFilterState();
 
 	private List<IgnoreEntryCard> cards = new ArrayList<>();
 	private Set<IgnoreEntry> selectedEntries = new HashSet<>();
@@ -182,7 +189,29 @@ public class DevAssistIgnoredFindings extends ViewPart {
 		if (ignoreFileManager != null) {
 			ignoreFileManager.addListener(ignoreListener);
 		}
+		setupToolbar();
 		refreshTable();
+	}
+
+	/**
+	 * Adds severity toggle-filter buttons to the view's toolbar, mirroring
+	 * CxFindingsView's filter UX so ignored entries can be narrowed down by
+	 * severity the same way active findings can.
+	 */
+	private void setupToolbar() {
+		IToolBarManager toolbar = getViewSite().getActionBars().getToolBarManager();
+		toolbar.removeAll();
+
+		VulnerabilityFilterAction.IFilterChangeListener filterListener = this::refreshTable;
+
+		toolbar.add(new VulnerabilityFilterAction.MaliciousFilter(filterListener, filterState));
+		toolbar.add(new VulnerabilityFilterAction.CriticalFilter(filterListener, filterState));
+		toolbar.add(new VulnerabilityFilterAction.HighFilter(filterListener, filterState));
+		toolbar.add(new VulnerabilityFilterAction.MediumFilter(filterListener, filterState));
+		toolbar.add(new VulnerabilityFilterAction.LowFilter(filterListener, filterState));
+
+		toolbar.update(true);
+		getViewSite().getActionBars().updateActionBars();
 	}
 
 	private static int activeFileCount(IgnoreEntry entry) {
@@ -212,7 +241,9 @@ public class DevAssistIgnoredFindings extends ViewPart {
 
 		ignoreFileManager.refreshFromDisk();
 		List<IgnoreEntry> entries = ignoreFileManager.getAllIgnoreEntries().stream()
-				.filter(entry -> activeFileCount(entry) > 0).collect(Collectors.toList());
+				.filter(entry -> activeFileCount(entry) > 0)
+				.filter(entry -> entry.getSeverity() == null || filterState.hasFilter(entry.getSeverity()))
+				.collect(Collectors.toList());
 
 		if (container == null || container.isDisposed()) {
 			return;
