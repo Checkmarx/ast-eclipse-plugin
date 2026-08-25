@@ -33,7 +33,7 @@ import com.checkmarx.eclipse.common.utils.CxLogger;
 public class WelcomeDialog extends TitleAreaDialog {
 
 	private static final int DIALOG_WIDTH = 800;
-	private static final int DIALOG_HEIGHT = 530;
+	private static final int DIALOG_HEIGHT = 620;
 	private static final int WRAP_WIDTH = 250;
 	private static final int BULLET_INDENT = 20;
 	private static final int CONTENT_MARGIN = 20;
