@@ -3,14 +3,22 @@ package com.checkmarx.eclipse.devassist.remediation;
 import java.util.List;
 import java.util.Objects;
 
+import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IMarker;
+import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.jgit.annotations.NonNull;
 import org.eclipse.jgit.annotations.Nullable;
+import org.eclipse.ui.IWorkbenchPage;
+import org.eclipse.ui.IWorkbenchWindow;
+import org.eclipse.ui.PlatformUI;
 
 import com.checkmarx.eclipse.common.utils.CxLogger;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.problems.ProblemHolderService;
 import com.checkmarx.eclipse.devassist.telemetry.TelemetryService;
+import com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView;
 
 import static com.checkmarx.eclipse.devassist.utils.DevAssistConstants.SEPERATOR;
 import static java.lang.String.format;
@@ -137,23 +145,27 @@ public class RemediationLinkHandler {
                 TelemetryService.logViewDetailsAction(scanIssue);
                 break;
             case IGNORE_THIS_TYPE: {
-                org.eclipse.core.resources.IProject project = getActiveProject();
+                IProject project = getActiveProject();
                 if (Objects.isNull(project)) {
                     CxLogger.warning("RTS-Fix: Remediation action failed, no active project found for IGNORE_THIS_TYPE");
                     return false;
                 }
                 com.checkmarx.eclipse.devassist.ignore.IgnoreManager.getInstance(project).addIgnoredEntry(scanIssue, actionId);
                 TelemetryService.logIgnorePackageAction(scanIssue);
+                deleteMarkerForIssue(project, scanIssue);
+                refreshFindingsView();
                 break;
             }
             case IGNORE_ALL_OF_THIS_TYPE: {
-                org.eclipse.core.resources.IProject project = getActiveProject();
+                IProject project = getActiveProject();
                 if (Objects.isNull(project)) {
                     CxLogger.warning("RTS-Fix: Remediation action failed, no active project found for IGNORE_ALL_OF_THIS_TYPE");
                     return false;
                 }
                 com.checkmarx.eclipse.devassist.ignore.IgnoreManager.getInstance(project).addAllIgnoredEntry(scanIssue, actionId);
                 TelemetryService.logIgnoreAllAction(scanIssue);
+                deleteMarkersForAllMatches(project, scanIssue);
+                refreshFindingsView();
                 break;
             }
             default:
@@ -337,5 +349,107 @@ public class RemediationLinkHandler {
             }
         }
         return null;
+    }
+
+    /**
+     * Deletes markers for a single ignored issue from the editor.
+     * Finds the file where the issue is located and removes the marker.
+     *
+     * @param project the active project
+     * @param scanIssue the scan issue to find and delete markers for
+     */
+    private void deleteMarkerForIssue(@NonNull IProject project, @NonNull ScanIssue scanIssue) {
+        try {
+            String filePath = scanIssue.getFilePath();
+            if (filePath == null || filePath.isEmpty()) {
+                CxLogger.warning("RTS-Fix: Cannot delete marker, scan issue has no file path");
+                return;
+            }
+
+            IFile file = project.getFile(filePath);
+            if (file == null || !file.exists()) {
+                CxLogger.warning("RTS-Fix: Cannot delete marker, file not found: " + filePath);
+                return;
+            }
+
+            IMarker[] markers = file.findMarkers("com.checkmarx.eclipse.plugin.checkmarxProblemMarker", true, IResource.DEPTH_ZERO);
+            for (IMarker marker : markers) {
+                try {
+                    String markerScanIssueId = marker.getAttribute("scanIssueId", "");
+                    if (markerScanIssueId.equals(scanIssue.getScanIssueId())) {
+                        marker.delete();
+                        CxLogger.info("RTS-Fix: Deleted marker for issue: " + scanIssue.getTitle());
+                        return;
+                    }
+                } catch (Exception e) {
+                    CxLogger.warning("RTS-Fix: Error checking marker attribute: " + e.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            CxLogger.error("RTS-Fix: Error deleting marker for ignored issue", e);
+        }
+    }
+
+    /**
+     * Deletes all markers for issues matching the ignore-all criteria.
+     * For OSS/CONTAINERS, finds all markers with the same package/image.
+     *
+     * @param project the active project
+     * @param scanIssue the scan issue to match against
+     */
+    private void deleteMarkersForAllMatches(@NonNull IProject project, @NonNull ScanIssue scanIssue) {
+        try {
+            IMarker[] allMarkers = project.findMarkers("com.checkmarx.eclipse.plugin.checkmarxProblemMarker", true, IResource.DEPTH_INFINITE);
+            int deletedCount = 0;
+
+            for (IMarker marker : allMarkers) {
+                try {
+                    String markerTitle = marker.getAttribute(IMarker.MESSAGE, "");
+                    if (markerTitle.contains(scanIssue.getTitle())) {
+                        marker.delete();
+                        deletedCount++;
+                    }
+                } catch (Exception e) {
+                    CxLogger.warning("RTS-Fix: Error checking marker for deletion: " + e.getMessage());
+                }
+            }
+
+            if (deletedCount > 0) {
+                CxLogger.info("RTS-Fix: Deleted " + deletedCount + " markers for ignore-all action");
+            }
+        } catch (Exception e) {
+            CxLogger.error("RTS-Fix: Error deleting markers for ignore-all", e);
+        }
+    }
+
+    /**
+     * Refreshes the Findings View to update the tree and remove ignored findings.
+     * Finds the CxFindingsView instance and calls refreshTreeWithFilter() on it.
+     */
+    private void refreshFindingsView() {
+        try {
+            IWorkbenchWindow window = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
+            if (window == null) {
+                CxLogger.warning("RTS-Fix: Cannot refresh findings view, no active workbench window");
+                return;
+            }
+
+            IWorkbenchPage page = window.getActivePage();
+            if (page == null) {
+                CxLogger.warning("RTS-Fix: Cannot refresh findings view, no active workbench page");
+                return;
+            }
+
+            CxFindingsView view = (CxFindingsView) page.findView(CxFindingsView.ID);
+            if (view == null) {
+                CxLogger.warning("RTS-Fix: Cannot refresh findings view, view not found");
+                return;
+            }
+
+            view.refreshTreeWithFilter();
+            CxLogger.info("RTS-Fix: Refreshed Findings View");
+        } catch (Exception e) {
+            CxLogger.error("RTS-Fix: Error refreshing findings view", e);
+        }
     }
 }

@@ -1068,7 +1068,7 @@ public class CxFindingsView extends ViewPart {
 		menu.setVisible(true);
 	}
 
-	private void refreshTreeWithFilter() {
+	public void refreshTreeWithFilter() {
 
 		// Ensure ignore manager is initialized
 		ensureIgnoreFileManagerInitialized();
