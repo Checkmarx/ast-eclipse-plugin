@@ -367,10 +367,10 @@ public final class CheckmarxProblemDescriptionFormatter {
 			descBuilder.append("<td style='padding:0 5px 0 0;margin:0;'>")
 					.append("<a href=\"#cxonedevassist/ignoreallofthis").append(SEPERATOR).append(scanIssueId)
 					.append(SEPERATOR).append("\" style='").append(buttonStyle).append(TITLE_FONT_FAMILY).append("'>")
-
-					.append(DevAssistConstants.IGNORE_ALL_OF_THIS_TYPE_FIX_NAME);
+					.append(DevAssistConstants.IGNORE_ALL_OF_THIS_TYPE_FIX_NAME)
+					.append("</a></td>");
 		}
-		descBuilder.append("</a></td>").append("</tr></table><br>");
+		descBuilder.append("</tr></table><br>");
 	}
 
 
