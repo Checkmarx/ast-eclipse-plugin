@@ -40,6 +40,10 @@ public final class McpInstallService {
 			// Register listener for MCP auto-install on API key change
 			Preferences.STORE.addPropertyChangeListener(new AuthenticationListener());
 
+			// Register listener for workspace scan trigger on authentication state change
+			// (when user logs in, preferences may not change, but we still need to scan)
+			Preferences.STORE.addPropertyChangeListener(new com.checkmarx.eclipse.devassist.backend.AuthenticationStateListener());
+
 			// Register handler for post-authentication UI (welcome dialog, workspace scan)
 			Preferences.setAuthenticationSuccessHandler(new AuthenticationSuccessHandler());
 
