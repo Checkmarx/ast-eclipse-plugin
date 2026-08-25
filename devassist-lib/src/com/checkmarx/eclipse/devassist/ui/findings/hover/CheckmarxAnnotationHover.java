@@ -22,6 +22,7 @@ import org.eclipse.jface.text.Position;
 import org.eclipse.jface.text.Region;
 import org.eclipse.jface.text.source.Annotation;
 import org.eclipse.jface.text.source.IAnnotationModel;
+import org.eclipse.jface.text.source.IAnnotationModelExtension2;
 import org.eclipse.jface.text.source.ISourceViewer;
 import org.eclipse.jdt.ui.text.java.hover.IJavaEditorTextHover;
 import org.eclipse.jface.resource.JFaceResources;
@@ -80,6 +81,16 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 	private static final CheckmarxProblemDescriptionFormatter PROBLEM_DESCRIPTRO = new CheckmarxProblemDescriptionFormatter();
 
 	/**
+	 * Gates the verbose CxLogger.info/warning tracing inside getHoverInfo2() and
+	 * buildCheckmarxSection() - both run on every mouse-hover tick, so
+	 * unconditional log writes there add synchronous latency directly visible as
+	 * popup lag. Off by default; enable with -Dcx.devassist.hover.debug=true
+	 * for troubleshooting. Genuine error logging (CxLogger.error) is never
+	 * gated.
+	 */
+	private static final boolean HOVER_DEBUG_LOGGING = Boolean.getBoolean("cx.devassist.hover.debug");
+
+	/**
 	 * Creates the small (~6-line) preview control shown on the initial mouse hover.
 	 * Mirrors JDT's own AbstractAnnotationHover/JavadocHover: the browser control
 	 * returned here overrides getInformationPresenterControlCreator() to point at
@@ -98,7 +109,7 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 	 * base class does), which was cutting the browser off mid-render before it
 	 * could finish laying out the HTML.
 	 */
-	private static final class HoverControlCreator extends AbstractReusableInformationControlCreator {
+	private final class HoverControlCreator extends AbstractReusableInformationControlCreator {
 		private final IInformationControlCreator presenterControlCreator;
 
 		HoverControlCreator(IInformationControlCreator presenterControlCreator) {
@@ -189,7 +200,7 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 		}
 	}
 
-	private static void handleHoverAction(String action) {
+	private void handleHoverAction(String action) {
 		CxLogger.info("[HOVER] Action button clicked: " + action);
 
 		if (currentFinding == null) {
@@ -210,7 +221,7 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 	 * preview once the mouse moves toward it - this is what actually lets the user
 	 * read the full finding and reach the action links.
 	 */
-	private static final class PresenterControlCreator extends AbstractReusableInformationControlCreator {
+	private final class PresenterControlCreator extends AbstractReusableInformationControlCreator {
 		@Override
 		public IInformationControl doCreateInformationControl(Shell parent) {
 			if (BrowserInformationControl.isAvailable(parent)) {
@@ -287,7 +298,18 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 
 	private IInformationControlCreator hoverControlCreator;
 	private IInformationControlCreator presenterControlCreator;
-	private static ScanIssue currentFinding;
+	// Instance-scoped (not static): CheckmarxAnnotationHover is registered under
+	// two independent Eclipse extension points (javaEditorTextHovers and
+	// genericeditor.hoverProviders - see plugin.xml), so at least two live
+	// instances exist once a Java file and a non-Java file are open
+	// simultaneously, and JDT/the generic editor framework may also create
+	// further per-editor instances. A static field here would let hovering in
+	// one open editor overwrite the finding backing a still-open/interactive
+	// popup in another editor, causing a click on the stale popup's link to
+	// fire the wrong finding's action. Scoping it per-instance ties the field
+	// to the single hover popup lifecycle (setEditor()/getHoverInfo2()/
+	// handleHoverAction() on the same object) that actually owns it.
+	private ScanIssue currentFinding;
 
 	@Override
 	public void setEditor(IEditorPart editor) {
@@ -377,9 +399,14 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 			StringBuilder html = new StringBuilder();
 //			html.append("<html><body style='margin:0;padding:4px;font-family:Arial,sans-serif;font-size:11px;")
 //			.append("word-wrap:break-word;overflow-wrap:break-word;'>");
-			
-			String backgroundColor = getHoverBackgroundColorHex();
-			String foregroundColor = getHoverForegroundColorHex();
+
+			// Single UI-thread round trip for all theme-dependent colors instead of
+			// three independent syncExec() calls (background/foreground/element text
+			// color) - this hover computation runs on every mouse-hover tick, so
+			// collapsing three sequential blocking round trips into one matters here.
+			HoverColors hoverColors = getHoverColors();
+			String backgroundColor = hoverColors.backgroundHex;
+			String foregroundColor = hoverColors.foregroundHex;
 
 			html.append("<html>")
 			    .append("<head>")
@@ -399,9 +426,10 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 			    .append("overflow-wrap:break-word;'>");
 
 			// Determine text color for dynamic elements in the formatter
-			// (e.g., ASCA/IAC vulnerability titles). This is done on the UI thread,
-			// so it's safe to use from the formatter via parameter passing.
-			String textColorForElements = getTextColorForTheme();
+			// (e.g., ASCA/IAC vulnerability titles). Already resolved as part of the
+			// single hoverColors lookup above, so it's safe to use from the formatter
+			// via parameter passing without another UI-thread round trip.
+			String textColorForElements = hoverColors.textColorForElements;
 
 			Set<Long> seenMarkerIds = new HashSet<>();
 			// Tracks scanIssueIds already rendered via a FindingsAnnotation (the live,
@@ -419,8 +447,29 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 			List<String> checkmarxSections = new ArrayList<>();
 			List<String> otherMessages = new ArrayList<>();
 
+			// Scan only annotations overlapping the hovered line's region instead of
+			// walking every annotation in the document - for files with many findings,
+			// getAnnotationIterator() over the whole document is O(total document
+			// annotations) per hover tick. IAnnotationModelExtension2 lets us ask the
+			// model to pre-filter to the region of interest (with canStartBefore/
+			// canEndAfter so multi-line annotations that merely overlap the hovered
+			// line, rather than starting/ending on it, are still included).
 			List<Annotation> lineAnnotations = new ArrayList<>();
-			Iterator<Annotation> it = model.getAnnotationIterator();
+			IRegion lineRegion;
+			try {
+				lineRegion = document.getLineInformation(lineNumber);
+			} catch (BadLocationException e) {
+				lineRegion = hoverRegion;
+			}
+
+			Iterator<Annotation> it;
+			if (model instanceof IAnnotationModelExtension2) {
+				it = ((IAnnotationModelExtension2) model).getAnnotationIterator(lineRegion.getOffset(),
+						Math.max(lineRegion.getLength(), 1), true, true);
+			} else {
+				it = model.getAnnotationIterator();
+			}
+
 			while (it.hasNext()) {
 				Annotation annotation = it.next();
 				if (annotation == null || annotation.isMarkedDeleted()) {
@@ -454,18 +503,24 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 					continue;
 				}
 				currentFinding = scanIssue;
-				CxLogger.info("[HOVER] Captured ScanIssue for action handlers: " + scanIssue.getTitle());
+				if (HOVER_DEBUG_LOGGING) {
+					CxLogger.info("[HOVER] Captured ScanIssue for action handlers: " + scanIssue.getTitle());
+				}
 
 				if (scanIssue.getScanIssueId() != null && !scanIssue.getScanIssueId().isEmpty()) {
 					renderedIssueIds.add(scanIssue.getScanIssueId());
-					CxLogger.warning("[HOVER] Pass 1 - Added to renderedIssueIds: " + scanIssue.getScanIssueId());
+					if (HOVER_DEBUG_LOGGING) {
+						CxLogger.warning("[HOVER] Pass 1 - Added to renderedIssueIds: " + scanIssue.getScanIssueId());
+					}
 				} else {
 					// Fallback dedup key for issues without scanIssueId.
 					// Use enhanced key that includes engine-specific identifiers (e.g., package@version for OSS)
 					String enhancedKey = getEnhancedFallbackKey(scanIssue);
 					String fallbackKey = buildFallbackDedupKey(enhancedKey, lineNumber);
 					renderedIssueKeys.add(fallbackKey);
-					CxLogger.warning("[HOVER] Pass 1 - Added to renderedIssueKeys: " + fallbackKey);
+					if (HOVER_DEBUG_LOGGING) {
+						CxLogger.warning("[HOVER] Pass 1 - Added to renderedIssueKeys: " + fallbackKey);
+					}
 				}
 
 				// Use consolidated formatter for both ASCA/IAC (iterates vulnerabilities)
@@ -474,10 +529,12 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 					String sectionHtml = PROBLEM_DESCRIPTRO.formatDescriptionHtml(scanIssue, true, textColorForElements);
 					if (!sectionHtml.isEmpty()) {
 						checkmarxSections.add("<div>" + sectionHtml + "</div>");
-						ScanEngine engine = scanIssue.getScanEngine();
-						String engineName = (engine != null) ? engine.toString() : "UNKNOWN";
-						CxLogger.info("[HOVER] " + engineName + ": Rendered ScanIssue via formatter - "
-								+ scanIssue.getTitle());
+						if (HOVER_DEBUG_LOGGING) {
+							ScanEngine engine = scanIssue.getScanEngine();
+							String engineName = (engine != null) ? engine.toString() : "UNKNOWN";
+							CxLogger.info("[HOVER] " + engineName + ": Rendered ScanIssue via formatter - "
+									+ scanIssue.getTitle());
+						}
 					}
 				} catch (Exception e) {
 					CxLogger.error("[HOVER] Error formatting FindingsAnnotation: " + e.getMessage(), e);
@@ -565,11 +622,15 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 //				}
 //			}
 
-			CxLogger.info("[HOVER] Line " + (lineNumber + 1) + ": Found " + checkmarxSections.size()
-					+ " Checkmarx section(s), " + otherMessages.size() + " other message(s)");
+			if (HOVER_DEBUG_LOGGING) {
+				CxLogger.info("[HOVER] Line " + (lineNumber + 1) + ": Found " + checkmarxSections.size()
+						+ " Checkmarx section(s), " + otherMessages.size() + " other message(s)");
+			}
 
 			if (checkmarxSections.isEmpty()) {
-				CxLogger.info("[HOVER] No Checkmarx findings to display, returning null");
+				if (HOVER_DEBUG_LOGGING) {
+					CxLogger.info("[HOVER] No Checkmarx findings to display, returning null");
+				}
 				return null;
 			}
 
@@ -603,15 +664,21 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 		try {
 			ScanIssue issue = MarkerIssueMapper.fromMarker(marker);
 			if (issue == null) {
-				CxLogger.info("[HOVER] Marker " + markerId + ": Failed to extract ScanIssue from marker");
+				if (HOVER_DEBUG_LOGGING) {
+					CxLogger.info("[HOVER] Marker " + markerId + ": Failed to extract ScanIssue from marker");
+				}
 				return "";
 			}
 			currentFinding = issue;
-			CxLogger.info("[HOVER] Captured ScanIssue for action handlers from marker: " + issue.getTitle());
+			if (HOVER_DEBUG_LOGGING) {
+				CxLogger.info("[HOVER] Captured ScanIssue for action handlers from marker: " + issue.getTitle());
+			}
 			// Use consolidated formatter with clickable actions enabled (same as
 			// FindingsAnnotation path)
 			String html = "<div>" + PROBLEM_DESCRIPTRO.formatDescriptionHtml(issue, true, textColor) + "</div>";
-			CxLogger.info("[HOVER] Marker " + markerId + ": Built HTML section for issue: " + issue.getTitle());
+			if (HOVER_DEBUG_LOGGING) {
+				CxLogger.info("[HOVER] Marker " + markerId + ": Built HTML section for issue: " + issue.getTitle());
+			}
 			return html;
 		} catch (Exception e) {
 			CxLogger.error("CheckmarxAnnotationHover: failed to build hover content for marker " + markerId, e);
@@ -637,69 +704,51 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 			return false;
 		}
 	}
-	
-	private static String getHoverBackgroundColorHex() {
-	    Display display = Display.getDefault();
-	    final String[] colorHex = new String[1];
 
-	    Runnable runnable = () -> {
-	        if (DevAssistUtils.isDarkTheme()) {
-	            colorHex[0] = "#000000";
-	        } else {
-	            Color bg = display.getSystemColor(SWT.COLOR_INFO_BACKGROUND);
+	/**
+	 * Holds all theme-dependent colors needed to render a hover popup, resolved
+	 * together via {@link #getHoverColors()} in a single UI-thread round trip.
+	 */
+	private static final class HoverColors {
+		final String backgroundHex;
+		final String foregroundHex;
+		final String textColorForElements;
 
-	            colorHex[0] = String.format("#%02x%02x%02x",
-	            		bg.getRed(),
-	                    bg.getGreen(),
-	                    bg.getBlue());
-	        }
-	    };
-
-	    if (Display.getCurrent() == display) {
-	        runnable.run();
-	    } else {
-	        display.syncExec(runnable);
-	    }
-
-	    return colorHex[0];
-	}
-	private static String getHoverForegroundColorHex() {
-	    Display display = Display.getDefault();
-
-	    final String[] colorHex = new String[1];
-
-	    Runnable runnable = () -> {
-	        Color fg = JFaceColors.getInformationViewerForegroundColor(display);
-
-	        colorHex[0] = String.format("#%02x%02x%02x",
-	                fg.getRed(),
-	                fg.getGreen(),
-	                fg.getBlue());
-	    };
-
-	    if (Display.getCurrent() == display) {
-	        runnable.run();
-	    } else {
-	        display.syncExec(runnable);
-	    }
-
-	    return colorHex[0];
+		HoverColors(String backgroundHex, String foregroundHex, String textColorForElements) {
+			this.backgroundHex = backgroundHex;
+			this.foregroundHex = foregroundHex;
+			this.textColorForElements = textColorForElements;
+		}
 	}
 
-	private static String buildFallbackDedupKey(String title, int lineNumber) {
-		return (title != null ? title : "") + "|" + lineNumber;
-	}
-
-	private static String getTextColorForTheme() {
+	/**
+	 * Resolves the hover background color, hover foreground color, and the text
+	 * color used for dynamic formatter elements (ASCA/IAC vulnerability titles)
+	 * in one combined syncExec() call instead of three independent ones.
+	 * getHoverInfo2() runs on every mouse-hover tick, so collapsing three
+	 * sequential blocking UI-thread round trips into a single one matters here.
+	 */
+	private static HoverColors getHoverColors() {
 		Display display = Display.getDefault();
-		final String[] textColor = new String[1];
+		final HoverColors[] result = new HoverColors[1];
 
 		Runnable runnable = () -> {
-			if (DevAssistUtils.isDarkTheme()) {
-				textColor[0] = "#FFFFFF";
+			boolean darkTheme = DevAssistUtils.isDarkTheme();
+
+			String backgroundHex;
+			if (darkTheme) {
+				backgroundHex = "#000000";
 			} else {
-				textColor[0] = "#000000";
+				Color bg = display.getSystemColor(SWT.COLOR_INFO_BACKGROUND);
+				backgroundHex = toHex(bg);
 			}
+
+			Color fg = JFaceColors.getInformationViewerForegroundColor(display);
+			String foregroundHex = toHex(fg);
+
+			String textColorForElements = darkTheme ? "#FFFFFF" : "#000000";
+
+			result[0] = new HoverColors(backgroundHex, foregroundHex, textColorForElements);
 		};
 
 		if (Display.getCurrent() == display) {
@@ -708,7 +757,15 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 			display.syncExec(runnable);
 		}
 
-		return textColor[0];
+		return result[0];
+	}
+
+	private static String toHex(Color color) {
+		return String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue());
+	}
+
+	private static String buildFallbackDedupKey(String title, int lineNumber) {
+		return (title != null ? title : "") + "|" + lineNumber;
 	}
 
 	/**

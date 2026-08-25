@@ -73,38 +73,60 @@ public final class DevAssistConstants {
 
 	// Manifest file patterns
 	public static final List<String> MANIFEST_FILE_PATTERNS = List.of(
-			"**/Directory.Packages.props",
-			"**/packages.config",
-			"**/pom.xml",
-			"**/package.json",
-			"**/requirements.txt",
-			"**/go.mod",
-			"**/*.csproj",
-			"**/build.gradle",
-			"**/build.gradle.kts",
-			"**/yarn.lock",
-			"**/*.sbt",
-			"**/Gemfile",
-			"**/bower.json",
-			"**/requirement-*.txt",
-			"**/requirements-*.txt",
-			"**/Setup.py",
-			"**/Setup.cfg",
-			"**/pyproject.toml",
-			"**/poetry.lock",
-			"**/Package.swift",
-			"**/Package.resolved",
-			"**/composer.json",
-			"**/composer.lock",
-			"**/*.podspec.json",
-			"**/*.podspec",
-			"**/Podfile",
-			"**/Podfile.lock",
-			"**/Cartfile.resolved",
-			"**/Gemfile.lock",
-			"**/cpanfile.snapshot",
-			"**/cpanfile",
-			"**/pubspec.lock");
+            // .NET
+            "**/Directory.Packages.props",
+            "**/packages.config",
+            "**/*.csproj",
+            // Maven
+            "**/pom.xml",
+            // npm
+            "**/package.json",
+            "**/yarn.lock",
+            // Bower
+            "**/bower.json",
+            // Python
+            "**/requirement*.txt",
+            "**/requirements.txt",
+            "**/constraints.txt",
+            "**/constraints-*.txt",
+            "**/pyproject.toml",
+            "**/poetry.lock",
+            "**/setup.cfg",
+            "**/setup.py",
+            // Go
+            "**/go.mod",
+            // Gradle
+            "**/*.gradle",
+            "**/*.gradle.kts",
+            "**/libs.versions.toml",
+            // SBT
+            "**/*.sbt",
+            // iOS CocoaPods
+            "**/Podfile",
+            "**/Podfile.lock",
+            "**/*.podspec",
+            "**/*.podspec.json",
+            // iOS Carthage
+            "**/Cartfile",
+            "**/Cartfile.private",
+            "**/Cartfile.resolved",
+            // Swift Package Manager
+            "**/Package.swift",
+            "**/Package@swift-*.swift",
+            "**/Package.resolved",
+            // Dart/Flutter
+            "**/pubspec.yaml",
+            "**/pubspec.lock",
+            // Ruby
+            "**/Gemfile",
+            "**/Gemfile.lock",
+            // Perl
+            "**/cpanfile",
+            "**/cpanfile.snapshot",
+            // PHP Composer
+            "**/composer.json",
+            "**/composer.lock"
+	);
 
 	// Container file patterns
 	public static final List<String> CONTAINERS_FILE_PATTERNS = List.of(

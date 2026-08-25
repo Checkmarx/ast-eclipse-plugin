@@ -154,7 +154,7 @@ public class CxFindingsView extends ViewPart {
 			return;
 		}
 
-		if (StringUtils.isBlank(Preferences.getApiKey())) {
+		if (!Preferences.isAuthenticated()) {
 			drawMissingCredentialsPanel(parentComposite);
 		} else {
 			loadCachedIssues();
@@ -1199,6 +1199,10 @@ public class CxFindingsView extends ViewPart {
 	 * ("flicker and lose results"). Restricting the set to only files whose
 	 * active-finding membership actually changed keeps the original
 	 * fully-ignored-file fix while not manufacturing extra no-op calls.
+	 *
+	 * Also ensures annotations are present in the annotation model when the
+	 * Findings View displays cached results, so hover can find them without
+	 * waiting for a new scan.
 	 */
 	private void applyDecorationsToOpenEditors(Map<String, List<ScanIssue>> filteredIssues) {
 		Map<String, List<ScanIssue>> effectiveFiltered = filteredIssues != null

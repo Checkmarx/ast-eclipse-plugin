@@ -4,7 +4,7 @@ import com.checkmarx.ast.containersrealtime.ContainersRealtimeResults;
 import com.checkmarx.eclipse.devassist.basescanner.BaseScannerService;
 import com.checkmarx.eclipse.devassist.utils.DevAssistUtils;
 import com.checkmarx.eclipse.devassist.common.ScannerConfig;
-import com.checkmarx.eclipse.devassist.factory.CxWrapperFactory;
+import com.checkmarx.eclipse.common.wrapper.WrapperProvider;
 import com.checkmarx.eclipse.devassist.common.ScanResult;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
@@ -29,13 +29,14 @@ import java.util.stream.Collectors;
  * Handles file detection (Docker, Docker Compose, Helm), secure temporary
  * folder management,
  * and direct invocation of Checkmarx Container Realtime scanning via
- * CxWrapperFactory.
+ * WrapperProvider.
  */
 public class ContainerScannerService extends BaseScannerService<ContainersRealtimeResults> {
 
     private static final String LOG_TAG = "[CONTAINER-SERVICE]";
     private static final String CONTAINER_DIR = "CxContainer";
     private static final Object SCAN_LOCK = new Object();
+    private final WrapperProvider wrapperProvider = new WrapperProvider();
 
     private static final List<String> CONTAINERS_FILE_PATTERNS = List.of(
             "**/dockerfile*",
@@ -157,7 +158,7 @@ public class ContainerScannerService extends BaseScannerService<ContainersRealti
 
                 ContainersRealtimeResults scanResults = null;
                 try {
-                    scanResults = CxWrapperFactory.build().containersRealtimeScan(tempFilePath.toString(), ignoreFilePath);
+                    scanResults = wrapperProvider.containersRealtimeScan(tempFilePath.toString(), ignoreFilePath);
                 } catch (Exception e) {
                     // TODO Auto-generated catch block
                     e.printStackTrace();

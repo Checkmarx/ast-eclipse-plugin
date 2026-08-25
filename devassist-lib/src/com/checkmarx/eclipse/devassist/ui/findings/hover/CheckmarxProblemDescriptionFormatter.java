@@ -282,12 +282,14 @@ public final class CheckmarxProblemDescriptionFormatter {
 	 *                    description will be appended
 	 * @param scanIssue   the ScanIssue object containing details about the issue
 	 *                    such as title and description
-	 */
-	/**
 	 * Default fallback description.
 	 */
 	private void buildDefaultDescription(StringBuilder descBuilder, ScanIssue scanIssue) {
-		descBuilder.append("<div><b>").append(scanIssue.getTitle()).append("</b> -").append(scanIssue.getDescription());
+		descBuilder.append("<div><b>")
+				.append(HtmlEscapeUtil.escape(scanIssue.getTitle()))
+				.append("</b> - ")
+				.append(HtmlEscapeUtil.escape(scanIssue.getDescription()))
+				.append("</div>");
 	}
 
 	/**

@@ -17,6 +17,7 @@ public class CheckmarxMarkerResolutionGenerator implements IMarkerResolutionGene
         return new IMarkerResolution[] {
                 new QuickFixRemediationResolution(marker),
                 new ViewFindingDetailsResolution(marker),
+                new IgnoreVulnerabilityResolution(marker),
                 new CopyDetailsResolution(marker)
         };
     }

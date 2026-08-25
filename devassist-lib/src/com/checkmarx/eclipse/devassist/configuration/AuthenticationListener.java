@@ -10,7 +10,9 @@ import com.checkmarx.eclipse.common.utils.CxLogger;
  * Listens for authentication events and triggers MCP auto-installation.
  *
  * Registered globally to respond to successful authentication by:
- * - Detecting API_KEY changes in preferences
+ * - Detecting the CREDENTIALS_VALIDATED flag turning true - this fires regardless of which
+ *   credential type (API key today, OAuth in future) produced the successful login, unlike
+ *   listening for API_KEY changes directly.
  * - Triggering MCP configuration installation
  * - Logging success/failure for debugging
  */
@@ -24,13 +26,13 @@ public class AuthenticationListener implements IPropertyChangeListener {
 			return;
 		}
 
-		// Trigger MCP auto-install when API key is successfully set
-		if (Preferences.API_KEY.equals(event.getProperty())) {
-			String newApiKey = (String) event.getNewValue();
+		// Trigger MCP auto-install when authentication just succeeded
+		if (Preferences.CREDENTIALS_VALIDATED.equals(event.getProperty())) {
+			Object newValue = event.getNewValue();
+			boolean nowValidated = newValue instanceof Boolean && (Boolean) newValue;
 
-			// Only proceed if a key was set (not cleared)
-			if (newApiKey != null && !newApiKey.isBlank()) {
-				CxLogger.info(LOG_TAG + " API key updated, attempting MCP auto-install...");
+			if (nowValidated) {
+				CxLogger.info(LOG_TAG + " Authentication succeeded, attempting MCP auto-install...");
 				McpInstallService.attemptAutoInstall();
 			}
 		}

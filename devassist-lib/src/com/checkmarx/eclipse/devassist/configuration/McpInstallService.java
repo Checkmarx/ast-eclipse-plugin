@@ -2,9 +2,12 @@ package com.checkmarx.eclipse.devassist.configuration;
 
 import java.util.concurrent.CompletableFuture;
 
+import com.checkmarx.eclipse.common.listener.IMcpInstallCallback;
+import com.checkmarx.eclipse.common.listener.IMcpUninstallCallback;
 import com.checkmarx.eclipse.common.preferences.Preferences;
 import com.checkmarx.eclipse.common.runner.TenantSettingsProvider;
 import com.checkmarx.eclipse.common.utils.CxLogger;
+import com.checkmarx.eclipse.common.utils.PluginConstants;
 
 
 /**
@@ -40,6 +43,14 @@ public final class McpInstallService {
 			// Register handler for post-authentication UI (welcome dialog, workspace scan)
 			Preferences.setAuthenticationSuccessHandler(new AuthenticationSuccessHandler());
 
+			// Register handler so common-lib preference pages (e.g. CheckmarxPreferencePage)
+			// can trigger MCP install without depending on this bundle directly.
+			Preferences.setMcpInstallHandler(McpInstallService::installFromUi);
+
+			// Register handler so common-lib preference pages (e.g. PreferencesPage)
+			// can trigger MCP uninstall on logout without depending on this bundle directly.
+			Preferences.setMcpUninstallHandler(McpInstallService::uninstallFromUi);
+
 			authListenerRegistered = true;
 			CxLogger.info(LOG_TAG + " Authentication handlers registered");
 		}
@@ -60,13 +71,13 @@ public final class McpInstallService {
 		CxLogger.info(LOG_TAG + " Attempting auto-install of MCP configuration...");
 
 		try {
-			String apiKey = Preferences.getApiKey();
-			String additionalParams = Preferences.getAdditionalOptions();
-
-			if (apiKey == null || apiKey.isBlank()) {
-				CxLogger.info(LOG_TAG + " Skipping MCP auto-install: user not authenticated (no API key)");
+			if (!Preferences.isAuthenticated()) {
+				CxLogger.info(LOG_TAG + " Skipping MCP auto-install: user not authenticated");
 				return;
 			}
+
+			String apiKey = Preferences.getApiKey();
+			String additionalParams = Preferences.getAdditionalOptions();
 
 			attemptAutoInstall(apiKey, additionalParams);
 		} catch (Exception e) {
@@ -119,6 +130,62 @@ public final class McpInstallService {
 }
 
 	/**
+	 * Installs MCP configuration in response to a user-initiated action (the "Install MCP"
+	 * link on CheckmarxPreferencePage), reporting the outcome to {@code callback} instead of
+	 * only logging it - unlike {@link #attemptAutoInstall()}, which is silent by design.
+	 *
+	 * @param callback notified of success or failure; may be called from a background thread
+	 */
+	public static void installFromUi(IMcpInstallCallback callback) {
+		CxLogger.info(LOG_TAG + " Install MCP requested from preferences page...");
+
+		try {
+			if (!Preferences.isAuthenticated()) {
+				callback.onFailure(PluginConstants.MCP_NOT_AUTHENTICATED_MESSAGE);
+				return;
+			}
+
+			String apiKey = Preferences.getApiKey();
+			String additionalParams = Preferences.getAdditionalOptions();
+
+			if (apiKey == null || apiKey.isBlank()) {
+				callback.onFailure(PluginConstants.MCP_NOT_AUTHENTICATED_MESSAGE);
+				return;
+			}
+
+			boolean aiMcpEnabled;
+			try {
+				aiMcpEnabled = TenantSettingsProvider.INSTANCE.isAiMcpServerEnabled(apiKey, additionalParams);
+			} catch (Exception e) {
+				CxLogger.error(LOG_TAG + " Failed to check MCP server status: " + e.getMessage(), e);
+				callback.onFailure(PluginConstants.MCP_INSTALL_GENERIC_FAILURE_MESSAGE);
+				return;
+			}
+
+			if (!aiMcpEnabled) {
+				callback.onFailure(PluginConstants.MCP_NOT_ENABLED_FOR_TENANT_MESSAGE);
+				return;
+			}
+
+			installSilentlyAsync(apiKey).thenAccept(changed -> {
+				if (changed == null) {
+					CxLogger.info(LOG_TAG + " Install MCP (from preferences page) failed");
+					callback.onFailure(PluginConstants.MCP_INSTALL_GENERIC_FAILURE_MESSAGE);
+				} else if (changed) {
+					CxLogger.info(LOG_TAG + " Install MCP (from preferences page) succeeded");
+					callback.onSuccess();
+				} else {
+					CxLogger.info(LOG_TAG + " Install MCP (from preferences page): already up to date");
+					callback.onAlreadyUpToDate();
+				}
+			});
+		} catch (Exception e) {
+			CxLogger.error(LOG_TAG + " Unexpected error while installing MCP from preferences page: " + e.getMessage(), e);
+			callback.onFailure(PluginConstants.MCP_INSTALL_GENERIC_FAILURE_MESSAGE);
+		}
+	}
+
+	/**
 	 * Asynchronously installs MCP configuration without user notifications.
 	 * Failures are logged but do not interrupt plugin startup.
 	 *
@@ -168,6 +235,58 @@ public final class McpInstallService {
 		String msg = LOG_TAG + " Background MCP installation failed: " + ex.getClass().getName() + ": " + ex.getMessage();
 		Exception loggable = (ex instanceof Exception) ? (Exception) ex : new RuntimeException(ex);
 		CxLogger.error(msg, loggable);
+	}
+
+	/**
+	 * Uninstalls MCP configuration in response to a user-initiated logout, reporting the
+	 * outcome to {@code callback} instead of only logging it - unlike {@link #uninstall()},
+	 * which is silent by design.
+	 *
+	 * @param callback notified of success, not-found, or failure; may be called from a background thread
+	 */
+	public static void uninstallFromUi(IMcpUninstallCallback callback) {
+		CxLogger.info(LOG_TAG + " Uninstall MCP requested after logout...");
+
+		try {
+			uninstallSilentlyAsync().thenAccept(removed -> {
+				// Marshal callback back to UI thread - uninstallSilentlyAsync completes on a thread pool
+				org.eclipse.swt.widgets.Display.getDefault().asyncExec(() -> {
+					if (removed == null) {
+						CxLogger.info(LOG_TAG + " Uninstall MCP (from logout) failed");
+						callback.onFailure(PluginConstants.MCP_INSTALL_GENERIC_FAILURE_MESSAGE);
+					} else if (removed) {
+						CxLogger.info(LOG_TAG + " Uninstall MCP (from logout) succeeded - entry removed");
+						callback.onSuccess();
+					} else {
+						CxLogger.info(LOG_TAG + " Uninstall MCP (from logout) - no entry found");
+						callback.onNotFound();
+					}
+				});
+			});
+		} catch (Exception e) {
+			CxLogger.error(LOG_TAG + " Unexpected error while uninstalling MCP from logout: " + e.getMessage(), e);
+			callback.onFailure(PluginConstants.MCP_INSTALL_GENERIC_FAILURE_MESSAGE);
+		}
+	}
+
+	/**
+	 * Asynchronously uninstalls MCP configuration.
+	 *
+	 * @return future resolving to Boolean (true=removed, false=not found, null=error)
+	 */
+	public static CompletableFuture<Boolean> uninstallSilentlyAsync() {
+		return CompletableFuture.supplyAsync(() -> {
+			try {
+				CxLogger.info(LOG_TAG + " Background thread started, uninstalling MCP...");
+				return uninstall();
+			} catch (Throwable ex) {
+				logBackgroundFailure(ex);
+				return null; // null signals failure
+			}
+		}).exceptionally(ex -> {
+			logBackgroundFailure(ex);
+			return null;
+		});
 	}
 
 	/**

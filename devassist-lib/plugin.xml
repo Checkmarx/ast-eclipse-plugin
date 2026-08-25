@@ -35,7 +35,7 @@
             restorable="true">
       </view>
    </extension>
-   
+
    <!-- Line Hover (Java editor): org.eclipse.ui.editors.textHovers does NOT
         exist as a real Eclipse Platform extension point - text hovers are
         wired programmatically per-editor via SourceViewerConfiguration and

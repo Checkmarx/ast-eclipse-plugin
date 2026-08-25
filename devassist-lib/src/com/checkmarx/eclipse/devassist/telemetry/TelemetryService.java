@@ -6,8 +6,8 @@ import java.util.concurrent.CompletableFuture;
 import org.eclipse.core.runtime.Platform;
 
 import com.checkmarx.eclipse.common.utils.CxLogger;
+import com.checkmarx.eclipse.common.wrapper.CxWrapperFactory;
 import com.checkmarx.eclipse.devassist.backend.Constants;
-import com.checkmarx.eclipse.devassist.factory.CxWrapperFactory;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 
