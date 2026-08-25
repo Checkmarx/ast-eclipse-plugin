@@ -256,7 +256,7 @@ public class DevAssistIgnoredFindings extends ViewPart {
 
 		// Update tab title with count
 		if (hasEntries) {
-			setPartName("Ignored Findings (" + entryCount + ")");
+			setPartName("Ignored Findings " + entryCount);
 		} else {
 			setPartName("Ignored Findings");
 		}
