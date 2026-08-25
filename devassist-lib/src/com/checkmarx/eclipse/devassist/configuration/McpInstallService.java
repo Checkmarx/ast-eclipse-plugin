@@ -40,15 +40,22 @@ public final class McpInstallService {
 			// Register listener for MCP auto-install on API key change
 			Preferences.STORE.addPropertyChangeListener(new AuthenticationListener());
 
+			// Register listener for workspace scan trigger on authentication state change
+			// (when user logs in, preferences may not change, but we still need to scan)
+			Preferences.STORE.addPropertyChangeListener(
+					new com.checkmarx.eclipse.devassist.backend.AuthenticationStateListener());
+			
 			// Register handler for post-authentication UI (welcome dialog, workspace scan)
 			Preferences.setAuthenticationSuccessHandler(new AuthenticationSuccessHandler());
 
-			// Register handler so common-lib preference pages (e.g. CheckmarxPreferencePage)
+			// Register handler so common-lib preference pages (e.g.
+			// CheckmarxPreferencePage)
 			// can trigger MCP install without depending on this bundle directly.
 			Preferences.setMcpInstallHandler(McpInstallService::installFromUi);
 
 			// Register handler so common-lib preference pages (e.g. PreferencesPage)
-			// can trigger MCP uninstall on logout without depending on this bundle directly.
+			// can trigger MCP uninstall on logout without depending on this bundle
+			// directly.
 			Preferences.setMcpUninstallHandler(McpInstallService::uninstallFromUi);
 
 			authListenerRegistered = true;

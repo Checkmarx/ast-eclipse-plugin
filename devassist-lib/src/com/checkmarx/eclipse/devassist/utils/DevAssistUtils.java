@@ -459,7 +459,14 @@ public class DevAssistUtils {
 	 * on the Display: approximate dark mode from the widget background luminance.
 	 */
 	private static boolean isDarkByBackgroundLuminance() {
-		Color background = Display.getCurrent().getSystemColor(SWT.COLOR_WIDGET_BACKGROUND);
+		Display display = Display.getCurrent();
+		if (display == null) {
+			display = Display.getDefault();
+		}
+		if (display == null) {
+			return false;
+		}
+		Color background = display.getSystemColor(SWT.COLOR_WIDGET_BACKGROUND);
 		double luminance = (0.299 * background.getRed() + 0.587 * background.getGreen() + 0.114 * background.getBlue())
 				/ 255.0;
 		return luminance < 0.5;
