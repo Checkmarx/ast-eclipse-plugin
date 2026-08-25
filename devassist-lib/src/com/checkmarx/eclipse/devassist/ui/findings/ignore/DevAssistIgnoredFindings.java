@@ -60,6 +60,8 @@ public class DevAssistIgnoredFindings extends ViewPart {
 	private ScrolledComposite scrolledContainer;
 	private Composite cardsContainer;
 	private Label emptyLabel;
+	private Label totalCountLabel;
+	private Font countLabelFont;
 
 	private IProject currentProject;
 	private IgnoreFileManager ignoreFileManager;
@@ -118,6 +120,20 @@ public class DevAssistIgnoredFindings extends ViewPart {
 				reviveSelected();
 			}
 		});
+
+		// -----------------------------------------------------------------
+		// 1.5. TOTAL COUNT LABEL (Shows number of ignored findings)
+		// -----------------------------------------------------------------
+		totalCountLabel = new Label(container, SWT.NONE);
+		totalCountLabel.setText("Ignored Findings (0)");
+		totalCountLabel.setForeground(parent.getDisplay().getSystemColor(SWT.COLOR_DARK_GRAY));
+		countLabelFont = new Font(parent.getDisplay(), parent.getFont().getFontData()[0].getName(),
+		                           parent.getFont().getFontData()[0].getHeight(), SWT.BOLD);
+		totalCountLabel.setFont(countLabelFont);
+		GridData countLabelData = new GridData(SWT.LEFT, SWT.TOP, false, false);
+		countLabelData.exclude = true;
+		totalCountLabel.setLayoutData(countLabelData);
+		totalCountLabel.setVisible(false);
 
 		// -----------------------------------------------------------------
 		// 2. COLUMN HEADERS ROW (Strict Grid Alignment)
@@ -252,6 +268,7 @@ public class DevAssistIgnoredFindings extends ViewPart {
 		reconstructCards(entries);
 
 		boolean hasEntries = !entries.isEmpty();
+		int entryCount = entries.size();
 
 		emptyLabel.setVisible(!hasEntries);
 		((GridData) emptyLabel.getLayoutData()).exclude = hasEntries;
@@ -261,6 +278,16 @@ public class DevAssistIgnoredFindings extends ViewPart {
 
 		headerComposite.setVisible(hasEntries);
 		((GridData) headerComposite.getLayoutData()).exclude = !hasEntries;
+
+		// Update total count label
+		if (hasEntries) {
+			totalCountLabel.setText("Ignored Findings (" + entryCount + ")");
+			totalCountLabel.setVisible(true);
+			((GridData) totalCountLabel.getLayoutData()).exclude = false;
+		} else {
+			totalCountLabel.setVisible(false);
+			((GridData) totalCountLabel.getLayoutData()).exclude = true;
+		}
 
 		if (!hasEntries) {
 			selectAllButton.setSelection(false);
@@ -392,6 +419,9 @@ public class DevAssistIgnoredFindings extends ViewPart {
 		}
 		for (IgnoreEntryCard card : cards) {
 			card.dispose();
+		}
+		if (countLabelFont != null && !countLabelFont.isDisposed()) {
+			countLabelFont.dispose();
 		}
 		if (container != null && !container.isDisposed()) {
 			container.dispose();
