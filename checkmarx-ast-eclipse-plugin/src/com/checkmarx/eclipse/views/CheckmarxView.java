@@ -442,8 +442,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				});
 
 				if (!currentBranch.isEmpty()) {
-					updateStartScanButton(true);
 					sync.asyncExec(() -> {
+						updateStartScanButton(true);
 						PluginUtils.setTextForComboViewer(branchComboViewer, currentBranch);
 					});
 					List<Scan> scanList = DataProvider.getInstance().getScansForProject(currentBranch);
