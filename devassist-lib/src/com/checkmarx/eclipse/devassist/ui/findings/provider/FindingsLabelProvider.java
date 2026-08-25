@@ -169,4 +169,6 @@ public class FindingsLabelProvider extends DelegatingStyledCellLabelProvider {
             }
         }
     }
+
+    // ...existing code...
 }

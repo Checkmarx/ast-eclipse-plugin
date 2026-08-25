@@ -67,10 +67,51 @@ public class FindingsContentProvider implements ITreeContentProvider {
     public Object[] getChildren(Object parentElement) {
         if (parentElement instanceof FileNodeLabel) {
             FileNodeLabel fileNode = (FileNodeLabel) parentElement;
-            return fileNode.getIssues().stream()
+            // Sort issues for this file by severity (most severe first)
+            java.util.List<ScanIssue> sorted = new java.util.ArrayList<>();
+            if (fileNode.getIssues() != null) {
+                sorted.addAll(fileNode.getIssues());
+                sorted.sort((a, b) -> Integer.compare(getSeverityRank(a == null ? null : a.getSeverity()),
+                        getSeverityRank(b == null ? null : b.getSeverity())));
+            }
+
+            return sorted.stream()
                     .map(issue -> new ScanDetailWithPath(issue, fileNode.getFilePath(), fileNode)).toArray();
         }
         return new Object[0];
+    }
+
+    /**
+     * Map severity string to an integer rank where lower = more severe.
+     * Unknown/null severities are given a low priority (higher numeric rank).
+     */
+    private int getSeverityRank(String severity) {
+        if (severity == null)
+            return 6;
+        String s = severity.trim().toUpperCase();
+        switch (s) {
+            case "MALICIOUS":
+                return 0;
+            case "CRITICAL":
+            case "ERROR":
+                return 1;
+            case "HIGH":
+                return 2;
+            case "MEDIUM":
+                return 3;
+            case "LOW":
+                return 4;
+            case "INFO":
+                return 5;
+            case "UNKNOWN":
+                return 6;
+            case "OK":
+                return 7;
+            case "IGNORED":
+                return 8;
+            default:
+                return 6;
+        }
     }
 
     @Override
