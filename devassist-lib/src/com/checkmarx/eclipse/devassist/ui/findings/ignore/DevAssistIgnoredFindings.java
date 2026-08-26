@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.jface.action.IToolBarManager;
+import org.eclipse.jface.preference.PreferenceDialog;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -24,8 +25,15 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Shell;
+import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.dialogs.PreferencesUtil;
 import org.eclipse.ui.part.ViewPart;
+import org.eclipse.ui.plugin.AbstractUIPlugin;
 
+import com.checkmarx.eclipse.common.events.SettingsTopics;
+import com.checkmarx.eclipse.common.preferences.Preferences;
+import com.checkmarx.eclipse.devassist.backend.Constants;
 import com.checkmarx.eclipse.devassist.ignore.IgnoreEntry;
 import com.checkmarx.eclipse.devassist.ignore.IgnoreFileManager;
 import com.checkmarx.eclipse.devassist.ignore.IgnoreManager;
@@ -43,7 +51,13 @@ public class DevAssistIgnoredFindings extends ViewPart {
 
 	public static final String ID = "com.checkmarx.eclipse.devassist.ui.findings.ignore.DevAssistIgnoredFindings";
 
+	private Composite parentComposite;
 	private Composite container;
+	private Composite openSettingsComposite;
+	private Shell shell;
+	private static final Image CHECKMARX_OPEN_SETTINGS_LOGO = AbstractUIPlugin
+			.imageDescriptorFromPlugin(Constants.MAIN_PLUGIN_ID, "/icons/checkmarx-80.png").createImage();
+	private org.osgi.service.event.EventHandler settingsEventHandler;
 
 	// Top selection action bar
 	private Composite selectionActionBar;
@@ -75,7 +89,117 @@ public class DevAssistIgnoredFindings extends ViewPart {
 
 	@Override
 	public void createPartControl(Composite parent) {
+		this.parentComposite = parent;
+		this.shell = parent.getShell();
+
+		GridLayout parentLayout = new GridLayout(1, true);
+		parentLayout.marginWidth = 0;
+		parentLayout.marginHeight = 0;
+		parent.setLayout(parentLayout);
+
+		subscribeToSettingsEvents();
+
+		ensureProjectAndIgnoreManager();
+		if (ignoreFileManager != null) {
+			ignoreFileManager.addListener(ignoreListener);
+		}
+
+		refreshViewMode();
+	}
+
+	/**
+	 * Determines which panel to draw based on current credentials status,
+	 * mirroring {@code CxFindingsView#refreshViewMode} - so the Ignored Findings
+	 * window also gates on authentication instead of always showing the ignored
+	 * entries list (or an empty state) while logged out.
+	 */
+	private void refreshViewMode() {
+		if (parentComposite == null || parentComposite.isDisposed()) {
+			return;
+		}
+		if (!Preferences.isAuthenticated()) {
+			drawMissingCredentialsPanel(parentComposite);
+		} else {
+			drawIgnoredFindingsPanel(parentComposite);
+		}
+	}
+
+	/**
+	 * Subscribes to the settings-applied event topic so logging in/out toggles
+	 * between the missing-credentials panel and the ignored-findings list live,
+	 * without requiring the view to be closed and reopened.
+	 */
+	private void subscribeToSettingsEvents() {
+		try {
+			org.eclipse.e4.core.services.events.IEventBroker eventBroker = getSite()
+					.getService(org.eclipse.e4.core.services.events.IEventBroker.class);
+			if (eventBroker == null) {
+				eventBroker = PlatformUI.getWorkbench()
+						.getService(org.eclipse.e4.core.services.events.IEventBroker.class);
+			}
+			if (eventBroker != null) {
+				settingsEventHandler = event -> Display.getDefault().asyncExec(this::refreshViewMode);
+				eventBroker.subscribe(SettingsTopics.TOPIC_APPLY_SETTINGS, settingsEventHandler);
+			}
+		} catch (Exception e) {
+			System.err.println("[IGNORED-FINDINGS] Error subscribing to IEventBroker: " + e.getMessage());
+		}
+	}
+
+	/**
+	 * Renders the missing credentials panel, matching {@code CxFindingsView}'s
+	 * look (logo + Open Settings button) so both views behave consistently while
+	 * logged out.
+	 */
+	private void drawMissingCredentialsPanel(Composite parent) {
+		for (Control child : parent.getChildren()) {
+			child.dispose();
+		}
+		clearToolbarContributions();
+
+		openSettingsComposite = new Composite(parent, SWT.NONE);
+		openSettingsComposite.setLayout(new GridLayout(1, true));
+		openSettingsComposite.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, true, true));
+
+		Label cxLogo = new Label(openSettingsComposite, SWT.NONE);
+		cxLogo.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, true, false));
+		cxLogo.setImage(CHECKMARX_OPEN_SETTINGS_LOGO);
+
+		Button btn = new Button(openSettingsComposite, SWT.NONE);
+		btn.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, true, false));
+		btn.setText(Constants.BTN_OPEN_SETTINGS);
+		btn.addListener(SWT.Selection, event -> {
+			PreferenceDialog pref = PreferencesUtil.createPreferenceDialogOn(
+					shell, "com.checkmarx.eclipse.properties.preferencespage", null, null);
+			if (pref != null) {
+				pref.open();
+			}
+		});
+
+		setPartName("Ignored Findings");
+		parent.layout(true, true);
+	}
+
+	/**
+	 * Removes every contribution from the view toolbar - used while the missing
+	 * credentials panel is showing, since the severity filter actions operate on
+	 * an ignored-entries list that isn't rendered in that state.
+	 */
+	private void clearToolbarContributions() {
+		IToolBarManager toolbar = getViewSite().getActionBars().getToolBarManager();
+		toolbar.removeAll();
+		toolbar.update(true);
+		getViewSite().getActionBars().updateActionBars();
+	}
+
+	private void drawIgnoredFindingsPanel(Composite parent) {
+		// Clear out the missing-credentials panel if it was showing
+		for (Control child : parent.getChildren()) {
+			child.dispose();
+		}
+
 		container = new Composite(parent, SWT.NONE);
+		container.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 		GridLayout containerLayout = new GridLayout(1, false);
 		containerLayout.marginWidth = 12;
 		containerLayout.marginHeight = 10;
@@ -185,12 +309,10 @@ public class DevAssistIgnoredFindings extends ViewPart {
 
 		scrolledContainer.setContent(cardsContainer);
 
-		ensureProjectAndIgnoreManager();
-		if (ignoreFileManager != null) {
-			ignoreFileManager.addListener(ignoreListener);
-		}
 		setupToolbar();
 		refreshTable();
+
+		parent.layout(true, true);
 	}
 
 	/**
@@ -395,6 +517,17 @@ public class DevAssistIgnoredFindings extends ViewPart {
 
 	@Override
 	public void dispose() {
+		if (settingsEventHandler != null) {
+			try {
+				org.eclipse.e4.core.services.events.IEventBroker eventBroker = PlatformUI.getWorkbench()
+						.getService(org.eclipse.e4.core.services.events.IEventBroker.class);
+				if (eventBroker != null) {
+					eventBroker.unsubscribe(settingsEventHandler);
+				}
+			} catch (Exception e) {
+				System.err.println("[IGNORED-FINDINGS] Error unsubscribing from IEventBroker: " + e.getMessage());
+			}
+		}
 		if (ignoreFileManager != null) {
 			ignoreFileManager.removeListener(ignoreListener);
 		}

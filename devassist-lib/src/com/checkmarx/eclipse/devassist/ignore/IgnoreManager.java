@@ -75,7 +75,15 @@ public final class IgnoreManager {
         }
         CxLogger.info(String.format("RTS-Ignore: Ignoring %s", vulnerabilityKey));
         ignoreFileManager.updateIgnoreData(vulnerabilityKey, ignoreEntry);
-//         scanFileAndUpdateResults(issueToIgnore.getFilePath(), issueToIgnore.getScanEngine());
+        // For a ScanIssue grouping several vulnerabilities on one line (ASCA/IAC), the cached
+        // ScanIssue in ProblemHolderService/CxFindingsView still holds every vulnerability in
+        // the group - including the one just ignored - until the next scan rebuilds it via the
+        // adaptor's per-vulnerability filtering. Without an immediate rescan, isIgnored(issue)
+        // checks made against that stale cached issue (e.g. ProblemDecorator.decorateEditor,
+        // CxFindingsView.refreshTreeWithFilter) can resolve to the just-ignored vulnerability
+        // and incorrectly treat the WHOLE line as ignored, hiding any other still-active
+        // vulnerability on it until something else happens to trigger a rescan.
+        triggerRescanForFile(issueToIgnore.getFilePath());
 //         showIgnoreSuccessNotification(project, issueToIgnore, vulnerabilityKey);
         CxLogger.info(String.format("RTS-Ignore: Successfully added ignore entry for issue: %s", issueToIgnore.getTitle()));
     }
@@ -398,6 +406,43 @@ public final class IgnoreManager {
     }
 
     /**
+     * Triggers an immediate real-time rescan for a single file right after an ignore write, so
+     * the cached scan issues (and everything decorated/filtered from them) reflect the new
+     * ignore state right away instead of only after the next incidental rescan. Mirrors
+     * {@link #triggerRescanForEntry(IgnoreEntry)}'s resolution/cache-clear/schedule pattern.
+     *
+     * @param filePath absolute path of the file to rescan
+     */
+    private void triggerRescanForFile(String filePath) {
+        if (filePath == null || filePath.isEmpty() || project == null) {
+            return;
+        }
+        try {
+            org.eclipse.core.resources.IFile file = org.eclipse.core.resources.ResourcesPlugin.getWorkspace()
+                    .getRoot().getFileForLocation(new org.eclipse.core.runtime.Path(filePath));
+            if (file == null || !file.exists()) {
+                CxLogger.warning("RTS-Ignore: Cannot trigger rescan, file not found: " + filePath);
+                return;
+            }
+
+            // See triggerRescanForEntry for why the cached state hash must be cleared: ignoring
+            // only mutates .checkmarxIgnored, not the source file, so without this the scan would
+            // be skipped entirely as "unchanged".
+            DevAssistScanStateHolder stateHolder = getOrCreateStateHolder();
+            if (stateHolder != null) {
+                stateHolder.clearFileState(file.getLocation().toOSString());
+            }
+
+            com.checkmarx.eclipse.devassist.backend.listener.RealTimeScanJob scanJob =
+                    new com.checkmarx.eclipse.devassist.backend.listener.RealTimeScanJob(file, file.getName());
+            scanJob.schedule(0);
+            CxLogger.info("RTS-Ignore: Triggered rescan for ignored entry's file: " + filePath);
+        } catch (Exception e) {
+            CxLogger.warning("RTS-Ignore: Failed to trigger rescan for file: " + filePath + " - " + e.getMessage());
+        }
+    }
+
+    /**
      * Fetches (or lazily creates) the same per-project {@link DevAssistScanStateHolder}
      * instance that {@code RealTimeScanJob}/{@code ScanManager} use for edit-based
      * caching, via the identical session-property key. Sharing the exact instance
@@ -491,13 +536,26 @@ public final class IgnoreManager {
      * Resolves the specific {@link Vulnerability} the user acted on within a (possibly
      * multi-vulnerability) ScanIssue. {@code clickId} is the vulnerability id carried on the
      * hover's per-vulnerability "Ignore this" link; when it's absent/empty/the quick-fix
-     * sentinel, falls back to the issue's own id, which - by construction in the ASCA/IAC
-     * adaptors - is always the id of the first (highest-severity) vulnerability in the group.
+     * sentinel (e.g. "Ignore This Finding" from the Findings tree's right-click menu, which
+     * acts on the whole ScanIssue node rather than a specific vulnerability), falls back to
+     * the issue's own id - which, by construction in the ASCA/IAC adaptors, is assigned to the
+     * first (highest-severity) vulnerability of the *original* group.
+     * <p>
+     * That id can go stale: once that original first vulnerability is itself ignored on an
+     * earlier pass, the adaptor drops it from {@code issue.getVulnerabilities()} on the next
+     * rebuild, so the id no longer matches anything in the (now-filtered) list even though
+     * other vulnerabilities from the same group remain. In that case, fall back to the first
+     * vulnerability actually present - unambiguous when it's the only one left, and otherwise
+     * consistent with the original "first in the group" intent of {@code getScanIssueId()}.
      */
     private Vulnerability resolveVulnerability(ScanIssue issue, String clickId) {
         String vulnerabilityId = (clickId == null || clickId.isEmpty() || clickId.equals(QUICK_FIX))
                 ? issue.getScanIssueId() : clickId;
-        return DevAssistUtils.getVulnerabilityDetails(issue, vulnerabilityId);
+        Vulnerability vulnerability = DevAssistUtils.getVulnerabilityDetails(issue, vulnerabilityId);
+        if (vulnerability == null && issue.getVulnerabilities() != null && !issue.getVulnerabilities().isEmpty()) {
+            vulnerability = issue.getVulnerabilities().get(0);
+        }
+        return vulnerability;
     }
 
     /**
