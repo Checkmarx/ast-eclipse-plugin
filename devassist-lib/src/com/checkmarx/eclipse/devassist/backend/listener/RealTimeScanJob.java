@@ -120,6 +120,8 @@ public class RealTimeScanJob extends Job {
 						"com.checkmarx.eclipse.plugin", "scanner-registry");
 				org.eclipse.core.runtime.QualifiedName stateHolderKey = new org.eclipse.core.runtime.QualifiedName(
 						"com.checkmarx.eclipse.plugin", "state-holder");
+				org.eclipse.core.runtime.QualifiedName problemHolderKey = new org.eclipse.core.runtime.QualifiedName(
+						"com.checkmarx.eclipse.plugin", "problem-holder");
 
 				// Get or lazily initialize backend services
 				com.checkmarx.eclipse.devassist.backend.ScannerRegistry registry = (com.checkmarx.eclipse.devassist.backend.ScannerRegistry) project
@@ -127,6 +129,9 @@ public class RealTimeScanJob extends Job {
 
 				com.checkmarx.eclipse.devassist.backend.DevAssistScanStateHolder stateHolder = (com.checkmarx.eclipse.devassist.backend.DevAssistScanStateHolder) project
 						.getSessionProperty(stateHolderKey);
+
+				com.checkmarx.eclipse.devassist.problems.ProblemHolderService problemHolder = (com.checkmarx.eclipse.devassist.problems.ProblemHolderService) project
+						.getSessionProperty(problemHolderKey);
 
 				// Lazy initialization if not found
 				if (registry == null) {
@@ -140,6 +145,13 @@ public class RealTimeScanJob extends Job {
 
 					stateHolder = new com.checkmarx.eclipse.devassist.backend.DevAssistScanStateHolder();
 					project.setSessionProperty(stateHolderKey, stateHolder);
+
+				}
+
+				if (problemHolder == null) {
+
+					problemHolder = new com.checkmarx.eclipse.devassist.problems.ProblemHolderService();
+					project.setSessionProperty(problemHolderKey, problemHolder);
 
 				}
 
