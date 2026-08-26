@@ -92,6 +92,15 @@ public final class IgnoreManager {
      * Adds (or reactivates) a single file reference on an existing ignore
      * entry for the given issue's file, without touching any other file's
      * reference already recorded on that entry.
+     * <p>
+     * ASCA/IAC ignore keys deliberately omit the line number (see
+     * {@link #createJsonKeyForIgnoreEntry}), so a single key legitimately covers every
+     * occurrence of that rule in the file - matching an existing {@link IgnoreEntry.FileReference}
+     * by path alone would find *any* prior occurrence recorded under this key and overwrite its
+     * line/problematicLine, silently losing track of it instead of recording this (different)
+     * occurrence separately. Matching by path + problematicLine identifies the SAME occurrence
+     * (e.g. re-ignoring after a revive), while a different problematicLine is always treated as
+     * a new occurrence to add.
      */
     private void upsertFileReference(IgnoreEntry entry, ScanIssue issue, Vulnerability vulnerability) {
         if (issue.getLocations() == null || issue.getLocations().isEmpty()) {
@@ -105,12 +114,13 @@ public final class IgnoreManager {
             entry.files = new ArrayList<>();
         }
         for (IgnoreEntry.FileReference ref : entry.files) {
-            if (path.equals(ref.getPath())) {
+            boolean sameOccurrence = path.equals(ref.getPath())
+                    && (problematicLine.isEmpty()
+                        ? ref.getProblematicLine() == null
+                        : problematicLine.equals(ref.getProblematicLine()));
+            if (sameOccurrence) {
                 ref.setActive(true);
                 ref.setLine(line);
-                if (!problematicLine.isEmpty()) {
-                    ref.setProblematicLine(problematicLine);
-                }
                 return;
             }
         }
@@ -330,6 +340,19 @@ public final class IgnoreManager {
      */
     public boolean isIgnored(ScanIssue issue) {
         if (issue == null) {
+            return false;
+        }
+        if (issue.getScanEngine() == com.checkmarx.eclipse.devassist.model.ScanEngine.ASCA) {
+            // ASCA's ignore key intentionally omits the line number (see
+            // createJsonKeyForIgnoreEntry) so one key can cover several distinct occurrences
+            // of the same rule in one file, each tracked independently by problematicLine in
+            // that entry's FileReference list (see isAscaVulnerabilityIgnored). That
+            // per-occurrence filtering already runs upstream in AscaScanResultAdaptor before a
+            // ScanIssue ever reaches this call (from decoration/tree-filtering call sites) -
+            // any ASCA ScanIssue that does reach here already has only its non-ignored
+            // vulnerabilities. A coarse key+path match here (ignoring problematicLine) would
+            // incorrectly treat this issue as ignored whenever ANY occurrence of the same rule
+            // in this file is ignored - including ones on a completely different line.
             return false;
         }
         String key = createJsonKeyForIgnoreEntry(issue, "");
