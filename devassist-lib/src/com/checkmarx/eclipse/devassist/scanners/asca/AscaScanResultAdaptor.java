@@ -55,10 +55,29 @@ public class AscaScanResultAdaptor implements ScanResult<Object> {
 	 *                       filtering is the only enforcement point
 	 */
 	public AscaScanResultAdaptor(com.checkmarx.ast.asca.ScanResult ascaScanResult, String filePath, IProject project) {
+		this(ascaScanResult, filePath, project, true);
+	}
+
+	/**
+	 * Constructs an instance of AscaScanResultAdaptor with optional ignore filtering.
+	 *
+	 * @param ascaScanResult the ASCA scan results to be wrapped
+	 * @param filePath       the path of the file being scanned
+	 * @param project        the project the file belongs to, used to filter out
+	 *                       already-ignored vulnerabilities
+	 * @param filterIgnored  whether to filter out already-ignored vulnerabilities
+	 *                       (true = filter, false = keep all). Pass false when
+	 *                       building the adaptor used to reconcile ignored
+	 *                       entries' line numbers, since that pass needs every
+	 *                       vulnerability - including already-ignored ones - to
+	 *                       track which occurrences are still present in the code.
+	 */
+	public AscaScanResultAdaptor(com.checkmarx.ast.asca.ScanResult ascaScanResult, String filePath, IProject project,
+			boolean filterIgnored) {
 		this.ascaScanResult = ascaScanResult;
 		this.filePath = filePath;
 		this.project = project;
-		this.scanIssues = buildIssues();
+		this.scanIssues = filterIgnored ? buildIssues() : buildIssuesUnfiltered();
 	}
 
 	@Override
@@ -72,10 +91,30 @@ public class AscaScanResultAdaptor implements ScanResult<Object> {
 	}
 
 	/**
-	 * Builds a list of ScanIssue objects from the ASCA scan results.
+	 * Builds a list of ScanIssue objects from the ASCA scan results, filtering out
+	 * already-ignored vulnerabilities.
 	 * Groups multiple vulnerabilities on the same line and sorts them by severity.
 	 */
 	private List<ScanIssue> buildIssues() {
+		return buildIssuesInternal(true);
+	}
+
+	/**
+	 * Builds a list of ScanIssue objects from the ASCA scan results WITHOUT filtering
+	 * ignored vulnerabilities. Used to reconcile ignored entries' line numbers, where all
+	 * vulnerabilities (including already-ignored ones) are needed to track which occurrences
+	 * are still present in the code.
+	 */
+	private List<ScanIssue> buildIssuesUnfiltered() {
+		return buildIssuesInternal(false);
+	}
+
+	/**
+	 * Groups multiple vulnerabilities on the same line and sorts them by severity.
+	 *
+	 * @param applyFilter true to filter out already-ignored vulnerabilities, false to keep all
+	 */
+	private List<ScanIssue> buildIssuesInternal(boolean applyFilter) {
 		if (ascaScanResult == null || ascaScanResult.getScanDetails() == null) {
 			CxLogger.info(LOG_TAG + " No scan results or scan details available");
 			return Collections.emptyList();
@@ -101,8 +140,8 @@ public class AscaScanResultAdaptor implements ScanResult<Object> {
 		// AscaScannerService#getIgnoreFilePath), so already-ignored vulnerabilities must be
 		// filtered out here, at the point ScanIssues are built - fetched once per file build
 		// rather than per group, since it's the same snapshot for every line in this file.
-		IgnoreManager ignoreManager = project != null ? IgnoreManager.getInstance(project) : null;
-		List<IgnoreEntry> ignoreEntries = project != null
+		IgnoreManager ignoreManager = (applyFilter && project != null) ? IgnoreManager.getInstance(project) : null;
+		List<IgnoreEntry> ignoreEntries = (applyFilter && project != null)
 				? IgnoreFileManager.getInstance(project).getAllIgnoreEntries() : Collections.emptyList();
 
 		List<ScanIssue> issues = groupedIssues.values().stream()
@@ -110,7 +149,8 @@ public class AscaScanResultAdaptor implements ScanResult<Object> {
 				.filter(Objects::nonNull)
 				.collect(Collectors.toList());
 
-		CxLogger.info(LOG_TAG + " Converted " + issues.size() + " grouped scan issues for file: " + filePath);
+		CxLogger.info(LOG_TAG + (applyFilter ? " Converted " : " Converted (unfiltered) ") + issues.size()
+				+ " grouped scan issues for file: " + filePath);
 		return issues;
 	}
 
@@ -124,7 +164,8 @@ public class AscaScanResultAdaptor implements ScanResult<Object> {
 	 * @param ascaScanDetails the list of ASCA scan details for the same line
 	 *                        (already sorted by severity)
 	 * @param ignoreManager   resolves whether a given vulnerability is ignored, or
-	 *                        {@code null} if no project context is available
+	 *                        {@code null} if no project context is available or filtering
+	 *                        is disabled
 	 * @param ignoreEntries   the current ignore entries to check against
 	 * @return a ScanIssue representing the ASCA finding(s), or null if every
 	 *         vulnerability in the group is ignored or conversion fails

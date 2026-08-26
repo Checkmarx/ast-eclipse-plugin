@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.util.*;
 
 import com.checkmarx.eclipse.devassist.backend.DevAssistScanStateHolder;
+import com.checkmarx.eclipse.devassist.common.ScanResult;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.model.Vulnerability;
 import com.checkmarx.eclipse.devassist.problems.ProblemHolderService;
@@ -654,6 +655,277 @@ public final class IgnoreManager {
             }
         }
         return false;
+    }
+
+    /**
+     * Checks if there are any ignored entries for the specified scan engine type.
+     * Used to skip the (expensive) full re-scan / line-number reconciliation
+     * done by {@link #updateLineNumbersForIgnoredEntries} when a file's scan
+     * engine has no ignored entries at all.
+     *
+     * @param scanEngine The scan engine type to check for ignored entries
+     * @return {@code true} if there are any ignored entries for the specified scan engine,
+     * {@code false} otherwise
+     */
+    public boolean hasIgnoredEntries(com.checkmarx.eclipse.devassist.utils.ScanEngine scanEngine) {
+        return ignoreFileManager.getIgnoreData().values().stream()
+                .anyMatch(entry -> entry.getType() == scanEngine);
+    }
+
+    /**
+     * Creates a list of ignore entry keys for a given scan issue.
+     * For IAC and ASCA scan engines, it generates keys for each vulnerability found in the scan issue.
+     * For other scan engines (OSS, SECRETS, CONTAINERS), it generates a single key using the quick fix ID.
+     *
+     * @param scanIssue The scan issue to create ignore keys for
+     * @return A list of unique keys that can be used to identify ignore entries for this scan issue
+     */
+    private List<String> createIgnoreKeysForScanIssue(ScanIssue scanIssue) {
+        List<String> keys = new ArrayList<>();
+        if (scanIssue.getScanEngine() == com.checkmarx.eclipse.devassist.model.ScanEngine.IAC
+                || scanIssue.getScanEngine() == com.checkmarx.eclipse.devassist.model.ScanEngine.ASCA) {
+            // IAC / ASCA - build key for EACH vulnerability
+            if (scanIssue.getVulnerabilities() == null || scanIssue.getVulnerabilities().isEmpty()) {
+                return keys;
+            }
+            for (Vulnerability vulnerability : scanIssue.getVulnerabilities()) {
+                String vulnerabilityId = vulnerability.getVulnerabilityId();
+                if (vulnerabilityId == null || vulnerabilityId.isEmpty()) {
+                    continue;
+                }
+                String key = createJsonKeyForIgnoreEntry(scanIssue, vulnerabilityId);
+                if (!key.isEmpty()) {
+                    keys.add(key);
+                }
+            }
+        } else {
+            String key = createJsonKeyForIgnoreEntry(scanIssue, QUICK_FIX);
+            if (!key.isEmpty()) {
+                keys.add(key);
+            }
+        }
+        return keys;
+    }
+
+    /**
+     * Updates line numbers for ignored entries (OSS/SECRETS/CONTAINERS/IAC) based on a fresh,
+     * UNFILTERED scan of the file (i.e. run without passing the ignore file to the scan engine,
+     * so already-ignored issues are still present in the results). If a user edits a file above an
+     * ignored finding, the finding's line shifts - without this reconciliation the gutter
+     * icon/marker for that ignored finding would render at its stale line. Also removes ignore
+     * entries whose finding is no longer present in the scan results (e.g. the vulnerable code was
+     * deleted).
+     *
+     * @param fullScanResults The UNFILTERED scan results for the file
+     * @param filePath        The path of the file that was scanned and needs line number updates
+     */
+    public void updateLineNumbersForIgnoredEntries(ScanResult<?> fullScanResults, String filePath) {
+        List<ScanIssue> allIssuesForFile = fullScanResults.getIssues();
+        if (allIssuesForFile == null || allIssuesForFile.isEmpty()) {
+            CxLogger.info(String.format("RTS-Ignore: No issues found in scan results for file: %s", filePath));
+            return;
+        }
+        com.checkmarx.eclipse.devassist.model.ScanEngine modelScanEngine = allIssuesForFile.get(0).getScanEngine();
+        if (modelScanEngine == null) {
+            CxLogger.info(String.format("RTS-Ignore: Scan engine type is null for file: %s", filePath));
+            return;
+        }
+        com.checkmarx.eclipse.devassist.utils.ScanEngine scanEngineType =
+                com.checkmarx.eclipse.devassist.utils.ScanEngine.valueOf(modelScanEngine.toString());
+
+        boolean hasChanges = false;
+        List<String> keysToRemove = new ArrayList<>();
+        Map<String, ScanIssue> scanIssueKeyMap = new HashMap<>();
+        for (ScanIssue scanIssue : allIssuesForFile) {
+            for (String key : createIgnoreKeysForScanIssue(scanIssue)) {
+                scanIssueKeyMap.put(key, scanIssue);
+            }
+        }
+        String relativePath = ignoreFileManager.normalizePath(filePath);
+        for (Map.Entry<String, IgnoreEntry> mapEntry : ignoreFileManager.getIgnoreData().entrySet()) {
+            IgnoreEntry ignoreEntry = mapEntry.getValue();
+            if (ignoreEntry.getType() != scanEngineType) {
+                continue; // Skip entries from different scan engines
+            }
+            ScanIssue matchingScanIssue = scanIssueKeyMap.get(mapEntry.getKey());
+            if (matchingScanIssue != null) {
+                String matchingIssuePath = ignoreFileManager.normalizePath(matchingScanIssue.getFilePath());
+                if (matchingIssuePath.equals(relativePath)) {
+                    if (matchingScanIssue.getLocations() == null || matchingScanIssue.getLocations().isEmpty()) {
+                        continue;
+                    }
+                    int newLineNumber = matchingScanIssue.getLocations().get(0).getLine();
+                    for (IgnoreEntry.FileReference fileRef : ignoreEntry.getFiles()) {
+                        if (fileRef.getPath().equals(relativePath) && fileRef.isActive()) {
+                            Integer oldLineNumber = fileRef.getLine();
+                            if (oldLineNumber == null || oldLineNumber != newLineNumber) {
+                                fileRef.setLine(newLineNumber);
+                                hasChanges = true;
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Not found in scan results - remove if this entry has a reference for this file
+                boolean hasFileRefForCurrentFile = ignoreEntry.getFiles().stream()
+                        .anyMatch(fileRef -> fileRef.getPath().equals(relativePath) && fileRef.isActive());
+                if (hasFileRefForCurrentFile) {
+                    keysToRemove.add(mapEntry.getKey());
+                }
+            }
+        }
+        updateInIgnoredEntries(keysToRemove, hasChanges, relativePath);
+    }
+
+    /**
+     * Removes entries marked for removal and persists any line-number changes to disk.
+     *
+     * @param keysToRemove List of keys to remove from ignore data
+     * @param toUpdate     Flag indicating whether line numbers were updated and need to be saved
+     * @param relativePath Relative path of the file being processed
+     */
+    private void updateInIgnoredEntries(List<String> keysToRemove, boolean toUpdate, String relativePath) {
+        if (!keysToRemove.isEmpty()) {
+            for (String keyToRemove : keysToRemove) {
+                ignoreFileManager.getIgnoreData().remove(keyToRemove);
+                toUpdate = true;
+            }
+        }
+        if (toUpdate) {
+            ignoreFileManager.saveIgnoreDataToDisk();
+            CxLogger.info(String.format("RTS-Ignore: Line numbers updated and saved for file: %s", relativePath));
+        } else {
+            CxLogger.info(String.format("RTS-Ignore: No line number changes detected for file: %s", relativePath));
+        }
+    }
+
+    /**
+     * Updates line numbers for ignored ASCA entries based on new scan results, using
+     * problematicLine content for matching (ASCA's ignore key intentionally omits the line
+     * number - see {@link #createJsonKeyForIgnoreEntry} - so occurrences of the same rule in a
+     * file are tracked by the source text of the flagged line rather than its position, since
+     * that drifts as the file is edited). Removes file references/entries whose problematicLine
+     * is no longer present in the scan result (e.g. the vulnerable code was deleted).
+     * <p>
+     * The passed-in {@code fullScanResults} must be UNFILTERED (built with an
+     * {@link com.checkmarx.eclipse.devassist.scanners.asca.AscaScanResultAdaptor} that keeps
+     * already-ignored vulnerabilities) so every currently-ignored occurrence can still be matched.
+     *
+     * @param fullScanResults The UNFILTERED scan results containing updated line numbers and issues
+     * @param filePath        The path of the file that was scanned and needs line number updates
+     */
+    public void updateLineNumbersForIgnoredEntriesByProblematicLine(ScanResult<?> fullScanResults, String filePath) {
+        List<ScanIssue> allIssuesForFile = fullScanResults.getIssues();
+        if (allIssuesForFile == null || allIssuesForFile.isEmpty()) {
+            CxLogger.info(String.format("ASCA-Ignore: No issues found in scan results for file: %s", filePath));
+            return;
+        }
+        String relativePath = ignoreFileManager.normalizePath(filePath);
+        boolean hasChanges = false;
+
+        List<VulnerabilityWithLine> vulnerabilitiesWithLine = new ArrayList<>();
+        Set<String> presentProblematicLines = new HashSet<>();
+        for (ScanIssue scanIssue : allIssuesForFile) {
+            if (scanIssue.getVulnerabilities() != null) {
+                for (Vulnerability v : scanIssue.getVulnerabilities()) {
+                    int line = (scanIssue.getLocations() != null && !scanIssue.getLocations().isEmpty())
+                            ? scanIssue.getLocations().get(0).getLine() : 0;
+                    vulnerabilitiesWithLine.add(new VulnerabilityWithLine(v.getProblematicLine(), line));
+                    if (v.getProblematicLine() != null) {
+                        presentProblematicLines.add(v.getProblematicLine());
+                    }
+                }
+            }
+        }
+
+        List<String> keysToRemove = new ArrayList<>();
+        for (Map.Entry<String, IgnoreEntry> mapEntry : ignoreFileManager.getIgnoreData().entrySet()) {
+            IgnoreEntry ignoreEntry = mapEntry.getValue();
+            if (ignoreEntry.getType() != com.checkmarx.eclipse.devassist.utils.ScanEngine.ASCA) {
+                continue; // Only process ASCA entries
+            }
+            List<IgnoreEntry.FileReference> fileRefs = ignoreEntry.getFiles();
+            List<IgnoreEntry.FileReference> fileRefsToRemove = new ArrayList<>();
+            for (IgnoreEntry.FileReference fileRef : fileRefs) {
+                if (fileRef.getPath().equals(relativePath) && fileRef.isActive()) {
+                    String ignoredProblematicLine = fileRef.getProblematicLine();
+                    VulnerabilityWithLine match = vulnerabilitiesWithLine.stream()
+                            .filter(vwl -> Objects.equals(vwl.problematicLine, ignoredProblematicLine))
+                            .findFirst().orElse(null);
+                    if (match != null && match.line > 0
+                            && (fileRef.getLine() == null || fileRef.getLine() != match.line)) {
+                        fileRef.setLine(match.line);
+                        hasChanges = true;
+                    }
+                    if (ignoredProblematicLine == null || !presentProblematicLines.contains(ignoredProblematicLine)) {
+                        fileRefsToRemove.add(fileRef);
+                        hasChanges = true;
+                    }
+                }
+            }
+            if (!fileRefsToRemove.isEmpty()) {
+                fileRefs.removeAll(fileRefsToRemove);
+            }
+            if (ignoreEntry.getFiles().isEmpty()) {
+                keysToRemove.add(mapEntry.getKey());
+            }
+        }
+        for (String keyToRemove : keysToRemove) {
+            ignoreFileManager.getIgnoreData().remove(keyToRemove);
+            hasChanges = true;
+        }
+        if (hasChanges) {
+            ignoreFileManager.saveIgnoreDataToDisk();
+            CxLogger.info(String.format(
+                    "ASCA-Ignore: Line numbers and obsolete entries updated by problematicLine and saved for file: %s",
+                    relativePath));
+        } else {
+            CxLogger.info(String.format(
+                    "ASCA-Ignore: No line number or entry changes detected by problematicLine for file: %s",
+                    relativePath));
+        }
+    }
+
+    /** Helper for matching a problematicLine to its current line number. */
+    private static class VulnerabilityWithLine {
+        final String problematicLine;
+        final int line;
+
+        VulnerabilityWithLine(String problematicLine, int line) {
+            this.problematicLine = problematicLine;
+            this.line = line;
+        }
+    }
+
+    /**
+     * Removes all ASCA ignore entries/file references for a file when a full re-scan finds no
+     * issues at all in it (e.g. every flagged line was deleted).
+     *
+     * @param filePath The path of the file for which ignore entries should be removed
+     */
+    public void removeIgnoreEntriesForFileIfEmpty(String filePath) {
+        String relativePath = ignoreFileManager.normalizePath(filePath);
+        List<String> keysToRemove = new ArrayList<>();
+        boolean removed = false;
+        for (Map.Entry<String, IgnoreEntry> mapEntry : ignoreFileManager.getIgnoreData().entrySet()) {
+            IgnoreEntry ignoreEntry = mapEntry.getValue();
+            if (ignoreEntry.getType() != com.checkmarx.eclipse.devassist.utils.ScanEngine.ASCA) {
+                continue;
+            }
+            List<IgnoreEntry.FileReference> fileRefs = ignoreEntry.getFiles();
+            fileRefs.removeIf(fileRef -> fileRef.getPath().equals(relativePath));
+            if (ignoreEntry.getFiles().isEmpty()) {
+                keysToRemove.add(mapEntry.getKey());
+            }
+        }
+        for (String keyToRemove : keysToRemove) {
+            ignoreFileManager.getIgnoreData().remove(keyToRemove);
+            removed = true;
+        }
+        if (removed) {
+            ignoreFileManager.saveIgnoreDataToDisk();
+            CxLogger.info(String.format("ASCA-Ignore: Removed ignore entries for file with no issues: %s", relativePath));
+        }
     }
 
     private String formatJsonKeyForIgnoreEntry(com.checkmarx.eclipse.devassist.utils.ScanEngine scanEngine,

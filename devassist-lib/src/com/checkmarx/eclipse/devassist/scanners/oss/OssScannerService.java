@@ -28,6 +28,7 @@ import com.checkmarx.eclipse.common.wrapper.WrapperProvider;
 import com.checkmarx.eclipse.devassist.basescanner.BaseScannerService;
 import com.checkmarx.eclipse.devassist.common.ScanResult;
 import com.checkmarx.eclipse.devassist.common.ScannerConfig;
+import com.checkmarx.eclipse.devassist.ignore.IgnoreManager;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
 import com.checkmarx.eclipse.devassist.utils.PackageManager;
@@ -131,6 +132,9 @@ public class OssScannerService extends BaseScannerService<OssRealtimeResults> {
 
 				OssScanResultAdaptor scanResultAdaptor = new OssScanResultAdaptor(scanResults, filePath);
 
+				// Update line numbers for ignored packages if any exist
+				updateIgnoredFileDataOnLatestResult(mainTempPath.get(), filePath);
+
 				return scanResultAdaptor;
 
 			} catch (Exception e) {
@@ -140,6 +144,30 @@ public class OssScannerService extends BaseScannerService<OssRealtimeResults> {
 				CxLogger.info(LOG_TAG + " Deleting temporary OSS folder");
 				deleteTempFolder(tempSubFolder);
 			}
+		}
+	}
+
+	/**
+	 * Re-runs the scan without the ignore file to reconcile ignored packages' line numbers
+	 * against a fresh, unfiltered result. If a user edits a file above an ignored package
+	 * finding, its line shifts - without this, the gutter icon/marker for that ignored finding
+	 * would render at its stale line.
+	 */
+	private void updateIgnoredFileDataOnLatestResult(String tempFilePath, String filePath) {
+		try {
+			IgnoreManager ignoreManager = IgnoreManager.getInstance(project);
+			if (!ignoreManager.hasIgnoredEntries(com.checkmarx.eclipse.devassist.utils.ScanEngine.OSS)) {
+				return;
+			}
+			CxLogger.info(LOG_TAG + " Performing full scan to update line numbers for ignored packages");
+			OssRealtimeResults fullScanResults = wrapperProvider.ossRealtimeScan(tempFilePath, "");
+			if (fullScanResults != null && fullScanResults.getPackages() != null) {
+				OssScanResultAdaptor fullScanResultAdaptor = new OssScanResultAdaptor(fullScanResults, filePath);
+				ignoreManager.updateLineNumbersForIgnoredEntries(fullScanResultAdaptor, filePath);
+			}
+		} catch (Exception e) {
+			CxLogger.warning(LOG_TAG + " Exception occurred while updating ignored OSS line numbers: "
+					+ e.getMessage());
 		}
 	}
 

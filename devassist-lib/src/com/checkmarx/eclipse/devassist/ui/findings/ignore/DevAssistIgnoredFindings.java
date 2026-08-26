@@ -7,15 +7,19 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.preference.PreferenceDialog;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.ScrolledComposite;
+import org.eclipse.swt.events.MouseAdapter;
+import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Color;
+import org.eclipse.swt.graphics.Cursor;
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.GridData;
@@ -25,14 +29,20 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Link;
+import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.ui.IEditorPart;
+import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.dialogs.PreferencesUtil;
+import org.eclipse.ui.ide.IDE;
 import org.eclipse.ui.part.ViewPart;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 
 import com.checkmarx.eclipse.common.events.SettingsTopics;
 import com.checkmarx.eclipse.common.preferences.Preferences;
+import com.checkmarx.eclipse.common.utils.CxLogger;
 import com.checkmarx.eclipse.devassist.backend.Constants;
 import com.checkmarx.eclipse.devassist.ignore.IgnoreEntry;
 import com.checkmarx.eclipse.devassist.ignore.IgnoreFileManager;
@@ -423,6 +433,19 @@ public class DevAssistIgnoredFindings extends ViewPart {
 		updateSelectionStateUI();
 	}
 
+	/**
+	 * Recomputes the scroll area's min height after a card's content changes
+	 * size (e.g. expanding/collapsing the "N more files" link), so the
+	 * ScrolledComposite's scrollbar stays in sync with the actual content height.
+	 */
+	public void relayoutCards() {
+		if (cardsContainer == null || cardsContainer.isDisposed()) {
+			return;
+		}
+		cardsContainer.layout(true, true);
+		scrolledContainer.setMinHeight(cardsContainer.computeSize(SWT.DEFAULT, SWT.DEFAULT).y);
+	}
+
 	private void onSelectAllToggled(boolean selectAll) {
 		isProgrammaticSelectionChange = true;
 		try {
@@ -485,6 +508,77 @@ public class DevAssistIgnoredFindings extends ViewPart {
 		}
 		IgnoreManager.getInstance(currentProject).reviveSingleEntry(entry);
 		refreshTable();
+	}
+
+	/**
+	 * Navigates to the file (and line, if known) referenced by a file badge on an
+	 * ignore entry card, mirroring the file-badge navigation already implemented
+	 * in the JetBrains plugin's DevAssistIgnoredFindings.
+	 */
+	public void navigateToFile(IgnoreEntry.FileReference file) {
+		ensureProjectAndIgnoreManager();
+		if (file == null || file.getPath() == null || currentProject == null) {
+			return;
+		}
+
+		try {
+			java.nio.file.Path absolutePath = Paths.get(currentProject.getLocation().toOSString(), file.getPath());
+			IFile ifile = ResourcesPlugin.getWorkspace().getRoot()
+					.getFileForLocation(new org.eclipse.core.runtime.Path(absolutePath.toString()));
+
+			if (ifile == null || !ifile.exists()) {
+				showErrorMessage("Could not find file: " + file.getPath());
+				return;
+			}
+
+			IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
+			IEditorPart editor = IDE.openEditor(page, ifile);
+
+			Integer line = file.getLine();
+			if (line != null && line > 0) {
+				scrollToLine(editor, line);
+			}
+		} catch (Exception e) {
+			showErrorMessage("Failed to open file: " + e.getMessage());
+		}
+	}
+
+	private boolean scrollToLine(IEditorPart editor, int lineNumber) {
+		if (editor == null || lineNumber <= 0) {
+			return false;
+		}
+		try {
+			org.eclipse.ui.texteditor.ITextEditor textEditor = editor
+					.getAdapter(org.eclipse.ui.texteditor.ITextEditor.class);
+			if (textEditor == null && editor instanceof org.eclipse.ui.texteditor.ITextEditor) {
+				textEditor = (org.eclipse.ui.texteditor.ITextEditor) editor;
+			}
+
+			if (textEditor != null) {
+				org.eclipse.ui.texteditor.IDocumentProvider provider = textEditor.getDocumentProvider();
+				if (provider != null) {
+					org.eclipse.jface.text.IDocument document = provider.getDocument(textEditor.getEditorInput());
+					if (document != null && lineNumber <= document.getNumberOfLines()) {
+						int lineOffset = document.getLineOffset(lineNumber - 1);
+						textEditor.selectAndReveal(lineOffset, 0);
+						return true;
+					}
+				}
+			}
+		} catch (Exception e) {
+			CxLogger.error("Failed to scroll to line " + lineNumber, e);
+		}
+		return false;
+	}
+
+	private void showErrorMessage(String message) {
+		if (shell == null || shell.isDisposed()) {
+			return;
+		}
+		MessageBox msgBox = new MessageBox(shell, SWT.ICON_ERROR);
+		msgBox.setMessage(message);
+		msgBox.setText("Checkmarx AI Assist");
+		msgBox.open();
 	}
 
 	private void reviveSelected() {
@@ -632,7 +726,9 @@ public class DevAssistIgnoredFindings extends ViewPart {
 
 				Composite tagsComposite = new Composite(contentComposite, SWT.NONE);
 				tagsComposite.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
-				GridLayout tagsLayout = new GridLayout(activeFiles.size() + 1, false);
+				// +2 reserves columns for the type badge and the expand/collapse link, in
+				// addition to one column per active file badge.
+				GridLayout tagsLayout = new GridLayout(activeFiles.size() + 2, false);
 				tagsLayout.marginWidth = 0;
 				tagsLayout.marginHeight = 2;
 				tagsLayout.horizontalSpacing = 6;
@@ -643,13 +739,50 @@ public class DevAssistIgnoredFindings extends ViewPart {
 
 				// Type Badge (Slight rounding: 4px)
 				createFlatBadge(tagsComposite, entry.getType() != null ? entry.getType().toString() : "VULNERABILITY",
-						tagBorderColor, tagTextColor, 4);
+						tagBorderColor, tagTextColor, 4, null);
 
-				// File Badges (Pill style rounding: 10px)
-				for (IgnoreEntry.FileReference file : activeFiles.stream().limit(2).collect(Collectors.toList())) {
-					String fileName = file.getPath() != null ? Paths.get(file.getPath()).getFileName().toString()
-							: "unknown";
-					createFlatBadge(tagsComposite, "📄 " + fileName, tagBorderColor, tagTextColor, 10);
+				// File Badges (Pill style rounding: 10px) - clickable, navigates to the
+				// file (and line, if known), matching the JetBrains plugin's behavior.
+				int visibleCount = Math.min(2, activeFiles.size());
+				for (IgnoreEntry.FileReference file : activeFiles.subList(0, visibleCount)) {
+					createFileBadge(tagsComposite, file, parentView, tagBorderColor, tagTextColor);
+				}
+
+				// "N more" / "see less" expand-collapse link for remaining files, matching
+				// the JetBrains plugin's behavior.
+				if (activeFiles.size() > visibleCount) {
+					List<IgnoreEntry.FileReference> hidden = activeFiles.subList(visibleCount, activeFiles.size());
+					List<Control> expandedControls = new ArrayList<>();
+
+					Link expandLink = new Link(tagsComposite, SWT.NONE);
+					expandLink.setText("<a>+" + hidden.size() + (hidden.size() == 1 ? " more file</a>" : " more files</a>"));
+					expandLink.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
+
+					expandLink.addListener(SWT.Selection, e -> {
+						((GridData) expandLink.getLayoutData()).exclude = true;
+						expandLink.setVisible(false);
+
+						for (IgnoreEntry.FileReference file : hidden) {
+							expandedControls
+									.add(createFileBadge(tagsComposite, file, parentView, tagBorderColor, tagTextColor));
+						}
+
+						Link collapseLink = new Link(tagsComposite, SWT.NONE);
+						collapseLink.setText("<a>see less</a>");
+						collapseLink.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
+						collapseLink.addListener(SWT.Selection, e2 -> {
+							for (Control c : expandedControls) {
+								c.dispose();
+							}
+							expandedControls.clear();
+							((GridData) expandLink.getLayoutData()).exclude = false;
+							expandLink.setVisible(true);
+							refreshTagsLayout(tagsComposite, parentView);
+						});
+						expandedControls.add(collapseLink);
+
+						refreshTagsLayout(tagsComposite, parentView);
+					});
 				}
 			}
 
@@ -698,8 +831,31 @@ public class DevAssistIgnoredFindings extends ViewPart {
 		}
 	}
 
-	private static void createFlatBadge(Composite parent, String text, Color borderColor, Color textColor,
-			int cornerRadius) {
+	/**
+	 * Creates a clickable file badge that navigates to the referenced file (and
+	 * line, if known) when clicked.
+	 */
+	private static Composite createFileBadge(Composite parent, IgnoreEntry.FileReference file,
+			DevAssistIgnoredFindings parentView, Color borderColor, Color textColor) {
+		String fileName = file.getPath() != null ? Paths.get(file.getPath()).getFileName().toString() : "unknown";
+		return createFlatBadge(parent, "📄 " + fileName, borderColor, textColor, 10,
+				() -> parentView.navigateToFile(file));
+	}
+
+	/**
+	 * Re-flows the tags row and its ancestors after an expand/collapse toggle,
+	 * and recomputes the scroll area's min height so the ScrolledComposite
+	 * accounts for the new card height.
+	 */
+	private static void refreshTagsLayout(Composite tagsComposite, DevAssistIgnoredFindings parentView) {
+		for (Composite c = tagsComposite; c != null && !c.isDisposed(); c = c.getParent()) {
+			c.layout(true, true);
+		}
+		parentView.relayoutCards();
+	}
+
+	private static Composite createFlatBadge(Composite parent, String text, Color borderColor, Color textColor,
+			int cornerRadius, Runnable onClick) {
 		Composite badgeContainer = new Composite(parent, SWT.NONE);
 		GridLayout containerLayout = new GridLayout(1, false);
 		containerLayout.marginWidth = 6;
@@ -722,5 +878,22 @@ public class DevAssistIgnoredFindings extends ViewPart {
 		});
 
 		label.setBackground(badgeContainer.getBackground());
-	}	
+
+		if (onClick != null) {
+			Cursor handCursor = parent.getDisplay().getSystemCursor(SWT.CURSOR_HAND);
+			badgeContainer.setCursor(handCursor);
+			label.setCursor(handCursor);
+
+			MouseAdapter clickListener = new MouseAdapter() {
+				@Override
+				public void mouseUp(MouseEvent e) {
+					onClick.run();
+				}
+			};
+			badgeContainer.addMouseListener(clickListener);
+			label.addMouseListener(clickListener);
+		}
+
+		return badgeContainer;
+	}
 }
