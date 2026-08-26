@@ -165,6 +165,11 @@ public class IacScanResultAdaptor implements ScanResult<IacRealtimeResults> {
 		vulnerability.setTitle(iacIssue.getTitle());
 		vulnerability.setDescription(iacIssue.getDescription());
 		vulnerability.setSeverity(mapSeverity(iacIssue.getSeverity()));
+		vulnerability.setActualValue(iacIssue.getActualValue());
+		vulnerability.setExpectedValue(iacIssue.getExpectedValue());
+		// Per-instance discriminator: lets the ignore key tell apart multiple IaC
+		// vulnerabilities grouped onto the same line (see IgnoreManager#createJsonKeyForIgnoreEntry)
+		vulnerability.setSimilarityId(iacIssue.getSimilarityId());
 
 		CxLogger.info(LOG_TAG + " Created vulnerability '" + iacIssue.getTitle() +
 				"' with vulnerabilityId '" + vulnerabilityId + "'");

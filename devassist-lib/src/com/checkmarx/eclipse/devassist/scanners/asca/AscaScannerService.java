@@ -107,7 +107,7 @@ public class AscaScannerService extends BaseScannerService<ScanResult> {
 			if (rawResults == null) {
 				return null;
 			}
-			return new AscaScanResultAdaptor((com.checkmarx.ast.asca.ScanResult) rawResults, filePath);
+			return new AscaScanResultAdaptor((com.checkmarx.ast.asca.ScanResult) rawResults, filePath, proj);
 		} catch (Exception e) {
 			CxLogger.error(LOG_TAG + " Scan failed: " + e.getMessage(), e);
 			return null;

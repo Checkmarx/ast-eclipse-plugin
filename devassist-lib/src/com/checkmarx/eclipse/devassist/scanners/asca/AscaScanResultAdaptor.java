@@ -2,6 +2,9 @@ package com.checkmarx.eclipse.devassist.scanners.asca;
 
 import com.checkmarx.ast.asca.ScanDetail;
 import com.checkmarx.eclipse.devassist.common.ScanResult;
+import com.checkmarx.eclipse.devassist.ignore.IgnoreEntry;
+import com.checkmarx.eclipse.devassist.ignore.IgnoreFileManager;
+import com.checkmarx.eclipse.devassist.ignore.IgnoreManager;
 import com.checkmarx.eclipse.devassist.model.Location;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
@@ -9,6 +12,7 @@ import com.checkmarx.eclipse.devassist.model.Vulnerability;
 import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
 import com.checkmarx.eclipse.devassist.utils.DevAssistUtils;
 import com.checkmarx.eclipse.common.utils.CxLogger;
+import org.eclipse.core.resources.IProject;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -35,6 +39,7 @@ public class AscaScanResultAdaptor implements ScanResult<Object> {
 
 	private final com.checkmarx.ast.asca.ScanResult ascaScanResult;
 	private final String filePath;
+	private final IProject project;
 	private final List<ScanIssue> scanIssues;
 
 	/**
@@ -43,10 +48,16 @@ public class AscaScanResultAdaptor implements ScanResult<Object> {
 	 *
 	 * @param ascaScanResult the ASCA scan results to be wrapped
 	 * @param filePath       the path of the file being scanned
+	 * @param project        the project the file belongs to, used to filter out
+	 *                       already-ignored vulnerabilities - ASCA's CLI has no
+	 *                       ignore-file exclusion of its own (see
+	 *                       AscaScannerService#getIgnoreFilePath), so this app-level
+	 *                       filtering is the only enforcement point
 	 */
-	public AscaScanResultAdaptor(com.checkmarx.ast.asca.ScanResult ascaScanResult, String filePath) {
+	public AscaScanResultAdaptor(com.checkmarx.ast.asca.ScanResult ascaScanResult, String filePath, IProject project) {
 		this.ascaScanResult = ascaScanResult;
 		this.filePath = filePath;
+		this.project = project;
 		this.scanIssues = buildIssues();
 	}
 
@@ -86,8 +97,16 @@ public class AscaScanResultAdaptor implements ScanResult<Object> {
 							return detailsList;
 						})));
 
+		// ASCA's CLI has no ignore-file exclusion of its own (see
+		// AscaScannerService#getIgnoreFilePath), so already-ignored vulnerabilities must be
+		// filtered out here, at the point ScanIssues are built - fetched once per file build
+		// rather than per group, since it's the same snapshot for every line in this file.
+		IgnoreManager ignoreManager = project != null ? IgnoreManager.getInstance(project) : null;
+		List<IgnoreEntry> ignoreEntries = project != null
+				? IgnoreFileManager.getInstance(project).getAllIgnoreEntries() : Collections.emptyList();
+
 		List<ScanIssue> issues = groupedIssues.values().stream()
-				.map(this::createScanIssueForGroup)
+				.map(detailList -> createScanIssueForGroup(detailList, ignoreManager, ignoreEntries))
 				.filter(Objects::nonNull)
 				.collect(Collectors.toList());
 
@@ -97,14 +116,21 @@ public class AscaScanResultAdaptor implements ScanResult<Object> {
 
 	/**
 	 * Creates a ScanIssue from a group of ASCA scan details that are on the same
-	 * line.
+	 * line, filtering out any vulnerability already recorded as ignored -
+	 * individually, by rule name + problematic line - rather than dropping or
+	 * keeping the whole group, so ignoring one vulnerability on a multi-vulnerability
+	 * line never hides the others on that line.
 	 *
 	 * @param ascaScanDetails the list of ASCA scan details for the same line
 	 *                        (already sorted by severity)
-	 * @return a ScanIssue representing the ASCA finding(s), or null if conversion
-	 *         fails
+	 * @param ignoreManager   resolves whether a given vulnerability is ignored, or
+	 *                        {@code null} if no project context is available
+	 * @param ignoreEntries   the current ignore entries to check against
+	 * @return a ScanIssue representing the ASCA finding(s), or null if every
+	 *         vulnerability in the group is ignored or conversion fails
 	 */
-	private ScanIssue createScanIssueForGroup(List<ScanDetail> ascaScanDetails) {
+	private ScanIssue createScanIssueForGroup(List<ScanDetail> ascaScanDetails, IgnoreManager ignoreManager,
+			List<IgnoreEntry> ignoreEntries) {
 		if (ascaScanDetails == null || ascaScanDetails.isEmpty()) {
 			return null;
 		}
@@ -112,12 +138,23 @@ public class AscaScanResultAdaptor implements ScanResult<Object> {
 		try {
 			ScanIssue scanIssue = getScanIssue(ascaScanDetails);
 
-			// Add vulnerabilities from all details in the group
+			// Add vulnerabilities from all details in the group, skipping ones already ignored
 			for (int i = 0; i < ascaScanDetails.size(); i++) {
 				ScanDetail detail = ascaScanDetails.get(i);
 				String vulnerabilityId = (i == 0) ? scanIssue.getScanIssueId() : null;
 				Vulnerability vuln = createVulnerability(detail, vulnerabilityId);
+
+				if (ignoreManager != null && ignoreManager.isAscaVulnerabilityIgnored(vuln, ignoreEntries, filePath)) {
+					CxLogger.info(LOG_TAG + " Skipping ignored vulnerability '" + vuln.getTitle() +
+							"' on line " + detail.getLine());
+					continue;
+				}
 				scanIssue.getVulnerabilities().add(vuln);
+			}
+
+			// If every vulnerability on this line is ignored, drop the ScanIssue entirely
+			if (scanIssue.getVulnerabilities().isEmpty()) {
+				return null;
 			}
 
 			// Update title based on actual number of vulnerabilities
@@ -188,6 +225,8 @@ public class AscaScanResultAdaptor implements ScanResult<Object> {
 		vulnerability.setTitle(scanDetail.getRuleName());
 		vulnerability.setDescription(scanDetail.getDescription());
 		vulnerability.setSeverity(mapSeverity(scanDetail.getSeverity()));
+		vulnerability.setRuleId(scanDetail.getRuleID());
+		vulnerability.setProblematicLine(scanDetail.getProblematicLine());
 
 		CxLogger.info(LOG_TAG + " Created vulnerability '" + scanDetail.getRuleName() +
 				"' with vulnerabilityId '" + vulnerabilityId + "'");

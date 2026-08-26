@@ -10,7 +10,9 @@ import java.util.*;
 
 import com.checkmarx.eclipse.devassist.backend.DevAssistScanStateHolder;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.model.Vulnerability;
 import com.checkmarx.eclipse.devassist.problems.ProblemHolderService;
+import com.checkmarx.eclipse.devassist.utils.DevAssistUtils;
 
 import static com.checkmarx.eclipse.devassist.utils.DevAssistConstants.QUICK_FIX;
 import static java.lang.String.format;
@@ -62,7 +64,7 @@ public final class IgnoreManager {
         IgnoreEntry ignoreEntry;
         if (existingEntry != null) {
             ignoreEntry = existingEntry;
-            upsertFileReference(ignoreEntry, issueToIgnore);
+            upsertFileReference(ignoreEntry, issueToIgnore, resolveVulnerability(issueToIgnore, clickId));
         } else {
             // Convert ScanIssue → IgnoreEntry (includes this occurrence's file reference)
             ignoreEntry = buildIgnoreEntry(issueToIgnore, clickId);
@@ -83,12 +85,14 @@ public final class IgnoreManager {
      * entry for the given issue's file, without touching any other file's
      * reference already recorded on that entry.
      */
-    private void upsertFileReference(IgnoreEntry entry, ScanIssue issue) {
+    private void upsertFileReference(IgnoreEntry entry, ScanIssue issue, Vulnerability vulnerability) {
         if (issue.getLocations() == null || issue.getLocations().isEmpty()) {
             return;
         }
         String path = ignoreFileManager.normalizePath(issue.getFilePath());
         int line = issue.getLocations().get(0).getLine();
+        String problematicLine = vulnerability != null && vulnerability.getProblematicLine() != null
+                ? vulnerability.getProblematicLine() : "";
         if (entry.files == null) {
             entry.files = new ArrayList<>();
         }
@@ -96,10 +100,13 @@ public final class IgnoreManager {
             if (path.equals(ref.getPath())) {
                 ref.setActive(true);
                 ref.setLine(line);
+                if (!problematicLine.isEmpty()) {
+                    ref.setProblematicLine(problematicLine);
+                }
                 return;
             }
         }
-        entry.files.add(new IgnoreEntry.FileReference(path, true, line, ""));
+        entry.files.add(new IgnoreEntry.FileReference(path, true, line, problematicLine));
     }
 
 
@@ -419,23 +426,42 @@ public final class IgnoreManager {
 
     private IgnoreEntry buildIgnoreEntry(ScanIssue issue, String clickId) {
         IgnoreEntry entry = new IgnoreEntry();
-        if (issue != null) {
-            // Convert model.ScanEngine to utils.ScanEngine
-            com.checkmarx.eclipse.devassist.model.ScanEngine modelEngine = issue.getScanEngine();
-            com.checkmarx.eclipse.devassist.utils.ScanEngine engine = null;
-            if (modelEngine != null) {
-                engine = com.checkmarx.eclipse.devassist.utils.ScanEngine.valueOf(modelEngine.toString());
-                entry.type = engine;
-            }
+        if (issue == null) {
+            return entry;
+        }
+        // Convert model.ScanEngine to utils.ScanEngine
+        com.checkmarx.eclipse.devassist.model.ScanEngine modelEngine = issue.getScanEngine();
+        com.checkmarx.eclipse.devassist.utils.ScanEngine engine = null;
+        if (modelEngine != null) {
+            engine = com.checkmarx.eclipse.devassist.utils.ScanEngine.valueOf(modelEngine.toString());
+            entry.type = engine;
+        }
+
+        // ASCA/IAC can group several vulnerabilities under one ScanIssue (same line). The
+        // ScanIssue's own title/ruleId/similarityId are the group's aggregate values (e.g.
+        // "3 Checkmarx One Assist issues") and are identical for every vulnerability in the
+        // group and across every line flagged by the same rule - keying/describing the ignore
+        // entry off them would ignore the whole group/rule instead of just the clicked
+        // occurrence. Resolve the specific Vulnerability the user clicked instead.
+        Vulnerability vulnerability = (engine == com.checkmarx.eclipse.devassist.utils.ScanEngine.ASCA
+                || engine == com.checkmarx.eclipse.devassist.utils.ScanEngine.IAC)
+                ? resolveVulnerability(issue, clickId) : null;
+
+        String problematicLine = "";
+        if (vulnerability != null) {
+            entry.title = vulnerability.getTitle();
+            entry.severity = vulnerability.getSeverity();
+            entry.description = vulnerability.getDescription();
+            entry.ruleId = vulnerability.getRuleId();
+            entry.similarityId = vulnerability.getSimilarityId();
+            entry.packageName = vulnerability.getTitle();
+            problematicLine = vulnerability.getProblematicLine() != null ? vulnerability.getProblematicLine() : "";
+        } else {
             entry.title = issue.getTitle();
             entry.severity = issue.getSeverity();
             entry.description = issue.getDescription();
             entry.ruleId = issue.getRuleId();
-            entry.packageManager = issue.getPackageManager();
-            entry.packageVersion = issue.getPackageVersion();
             entry.similarityId = issue.getSimilarityId();
-            entry.secretValue = issue.getSecretValue();
-            entry.dateAdded = java.time.Instant.now().toString();
             if (engine == com.checkmarx.eclipse.devassist.utils.ScanEngine.CONTAINERS) {
                 entry.packageName = issue.getTitle() + ":" + issue.getImageTag();
                 entry.imageName = issue.getTitle();
@@ -443,17 +469,35 @@ public final class IgnoreManager {
             } else {
                 entry.packageName = issue.getTitle();
             }
-            if (!issue.getLocations().isEmpty()) {
-                IgnoreEntry.FileReference ref = new IgnoreEntry.FileReference(
-                    ignoreFileManager.normalizePath(issue.getFilePath()),
-                    true,
-                    issue.getLocations().get(0).getLine(),
-                    ""
-                );
-                entry.files.add(ref);
-            }
+        }
+        entry.packageManager = issue.getPackageManager();
+        entry.packageVersion = issue.getPackageVersion();
+        entry.secretValue = issue.getSecretValue();
+        entry.dateAdded = java.time.Instant.now().toString();
+
+        if (issue.getLocations() != null && !issue.getLocations().isEmpty()) {
+            IgnoreEntry.FileReference ref = new IgnoreEntry.FileReference(
+                ignoreFileManager.normalizePath(issue.getFilePath()),
+                true,
+                issue.getLocations().get(0).getLine(),
+                problematicLine
+            );
+            entry.files.add(ref);
         }
         return entry;
+    }
+
+    /**
+     * Resolves the specific {@link Vulnerability} the user acted on within a (possibly
+     * multi-vulnerability) ScanIssue. {@code clickId} is the vulnerability id carried on the
+     * hover's per-vulnerability "Ignore this" link; when it's absent/empty/the quick-fix
+     * sentinel, falls back to the issue's own id, which - by construction in the ASCA/IAC
+     * adaptors - is always the id of the first (highest-severity) vulnerability in the group.
+     */
+    private Vulnerability resolveVulnerability(ScanIssue issue, String clickId) {
+        String vulnerabilityId = (clickId == null || clickId.isEmpty() || clickId.equals(QUICK_FIX))
+                ? issue.getScanIssueId() : clickId;
+        return DevAssistUtils.getVulnerabilityDetails(issue, vulnerabilityId);
     }
 
     /**
@@ -473,15 +517,62 @@ public final class IgnoreManager {
                 return formatJsonKeyForIgnoreEntry(engine, issue.getTitle(), issue.getImageTag(), "");
             case SECRETS:
                 return formatJsonKeyForIgnoreEntry(engine, issue.getTitle(), issue.getSecretValue(), relativePath);
-            case IAC:
-                return issue.getSimilarityId() != null ?
-                        formatJsonKeyForIgnoreEntry(engine, issue.getTitle(), issue.getSimilarityId(), relativePath) : "";
-            case ASCA:
-                return issue.getRuleId() != null ?
-                        formatJsonKeyForIgnoreEntry(engine, issue.getTitle(), String.valueOf(issue.getRuleId()), relativePath) : "";
+            case IAC: {
+                Vulnerability vulnerability = resolveVulnerability(issue, clickId);
+                return vulnerability != null && vulnerability.getSimilarityId() != null ?
+                        formatJsonKeyForIgnoreEntry(engine, vulnerability.getTitle(), vulnerability.getSimilarityId(), relativePath) : "";
+            }
+            case ASCA: {
+                Vulnerability vulnerability = resolveVulnerability(issue, clickId);
+                return vulnerability != null && vulnerability.getRuleId() != null ?
+                        formatJsonKeyForIgnoreEntry(engine, vulnerability.getTitle(), String.valueOf(vulnerability.getRuleId()), relativePath) : "";
+            }
             default:
                 return formatJsonKeyForIgnoreEntry(engine, "", "", issue.getTitle());
         }
+    }
+
+    /**
+     * Checks whether a specific ASCA vulnerability is ignored, based on its rule name and the
+     * actual source text of the line it was flagged on ("problematic line"), rather than just
+     * line number (which drifts as the file is edited) or file path alone (which would match
+     * every occurrence of the same rule anywhere in the file). Used to filter individual
+     * vulnerabilities out of a ScanIssue that may group several onto the same line, since ASCA's
+     * CLI has no ignore-file exclusion of its own (see AscaScannerService#getIgnoreFilePath) -
+     * this app-level check is the only enforcement point.
+     *
+     * @param vulnerability the specific vulnerability to check
+     * @param ignoreEntries the current ignore entries to check against
+     * @param filePath      the file path of the issue
+     * @return {@code true} if this specific vulnerability is ignored; {@code false} otherwise
+     */
+    public boolean isAscaVulnerabilityIgnored(Vulnerability vulnerability, List<IgnoreEntry> ignoreEntries, String filePath) {
+        if (vulnerability == null || ignoreEntries == null) {
+            return false;
+        }
+        String normalizedPath = ignoreFileManager.normalizePath(filePath);
+        String issueProblematicLine = vulnerability.getProblematicLine();
+        String vulnTitle = vulnerability.getTitle();
+        for (IgnoreEntry entry : ignoreEntries) {
+            if (entry.getType() != com.checkmarx.eclipse.devassist.utils.ScanEngine.ASCA) {
+                continue;
+            }
+            // Match by rule name: the ignore entry's packageName must match the vulnerability's title (rule name)
+            boolean ruleNameMatch = (entry.getPackageName() != null && entry.getPackageName().equals(vulnTitle))
+                    || (entry.getPackageName() == null && vulnTitle == null);
+            if (!ruleNameMatch || entry.getFiles() == null) {
+                continue;
+            }
+            for (IgnoreEntry.FileReference ref : entry.getFiles()) {
+                boolean pathMatch = ref.isActive() && normalizedPath.equals(ref.getPath());
+                boolean problematicLineMatch = (issueProblematicLine == null && ref.getProblematicLine() == null)
+                        || (issueProblematicLine != null && issueProblematicLine.equals(ref.getProblematicLine()));
+                if (pathMatch && problematicLineMatch) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     private String formatJsonKeyForIgnoreEntry(com.checkmarx.eclipse.devassist.utils.ScanEngine scanEngine,
