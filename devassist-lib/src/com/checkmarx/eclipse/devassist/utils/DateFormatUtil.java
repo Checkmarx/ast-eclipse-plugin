@@ -22,7 +22,6 @@ public final class DateFormatUtil {
 	 * Examples: "Today", "1 day ago", "2 weeks ago", "3 months ago"
 	 *
 	 * @param isoDateString ISO 8601 date format string
-	 * @return Formatted relative date string, or "Unknown" if parsing fails
 	 */
 	public static String formatRelativeDate(String isoDateString) {
 		if (isoDateString == null || isoDateString.isEmpty()) {

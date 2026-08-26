@@ -162,9 +162,6 @@ public class IacScannerService extends BaseScannerService<IacRealtimeResults> {
 
                     IacScanResultAdaptor scanResultAdaptor = new IacScanResultAdaptor(scanResults, filePath);
 
-                    // Perform secondary scan to sync updated line numbers for ignored issues if needed
-//                    updateIgnoredFileDataOnLatestResult(tempFilePath, proj, filePath);
-
                     return scanResultAdaptor;
                 }
             } catch (IOException e) {

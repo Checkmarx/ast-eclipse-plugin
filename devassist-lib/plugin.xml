@@ -17,16 +17,7 @@
             class="com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView"
             restorable="true">
       </view>
-   </extension>
-   
-      <!-- Ignore View Registration -->
-   <extension
-         point="org.eclipse.ui.views">
-      <category
-            id="com.checkmarx.eclipse.devassist.category"
-            name="Checkmarx">
-      </category>
-      <view
+       <view
             id="com.checkmarx.eclipse.devassist.ui.findings.ignore.DevAssistIgnoredFindings"
             name="Ignored Findings"
             icon="icons/checkmarx-plugin-13_dark.png"

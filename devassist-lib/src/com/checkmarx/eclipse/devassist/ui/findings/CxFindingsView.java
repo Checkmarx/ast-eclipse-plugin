@@ -201,6 +201,27 @@ public class CxFindingsView extends ViewPart {
 		}
 	}
 
+	/**
+	 * Resolves the owning IProject for a file path.
+	 * Returns the project that owns the file, or null if file not found.
+	 * This per-file resolution replaces the stale currentProject logic.
+	 */
+	private IProject resolveProjectFromFilePath(String filePath) {
+		try {
+			if (filePath == null || filePath.isEmpty()) {
+				return null;
+			}
+			IFile file = ResourcesPlugin.getWorkspace().getRoot()
+					.getFileForLocation(new org.eclipse.core.runtime.Path(filePath));
+			if (file != null && file.exists()) {
+				return file.getProject();
+			}
+		} catch (Exception e) {
+			CxLogger.warning("Failed to resolve project for file: " + filePath);
+		}
+		return null;
+	}
+
 	private Composite openSettingsComposite;
 
 	/**
@@ -623,15 +644,20 @@ public class CxFindingsView extends ViewPart {
 	 */
 	private void ignoreThisFinding(ScanIssue issue) {
 		try {
-			// Ensure project is available
-			ensureIgnoreFileManagerInitialized();
-			if (currentProject == null) {
-				showErrorNotification("Error: No active project");
+			if (issue == null) {
+				showErrorNotification("Error: No finding selected");
+				return;
+			}
+
+			// Resolve the project from the issue's file path (per-finding resolution)
+			IProject project = resolveProjectFromFilePath(issue.getFilePath());
+			if (project == null) {
+				showErrorNotification("Error: Could not locate project for this finding");
 				return;
 			}
 
 			// Use IgnoreManager to add the issue (matches JetBrains implementation)
-			IgnoreManager ignoreManager = IgnoreManager.getInstance(currentProject);
+			IgnoreManager ignoreManager = IgnoreManager.getInstance(project);
 			ignoreManager.addIgnoredEntry(issue, DevAssistConstants.QUICK_FIX);
 			TelemetryService.logIgnorePackageAction(issue);
 
@@ -655,15 +681,20 @@ public class CxFindingsView extends ViewPart {
 	 */
 	private void ignoreAllOfType(ScanIssue issue) {
 		try {
-			// Ensure project is available
-			ensureIgnoreFileManagerInitialized();
-			if (currentProject == null) {
-				showErrorNotification("Error: No active project");
+			if (issue == null) {
+				showErrorNotification("Error: No finding selected");
+				return;
+			}
+
+			// Resolve the project from the issue's file path (per-finding resolution)
+			IProject project = resolveProjectFromFilePath(issue.getFilePath());
+			if (project == null) {
+				showErrorNotification("Error: Could not locate project for this finding");
 				return;
 			}
 
 			// Use IgnoreManager to add all matching issues (matches JetBrains implementation)
-			IgnoreManager ignoreManager = IgnoreManager.getInstance(currentProject);
+			IgnoreManager ignoreManager = IgnoreManager.getInstance(project);
 			ignoreManager.addAllIgnoredEntry(issue, DevAssistConstants.QUICK_FIX);
 			TelemetryService.logIgnoreAllAction(issue);
 
@@ -1071,9 +1102,6 @@ public class CxFindingsView extends ViewPart {
 
 	public void refreshTreeWithFilter() {
 
-		// Ensure ignore manager is initialized
-		ensureIgnoreFileManagerInitialized();
-
 		// Apply active filters and refresh
 		VulnerabilityFilterState filterState = VulnerabilityFilterState.getInstance();
 
@@ -1086,6 +1114,9 @@ public class CxFindingsView extends ViewPart {
 			if (issues == null)
 				continue;
 
+			// Resolve the project for this file path (per-file resolution, not stale currentProject)
+			IProject project = resolveProjectFromFilePath(filePath);
+
 			List<ScanIssue> filtered = new java.util.ArrayList<>();
 			List<ScanIssue> forDecoration = new java.util.ArrayList<>();
 
@@ -1096,8 +1127,8 @@ public class CxFindingsView extends ViewPart {
 					continue;
 				}
 
-				boolean isIgnored = currentProject != null
-						&& IgnoreManager.getInstance(currentProject).isIgnored(issue);
+				boolean isIgnored = project != null
+						&& IgnoreManager.getInstance(project).isIgnored(issue);
 				boolean hasFilter = filterState.hasFilter(issue.getSeverity());
 				boolean isProblem = com.checkmarx.eclipse.devassist.utils.DevAssistUtils.isProblem(issue.getSeverity());
 

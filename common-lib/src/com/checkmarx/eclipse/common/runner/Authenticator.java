@@ -6,7 +6,7 @@ import com.checkmarx.eclipse.common.wrapper.WrapperProvider;
 
 public class Authenticator {
 
-	public Authenticator() {
+	private Authenticator() {
 		// Private constructor to prevent instantiation
 	}
 
