@@ -49,6 +49,7 @@ import com.checkmarx.eclipse.devassist.ui.findings.model.FileNodeLabel;
 import com.checkmarx.eclipse.devassist.ui.findings.model.ScanDetailWithPath;
 import com.checkmarx.eclipse.devassist.model.Location;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
+import com.checkmarx.eclipse.devassist.problems.ProblemDecorator;
 import com.checkmarx.eclipse.devassist.problems.ProblemHolderService;
 import com.checkmarx.eclipse.devassist.remediation.RemediationManager;
 import com.checkmarx.eclipse.devassist.ui.findings.actions.VulnerabilityFilterAction;
@@ -1231,7 +1232,22 @@ public class CxFindingsView extends ViewPart {
 							.getFileForLocation(new org.eclipse.core.runtime.Path(filePath));
 					if (file != null && file.exists()) {
 						// Trigger decoration for this file's open editor (if any)
-						com.checkmarx.eclipse.devassist.problems.ProblemDecorator.decorateEditor(file, issues);
+									ProblemDecorator.decorateEditor(file, issues);
+
+									// Ensure workspace problem markers exist for each issue so the Problems
+									// view shows the findings with the correct severity mapping.
+									try {
+										for (ScanIssue issue : issues) {
+											if (issue == null)
+												continue;
+											// createMarkerForIssue will delegate to MarkerIssueMapper.ensureMarker
+											// which maps Checkmarx severities to Eclipse marker severities
+											createMarkerForIssue(file, issue);
+										}
+									} catch (Exception e) {
+										// Marker creation is best-effort; log and continue decorating other files
+										System.err.println("[FINDINGS] Error ensuring markers for file " + file.getLocation() + ": " + e.getMessage());
+									}
 					}
 				} catch (Exception e) {
 					// Log but continue with other files
