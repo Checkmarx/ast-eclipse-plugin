@@ -2962,7 +2962,9 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		} catch (Exception e) {
 			String errorMessage = e.getCause() != null && e.getCause().getMessage() != null ? e.getCause().getMessage()
 					: e.getMessage();
-			PluginUtils.showMessage(rootModel, resultsTree, errorMessage);
+			org.eclipse.swt.widgets.Display.getDefault().asyncExec(() -> {
+				PluginUtils.showMessage(rootModel, resultsTree, errorMessage);
+			});
 		}
 
 		return projectList;
