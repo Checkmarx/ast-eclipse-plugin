@@ -48,7 +48,6 @@ public class CheckmarxPreferencePage extends PreferencePage implements IWorkbenc
     private Label mcpStatusLabel;
     private boolean loggedIn;
 
-
     public CheckmarxPreferencePage() {
         super();
         setPreferenceStore(com.checkmarx.eclipse.common.preferences.Preferences.STORE);

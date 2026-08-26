@@ -18,7 +18,7 @@ public class AuthenticatorIntegrationTest extends BaseIntegrationTest {
 
     @Test
     public void testSuccessfulAuthentication() {
-    	 authenticator = new Authenticator(); 
+    	 authenticator =  Authenticator.INSTANCE; 
         System.out.println("\n=== Starting Authentication Test ===");
         System.out.println("Current directory: " + new File(".").getAbsolutePath());
         System.out.println("API Key available: " + (VALID_API_KEY != null));
@@ -31,7 +31,7 @@ public class AuthenticatorIntegrationTest extends BaseIntegrationTest {
 
     @Test
 	public void testInvalidApiKeyAuthentication() {
-    	 authenticator = new Authenticator(); 
+    	 authenticator =  Authenticator.INSTANCE; 
 		System.out.println("\n=== Starting Invalid API Key Test ===");
 		String invalidApiKey = "invalid-api-key";
 		String result = authenticator.doAuthentication(invalidApiKey, "");

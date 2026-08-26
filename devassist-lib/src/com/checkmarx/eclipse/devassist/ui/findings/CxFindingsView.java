@@ -28,13 +28,11 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.ResourcesPlugin;
-import org.eclipse.core.runtime.QualifiedName;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.ImageData;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
-
 import com.checkmarx.eclipse.devassist.ui.findings.provider.FindingsContentProvider;
 import com.checkmarx.eclipse.devassist.ui.findings.provider.FindingsLabelProvider;
 import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
@@ -42,21 +40,28 @@ import com.checkmarx.eclipse.common.events.SettingsTopics;
 import com.checkmarx.eclipse.common.preferences.Preferences;
 import com.checkmarx.eclipse.devassist.backend.Constants;
 import com.checkmarx.eclipse.devassist.backend.listener.CheckmarxDocumentListener;
+import com.checkmarx.eclipse.devassist.backend.listener.CheckmarxEditorListener;
 import com.checkmarx.eclipse.devassist.backend.listener.RealTimeScanJob;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.ui.findings.model.FileNodeLabel;
 import com.checkmarx.eclipse.devassist.ui.findings.model.ScanDetailWithPath;
 import com.checkmarx.eclipse.devassist.model.Location;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
+import com.checkmarx.eclipse.devassist.problems.ProblemDecorator;
 import com.checkmarx.eclipse.devassist.problems.ProblemHolderService;
 import com.checkmarx.eclipse.devassist.remediation.RemediationManager;
 import com.checkmarx.eclipse.devassist.ui.findings.actions.VulnerabilityFilterAction;
 import com.checkmarx.eclipse.devassist.ui.findings.actions.VulnerabilityFilterState;
-import com.checkmarx.eclipse.devassist.ui.findings.ignored.IgnoredProblemsStore;
-import com.checkmarx.eclipse.devassist.ui.findings.ignored.IgnoredProblemsStore.IgnoredProblemsListener;
+import com.checkmarx.eclipse.devassist.ignore.IgnoreFileManager;
+import com.checkmarx.eclipse.devassist.ignore.IgnoreManager;
+import com.checkmarx.eclipse.devassist.telemetry.TelemetryService;
+import com.checkmarx.eclipse.common.utils.CxLogger;
+
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Shell;
@@ -70,7 +75,7 @@ import org.eclipse.swt.widgets.Control;
  * capabilities.
  * Uses {@link TreeViewer} for flexible tree rendering with custom providers.
  */
-public class CxFindingsView extends ViewPart implements IgnoredProblemsListener {
+public class CxFindingsView extends ViewPart {
 
 	public static final String ID = "com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView";
 	private org.osgi.service.event.EventHandler eventHandler;
@@ -78,7 +83,14 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 
 	private TreeViewer treeViewer;
 	private Map<String, List<ScanIssue>> currentIssues = new HashMap<>();
-	private IgnoredProblemsStore ignoredStore;
+	// Files that had at least one active (non-ignored) finding as of the last
+	// applyDecorationsToOpenEditors() pass. Used to detect the "file just lost its
+	// last active finding" transition without having to re-decorate every file
+	// ever tracked in currentIssues on every single refresh - see
+	// applyDecorationsToOpenEditors() for details.
+	private Set<String> lastDecoratedFiles = new HashSet<>();
+	private IgnoreFileManager ignoreFileManager;
+	private IProject currentProject;
 	Shell shell = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell();
 	public static final Image FINDINGS_PROMOTIONAL_CUBE = createScaledImage("/icons/cx-one-assist-cube.png", 240);
 	private static final Image CHECKMARX_OPEN_SETTINGS_LOGO = AbstractUIPlugin
@@ -105,9 +117,8 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 		// Always subscribe to events first
 		subscribeToEventBroker();
 
-		// Register ignored problems listener
-		ignoredStore = IgnoredProblemsStore.getInstance();
-		ignoredStore.addListener(this);
+		// Initialize ignore file manager lazily when needed
+		ensureIgnoreFileManagerInitialized();
 
 		// Initial render check
 		refreshViewMode();
@@ -172,6 +183,41 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 		} catch (Exception e) {
 			System.err.println("[FINDINGS] Error reading cached issues: " + e.getMessage());
 		}
+	}
+
+	/**
+	 * Ensures IgnoreFileManager is initialized. Called lazily to handle
+	 * cases where projects aren't available at view creation time.
+	 */
+	private void ensureIgnoreFileManagerInitialized() {
+		if (ignoreFileManager == null) {
+			IProject[] projects = ResourcesPlugin.getWorkspace().getRoot().getProjects();
+			if (projects.length > 0) {
+				currentProject = projects[0];
+				ignoreFileManager = IgnoreFileManager.getInstance(currentProject);
+			}
+		}
+	}
+
+	/**
+	 * Resolves the owning IProject for a file path.
+	 * Returns the project that owns the file, or null if file not found.
+	 * This per-file resolution replaces the stale currentProject logic.
+	 */
+	private IProject resolveProjectFromFilePath(String filePath) {
+		try {
+			if (filePath == null || filePath.isEmpty()) {
+				return null;
+			}
+			IFile file = ResourcesPlugin.getWorkspace().getRoot()
+					.getFileForLocation(new org.eclipse.core.runtime.Path(filePath));
+			if (file != null && file.exists()) {
+				return file.getProject();
+			}
+		} catch (Exception e) {
+			CxLogger.warning("Failed to resolve project for file: " + filePath);
+		}
+		return null;
 	}
 
 	private Composite openSettingsComposite;
@@ -387,12 +433,6 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 			}
 		}
 
-		// 2. Unsubscribe from IgnoredProblemsStore
-		if (ignoredStore != null) {
-			// If your IgnoredProblemsStore supports removing listeners, call it here:
-			// ignoredStore.removeListener(this);
-		}
-
 		super.dispose();
 	}
 
@@ -597,29 +637,32 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 
 	/**
 	 * Ignore this specific finding and remove from the Findings View.
-	 * The finding is added to the IgnoredProblemsStore and appears in the Ignored
-	 * Problems Window.
+	 * The finding is added to the IgnoreFileManager and appears in the Ignored
+	 * Findings Window.
 	 */
 	private void ignoreThisFinding(ScanIssue issue) {
-
 		try {
-			// Verify store is initialized
-			if (ignoredStore == null) {
-				System.err.println("[FINDINGS] ERROR: IgnoredProblemsStore is NULL!");
-				showErrorNotification("Error: IgnoredProblemsStore not initialized");
+			if (issue == null) {
+				showErrorNotification("Error: No finding selected");
 				return;
 			}
 
-			// Add to ignored store with full finding details for display in Ignored
-			// Problems View
-			ignoredStore.ignoreProblem(issue);
+			// Resolve the project from the issue's file path (per-finding resolution)
+			IProject project = resolveProjectFromFilePath(issue.getFilePath());
+			if (project == null) {
+				showErrorNotification("Error: Could not locate project for this finding");
+				return;
+			}
 
-			// Check if it was actually added
-			boolean isIgnored = ignoredStore.isIgnored(issue.getScanIssueId());
+			// Use IgnoreManager to add the issue (matches JetBrains implementation)
+			IgnoreManager ignoreManager = IgnoreManager.getInstance(project);
+			ignoreManager.addIgnoredEntry(issue, DevAssistConstants.QUICK_FIX);
+			TelemetryService.logIgnorePackageAction(issue);
 
-			// Refresh the tree to remove the ignored finding
-
+			// Refresh the tree to remove the ignored finding from the view
 			refreshTreeWithFilter();
+
+			CxLogger.info("Successfully ignored finding: " + issue.getTitle());
 
 		} catch (Exception e) {
 			System.err.println("[FINDINGS] ✗ Error ignoring finding: " + e.getMessage());
@@ -632,31 +675,31 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 	 * Ignore all findings of the same type/package.
 	 * For OSS: ignores all findings with the same package version
 	 * For CONTAINERS: ignores all findings with the same image tag
+	 * Matches JetBrains implementation: addAllIgnoredEntry()
 	 */
 	private void ignoreAllOfType(ScanIssue issue) {
-
 		try {
-			int ignoredCount = 0;
-			String typeIdentifier = issue.getPackageVersion() != null ? issue.getPackageVersion() : issue.getImageTag();
-
-			// Iterate through all current issues and ignore matching ones
-			for (List<ScanIssue> issues : currentIssues.values()) {
-				for (ScanIssue currentIssue : issues) {
-					// Match by same type/package/image
-					if (currentIssue.getScanEngine() == issue.getScanEngine()) {
-						String currentTypeIdentifier = currentIssue.getPackageVersion() != null
-								? currentIssue.getPackageVersion()
-								: currentIssue.getImageTag();
-
-						if (typeIdentifier != null && typeIdentifier.equals(currentTypeIdentifier)) {
-							ignoredStore.ignoreProblem(currentIssue);
-							ignoredCount++;
-						}
-					}
-				}
+			if (issue == null) {
+				showErrorNotification("Error: No finding selected");
+				return;
 			}
 
+			// Resolve the project from the issue's file path (per-finding resolution)
+			IProject project = resolveProjectFromFilePath(issue.getFilePath());
+			if (project == null) {
+				showErrorNotification("Error: Could not locate project for this finding");
+				return;
+			}
+
+			// Use IgnoreManager to add all matching issues (matches JetBrains implementation)
+			IgnoreManager ignoreManager = IgnoreManager.getInstance(project);
+			ignoreManager.addAllIgnoredEntry(issue, DevAssistConstants.QUICK_FIX);
+			TelemetryService.logIgnoreAllAction(issue);
+
+			// Refresh the tree to remove the ignored findings from the view
 			refreshTreeWithFilter();
+
+			CxLogger.info("Successfully ignored all findings of type: " + issue.getTitle());
 
 		} catch (Exception e) {
 			System.err.println("[FINDINGS] ✗ Error ignoring findings of type: " + e.getMessage());
@@ -741,68 +784,40 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 		}
 
 		try {
-			// Extract document for real-time scanning
+			// Delegate registration/dedup to the single, shared CheckmarxEditorListener
+			// (registered once at plugin startup) instead of creating a second,
+			// independent CheckmarxDocumentListener/RealTimeScanJob pair here. Two
+			// independent pairs attached to the same document each debounce and
+			// reschedule scans on their own, colliding on the shared per-file
+			// in-flight lock in DevAssistScanStateHolder - an edit's scan can get
+			// silently BLOCKED by an unrelated duplicate job that is still in-flight,
+			// with nothing left to reschedule it, making scans appear to trigger only
+			// after a further edit.
+			CheckmarxEditorListener sharedListener = CheckmarxEditorListener.getInstance();
 			org.eclipse.jface.text.IDocument document = null;
-			String fileName = file.getName();
-
-			// Try method 1: Direct ITextEditor instance check
-			if (editor instanceof org.eclipse.ui.texteditor.ITextEditor) {
-
-				org.eclipse.ui.texteditor.ITextEditor textEditor = (org.eclipse.ui.texteditor.ITextEditor) editor;
-				document = textEditor.getDocumentProvider().getDocument(textEditor.getEditorInput());
-			}
-
-			// Try method 2: ITextEditor Adapter pattern (for MavenPomEditor, etc.)
-			if (document == null) {
-
-				org.eclipse.ui.texteditor.ITextEditor textEditor = editor
-						.getAdapter(org.eclipse.ui.texteditor.ITextEditor.class);
-				if (textEditor != null) {
-
-					document = textEditor.getDocumentProvider().getDocument(textEditor.getEditorInput());
-				}
-			}
-
-			// Try method 3: Direct IDocument adapter (some editors provide this directly)
-			if (document == null) {
-
-				document = editor.getAdapter(org.eclipse.jface.text.IDocument.class);
+			if (sharedListener != null) {
+				sharedListener.ensureRealtimeScanningForEditor(editor);
+			} else {
+				// Fallback: shared listener not initialized yet (should not happen once
+				// PluginStartup has run) - register a listener directly so scanning still
+				// works.
+				document = getDocumentFromEditorFallback(editor);
 				if (document != null) {
-
+					String fileName = file.getName();
+					RealTimeScanJob scanJob = new RealTimeScanJob(file, fileName);
+					CheckmarxDocumentListener docListener = new CheckmarxDocumentListener(fileName, scanJob, file, null);
+					document.addDocumentListener(docListener);
 				}
 			}
-
-			if (document == null) {
-
-				return;
-			}
-
-			// Create a scan job for this file
-			RealTimeScanJob scanJob = new RealTimeScanJob(file, fileName);
-
-			// Create a document listener that reschedules the job on every keystroke
-			com.checkmarx.eclipse.devassist.inspection.DevAssistScanScheduler scheduler = null;
-			if (file != null) {
-				try {
-					org.eclipse.core.resources.IProject project = file.getProject();
-					if (project != null) {
-						scheduler = (com.checkmarx.eclipse.devassist.inspection.DevAssistScanScheduler) project
-								.getSessionProperty(
-										new org.eclipse.core.runtime.QualifiedName("com.checkmarx.eclipse.plugin",
-												"scan-scheduler"));
-					}
-				} catch (Exception e) {
-					// Ignore if scheduler not available
-				}
-			}
-			CheckmarxDocumentListener docListener = new CheckmarxDocumentListener(fileName, scanJob, file, scheduler);
-
-			// Register the document listener
-			document.addDocumentListener(docListener);
 
 			// Apply cached decorations if findings exist for this file
 			// Pass the editor directly to avoid search issues with MavenPomEditor
-			applyCachedDecorationsForFile(file, document, editor);
+			if (document == null) {
+				document = getDocumentFromEditorFallback(editor);
+			}
+			if (document != null) {
+				applyCachedDecorationsForFile(file, document, editor);
+			}
 
 		} catch (Exception e) {
 			System.err.println("[REALTIME-SETUP] ✗ EXCEPTION during setup: " + e.getMessage());
@@ -813,9 +828,49 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 	}
 
 	/**
+	 * Extract the IDocument from an editor, trying the same fallback chain as
+	 * CheckmarxEditorListener (direct ITextEditor, adapter, IDocument adapter) -
+	 * needed here only to feed applyCachedDecorationsForFile(), which requires a
+	 * document even though listener registration itself is now delegated.
+	 */
+	private org.eclipse.jface.text.IDocument getDocumentFromEditorFallback(IEditorPart editor) {
+		if (editor instanceof org.eclipse.ui.texteditor.ITextEditor) {
+			org.eclipse.ui.texteditor.ITextEditor textEditor = (org.eclipse.ui.texteditor.ITextEditor) editor;
+			try {
+				org.eclipse.jface.text.IDocument doc = textEditor.getDocumentProvider()
+						.getDocument(textEditor.getEditorInput());
+				if (doc != null) {
+					return doc;
+				}
+			} catch (Exception e) {
+				// fall through
+			}
+		}
+		org.eclipse.ui.texteditor.ITextEditor textEditor = editor
+				.getAdapter(org.eclipse.ui.texteditor.ITextEditor.class);
+		if (textEditor != null) {
+			try {
+				org.eclipse.jface.text.IDocument doc = textEditor.getDocumentProvider()
+						.getDocument(textEditor.getEditorInput());
+				if (doc != null) {
+					return doc;
+				}
+			} catch (Exception e) {
+				// fall through
+			}
+		}
+		return editor.getAdapter(org.eclipse.jface.text.IDocument.class);
+	}
+
+	/**
 	 * Apply cached decorations (gutter icons, underlines) when editor is opened via
 	 * navigation.
-	 * Uses the provided editor directly instead of searching for it.
+	 *
+	 * Delegates to ProblemDecorator.decorateEditor() (the same entry point used by
+	 * refreshTreeWithFilter()) rather than duplicating annotation-creation logic,
+	 * so this path also gets marker creation, stale-annotation clearing, and the
+	 * "ignored" gutter-icon pass for any .checkmarxIgnored entries on this file -
+	 * matching the JetBrains plugin's restoreGutterIcons()-on-file-open behavior.
 	 */
 	private void applyCachedDecorationsForFile(org.eclipse.core.resources.IFile file,
 			org.eclipse.jface.text.IDocument document,
@@ -842,182 +897,27 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 
 			java.util.List<ScanIssue> cachedIssues = problemHolder.getScanIssuesByFile(filePath);
 
-			if (cachedIssues == null || cachedIssues.isEmpty()) {
-
-				return;
+			// Filter to only exclude ignored issues - include OK/UNKNOWN gutter icons
+			// This matches the refreshTreeWithFilter() approach: pass all non-ignored
+			// issues to ProblemDecorator for proper gutter icon decoration
+			IgnoreManager ignoreManager = IgnoreManager.getInstance(project);
+			java.util.List<ScanIssue> activeIssues = new java.util.ArrayList<>();
+			for (ScanIssue issue : cachedIssues) {
+				if (issue == null || issue.getSeverity() == null) {
+					continue;
+				}
+				// Only filter out ignored - keep OK/UNKNOWN for gutter icons
+				if (ignoreManager.isIgnored(issue)) {
+					continue;
+				}
+				activeIssues.add(issue);
 			}
 
-			// Apply decorations directly using the provided editor
-
-			applyDecorationsDirectly(editor, file, cachedIssues);
+			com.checkmarx.eclipse.devassist.problems.ProblemDecorator.decorateEditor(file, activeIssues);
 
 		} catch (Exception e) {
 			System.err.println("[REALTIME-SETUP] Error applying cached decorations: " + e.getMessage());
 			e.printStackTrace();
-		}
-	}
-
-	/**
-	 * Apply decorations directly to the provided editor without searching for it.
-	 * This avoids issues with MavenPomEditor not being found by IFile comparison.
-	 */
-	private void applyDecorationsDirectly(org.eclipse.ui.IEditorPart editor,
-			org.eclipse.core.resources.IFile file,
-			java.util.List<ScanIssue> scanIssues) {
-		if (editor == null || file == null || scanIssues == null || scanIssues.isEmpty()) {
-			return;
-		}
-
-		try {
-			// Get the text editor
-			org.eclipse.ui.texteditor.ITextEditor textEditor = editor
-					.getAdapter(org.eclipse.ui.texteditor.ITextEditor.class);
-
-			if (textEditor == null) {
-
-				return;
-			}
-
-			// Get document provider and input
-			org.eclipse.ui.texteditor.IDocumentProvider docProvider = textEditor.getDocumentProvider();
-			if (docProvider == null) {
-
-				return;
-			}
-
-			// Get annotation model from the document provider (proper way for all editor
-			// types)
-			org.eclipse.jface.text.source.IAnnotationModel annotationModel = docProvider
-					.getAnnotationModel(textEditor.getEditorInput());
-
-			if (annotationModel == null) {
-
-				return;
-			}
-
-			// Get document from provider
-			org.eclipse.jface.text.IDocument document = docProvider.getDocument(textEditor.getEditorInput());
-
-			if (document == null) {
-
-				return;
-			}
-
-			// Apply each issue's decoration using OSS-specific logic
-			java.util.List<org.eclipse.jface.text.source.Annotation> annotations = new java.util.ArrayList<>();
-
-			for (ScanIssue issue : scanIssues) {
-				try {
-					// Create annotation
-					com.checkmarx.eclipse.devassist.ui.findings.editor.FindingsAnnotation annotation = createAnnotationForIssue(
-							issue);
-
-					if (annotation == null) {
-						continue;
-					}
-
-					// Calculate position (OSS = first line only)
-					org.eclipse.jface.text.Position pos = calculatePositionForIssue(document, issue);
-
-					if (pos != null && pos.getLength() > 0) {
-						annotationModel.addAnnotation(annotation, pos);
-						annotations.add(annotation);
-
-					}
-				} catch (Exception e) {
-					System.err.println("[REALTIME-SETUP-DIRECT] Error decorating issue: " + e.getMessage());
-				}
-			}
-
-		} catch (Exception e) {
-			System.err.println("[REALTIME-SETUP-DIRECT] ✗ Error applying decorations directly: " + e.getMessage());
-			e.printStackTrace();
-		}
-	}
-
-	/**
-	 * Create annotation for an issue.
-	 */
-	private com.checkmarx.eclipse.devassist.ui.findings.editor.FindingsAnnotation createAnnotationForIssue(
-			ScanIssue issue) {
-		try {
-			String annotationType = mapSeverityToAnnotationType(issue.getSeverity());
-			return new com.checkmarx.eclipse.devassist.ui.findings.editor.FindingsAnnotation(
-					annotationType,
-					issue.getTitle(),
-					issue.getDescription());
-		} catch (Exception e) {
-			return null;
-		}
-	}
-
-	/**
-	 * Map severity to annotation type.
-	 * Handles all 8 severity levels including OK, UNKNOWN, and IGNORED.
-	 */
-	private String mapSeverityToAnnotationType(String severity) {
-		if (severity == null) {
-			return "com.checkmarx.eclipse.findings.unknown";
-		}
-		String upper = severity.toUpperCase();
-		if (upper.contains("MALICIOUS")) {
-			return "com.checkmarx.eclipse.findings.malicious";
-		}
-		if (upper.contains("CRITICAL") || upper.contains("ERROR")) {
-			return "com.checkmarx.eclipse.findings.critical";
-		}
-		if (upper.contains("HIGH")) {
-			return "com.checkmarx.eclipse.findings.high";
-		}
-		if (upper.contains("MEDIUM")) {
-			return "com.checkmarx.eclipse.findings.medium";
-		}
-		if (upper.contains("LOW") || upper.contains("INFO")) {
-			return "com.checkmarx.eclipse.findings.low";
-		}
-		if (upper.contains("UNKNOWN")) {
-			return "com.checkmarx.eclipse.findings.unknown";
-		}
-		if (upper.contains("OK")) {
-			return "com.checkmarx.eclipse.findings.ok";
-		}
-		if (upper.contains("IGNORED")) {
-			return "com.checkmarx.eclipse.findings.ignored";
-		}
-		return "com.checkmarx.eclipse.findings.unknown";
-	}
-
-	/**
-	 * Calculate position for an issue (OSS = first line only).
-	 */
-	private org.eclipse.jface.text.Position calculatePositionForIssue(org.eclipse.jface.text.IDocument document,
-			ScanIssue issue) {
-		try {
-			if (issue.getLocations() == null || issue.getLocations().isEmpty()) {
-				return null;
-			}
-
-			com.checkmarx.eclipse.devassist.model.Location location = issue.getLocations().get(0);
-			int lineNumber = location.getLine() - 1; // 0-based
-
-			int lineCount = document.getNumberOfLines();
-			if (lineNumber < 0 || lineNumber >= lineCount) {
-				return null;
-			}
-
-			org.eclipse.jface.text.IRegion lineInfo = document.getLineInformation(lineNumber);
-			int offset = lineInfo.getOffset();
-			int length = lineInfo.getLength();
-
-			// FIX: Skip leading whitespace to match ProblemDecorator.calculateRange()
-			int trimOffset = getLeadingWhitespaceOffset(document, offset, length);
-			int adjustedOffset = offset + trimOffset;
-			int adjustedLength = Math.max(1, length - trimOffset);
-
-			return new org.eclipse.jface.text.Position(adjustedOffset, adjustedLength);
-
-		} catch (Exception e) {
-			return null;
 		}
 	}
 
@@ -1127,6 +1027,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 			@Override
 			public void widgetSelected(org.eclipse.swt.events.SelectionEvent e) {
 				new RemediationManager().fixWithCxOneAssist(issue, DevAssistConstants.QUICK_FIX);
+				TelemetryService.logFixWithCxOneAssistAction(issue);
 			}
 		});
 
@@ -1138,6 +1039,7 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 			@Override
 			public void widgetSelected(org.eclipse.swt.events.SelectionEvent e) {
 				new RemediationManager().viewDetails(issue, DevAssistConstants.QUICK_FIX);
+				TelemetryService.logViewDetailsAction(issue);
 			}
 		});
 
@@ -1196,12 +1098,13 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 		menu.setVisible(true);
 	}
 
-	private void refreshTreeWithFilter() {
+	public void refreshTreeWithFilter() {
 
 		// Apply active filters and refresh
 		VulnerabilityFilterState filterState = VulnerabilityFilterState.getInstance();
 
 		Map<String, List<ScanIssue>> filteredIssues = new HashMap<>();
+		Map<String, List<ScanIssue>> decorationIssues = new HashMap<>();
 		int totalAfter = 0;
 
 		for (String filePath : currentIssues.keySet()) {
@@ -1209,7 +1112,11 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 			if (issues == null)
 				continue;
 
+			// Resolve the project for this file path (per-file resolution, not stale currentProject)
+			IProject project = resolveProjectFromFilePath(filePath);
+
 			List<ScanIssue> filtered = new java.util.ArrayList<>();
+			List<ScanIssue> forDecoration = new java.util.ArrayList<>();
 
 			for (ScanIssue issue : issues) {
 				// ✅ Safe null guard FIRST before calling any methods on issue
@@ -1218,24 +1125,26 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 					continue;
 				}
 
-				String issueId = issue.getScanIssueId();
-				boolean isIgnored = ignoredStore != null && ignoredStore.isIgnored(issueId);
+				boolean isIgnored = project != null
+						&& IgnoreManager.getInstance(project).isIgnored(issue);
 				boolean hasFilter = filterState.hasFilter(issue.getSeverity());
 				boolean isProblem = com.checkmarx.eclipse.devassist.utils.DevAssistUtils.isProblem(issue.getSeverity());
 
-				// Filter by OK/UNKNOWN/IGNORED severity (Phase 3)
-				if (!isProblem) {
+				// For decoration: include OK/UNKNOWN gutter icons (only exclude ignored)
+				if (!isIgnored) {
+					forDecoration.add(issue);
+				}
 
+				// Filter by OK/UNKNOWN/IGNORED severity (Phase 3) - for Problems tree only
+				if (!isProblem) {
 					continue;
 				}
 				// Filter by severity preference
 				if (!hasFilter) {
-
 					continue;
 				}
 				// Filter out ignored problems
 				if (isIgnored) {
-
 					continue;
 				}
 
@@ -1245,6 +1154,10 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 			if (!filtered.isEmpty()) {
 				filteredIssues.put(filePath, filtered);
 				totalAfter += filtered.size();
+			}
+
+			if (!forDecoration.isEmpty()) {
+				decorationIssues.put(filePath, forDecoration);
 			}
 		}
 
@@ -1292,18 +1205,41 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 			setPartName(DevAssistConstants.DEVASSIST_TAB);
 		}
 
-		// Apply decorations to open editors for all filtered findings
-		// This ensures annotations are in the annotation model for hover to find them
-		applyDecorationsToOpenEditors(filteredIssues);
+		// Apply decorations to open editors with issues that include OK/UNKNOWN gutter icons
+		// but exclude ignored findings. This ensures:
+		// - Problems tree shows only actual problems (no OK/UNKNOWN)
+		// - Gutter icons appear for OK/UNKNOWN findings in the editor
+		// - Ignored findings have no gutter icon or severity underline
+		applyDecorationsToOpenEditors(decorationIssues);
 	}
 
 	/**
-	 * Apply decorations to all open editors that have findings in filteredIssues.
-	 * This ensures annotations are present in the annotation model when the Findings View
-	 * displays cached results, so hover can find them without waiting for a new scan.
+	 * Apply decorations to open editors for files whose active-finding set needs
+	 * to change: files that currently have active findings, plus files that had
+	 * active findings as of the previous pass but have none now (e.g. every
+	 * finding in the file was just ignored).
+	 *
+	 * Deliberately does NOT iterate every file in {@code currentIssues} (which can
+	 * include every file ever scanned this session, most with nothing to do) -
+	 * every extra call here is a real decorateEditor() invocation that clears and
+	 * rebuilds that file's annotations, so visiting files with no actual state
+	 * change is not just wasted work but, combined with this plugin's existing
+	 * scan-result pipeline firing more than one update per scan, widens the
+	 * window for a stale/racing call to clobber a fresher one's annotations
+	 * ("flicker and lose results"). Restricting the set to only files whose
+	 * active-finding membership actually changed keeps the original
+	 * fully-ignored-file fix while not manufacturing extra no-op calls.
+	 *
+	 * Also ensures annotations are present in the annotation model when the
+	 * Findings View displays cached results, so hover can find them without
+	 * waiting for a new scan.
 	 */
 	private void applyDecorationsToOpenEditors(Map<String, List<ScanIssue>> filteredIssues) {
-		if (filteredIssues == null || filteredIssues.isEmpty()) {
+		Map<String, List<ScanIssue>> effectiveFiltered = filteredIssues != null
+				? filteredIssues
+				: java.util.Collections.emptyMap();
+
+		if (effectiveFiltered.isEmpty() && lastDecoratedFiles.isEmpty()) {
 			return;
 		}
 
@@ -1313,11 +1249,11 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 				return;
 			}
 
-			for (String filePath : filteredIssues.keySet()) {
-				List<ScanIssue> issues = filteredIssues.get(filePath);
-				if (issues == null || issues.isEmpty()) {
-					continue;
-				}
+			Set<String> filesToDecorate = new HashSet<>(effectiveFiltered.keySet());
+			filesToDecorate.addAll(lastDecoratedFiles);
+
+			for (String filePath : filesToDecorate) {
+				List<ScanIssue> issues = effectiveFiltered.getOrDefault(filePath, java.util.Collections.emptyList());
 
 				// Find if this file is currently open in an editor
 				try {
@@ -1325,13 +1261,30 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 							.getFileForLocation(new org.eclipse.core.runtime.Path(filePath));
 					if (file != null && file.exists()) {
 						// Trigger decoration for this file's open editor (if any)
-						com.checkmarx.eclipse.devassist.problems.ProblemDecorator.decorateEditor(file, issues);
+									ProblemDecorator.decorateEditor(file, issues);
+
+									// Ensure workspace problem markers exist for each issue so the Problems
+									// view shows the findings with the correct severity mapping.
+									try {
+										for (ScanIssue issue : issues) {
+											if (issue == null)
+												continue;
+											// createMarkerForIssue will delegate to MarkerIssueMapper.ensureMarker
+											// which maps Checkmarx severities to Eclipse marker severities
+											createMarkerForIssue(file, issue);
+										}
+									} catch (Exception e) {
+										// Marker creation is best-effort; log and continue decorating other files
+										System.err.println("[FINDINGS] Error ensuring markers for file " + file.getLocation() + ": " + e.getMessage());
+									}
 					}
 				} catch (Exception e) {
 					// Log but continue with other files
 					System.err.println("[FINDINGS] Error decorating file " + filePath + ": " + e.getMessage());
 				}
 			}
+
+			lastDecoratedFiles = new HashSet<>(effectiveFiltered.keySet());
 		} catch (Exception e) {
 			System.err.println("[FINDINGS] Error applying decorations to open editors: " + e.getMessage());
 		}
@@ -1376,33 +1329,6 @@ public class CxFindingsView extends ViewPart implements IgnoredProblemsListener 
 
 	public TreeViewer getTreeViewer() {
 		return treeViewer;
-	}
-
-	/**
-	 * Listener implementation: called when ignored problems are restored or
-	 * cleared.
-	 */
-	@Override
-	public void onIgnoredProblemsChanged() {
-
-		if (treeViewer != null && treeViewer.getControl() != null && !treeViewer.getControl().isDisposed()) {
-			treeViewer.getControl().getDisplay().asyncExec(this::refreshTreeWithFilter);
-		}
-	}
-
-	private int getLeadingWhitespaceOffset(org.eclipse.jface.text.IDocument document, int lineOffset, int lineLength) {
-		try {
-			String lineText = document.get(lineOffset, lineLength);
-			int count = 0;
-			for (int i = 0; i < lineText.length(); i++) {
-				if (!Character.isWhitespace(lineText.charAt(i)))
-					break;
-				count++;
-			}
-			return count;
-		} catch (Exception e) {
-			return 0;
-		}
 	}
 
 }

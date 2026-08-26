@@ -120,6 +120,8 @@ public class RealTimeScanJob extends Job {
 						"com.checkmarx.eclipse.plugin", "scanner-registry");
 				org.eclipse.core.runtime.QualifiedName stateHolderKey = new org.eclipse.core.runtime.QualifiedName(
 						"com.checkmarx.eclipse.plugin", "state-holder");
+				org.eclipse.core.runtime.QualifiedName problemHolderKey = new org.eclipse.core.runtime.QualifiedName(
+						"com.checkmarx.eclipse.plugin", "problem-holder");
 
 				// Get or lazily initialize backend services
 				com.checkmarx.eclipse.devassist.backend.ScannerRegistry registry = (com.checkmarx.eclipse.devassist.backend.ScannerRegistry) project
@@ -127,6 +129,9 @@ public class RealTimeScanJob extends Job {
 
 				com.checkmarx.eclipse.devassist.backend.DevAssistScanStateHolder stateHolder = (com.checkmarx.eclipse.devassist.backend.DevAssistScanStateHolder) project
 						.getSessionProperty(stateHolderKey);
+
+				com.checkmarx.eclipse.devassist.problems.ProblemHolderService problemHolder = (com.checkmarx.eclipse.devassist.problems.ProblemHolderService) project
+						.getSessionProperty(problemHolderKey);
 
 				// Lazy initialization if not found
 				if (registry == null) {
@@ -142,6 +147,21 @@ public class RealTimeScanJob extends Job {
 					project.setSessionProperty(stateHolderKey, stateHolder);
 
 				}
+
+				if (problemHolder == null) {
+
+					problemHolder = new com.checkmarx.eclipse.devassist.problems.ProblemHolderService();
+					project.setSessionProperty(problemHolderKey, problemHolder);
+
+				}
+
+				// Force the ignore file/temp list to reconcile with disk before scanning,
+				// rather than relying solely on the workspace resource-change watcher
+				// having already fired for the latest .checkmarxIgnored edit. Without
+				// this, a manual/external edit to .checkmarxIgnored that the watcher
+				// missed (or hasn't processed yet) would leave the CLI-facing
+				// .checkmarxIgnoredTempList.json stale for this scan cycle.
+				com.checkmarx.eclipse.devassist.ignore.IgnoreFileManager.getInstance(project).refreshFromDisk();
 
 				// Execute backend scanners
 				com.checkmarx.eclipse.devassist.common.ScanManager scanManager = new com.checkmarx.eclipse.devassist.common.ScanManager(

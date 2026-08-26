@@ -27,8 +27,10 @@ import com.checkmarx.eclipse.common.wrapper.WrapperProvider;
 import com.checkmarx.eclipse.devassist.basescanner.BaseScannerService;
 import com.checkmarx.eclipse.devassist.common.ScanResult;
 import com.checkmarx.eclipse.devassist.common.ScannerConfig;
+import com.checkmarx.eclipse.devassist.ignore.IgnoreManager;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
+import com.checkmarx.eclipse.devassist.utils.DevAssistUtils;
 
 /**
  * Realtime Secrets scanner service for Eclipse.
@@ -131,10 +133,10 @@ public class SecretsScannerService extends BaseScannerService<SecretsRealtimeRes
                 }
 
                 CxLogger.info(LOG_TAG + " Starting scan: " + filePath);
-//                String ignoreFilePath = getIgnoreFilePath(proj);
+                String ignoreFilePath = DevAssistUtils.getIgnoreFilePath(proj);
 
                 SecretsRealtimeResults scanResults = wrapperProvider
-                        .secretsRealtimeScan(tempFilePath.get(), "");
+                        .secretsRealtimeScan(tempFilePath.get(), ignoreFilePath);
 
                 if (scanResults == null) {
                     CxLogger.warning(LOG_TAG + " Secrets scanner: no results returned - " + filePath);
@@ -174,27 +176,26 @@ public class SecretsScannerService extends BaseScannerService<SecretsRealtimeRes
     }
 
     /**
-     * Performs a full scan without passing the ignore file to update line numbers of ignored entries.
+     * Performs a full scan without passing the ignore file to update line numbers of ignored
+     * entries. If a user edits a file above an ignored secret, its line shifts - without this,
+     * the gutter icon/marker for that ignored secret would render at its stale line.
      */
     private void updateIgnoredFileDataOnLatestResult(String tempFilePath, IProject proj, String filePath) {
-////        String ignoreFilePath = getIgnoreFilePath(proj);
-//		if (ignoreFilePath != null && !ignoreFilePath.isBlank() && new File(ignoreFilePath).exists()) {
-//		    CxLogger.warning(LOG_TAG + " Secrets: Performing full scan without ignore file to update line numbers");
-//
-//		    SecretsRealtimeResults fullScanResults = null;
-//			try {
-//				fullScanResults = CxWrapperFactory.build()
-//				        .secretsRealtimeScan(tempFilePath, "");
-//			} catch (Exception e) {
-//				// TODO Auto-generated catch block
-//				e.printStackTrace();
-//			}
-//
-//		    if (fullScanResults != null) {
-//		        SecretsScanResultAdaptor fullScanResultAdaptor = new SecretsScanResultAdaptor(fullScanResults, filePath);
-//		        // Hook for updating ignored line markers if IgnoreManager is active
-//		    }
-//		}
+        try {
+            IgnoreManager ignoreManager = IgnoreManager.getInstance(proj);
+            if (!ignoreManager.hasIgnoredEntries(com.checkmarx.eclipse.devassist.utils.ScanEngine.SECRETS)) {
+                return;
+            }
+            CxLogger.info(LOG_TAG + " Performing full scan to update line numbers for ignored secrets");
+            SecretsRealtimeResults fullScanResults = wrapperProvider.secretsRealtimeScan(tempFilePath, "");
+            if (fullScanResults != null) {
+                SecretsScanResultAdaptor fullScanResultAdaptor = new SecretsScanResultAdaptor(fullScanResults, filePath);
+                ignoreManager.updateLineNumbersForIgnoredEntries(fullScanResultAdaptor, filePath);
+            }
+        } catch (Exception e) {
+            CxLogger.warning(LOG_TAG + " Exception occurred while updating ignored secrets line numbers: "
+                    + e.getMessage());
+        }
     }
 
     /**
@@ -295,12 +296,4 @@ public class SecretsScannerService extends BaseScannerService<SecretsRealtimeRes
         }
         return null;
     }
-
-//    private String getIgnoreFilePath(IProject proj) {
-//        try {
-//            return DevAssistUtils.getIgnoreFilePath(proj);
-//        } catch (Exception e) {
-//            return "";
-//        }
-//    }
 }

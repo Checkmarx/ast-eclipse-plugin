@@ -540,8 +540,7 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 					CxLogger.error("[HOVER] Error formatting FindingsAnnotation: " + e.getMessage(), e);
 				}
 			}
-			
-//
+
 //				// Collect other linter/annotation messages (JDT, etc.) that aren't handled
 //				// above
 //				String message = annotation.getText();
@@ -632,7 +631,7 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 			return false;
 		}
 	}
-	
+
 	/**
 	 * Holds all theme-dependent colors needed to render a hover popup, resolved
 	 * together via {@link #getHoverColors()} in a single UI-thread round trip.

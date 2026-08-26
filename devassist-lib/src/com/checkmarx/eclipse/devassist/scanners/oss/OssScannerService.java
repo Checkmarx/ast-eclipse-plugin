@@ -28,6 +28,7 @@ import com.checkmarx.eclipse.common.wrapper.WrapperProvider;
 import com.checkmarx.eclipse.devassist.basescanner.BaseScannerService;
 import com.checkmarx.eclipse.devassist.common.ScanResult;
 import com.checkmarx.eclipse.devassist.common.ScannerConfig;
+import com.checkmarx.eclipse.devassist.ignore.IgnoreManager;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
 import com.checkmarx.eclipse.devassist.utils.PackageManager;
@@ -123,12 +124,16 @@ public class OssScannerService extends BaseScannerService<OssRealtimeResults> {
 
 				CxLogger.info(LOG_TAG + " Starting Realtime OSS Scan on File: " + filePath);
 
-				OssRealtimeResults scanResults = wrapperProvider.ossRealtimeScan(mainTempPath.get(), "");
+				String ignoreFilePath = com.checkmarx.eclipse.devassist.utils.DevAssistUtils.getIgnoreFilePath(project);
+				OssRealtimeResults scanResults = wrapperProvider.ossRealtimeScan(mainTempPath.get(), ignoreFilePath);
 				if (scanResults == null) {
 					return null;
 				}
 
 				OssScanResultAdaptor scanResultAdaptor = new OssScanResultAdaptor(scanResults, filePath);
+
+				// Update line numbers for ignored packages if any exist
+				updateIgnoredFileDataOnLatestResult(mainTempPath.get(), filePath);
 
 				return scanResultAdaptor;
 
@@ -143,24 +148,28 @@ public class OssScannerService extends BaseScannerService<OssRealtimeResults> {
 	}
 
 	/**
-	 * Performs full scan without passing ignore file to update line numbers of ignored entries.
+	 * Re-runs the scan without the ignore file to reconcile ignored packages' line numbers
+	 * against a fresh, unfiltered result. If a user edits a file above an ignored package
+	 * finding, its line shifts - without this, the gutter icon/marker for that ignored finding
+	 * would render at its stale line.
 	 */
-//	private void updateIgnoredFileDataOnLatestResult(String tempFilePath, IProject proj, String filePath) {
-//		try {
-//			// Extension point for ignore manager syncing when ignore files are active
-//			String ignoreFilePath = getIgnoreFilePath(proj);
-//			if (ignoreFilePath != null && !ignoreFilePath.isBlank() && new File(ignoreFilePath).exists()) {
-//				CxLogger.info(LOG_TAG + " Performing full scan to update line numbers for ignored packages");
-//				OssRealtimeResults fullScanResults = CxWrapperFactory.build().ossRealtimeScan(tempFilePath, "");
-//				if (fullScanResults != null && fullScanResults.getPackages() != null) {
-//					OssScanResultAdaptor fullScanResultAdaptor = new OssScanResultAdaptor(fullScanResults, filePath);
-//					// Connects with ignore manager line number updater if implemented
-//				}
-//			}
-//		} catch (Exception e) {
-//			CxLogger.warning(LOG_TAG + " Exception occurred while performing full scan without ignore file: " + e.getMessage());
-//		}
-//	}
+	private void updateIgnoredFileDataOnLatestResult(String tempFilePath, String filePath) {
+		try {
+			IgnoreManager ignoreManager = IgnoreManager.getInstance(project);
+			if (!ignoreManager.hasIgnoredEntries(com.checkmarx.eclipse.devassist.utils.ScanEngine.OSS)) {
+				return;
+			}
+			CxLogger.info(LOG_TAG + " Performing full scan to update line numbers for ignored packages");
+			OssRealtimeResults fullScanResults = wrapperProvider.ossRealtimeScan(tempFilePath, "");
+			if (fullScanResults != null && fullScanResults.getPackages() != null) {
+				OssScanResultAdaptor fullScanResultAdaptor = new OssScanResultAdaptor(fullScanResults, filePath);
+				ignoreManager.updateLineNumbersForIgnoredEntries(fullScanResultAdaptor, filePath);
+			}
+		} catch (Exception e) {
+			CxLogger.warning(LOG_TAG + " Exception occurred while updating ignored OSS line numbers: "
+					+ e.getMessage());
+		}
+	}
 
 	/**
 	 * Persists the main manifest file into the temporary directory for scanning.

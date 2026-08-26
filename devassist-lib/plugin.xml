@@ -17,8 +17,16 @@
             class="com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView"
             restorable="true">
       </view>
+       <view
+            id="com.checkmarx.eclipse.devassist.ui.findings.ignore.DevAssistIgnoredFindings"
+            name="Ignored Findings"
+            icon="icons/checkmarx-plugin-13_dark.png"
+            category="com.checkmarx.eclipse.devassist.category"
+            class="com.checkmarx.eclipse.devassist.ui.findings.ignore.DevAssistIgnoredFindings"
+            restorable="true">
+      </view>
    </extension>
-   
+
    <!-- Line Hover (Java editor): org.eclipse.ui.editors.textHovers does NOT
         exist as a real Eclipse Platform extension point - text hovers are
         wired programmatically per-editor via SourceViewerConfiguration and

@@ -81,13 +81,16 @@ public final class DevAssistConstants {
             "**/pom.xml",
             // npm
             "**/package.json",
+            "**/yarn.lock",
             // Bower
             "**/bower.json",
             // Python
             "**/requirement*.txt",
+            "**/requirements.txt",
             "**/constraints.txt",
             "**/constraints-*.txt",
             "**/pyproject.toml",
+            "**/poetry.lock",
             "**/setup.cfg",
             "**/setup.py",
             // Go
@@ -100,20 +103,29 @@ public final class DevAssistConstants {
             "**/*.sbt",
             // iOS CocoaPods
             "**/Podfile",
+            "**/Podfile.lock",
             "**/*.podspec",
             "**/*.podspec.json",
             // iOS Carthage
             "**/Cartfile",
             "**/Cartfile.private",
+            "**/Cartfile.resolved",
             // Swift Package Manager
             "**/Package.swift",
             "**/Package@swift-*.swift",
+            "**/Package.resolved",
             // Dart/Flutter
             "**/pubspec.yaml",
+            "**/pubspec.lock",
             // Ruby
             "**/Gemfile",
+            "**/Gemfile.lock",
+            // Perl
+            "**/cpanfile",
+            "**/cpanfile.snapshot",
             // PHP Composer
-            "**/composer.json"
+            "**/composer.json",
+            "**/composer.lock"
 	);
 
 	// Container file patterns

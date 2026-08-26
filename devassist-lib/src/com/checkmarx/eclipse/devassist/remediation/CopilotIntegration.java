@@ -17,9 +17,10 @@ import com.checkmarx.eclipse.common.utils.CxLogger;
  * Integration with GitHub Copilot for Eclipse
  * (https://github.com/microsoft/copilot-for-eclipse).
  * <p>
- * Opens the Copilot Chat view in <b>Agent</b> mode with a pre-filled prompt and
- * submits it automatically, using the command contributed by the Copilot
- * plugin: {@code com.microsoft.copilot.eclipse.commands.openChatView}.
+ * Opens the Copilot Chat view in <b>Agent</b> mode with a pre-filled prompt in a
+ * <b>new chat session</b> and submits it automatically, using the command
+ * contributed by the Copilot plugin: {@code com.microsoft.copilot.eclipse.commands.openChatView}.
+ * Each prompt is opened in its own isolated chat session for independent Agent conversations.
  * <p>
  * Fallback strategy, in order:
  * <ol>
@@ -57,6 +58,9 @@ public final class CopilotIntegration {
 	/** Chat mode to switch to before submitting ("Agent" or "Ask"). */
 	private static final String PARAM_MODE = "com.microsoft.copilot.eclipse.commands.openChatView.mode";
 
+	/** New conversation. */
+	private static final String COPILOT_NEW_CONVERSATION_COMMAND = "com.microsoft.copilot.eclipse.commands.newConversation";
+
 	private static final String CHAT_MODE_AGENT = "Agent";
 
 	private static final String COPILOT_MARKETPLACE_URL = "https://marketplace.eclipse.org/content/github-copilot";
@@ -69,8 +73,11 @@ public final class CopilotIntegration {
 	}
 
 	/**
-	 * Opens GitHub Copilot Chat in Agent mode with the given prompt and submits it
-	 * automatically.
+	 * Opens GitHub Copilot Chat in Agent mode with the given prompt in a new chat
+	 * session and submits it automatically.
+	 * <p>
+	 * Each call creates a new chat session instead of reusing an existing
+	 * conversation, ensuring isolated contexts for each prompt.
 	 * <p>
 	 * If Copilot is not installed, an "install Copilot" notification is shown. In
 	 * every case where the prompt could not be handed off to Copilot directly, it
@@ -126,48 +133,70 @@ public final class CopilotIntegration {
 	 * @return true if the command was found, enabled, and executed without error
 	 */
 	private static boolean openChatInAgentModeAndSend(String prompt) {
-		final boolean[] success = { false };
+	    final boolean[] success = { false };
 
-		try {
-			Display.getDefault().syncExec(() -> {
-				try {
-					ICommandService commandService = PlatformUI.getWorkbench().getService(ICommandService.class);
-					if (commandService == null) {
-						CxLogger.warning(LOG_PREFIX + " ICommandService not available");
-						return;
-					}
+	    try {
+	        // 1. Run the reset command synchronously on the UI Thread
+	        Display.getDefault().syncExec(() -> {
+	            try {
+	                ICommandService commandService = PlatformUI.getWorkbench().getService(ICommandService.class);
+	                if (commandService == null) return;
 
-					Command command = commandService.getCommand(COPILOT_OPEN_CHAT_COMMAND);
-					if (command == null || !command.isDefined()) {
-						CxLogger.warning(LOG_PREFIX + " Copilot command not defined: " + COPILOT_OPEN_CHAT_COMMAND);
-						return;
-					}
+	                Command newConvCommand = commandService.getCommand(COPILOT_NEW_CONVERSATION_COMMAND);
+	                if (newConvCommand != null && newConvCommand.isDefined() && newConvCommand.isEnabled()) {
+	                    newConvCommand.executeWithChecks(new ExecutionEvent(newConvCommand, new HashMap<>(), null, null));
+	                }
+	            } catch (Exception e) {
+	                CxLogger.warning(LOG_PREFIX + " Error clearing conversation state: " + e.getMessage());
+	            }
+	        });
 
-					if (!command.isEnabled()) {
-						CxLogger.warning(LOG_PREFIX + " Copilot command is not enabled: " + COPILOT_OPEN_CHAT_COMMAND);
-						return;
-					}
+	        // 2. Offload to a background thread to wait out the Copilot UI rebuild process safely
+	        Thread executionThread = new Thread(() -> {
+	            try {
+	                // Give the SWT Browser/HTML view 450-500ms to completely finish loading the fresh session
+	                Thread.sleep(450); 
+	            } catch (InterruptedException e) {
+	                Thread.currentThread().interrupt();
+	            }
 
-					// The handler reads these as raw command parameters (always Strings) -
-					// passing a real Boolean here throws a ClassCastException in Copilot's handler.
-					Map<String, String> parameters = new HashMap<>();
-					parameters.put(PARAM_INPUT_VALUE, prompt);
-					parameters.put(PARAM_AUTO_SEND, Boolean.TRUE.toString());
-					parameters.put(PARAM_MODE, CHAT_MODE_AGENT);
+	            /**
+	             *  Fetch and prepare the standard chat view command.
+	             *  Schedule the prompt injection to run immediately AFTER the UI thread finishes clearing
+	             *  Re-enter the UI Thread to pass parameters and trigger the auto-send action
+	             */
+	            Display.getDefault().syncExec(() -> {
+	                try {
+	                    ICommandService commandService = PlatformUI.getWorkbench().getService(ICommandService.class);
+	                    if (commandService == null) return;
 
-					command.executeWithChecks(new ExecutionEvent(command, parameters, null, null));
-					success[0] = true;
-				} catch (Exception e) {
-					CxLogger.warning(LOG_PREFIX + " Error executing Copilot open chat command: " + e.getMessage());
-				}
-			});
-		} catch (Exception e) {
-			CxLogger.error(LOG_PREFIX + " Unexpected error opening Copilot Chat: " + e.getMessage(), e);
-		}
+	                    Command command = commandService.getCommand(COPILOT_OPEN_CHAT_COMMAND);
+	                    if (command != null && command.isDefined() && command.isEnabled()) {
+	                        
+	                        Map<String, String> parameters = new HashMap<>();
+	                        parameters.put(PARAM_INPUT_VALUE, prompt);
+	                        parameters.put(PARAM_AUTO_SEND, Boolean.TRUE.toString());
+	                        parameters.put(PARAM_MODE, CHAT_MODE_AGENT);
 
-		return success[0];
+	                        command.executeWithChecks(new ExecutionEvent(command, parameters, null, null));
+	                        success[0] = true;
+	                    }
+	                } catch (Exception e) {
+	                    CxLogger.warning(LOG_PREFIX + " Post-sleep submission failed: " + e.getMessage());
+	                }
+	            });
+	        });
+
+	        executionThread.start();
+	        // If your calling method relies on a strictly blocking response, you can optionally call executionThread.join(); here
+
+	    } catch (Exception e) {
+	        CxLogger.error(LOG_PREFIX + " Unexpected exception handling background dispatch: " + e.getMessage(), e);
+	    }
+
+	    return success[0];
 	}
-
+	
 
 	/**
 	 * Shows a notification prompting the user to install GitHub Copilot for

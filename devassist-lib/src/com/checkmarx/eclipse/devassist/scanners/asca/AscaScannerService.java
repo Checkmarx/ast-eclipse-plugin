@@ -17,6 +17,7 @@ import com.checkmarx.eclipse.common.wrapper.WrapperProvider;
 import com.checkmarx.eclipse.devassist.basescanner.BaseScannerService;
 import com.checkmarx.eclipse.devassist.common.ScanResult;
 import com.checkmarx.eclipse.devassist.common.ScannerConfig;
+import com.checkmarx.eclipse.devassist.ignore.IgnoreManager;
 import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
 import com.checkmarx.eclipse.devassist.utils.ScanEngine;
 
@@ -107,10 +108,42 @@ public class AscaScannerService extends BaseScannerService<ScanResult> {
 			if (rawResults == null) {
 				return null;
 			}
-			return new AscaScanResultAdaptor((com.checkmarx.ast.asca.ScanResult) rawResults, filePath);
+			com.checkmarx.ast.asca.ScanResult ascaScanResult = (com.checkmarx.ast.asca.ScanResult) rawResults;
+			// Update line numbers for ignored ASCA issues if any exist
+			updateIgnoredFileDataOnLatestResult(ascaScanResult, filePath, proj);
+			return new AscaScanResultAdaptor(ascaScanResult, filePath, proj);
 		} catch (Exception e) {
 			CxLogger.error(LOG_TAG + " Scan failed: " + e.getMessage(), e);
 			return null;
+		}
+	}
+
+	/**
+	 * Reconciles ignored ASCA entries' line numbers against this scan's raw results, and removes
+	 * ignore entries whose finding is no longer present (e.g. the flagged code was deleted). If a
+	 * user edits a file above an ignored finding, its line shifts - without this, the gutter
+	 * icon/marker for that ignored finding would render at its stale line.
+	 * <p>
+	 * Unlike the other scanners, no second ("full") scan is needed here: ASCA's CLI invocation
+	 * never actually excludes ignored findings (see {@link #getIgnoreFilePath}), so
+	 * {@code rawResults} already contains every vulnerability, including already-ignored ones.
+	 */
+	private void updateIgnoredFileDataOnLatestResult(com.checkmarx.ast.asca.ScanResult rawResults, String filePath,
+			IProject proj) {
+		try {
+			IgnoreManager ignoreManager = IgnoreManager.getInstance(proj);
+			if (!ignoreManager.hasIgnoredEntries(ScanEngine.ASCA)) {
+				return;
+			}
+			if (rawResults != null && rawResults.getScanDetails() != null && !rawResults.getScanDetails().isEmpty()) {
+				AscaScanResultAdaptor unfilteredAdaptor = new AscaScanResultAdaptor(rawResults, filePath, proj, false);
+				ignoreManager.updateLineNumbersForIgnoredEntriesByProblematicLine(unfilteredAdaptor, filePath);
+			} else {
+				ignoreManager.removeIgnoreEntriesForFileIfEmpty(filePath);
+			}
+		} catch (Exception e) {
+			CxLogger.warning(LOG_TAG + " Exception occurred while updating ignored ASCA line numbers: "
+					+ e.getMessage());
 		}
 	}
 
@@ -184,7 +217,7 @@ public class AscaScannerService extends BaseScannerService<ScanResult> {
 
 			try {
 				CxLogger.info(LOG_TAG + " Starting ASCA scan: " + filePath);
-				String ignoreFilePath = getIgnoreFilePath();
+				String ignoreFilePath = getIgnoreFilePath(project);
 				Object scanResult = executeAscaScanner(tempFilePath, ignoreFilePath);
 				CxLogger.info(LOG_TAG + " ASCA scan completed");
 				return scanResult;
@@ -208,11 +241,15 @@ public class AscaScannerService extends BaseScannerService<ScanResult> {
 
 	/**
 	 * Get ignore file path for ASCA scanning.
-	 * Returns empty string by default - can be extended to read from
-	 * .checkmarxIgnored file.
+	 * Note: matching the JetBrains plugin's behavior, ASCA's CLI invocation does
+	 * not currently accept a working ignore-file exclusion, so this path is
+	 * resolved but intentionally not forwarded to ScanAsca() below - ASCA-ignored
+	 * findings are instead excluded at the app level via
+	 * IgnoreManager/IgnoreFileManager#isIgnored() in the findings tree/decoration
+	 * filtering pipeline.
 	 */
-	private String getIgnoreFilePath() {
-		return "";
+	private String getIgnoreFilePath(IProject project) {
+		return com.checkmarx.eclipse.devassist.utils.DevAssistUtils.getIgnoreFilePath(project);
 	}
 
 	/**

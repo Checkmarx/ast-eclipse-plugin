@@ -91,8 +91,13 @@ import com.checkmarx.ast.scan.Scan;
 import com.checkmarx.ast.wrapper.CxException;
 import com.checkmarx.eclipse.common.events.SettingsTopics;
 import com.checkmarx.eclipse.common.preferences.Preferences;
+import com.checkmarx.eclipse.common.events.SettingsTopics;
+import com.checkmarx.eclipse.common.preferences.Preferences;
 import com.checkmarx.eclipse.Activator;
 import com.checkmarx.eclipse.enums.ActionName;
+import com.checkmarx.eclipse.common.enums.Severity;
+import com.checkmarx.eclipse.common.utils.CxLogger;
+import com.checkmarx.eclipse.common.utils.PluginConstants;
 import com.checkmarx.eclipse.common.enums.Severity;
 import com.checkmarx.eclipse.common.utils.CxLogger;
 import com.checkmarx.eclipse.common.utils.PluginConstants;
@@ -437,8 +442,8 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 				});
 
 				if (!currentBranch.isEmpty()) {
-					updateStartScanButton(true);
 					sync.asyncExec(() -> {
+						updateStartScanButton(true);
 						PluginUtils.setTextForComboViewer(branchComboViewer, currentBranch);
 					});
 					List<Scan> scanList = DataProvider.getInstance().getScansForProject(currentBranch);
@@ -2957,7 +2962,9 @@ public class CheckmarxView extends ViewPart implements EventHandler {
 		} catch (Exception e) {
 			String errorMessage = e.getCause() != null && e.getCause().getMessage() != null ? e.getCause().getMessage()
 					: e.getMessage();
-			PluginUtils.showMessage(rootModel, resultsTree, errorMessage);
+			org.eclipse.swt.widgets.Display.getDefault().asyncExec(() -> {
+				PluginUtils.showMessage(rootModel, resultsTree, errorMessage);
+			});
 		}
 
 		return projectList;

@@ -6,6 +6,7 @@ import com.checkmarx.eclipse.devassist.utils.DevAssistUtils;
 import com.checkmarx.eclipse.devassist.common.ScannerConfig;
 import com.checkmarx.eclipse.common.wrapper.WrapperProvider;
 import com.checkmarx.eclipse.devassist.common.ScanResult;
+import com.checkmarx.eclipse.devassist.ignore.IgnoreManager;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
@@ -154,12 +155,11 @@ public class ContainerScannerService extends BaseScannerService<ContainersRealti
                 Files.writeString(tempFilePath, fileContent, StandardCharsets.UTF_8);
 
                 CxLogger.info(LOG_TAG + " Start Container Realtime Scan On File: " + filePath);
-                // String ignoreFilePath = DevAssistUtils.getIgnoreFilePath(proj != null ? proj
-                // : this.project);
+                String ignoreFilePath = DevAssistUtils.getIgnoreFilePath(proj != null ? proj : this.project);
 
                 ContainersRealtimeResults scanResults = null;
                 try {
-                    scanResults = wrapperProvider.containersRealtimeScan(tempFilePath.toString(), "");
+                    scanResults = wrapperProvider.containersRealtimeScan(tempFilePath.toString(), ignoreFilePath);
                 } catch (Exception e) {
                     // TODO Auto-generated catch block
                     e.printStackTrace();
@@ -183,28 +183,27 @@ public class ContainerScannerService extends BaseScannerService<ContainersRealti
 
     /**
      * Re-runs scan without ignore settings to calculate line updates for ignored
-     * entries.
+     * entries. If a user edits a file above an ignored container finding, its line shifts -
+     * without this, the gutter icon/marker for that ignored finding would render at its
+     * stale line.
      */
     private void updateIgnoredFileDataOnLatestResult(String tempFilePath, IProject proj, String filePath) {
-        // try {
-        // IgnoreManager ignoreManager = new IgnoreManager(proj);
-        // if (ignoreManager.hasIgnoredEntries(ScanEngine.CONTAINERS)) {
-        // CxLogger.info(LOG_TAG + " Performing full scan to update line numbers for
-        // ignored packages");
-        // ContainersRealtimeResults fullScanResults = CxWrapperFactory.build()
-        // .containersRealtimeScan(tempFilePath, "");
-        //
-        // if (fullScanResults != null) {
-        // ContainerScanResultAdaptor fullScanResultAdaptor = new
-        // ContainerScanResultAdaptor(fullScanResults, this.fileType, filePath);
-        // ignoreManager.updateLineNumbersForIgnoredEntries(fullScanResultAdaptor,
-        // filePath);
-        // }
-        // }
-        // } catch (Exception e) {
-        // CxLogger.warning(LOG_TAG + " Exception occurred while updating ignored file
-        // line numbers: " + e.getMessage());
-        // }
+        try {
+            IgnoreManager ignoreManager = IgnoreManager.getInstance(proj);
+            if (!ignoreManager.hasIgnoredEntries(com.checkmarx.eclipse.devassist.utils.ScanEngine.CONTAINERS)) {
+                return;
+            }
+            CxLogger.info(LOG_TAG + " Performing full scan to update line numbers for ignored packages");
+            ContainersRealtimeResults fullScanResults = wrapperProvider.containersRealtimeScan(tempFilePath, "");
+            if (fullScanResults != null) {
+                ContainerScanResultAdaptor fullScanResultAdaptor =
+                        new ContainerScanResultAdaptor(fullScanResults, this.fileType, filePath);
+                ignoreManager.updateLineNumbersForIgnoredEntries(fullScanResultAdaptor, filePath);
+            }
+        } catch (Exception e) {
+            CxLogger.warning(LOG_TAG + " Exception occurred while updating ignored container line numbers: "
+                    + e.getMessage());
+        }
     }
 
     /**

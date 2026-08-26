@@ -1,20 +1,21 @@
 package com.checkmarx.eclipse.devassist.ui.findings.provider;
 
-import org.eclipse.jface.viewers.ITreeContentProvider;
-import org.eclipse.jface.viewers.Viewer;
-import org.eclipse.ui.PlatformUI;
-import org.eclipse.ui.IEditorRegistry;
-import org.eclipse.jface.resource.ImageDescriptor;
-import org.eclipse.swt.graphics.Image;
-
-import com.checkmarx.eclipse.devassist.ui.findings.model.FileNodeLabel;
-import com.checkmarx.eclipse.common.utils.CxLogger;
-import com.checkmarx.eclipse.devassist.model.ScanIssue;
-import com.checkmarx.eclipse.devassist.ui.findings.model.ScanDetailWithPath;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.eclipse.jface.resource.ImageDescriptor;
+import org.eclipse.jface.viewers.ITreeContentProvider;
+import org.eclipse.jface.viewers.Viewer;
+import org.eclipse.swt.graphics.Image;
+import org.eclipse.ui.IEditorRegistry;
+import org.eclipse.ui.PlatformUI;
+
+import com.checkmarx.eclipse.common.utils.CxLogger;
+import com.checkmarx.eclipse.devassist.backend.SeverityLevel;
+import com.checkmarx.eclipse.devassist.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.ui.findings.model.FileNodeLabel;
+import com.checkmarx.eclipse.devassist.ui.findings.model.ScanDetailWithPath;
 
 /**
  * Content provider for the Findings tree viewer. Implements
@@ -67,10 +68,26 @@ public class FindingsContentProvider implements ITreeContentProvider {
     public Object[] getChildren(Object parentElement) {
         if (parentElement instanceof FileNodeLabel) {
             FileNodeLabel fileNode = (FileNodeLabel) parentElement;
-            return fileNode.getIssues().stream()
+            // Sort issues for this file by severity (most severe first)
+            java.util.List<ScanIssue> sorted = new java.util.ArrayList<>();
+            if (fileNode.getIssues() != null) {
+                sorted.addAll(fileNode.getIssues());
+                sorted.sort((a, b) -> Integer.compare(getSeverityRank(a == null ? null : a.getSeverity()),
+                        getSeverityRank(b == null ? null : b.getSeverity())));
+            }
+
+            return sorted.stream()
                     .map(issue -> new ScanDetailWithPath(issue, fileNode.getFilePath(), fileNode)).toArray();
         }
         return new Object[0];
+    }
+
+    /**
+     * Map severity string to an integer rank where lower = more severe.
+     * Unknown/null severities are given a low priority (higher numeric rank).
+     */
+    private int getSeverityRank(String severity) {
+        return SeverityLevel.fromValue(severity).getPrecedence();
     }
 
     @Override

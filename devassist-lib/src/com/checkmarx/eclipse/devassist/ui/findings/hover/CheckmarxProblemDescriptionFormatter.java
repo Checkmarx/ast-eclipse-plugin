@@ -356,7 +356,7 @@ public final class CheckmarxProblemDescriptionFormatter {
 				.append(buttonStyle).append(TITLE_FONT_FAMILY).append("'>")
 				.append(DevAssistUtils.getAssistQuickFixName()).append("</a></td>")
 				.append("<td style='padding:0 10px 0 0;margin:0;'>").append("<a href=\"#cxonedevassist/viewdetails")
-				.append(SEPERATOR).append(scanIssueId).append(SEPERATOR).append("\" style='").append(buttonStyle)
+				.append(SEPERATOR).append(scanIssueId).append(SEPERATOR).append(engineName).append("\" style='").append(buttonStyle)
 				.append(TITLE_FONT_FAMILY).append("'>").append(DevAssistConstants.VIEW_DETAILS_FIX_NAME)
 				.append("</a></td>").append("<td style='padding:0 10px 0 0;margin:0;'>")
 				.append("<a href=\"#cxonedevassist/ignorethis").append(SEPERATOR).append(scanIssueId).append(SEPERATOR)
@@ -367,10 +367,10 @@ public final class CheckmarxProblemDescriptionFormatter {
 			descBuilder.append("<td style='padding:0 5px 0 0;margin:0;'>")
 					.append("<a href=\"#cxonedevassist/ignoreallofthis").append(SEPERATOR).append(scanIssueId)
 					.append(SEPERATOR).append("\" style='").append(buttonStyle).append(TITLE_FONT_FAMILY).append("'>")
-
-					.append(DevAssistConstants.IGNORE_ALL_OF_THIS_TYPE_FIX_NAME);
+					.append(DevAssistConstants.IGNORE_ALL_OF_THIS_TYPE_FIX_NAME)
+					.append("</a></td>");
 		}
-		descBuilder.append("</a></td>").append("</tr></table><br>");
+		descBuilder.append("</tr></table><br>");
 	}
 
 
