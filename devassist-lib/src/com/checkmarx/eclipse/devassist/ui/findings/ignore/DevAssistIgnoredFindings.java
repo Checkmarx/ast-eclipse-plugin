@@ -14,6 +14,8 @@ import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.preference.PreferenceDialog;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.ScrolledComposite;
+import org.eclipse.swt.events.ControlAdapter;
+import org.eclipse.swt.events.ControlEvent;
 import org.eclipse.swt.events.MouseAdapter;
 import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -22,6 +24,7 @@ import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Cursor;
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
@@ -319,6 +322,17 @@ public class DevAssistIgnoredFindings extends ViewPart {
 
 		scrolledContainer.setContent(cardsContainer);
 
+		// Recompute the scroll area's min height whenever the view is resized -
+		// without this, a width change after the cards were last measured leaves
+		// the wrap-label/badge-row heights (measured at the OLD width) stale, so
+		// the scrollbar can under- or over-shoot the real content height again.
+		scrolledContainer.addControlListener(new ControlAdapter() {
+			@Override
+			public void controlResized(ControlEvent e) {
+				updateScrolledMinHeight();
+			}
+		});
+
 		setupToolbar();
 		refreshTable();
 
@@ -429,7 +443,7 @@ public class DevAssistIgnoredFindings extends ViewPart {
 		}
 
 		cardsContainer.layout(true, true);
-		scrolledContainer.setMinHeight(cardsContainer.computeSize(SWT.DEFAULT, SWT.DEFAULT).y);
+		updateScrolledMinHeight();
 		updateSelectionStateUI();
 	}
 
@@ -443,7 +457,30 @@ public class DevAssistIgnoredFindings extends ViewPart {
 			return;
 		}
 		cardsContainer.layout(true, true);
-		scrolledContainer.setMinHeight(cardsContainer.computeSize(SWT.DEFAULT, SWT.DEFAULT).y);
+		updateScrolledMinHeight();
+	}
+
+	/**
+	 * Measures cardsContainer's required height at its ACTUAL rendered width,
+	 * not an unconstrained default width. computeSize(SWT.DEFAULT, SWT.DEFAULT)
+	 * measures wrap-labels (the description text) and the badge-row GridLayout
+	 * at their preferred, unconstrained width, which is wider than the width
+	 * they're actually confined to inside the scrollable area - at that wider
+	 * "preferred" width the same text wraps LESS, under-reporting the true
+	 * height needed. setMinHeight() then reserved less scroll space than the
+	 * content actually needs, clipping whatever renders last (the final card's
+	 * badge row) once scrolled to the bottom.
+	 */
+	private void updateScrolledMinHeight() {
+		if (scrolledContainer == null || scrolledContainer.isDisposed()
+				|| cardsContainer == null || cardsContainer.isDisposed()) {
+			return;
+		}
+		int width = scrolledContainer.getClientArea().width;
+		Point size = width > 0
+				? cardsContainer.computeSize(width, SWT.DEFAULT)
+				: cardsContainer.computeSize(SWT.DEFAULT, SWT.DEFAULT);
+		scrolledContainer.setMinHeight(size.y);
 	}
 
 	private void onSelectAllToggled(boolean selectAll) {

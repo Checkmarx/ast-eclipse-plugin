@@ -246,6 +246,25 @@ public class ProjectLifecycleListener implements IResourceChangeListener, IProje
 				CxLogger.warning(LOG_TAG + " Error clearing state: " + e.getMessage());
 			}
 
+			try {
+				com.checkmarx.eclipse.devassist.ignore.IgnoreManager.dispose(project);
+				CxLogger.info(LOG_TAG + " ✓ IgnoreManager disposed");
+			} catch (Exception e) {
+				CxLogger.warning(LOG_TAG + " Error disposing IgnoreManager: " + e.getMessage());
+			}
+
+			try {
+				// Unregisters the project's workspace-level ignore-file resource-change
+				// listener - unlike ScannerRegistry/ProblemHolderService/DevAssistScanStateHolder
+				// above (held in IProject session properties, auto-discarded by Eclipse on
+				// close), IgnoreFileManager is cached in its own static map with no lifecycle
+				// hook, so without this call it and its listener live for the process lifetime.
+				com.checkmarx.eclipse.devassist.ignore.IgnoreFileManager.dispose(project);
+				CxLogger.info(LOG_TAG + " ✓ IgnoreFileManager disposed");
+			} catch (Exception e) {
+				CxLogger.warning(LOG_TAG + " Error disposing IgnoreFileManager: " + e.getMessage());
+			}
+
 			initializedProjects.remove(project.getName());
 			CxLogger.info(LOG_TAG + " ✓ Project cleanup completed: " + project.getName());
 

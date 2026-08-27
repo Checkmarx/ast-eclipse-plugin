@@ -25,7 +25,13 @@ import static java.lang.String.format;
  * Provides methods to ignore issues and update temporary ignore lists.
  */
 public final class IgnoreManager {
-    private static IgnoreManager instance;
+    // Per-project cache (mirrors IgnoreFileManager's pattern) - a single static
+    // "instance" field replaced on every call with a different project used to
+    // silently discard whichever project's IgnoreManager wasn't the most
+    // recently requested. Nothing currently holds a reference across an async
+    // boundary, but any caller that does would then act on the wrong project's
+    // ignore state the moment another project's lookup swapped the field.
+    private static final Map<org.eclipse.core.resources.IProject, IgnoreManager> INSTANCES = new HashMap<>();
     private final org.eclipse.core.resources.IProject project;
     private final ProblemHolderService problemHolder;
     private final IgnoreFileManager ignoreFileManager;
@@ -37,10 +43,20 @@ public final class IgnoreManager {
     }
 
     public static synchronized IgnoreManager getInstance(org.eclipse.core.resources.IProject project) {
-        if (instance == null || instance.project != project) {
-            instance = new IgnoreManager(project);
-        }
-        return instance;
+        return INSTANCES.computeIfAbsent(project, IgnoreManager::new);
+    }
+
+    /**
+     * Evicts the cached IgnoreManager for a closed project, so a stale
+     * per-project instance can never be resolved (or accumulate indefinitely)
+     * once the project is gone. Holds no listeners/resources of its own beyond
+     * the ProblemHolderService/IgnoreFileManager references it wraps - those are
+     * disposed independently - so simply dropping the reference is sufficient.
+     *
+     * @param project the project that is closing
+     */
+    public static synchronized void dispose(org.eclipse.core.resources.IProject project) {
+        INSTANCES.remove(project);
     }
 
     /**
