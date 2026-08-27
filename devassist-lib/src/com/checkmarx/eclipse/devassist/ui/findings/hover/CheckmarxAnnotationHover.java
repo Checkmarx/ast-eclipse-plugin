@@ -156,26 +156,18 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 				org.eclipse.swt.browser.Browser browser = (org.eclipse.swt.browser.Browser) browserField.get(control);
 				if (browser != null && !browser.isDisposed()) {
 					CxLogger.info("[HOVER] HoverControlCreator: Setting up LocationListener for action buttons");
+					final String[] lastHandledLocation = new String[1];
 					browser.addLocationListener(new LocationListener() {
 						@Override
 						public void changing(LocationEvent event) {
 							CxLogger.info("[HOVER] LocationListener.changing: " + event.location);
-							if (event.location.contains("#cxonedevassist/")) {
-								CxLogger.info("[HOVER] Blocking remediation action URL: " + event.location);
-								event.doit = false;
-							}
+							dispatchCxOneAssistAction(event, lastHandledLocation);
 						}
 
 						@Override
 						public void changed(LocationEvent event) {
 							CxLogger.info("[HOVER] LocationListener.changed: " + event.location);
-							int actionIndex = event.location.indexOf("#cxonedevassist/");
-							if (actionIndex >= 0) {
-								event.doit = false;
-								String linkData = event.location.substring(actionIndex + 16); // +16 for "#cxonedevassist/"
-								CxLogger.info("[HOVER] Extracted link data: " + linkData);
-								handleHoverAction(linkData);
-							}
+							dispatchCxOneAssistAction(event, lastHandledLocation);
 						}
 					});
 					browser.addProgressListener(new ProgressListener() {
@@ -198,6 +190,35 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 				CxLogger.error("Failed to setup action handler for hover buttons (HoverControlCreator)", e);
 			}
 		}
+	}
+
+	/**
+	 * Shared dispatch logic for both LocationListener callbacks below. SWT's
+	 * Browser widget does not reliably fire the same callback for a
+	 * "#cxonedevassist/" link click across platforms/browser engines - observed:
+	 * on one macOS run changing() fired with the action URL and changed() never
+	 * did; on another macOS run changing() never fired for the click at all and
+	 * only changed() did. Since which callback fires isn't dependable, both
+	 * changing() and changed() call this, and lastHandledLocation[0] dedupes the
+	 * case where both end up firing for the same click.
+	 */
+	private void dispatchCxOneAssistAction(LocationEvent event, String[] lastHandledLocation) {
+		CxLogger.info("[HOVER] Dispatch CxOneAssist Action called: " + event.location);
+		int actionIndex = event.location.indexOf("#cxonedevassist/");
+		if (actionIndex < 0) {
+			CxLogger.info("[HOVER] Dispatch CxOneAssist Action called: actionIndex " + actionIndex);
+			return;
+		}
+		event.doit = false;
+		if (event.location.equals(lastHandledLocation[0])) {
+			CxLogger.info("[HOVER] Dispatch CxOneAssist Action called: event location equals lastHandledLocation " + event.location.equals(lastHandledLocation[0]));
+			return;
+		}
+		lastHandledLocation[0] = event.location;
+		CxLogger.info("[HOVER] Blocking remediation action URL: " + event.location);
+		String linkData = event.location.substring(actionIndex + 16); // +16 for "#cxonedevassist/"
+		CxLogger.info("[HOVER] Extracted link data: " + linkData);
+		handleHoverAction(linkData);
 	}
 
 	private void handleHoverAction(String action) {
@@ -252,26 +273,18 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 				org.eclipse.swt.browser.Browser browser = (org.eclipse.swt.browser.Browser) browserField.get(control);
 				if (browser != null && !browser.isDisposed()) {
 					CxLogger.info("[HOVER] PresenterControlCreator: Setting up LocationListener for action buttons");
+					final String[] lastHandledLocation = new String[1];
 					browser.addLocationListener(new LocationListener() {
 						@Override
 						public void changing(LocationEvent event) {
 							CxLogger.info("[HOVER] LocationListener.changing: " + event.location);
-							if (event.location.contains("#cxonedevassist/")) {
-								CxLogger.info("[HOVER] Blocking remediation action URL: " + event.location);
-								event.doit = false;
-							}
+							dispatchCxOneAssistAction(event, lastHandledLocation);
 						}
 
 						@Override
 						public void changed(LocationEvent event) {
 							CxLogger.info("[HOVER] LocationListener.changed: " + event.location);
-							int actionIndex = event.location.indexOf("#cxonedevassist/");
-							if (actionIndex >= 0) {
-								event.doit = false;
-								String linkData = event.location.substring(actionIndex + 16); // +16 for "#cxonedevassist/"
-								CxLogger.info("[HOVER] Extracted link data: " + linkData);
-								handleHoverAction(linkData);
-							}
+							dispatchCxOneAssistAction(event, lastHandledLocation);
 						}
 					});
 					browser.addProgressListener(new ProgressListener() {
