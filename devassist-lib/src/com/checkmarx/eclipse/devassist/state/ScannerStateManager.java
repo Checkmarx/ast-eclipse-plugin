@@ -18,6 +18,7 @@ public class ScannerStateManager {
 	private static final String KEY_PREFIX = "pref_";
 	private static final String KEY_ENABLED_SUFFIX = "_enabled";
 	private static final String KEY_FREQUENCY = "scan.frequency";
+	private static final String KEY_USER_PREFERENCES_SET = "user.preferences.set";
 
 	private final IPreferenceStore prefs;
 
@@ -69,6 +70,14 @@ public class ScannerStateManager {
 
 	public void setScanFrequency(ScanFrequency frequency) {
 		prefs.setValue(KEY_FREQUENCY, frequency.getKey());
+	}
+
+	public boolean isUserPreferencesSet() {
+		return prefs.getBoolean(KEY_USER_PREFERENCES_SET);
+	}
+
+	public void setUserPreferencesSet(boolean set) {
+		prefs.setValue(KEY_USER_PREFERENCES_SET, set);
 	}
 
 	private String getEnabledKey(ScanEngine engine) {
