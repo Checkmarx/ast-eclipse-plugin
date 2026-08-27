@@ -267,28 +267,16 @@ public class ProjectLifecycleListener implements IResourceChangeListener, IProje
 			@Override
 			protected IStatus run(IProgressMonitor monitor) {
 				try {
-					monitor.beginTask("Scanning manifest, IaC, and container files...", 3);
+					monitor.beginTask("Scanning OSS manifest files...", 1);
 
 					// Check if job was cancelled or project closed before starting
 					if (monitor.isCanceled() || !project.isOpen()) {
 						return Status.CANCEL_STATUS;
 					}
 
+					// Only scan OSS manifests on startup (matches JetBrains behavior)
+					// IaC and Container scanning are triggered by real-time scanner events
 					scanManifestFiles(project);
-					monitor.worked(1);
-
-					if (monitor.isCanceled() || !project.isOpen()) {
-						return Status.CANCEL_STATUS;
-					}
-
-					scanIacFiles(project);
-					monitor.worked(1);
-
-					if (monitor.isCanceled() || !project.isOpen()) {
-						return Status.CANCEL_STATUS;
-					}
-
-					scanContainerFiles(project);
 					monitor.worked(1);
 
 					return Status.OK_STATUS;
