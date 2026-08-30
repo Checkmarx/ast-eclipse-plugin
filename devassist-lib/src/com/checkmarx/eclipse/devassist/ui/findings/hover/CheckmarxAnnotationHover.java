@@ -712,7 +712,7 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 
 			String backgroundHex;
 			if (darkTheme) {
-				backgroundHex = "#000000";
+				backgroundHex = "#252526";
 			} else {
 				Color bg = display.getSystemColor(SWT.COLOR_INFO_BACKGROUND);
 				backgroundHex = toHex(bg);

@@ -661,6 +661,7 @@ public class CxFindingsView extends ViewPart {
 
 			// Refresh the tree to remove the ignored finding from the view
 			refreshTreeWithFilter();
+			com.checkmarx.eclipse.devassist.ui.findings.ignore.DevAssistIgnoredFindings.refreshIfOpen();
 
 			CxLogger.info("Successfully ignored finding: " + issue.getTitle());
 
@@ -698,6 +699,7 @@ public class CxFindingsView extends ViewPart {
 
 			// Refresh the tree to remove the ignored findings from the view
 			refreshTreeWithFilter();
+			com.checkmarx.eclipse.devassist.ui.findings.ignore.DevAssistIgnoredFindings.refreshIfOpen();
 
 			CxLogger.info("Successfully ignored all findings of type: " + issue.getTitle());
 

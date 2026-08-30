@@ -4,12 +4,18 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.IResourceChangeEvent;
+import org.eclipse.core.resources.IResourceChangeListener;
+import org.eclipse.core.resources.IResourceDelta;
 import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.preference.PreferenceDialog;
 import org.eclipse.swt.SWT;
@@ -64,6 +70,39 @@ public class DevAssistIgnoredFindings extends ViewPart {
 
 	public static final String ID = "com.checkmarx.eclipse.devassist.ui.findings.ignore.DevAssistIgnoredFindings";
 
+	/**
+	 * Refreshes this view's tab title/entry list right away if it's currently
+	 * open, instead of relying solely on {@link IgnoreFileManager}'s listener
+	 * notification. A brand-new project's {@code IgnoreFileManager} instance is
+	 * created lazily by whichever caller (this view or the ignore action
+	 * itself) resolves it first - if the ignore action gets there first, this
+	 * view's listener isn't attached to it yet at that moment, so its very
+	 * first "onIgnoreUpdated" notification would otherwise be missed. Ignore
+	 * call sites (context-menu "Ignore"/"Ignore All", hover quick-fix links)
+	 * call this directly, mirroring the existing CxFindingsView refresh-on-ignore
+	 * pattern, so the tab count updates on the very first ignore too - not just
+	 * from the second one onward once the listener happens to already be wired
+	 * up.
+	 */
+	public static void refreshIfOpen() {
+		try {
+			org.eclipse.ui.IWorkbenchWindow window = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
+			if (window == null) {
+				return;
+			}
+			org.eclipse.ui.IWorkbenchPage page = window.getActivePage();
+			if (page == null) {
+				return;
+			}
+			org.eclipse.ui.IViewPart view = page.findView(ID);
+			if (view instanceof DevAssistIgnoredFindings) {
+				((DevAssistIgnoredFindings) view).refreshTable();
+			}
+		} catch (Exception e) {
+			CxLogger.warning("[IGNORED-FINDINGS] Error refreshing view after ignore action: " + e.getMessage());
+		}
+	}
+
 	private Composite parentComposite;
 	private Composite container;
 	private Composite openSettingsComposite;
@@ -91,13 +130,23 @@ public class DevAssistIgnoredFindings extends ViewPart {
 	private IProject currentProject;
 	private IgnoreFileManager ignoreFileManager;
 	private final IgnoreFileManager.IgnoreListener ignoreListener = this::onIgnoreDataUpdated;
+	// Reacts to project open/close so the view stops reading the now-closed
+	// project's (stale/cached) IgnoreFileManager and switches to whatever
+	// project is open now, instead of only re-resolving on the next incidental
+	// refreshTable() call (e.g. setFocus()).
+	private final IResourceChangeListener projectStateListener = this::handleWorkspaceResourceChange;
 
 	// Independent from VulnerabilityFilterState.getInstance() (used by the main
 	// Findings view) so toggling a severity here doesn't also filter that view.
 	private final VulnerabilityFilterState filterState = new VulnerabilityFilterState();
 
 	private List<IgnoreEntryCard> cards = new ArrayList<>();
-	private Set<IgnoreEntry> selectedEntries = new HashSet<>();
+	// Keyed by the ignore-file map key (stable identity for an entry) rather than
+	// the IgnoreEntry instance itself - refreshFromDisk() re-deserializes the
+	// ignore file into brand-new IgnoreEntry objects on every call (even a no-op
+	// refresh triggered by setFocus() when the user switches back to this view),
+	// so identity/equality-based tracking would silently drop the selection.
+	private Set<String> selectedKeys = new HashSet<>();
 	private boolean isProgrammaticSelectionChange = false;
 
 	@Override
@@ -111,13 +160,50 @@ public class DevAssistIgnoredFindings extends ViewPart {
 		parent.setLayout(parentLayout);
 
 		subscribeToSettingsEvents();
+		ResourcesPlugin.getWorkspace().addResourceChangeListener(projectStateListener,
+				IResourceChangeEvent.POST_CHANGE);
 
 		ensureProjectAndIgnoreManager();
-		if (ignoreFileManager != null) {
-			ignoreFileManager.addListener(ignoreListener);
-		}
 
 		refreshViewMode();
+	}
+
+	/**
+	 * Detects project open/close transitions and refreshes the view so it stops
+	 * showing data read from a project that just closed. Runs on the workspace
+	 * notification thread, so the actual refresh is marshalled back to the UI
+	 * thread.
+	 */
+	private void handleWorkspaceResourceChange(IResourceChangeEvent event) {
+		IResourceDelta delta = event.getDelta();
+		if (delta == null) {
+			return;
+		}
+		boolean[] projectOpenStateChanged = { false };
+		try {
+			delta.accept(d -> {
+				if (d.getResource() instanceof IProject && (d.getFlags() & IResourceDelta.OPEN) != 0) {
+					projectOpenStateChanged[0] = true;
+				}
+				return true;
+			});
+		} catch (CoreException e) {
+			CxLogger.warning("[IGNORED-FINDINGS] Error inspecting resource delta: " + e.getMessage());
+		}
+		if (!projectOpenStateChanged[0]) {
+			return;
+		}
+		// Called on the workspace notification thread - don't touch any SWT widget
+		// (including container.getDisplay()) until inside asyncExec.
+		Display display = Display.getDefault();
+		if (display == null || display.isDisposed()) {
+			return;
+		}
+		display.asyncExec(() -> {
+			if (container != null && !container.isDisposed()) {
+				refreshTable();
+			}
+		});
 	}
 
 	/**
@@ -368,32 +454,65 @@ public class DevAssistIgnoredFindings extends ViewPart {
 	}
 
 	private void ensureProjectAndIgnoreManager() {
+		if (currentProject != null && !currentProject.isOpen()) {
+			// The project we were reading from just closed - drop the stale
+			// reference (and its listener) instead of continuing to read whatever
+			// IgnoreFileManager instance was cached for it, so the view re-resolves
+			// against whatever project is actually open now.
+			detachIgnoreFileManager();
+			currentProject = null;
+		}
+
 		if (currentProject == null) {
-			IProject[] projects = ResourcesPlugin.getWorkspace().getRoot().getProjects();
-			if (projects.length > 0) {
-				currentProject = projects[0];
+			for (IProject project : ResourcesPlugin.getWorkspace().getRoot().getProjects()) {
+				if (project.isOpen()) {
+					currentProject = project;
+					break;
+				}
 			}
 		}
+
 		if (currentProject != null && ignoreFileManager == null) {
 			ignoreFileManager = IgnoreFileManager.getInstance(currentProject);
+			ignoreFileManager.addListener(ignoreListener);
+		}
+	}
+
+	private void detachIgnoreFileManager() {
+		if (ignoreFileManager != null) {
+			ignoreFileManager.removeListener(ignoreListener);
+			ignoreFileManager = null;
 		}
 	}
 
 	public void refreshTable() {
 		ensureProjectAndIgnoreManager();
-		if (ignoreFileManager == null) {
-			return;
-		}
-
-		ignoreFileManager.refreshFromDisk();
-		List<IgnoreEntry> entries = ignoreFileManager.getAllIgnoreEntries().stream()
-				.filter(entry -> activeFileCount(entry) > 0)
-				.filter(entry -> entry.getSeverity() == null || filterState.hasFilter(entry.getSeverity()))
-				.collect(Collectors.toList());
 
 		if (container == null || container.isDisposed()) {
 			return;
 		}
+
+		List<Map.Entry<String, IgnoreEntry>> entries;
+		if (ignoreFileManager == null) {
+			// No open project to read a .checkmarxIgnored file from (e.g. the
+			// project that was showing here just closed) - render the empty state
+			// instead of leaving whatever was last drawn for the closed project on
+			// screen.
+			entries = java.util.Collections.emptyList();
+		} else {
+			ignoreFileManager.refreshFromDisk();
+			entries = ignoreFileManager.getIgnoreData().entrySet().stream()
+					.filter(e -> activeFileCount(e.getValue()) > 0)
+					.filter(e -> e.getValue().getSeverity() == null || filterState.hasFilter(e.getValue().getSeverity()))
+					.collect(Collectors.toList());
+		}
+
+		// Drop selections for keys that no longer correspond to a currently
+		// displayed entry (e.g. revived/removed elsewhere) - everything else
+		// carries over across this refresh, including refreshes triggered by
+		// setFocus() when the user returns to this view from elsewhere.
+		Set<String> currentKeys = entries.stream().map(Map.Entry::getKey).collect(Collectors.toSet());
+		selectedKeys.retainAll(currentKeys);
 
 		reconstructCards(entries);
 
@@ -421,24 +540,27 @@ public class DevAssistIgnoredFindings extends ViewPart {
 			selectAllButton.setEnabled(false);
 		} else {
 			selectAllButton.setEnabled(true);
+			// Reflect a carried-over "all selected" state in the header checkbox too,
+			// e.g. after a refresh triggered by returning to this view.
+			selectAllButton.setSelection(selectedKeys.size() == entryCount);
 		}
 
 		container.layout(true, true);
 	}
 
-	private void reconstructCards(List<IgnoreEntry> entries) {
+	private void reconstructCards(List<Map.Entry<String, IgnoreEntry>> entries) {
 		for (IgnoreEntryCard card : cards) {
 			card.dispose();
 		}
 		cards.clear();
-		selectedEntries.clear();
 
 		for (Control child : cardsContainer.getChildren()) {
 			child.dispose();
 		}
 
-		for (IgnoreEntry entry : entries) {
-			IgnoreEntryCard card = new IgnoreEntryCard(cardsContainer, entry, this);
+		for (Map.Entry<String, IgnoreEntry> entry : entries) {
+			IgnoreEntryCard card = new IgnoreEntryCard(cardsContainer, entry.getKey(), entry.getValue(), this,
+					selectedKeys.contains(entry.getKey()));
 			cards.add(card);
 		}
 
@@ -486,11 +608,11 @@ public class DevAssistIgnoredFindings extends ViewPart {
 	private void onSelectAllToggled(boolean selectAll) {
 		isProgrammaticSelectionChange = true;
 		try {
-			selectedEntries.clear();
+			selectedKeys.clear();
 			for (IgnoreEntryCard card : cards) {
 				card.setSelected(selectAll);
 				if (selectAll) {
-					selectedEntries.add(card.getEntry());
+					selectedKeys.add(card.getKey());
 				}
 			}
 			updateSelectionStateUI();
@@ -499,18 +621,18 @@ public class DevAssistIgnoredFindings extends ViewPart {
 		}
 	}
 
-	public void onCardSelectionChanged(IgnoreEntry entry, boolean selected) {
+	public void onCardSelectionChanged(String key, boolean selected) {
 		if (isProgrammaticSelectionChange) {
 			return;
 		}
 
 		if (selected) {
-			selectedEntries.add(entry);
+			selectedKeys.add(key);
 		} else {
-			selectedEntries.remove(entry);
+			selectedKeys.remove(key);
 		}
 
-		if (selectedEntries.size() == cards.size() && !cards.isEmpty()) {
+		if (selectedKeys.size() == cards.size() && !cards.isEmpty()) {
 			selectAllButton.setSelection(true);
 		} else {
 			selectAllButton.setSelection(false);
@@ -525,13 +647,13 @@ public class DevAssistIgnoredFindings extends ViewPart {
 	}
 
 	private void updateSelectionStateUI() {
-		boolean hasSelection = !selectedEntries.isEmpty();
+		boolean hasSelection = !selectedKeys.isEmpty();
 
 		selectionActionBar.setVisible(hasSelection);
 		((GridData) selectionActionBar.getLayoutData()).exclude = !hasSelection;
 
 		if (hasSelection) {
-			int count = selectedEntries.size();
+			int count = selectedKeys.size();
 			selectionCountLabel.setText(count + (count == 1 ? " Risk selected  |" : " Risks selected  |"));
 		}
 
@@ -620,11 +742,21 @@ public class DevAssistIgnoredFindings extends ViewPart {
 
 	private void reviveSelected() {
 		ensureProjectAndIgnoreManager();
-		if (currentProject == null || selectedEntries.isEmpty()) {
+		if (currentProject == null || selectedKeys.isEmpty()) {
 			return;
 		}
 
-		List<IgnoreEntry> entriesToRevive = new ArrayList<>(selectedEntries);
+		// Resolve the currently-selected keys against the live ignore data at the
+		// moment of the action, rather than reviving whatever IgnoreEntry
+		// instances were cached at selection time - those can go stale (e.g. the
+		// ignore file changing on disk between selecting and clicking Revive).
+		Map<String, IgnoreEntry> currentData = ignoreFileManager.getIgnoreData();
+		List<IgnoreEntry> entriesToRevive = selectedKeys.stream().map(currentData::get).filter(Objects::nonNull)
+				.collect(Collectors.toList());
+		selectedKeys.clear();
+		if (entriesToRevive.isEmpty()) {
+			return;
+		}
 		IgnoreManager.getInstance(currentProject).reviveMultipleEntries(entriesToRevive);
 		refreshTable();
 	}
@@ -648,6 +780,7 @@ public class DevAssistIgnoredFindings extends ViewPart {
 
 	@Override
 	public void dispose() {
+		ResourcesPlugin.getWorkspace().removeResourceChangeListener(projectStateListener);
 		if (settingsEventHandler != null) {
 			try {
 				org.eclipse.e4.core.services.events.IEventBroker eventBroker = PlatformUI.getWorkbench()
@@ -677,12 +810,16 @@ public class DevAssistIgnoredFindings extends ViewPart {
 	private static class IgnoreEntryCard {
 		private final Composite cardComposite;
 		private final Button checkboxButton;
+		private final String key;
 		private final IgnoreEntry entry;
 		private final Font boldFont;
-		private boolean isSelected = false;
+		private boolean isSelected;
 
-		public IgnoreEntryCard(Composite parent, IgnoreEntry entry, DevAssistIgnoredFindings parentView) {
+		public IgnoreEntryCard(Composite parent, String key, IgnoreEntry entry, DevAssistIgnoredFindings parentView,
+				boolean initiallySelected) {
+			this.key = key;
 			this.entry = entry;
+			this.isSelected = initiallySelected;
 
 			// Row Container
 			cardComposite = new Composite(parent, SWT.NONE);
@@ -698,11 +835,12 @@ public class DevAssistIgnoredFindings extends ViewPart {
 			checkboxButton = new Button(cardComposite, SWT.CHECK);
 			GridData col1Data = new GridData(SWT.LEFT, SWT.TOP, false, false);
 			checkboxButton.setLayoutData(col1Data);
+			checkboxButton.setSelection(initiallySelected);
 			checkboxButton.addSelectionListener(new SelectionAdapter() {
 				@Override
 				public void widgetSelected(SelectionEvent e) {
 					isSelected = checkboxButton.getSelection();
-					parentView.onCardSelectionChanged(entry, isSelected);
+					parentView.onCardSelectionChanged(key, isSelected);
 				}
 			});
 
@@ -856,6 +994,10 @@ public class DevAssistIgnoredFindings extends ViewPart {
 
 		public IgnoreEntry getEntry() {
 			return entry;
+		}
+
+		public String getKey() {
+			return key;
 		}
 
 		public void dispose() {
