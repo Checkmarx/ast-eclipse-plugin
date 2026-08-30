@@ -15,8 +15,9 @@ public class ScannerStateManager {
 
 	// Aligned to match the canonical plugin qualifier used across the plugin
 	private static final String PLUGIN_ID = "com.checkmarx.eclipse";
-	private static final String KEY_PREFIX = "pref_";
-	private static final String KEY_ENABLED_SUFFIX = "_enabled";
+	// IMPORTANT: Must match the keys used in CheckmarxPreferencePage
+	private static final String KEY_PREFIX = "scanner.";
+	private static final String KEY_ENABLED_SUFFIX = ".enabled";
 	private static final String KEY_FREQUENCY = "scan.frequency";
 	private static final String KEY_USER_PREFERENCES_SET = "user.preferences.set";
 
@@ -72,8 +73,28 @@ public class ScannerStateManager {
 		prefs.setValue(KEY_FREQUENCY, frequency.getKey());
 	}
 
+	/**
+	 * Checks if user has explicitly configured scanner preferences.
+	 * Returns true if ANY scanner preference has been explicitly set (stored in preferences).
+	 * This is more reliable than checking a separate flag, as it detects actual customization.
+	 */
 	public boolean isUserPreferencesSet() {
-		return prefs.getBoolean(KEY_USER_PREFERENCES_SET);
+		// Check if the explicit flag is set (legacy behavior)
+		if (prefs.getBoolean(KEY_USER_PREFERENCES_SET)) {
+			return true;
+		}
+
+		// Also check if ANY scanner preference has been explicitly set in the store
+		// This handles cases where user went directly to preferences page and configured scanners
+		for (ScanEngine engine : ScanEngine.values()) {
+			String key = getEnabledKey(engine);
+			// If this key exists in the preference store (has been explicitly set), preferences are set
+			if (prefs.contains(key)) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	public void setUserPreferencesSet(boolean set) {

@@ -299,7 +299,8 @@ public class CxFindingsView extends ViewPart {
 		Composite treeComposite = new Composite(sashForm, SWT.NONE);
 		treeComposite.setLayout(new FillLayout());
 
-		treeViewer = new TreeViewer(treeComposite, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL);
+		Tree tree = new Tree(treeComposite, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL);
+		treeViewer = new TreeViewer(tree);
 		treeViewer.setContentProvider(new FindingsContentProvider());
 		treeViewer.setLabelProvider(new FindingsLabelProvider());
 

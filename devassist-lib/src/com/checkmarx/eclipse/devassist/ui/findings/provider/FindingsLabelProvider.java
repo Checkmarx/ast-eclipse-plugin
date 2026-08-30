@@ -78,22 +78,37 @@ public class FindingsLabelProvider extends DelegatingStyledCellLabelProvider {
     @Override
     protected void measure(Event event, Object element) {
         super.measure(event, element);
-        
+
         if (element instanceof FileNodeLabel) {
             FileNodeLabel fileNode = (FileNodeLabel) element;
             Map<String, Long> counts = fileNode.getProblemCount();
-            
+
             if (counts != null && !counts.isEmpty()) {
                 int extraWidth = TEXT_TO_BADGE_PADDING;
+
+                // Create bold size-9 font matching what paint() uses
+                Font originalFont = event.gc.getFont();
+                FontData[] fontData = originalFont.getFontData();
+                for (FontData fd : fontData) {
+                    fd.setStyle(fd.getStyle() | SWT.BOLD);
+                    fd.setHeight(9);
+                }
+                Font boldSmallFont = new Font(event.display, fontData);
+                event.gc.setFont(boldSmallFont);
+
                 for (String severity : SEVERITIES) {
                     if (counts.containsKey(severity) && counts.get(severity) > 0) {
                         String countStr = String.valueOf(counts.get(severity));
                         int textWidth = event.gc.textExtent(countStr).x;
                         // 16px (Icon) + 4px (Gap between icon & number) + number length + gap to next badge
-                        extraWidth += 16 + 0 + textWidth + BETWEEN_BADGE_SPACING;
+                        extraWidth += 16 + 4 + textWidth + BETWEEN_BADGE_SPACING;
                     }
                 }
                 event.width += extraWidth;
+
+                // Restore original font and clean up
+                event.gc.setFont(originalFont);
+                boldSmallFont.dispose();
             }
         }
     }
