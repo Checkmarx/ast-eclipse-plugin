@@ -1,5 +1,7 @@
 package com.checkmarx.eclipse.devassist.ui.findings.hover;
 
+import java.awt.Robot;
+import java.awt.event.InputEvent;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -156,6 +158,7 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 				org.eclipse.swt.browser.Browser browser = (org.eclipse.swt.browser.Browser) browserField.get(control);
 				if (browser != null && !browser.isDisposed()) {
 					CxLogger.info("[HOVER] HoverControlCreator: Setting up LocationListener for action buttons");
+					CheckmarxAnnotationHover.this.activeControl = control;
 					final String[] lastHandledLocation = new String[1];
 					browser.addLocationListener(new LocationListener() {
 						@Override
@@ -235,6 +238,34 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 		if (!handled) {
 			CxLogger.info("[HOVER] Unknown or unhandled action: " + action);
 		}
+
+		// Auto-close hover for ignore/ignore-all actions
+		if (handled && (action.contains("ignore"))) {
+			closeHover();
+		}
+	}
+	
+	private void closeHover() {
+	    Display.getDefault().asyncExec(() -> {
+	        try {
+	            if (activeControl != null) {
+	                activeControl.setVisible(false);
+	                activeControl.dispose();
+	                activeControl = null;
+	            }
+	            Shell activeShell = Display.getDefault().getActiveShell();
+	            if (activeShell != null && !activeShell.isDisposed()) {
+	                org.eclipse.swt.widgets.Event event = new org.eclipse.swt.widgets.Event();
+	                event.type = SWT.KeyDown;
+	                event.keyCode = SWT.ESC;
+	                event.character = SWT.ESC;	                
+	                activeShell.traverse(SWT.TRAVERSE_ESCAPE, event);
+	                activeShell.notifyListeners(SWT.KeyDown, event);
+	            }
+	        } catch (Exception e) {
+	            CxLogger.error("[HOVER] Exception while closing hover: " + e.getMessage(), e);
+	        }
+	    });
 	}
 
 	/**
@@ -273,6 +304,7 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 				org.eclipse.swt.browser.Browser browser = (org.eclipse.swt.browser.Browser) browserField.get(control);
 				if (browser != null && !browser.isDisposed()) {
 					CxLogger.info("[HOVER] PresenterControlCreator: Setting up LocationListener for action buttons");
+					CheckmarxAnnotationHover.this.activeControl = control;
 					final String[] lastHandledLocation = new String[1];
 					browser.addLocationListener(new LocationListener() {
 						@Override
@@ -323,6 +355,9 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 	// to the single hover popup lifecycle (setEditor()/getHoverInfo2()/
 	// handleHoverAction() on the same object) that actually owns it.
 	private ScanIssue currentFinding;
+	// Stores reference to the active information control so it can be closed
+	// when ignore/ignore-all actions complete
+	private IInformationControl activeControl;
 
 	@Override
 	public void setEditor(IEditorPart editor) {
