@@ -44,6 +44,7 @@ jobs:
     if: inputs.rbranch
   release:
     name: Release
+    environment: release
     permissions:
       id-token: write  # for OIDC token generation
       contents: write  # for git push and release creation
