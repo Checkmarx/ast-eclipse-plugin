@@ -62,6 +62,7 @@ public final class CopilotIntegration {
 	private static final String COPILOT_NEW_CONVERSATION_COMMAND = "com.microsoft.copilot.eclipse.commands.newConversation";
 
 	private static final String CHAT_MODE_AGENT = "Agent";
+	private static final String CHAT_MODE_ASK = "Ask";
 
 	private static final String COPILOT_MARKETPLACE_URL = "https://marketplace.eclipse.org/content/github-copilot";
 
@@ -73,7 +74,7 @@ public final class CopilotIntegration {
 	}
 
 	/**
-	 * Opens GitHub Copilot Chat in Agent mode with the given prompt in a new chat
+	 * Opens GitHub Copilot Chat in the specified mode with the given prompt in a new chat
 	 * session and submits it automatically.
 	 * <p>
 	 * Each call creates a new chat session instead of reusing an existing
@@ -84,11 +85,12 @@ public final class CopilotIntegration {
 	 * is copied to the clipboard and a confirmation balloon is shown.
 	 *
 	 * @param prompt the prompt to send to Copilot
+	 * @param chatMode the chat mode to use ("Agent" for autonomous fixes, "Ask" for explanations)
 	 * @return true if the prompt was successfully handed off to Copilot or copied
 	 *         to the clipboard as a fallback; false only if the prompt itself is
 	 *         invalid
 	 */
-	public static boolean sendPromptToCopilot(String prompt) {
+	public static boolean sendPromptToCopilot(String prompt, String chatMode) {
 		if (prompt == null || prompt.isEmpty()) {
 			CxLogger.error(LOG_PREFIX + " Cannot send an empty prompt to Copilot",
 					new Exception("Empty prompt for Copilot"));
@@ -101,13 +103,28 @@ public final class CopilotIntegration {
 			return false;
 		}
 
-		if (openChatInAgentModeAndSend(prompt)) {
-			CxLogger.info(LOG_PREFIX + " Prompt sent to Copilot Chat in Agent mode and submitted automatically");
+		if (openChatInModeAndSend(prompt, chatMode)) {
+			CxLogger.info(LOG_PREFIX + " Prompt sent to Copilot Chat in " + chatMode + " mode and submitted automatically");
 			return true;
 		}
 
 		CxLogger.warning(LOG_PREFIX + " Could not invoke Copilot's open chat command - falling back to clipboard");
 		return false;
+	}
+
+	/**
+	 * Opens GitHub Copilot Chat in Agent mode with the given prompt in a new chat
+	 * session and submits it automatically.
+	 * <p>
+	 * Convenience method that calls sendPromptToCopilot(prompt, "Agent").
+	 *
+	 * @param prompt the prompt to send to Copilot
+	 * @return true if the prompt was successfully handed off to Copilot or copied
+	 *         to the clipboard as a fallback; false only if the prompt itself is
+	 *         invalid
+	 */
+	public static boolean sendPromptToCopilot(String prompt) {
+		return sendPromptToCopilot(prompt, CHAT_MODE_AGENT);
 	}
 
 	/**
@@ -126,13 +143,14 @@ public final class CopilotIntegration {
 	}
 
 	/**
-	 * Executes the Copilot {@code openChatView} command, switching to Agent mode,
+	 * Executes the Copilot {@code openChatView} command, switching to the specified mode,
 	 * pre-filling the prompt, and requesting an automatic submit.
 	 *
 	 * @param prompt the prompt to place in the chat input
+	 * @param chatMode the chat mode to use ("Agent" or "Ask")
 	 * @return true if the command was found, enabled, and executed without error
 	 */
-	private static boolean openChatInAgentModeAndSend(String prompt) {
+	private static boolean openChatInModeAndSend(String prompt, String chatMode) {
 	    final boolean[] success = { false };
 
 	    try {
@@ -155,7 +173,7 @@ public final class CopilotIntegration {
 	        Thread executionThread = new Thread(() -> {
 	            try {
 	                // Give the SWT Browser/HTML view 450-500ms to completely finish loading the fresh session
-	                Thread.sleep(450); 
+	                Thread.sleep(450);
 	            } catch (InterruptedException e) {
 	                Thread.currentThread().interrupt();
 	            }
@@ -172,11 +190,11 @@ public final class CopilotIntegration {
 
 	                    Command command = commandService.getCommand(COPILOT_OPEN_CHAT_COMMAND);
 	                    if (command != null && command.isDefined() && command.isEnabled()) {
-	                        
+
 	                        Map<String, String> parameters = new HashMap<>();
 	                        parameters.put(PARAM_INPUT_VALUE, prompt);
 	                        parameters.put(PARAM_AUTO_SEND, Boolean.TRUE.toString());
-	                        parameters.put(PARAM_MODE, CHAT_MODE_AGENT);
+	                        parameters.put(PARAM_MODE, chatMode != null ? chatMode : CHAT_MODE_AGENT);
 
 	                        command.executeWithChecks(new ExecutionEvent(command, parameters, null, null));
 	                        success[0] = true;
