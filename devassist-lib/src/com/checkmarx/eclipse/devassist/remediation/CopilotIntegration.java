@@ -62,6 +62,7 @@ public final class CopilotIntegration {
 	private static final String COPILOT_NEW_CONVERSATION_COMMAND = "com.microsoft.copilot.eclipse.commands.newConversation";
 
 	private static final String CHAT_MODE_AGENT = "Agent";
+	private static final String CHAT_MODE_ASK = "Ask";
 
 	private static final String COPILOT_MARKETPLACE_URL = "https://marketplace.eclipse.org/content/github-copilot";
 
@@ -73,7 +74,7 @@ public final class CopilotIntegration {
 	}
 
 	/**
-	 * Opens GitHub Copilot Chat in Agent mode with the given prompt in a new chat
+	 * Opens GitHub Copilot Chat in the specified mode with the given prompt in a new chat
 	 * session and submits it automatically.
 	 * <p>
 	 * Each call creates a new chat session instead of reusing an existing
@@ -84,11 +85,12 @@ public final class CopilotIntegration {
 	 * is copied to the clipboard and a confirmation balloon is shown.
 	 *
 	 * @param prompt the prompt to send to Copilot
+	 * @param chatMode the chat mode to use ("Agent" for autonomous fixes, "Ask" for explanations)
 	 * @return true if the prompt was successfully handed off to Copilot or copied
 	 *         to the clipboard as a fallback; false only if the prompt itself is
 	 *         invalid
 	 */
-	public static boolean sendPromptToCopilot(String prompt) {
+	public static boolean sendPromptToCopilot(String prompt, String chatMode) {
 		if (prompt == null || prompt.isEmpty()) {
 			CxLogger.error(LOG_PREFIX + " Cannot send an empty prompt to Copilot",
 					new Exception("Empty prompt for Copilot"));
@@ -101,13 +103,28 @@ public final class CopilotIntegration {
 			return false;
 		}
 
-		if (openChatInAgentModeAndSend(prompt)) {
-			CxLogger.info(LOG_PREFIX + " Prompt sent to Copilot Chat in Agent mode and submitted automatically");
+		if (openChatInModeAndSend(prompt, chatMode)) {
+			CxLogger.info(LOG_PREFIX + " Prompt sent to Copilot Chat in " + chatMode + " mode and submitted automatically");
 			return true;
 		}
 
 		CxLogger.warning(LOG_PREFIX + " Could not invoke Copilot's open chat command - falling back to clipboard");
 		return false;
+	}
+
+	/**
+	 * Opens GitHub Copilot Chat in Agent mode with the given prompt in a new chat
+	 * session and submits it automatically.
+	 * <p>
+	 * Convenience method that calls sendPromptToCopilot(prompt, "Agent").
+	 *
+	 * @param prompt the prompt to send to Copilot
+	 * @return true if the prompt was successfully handed off to Copilot or copied
+	 *         to the clipboard as a fallback; false only if the prompt itself is
+	 *         invalid
+	 */
+	public static boolean sendPromptToCopilot(String prompt) {
+		return sendPromptToCopilot(prompt, CHAT_MODE_AGENT);
 	}
 
 	/**
@@ -126,15 +143,14 @@ public final class CopilotIntegration {
 	}
 
 	/**
-	 * Executes the Copilot {@code openChatView} command, switching to Agent mode,
+	 * Executes the Copilot {@code openChatView} command, switching to the specified mode,
 	 * pre-filling the prompt, and requesting an automatic submit.
 	 *
 	 * @param prompt the prompt to place in the chat input
+	 * @param chatMode the chat mode to use ("Agent" or "Ask")
 	 * @return true if the command was found, enabled, and executed without error
 	 */
-	private static boolean openChatInAgentModeAndSend(String prompt) {
-	    final boolean[] success = { false };
-
+	private static boolean openChatInModeAndSend(String prompt, String chatMode) {
 	    try {
 	        // 1. Run the reset command synchronously on the UI Thread
 	        Display.getDefault().syncExec(() -> {
@@ -151,50 +167,65 @@ public final class CopilotIntegration {
 	            }
 	        });
 
-	        // 2. Offload to a background thread to wait out the Copilot UI rebuild process safely
+	        // 2. Schedule mode switch and prompt send in sequence via background thread
+	        // This ensures mode is fully initialized before prompt is sent
 	        Thread executionThread = new Thread(() -> {
 	            try {
-	                // Give the SWT Browser/HTML view 450-500ms to completely finish loading the fresh session
-	                Thread.sleep(450); 
+	                // Wait for chat UI to stabilize after reset
+	                Thread.sleep(450);
+
+	                // Step A: Switch to the specified mode first
+	                Display.getDefault().syncExec(() -> {
+	                    try {
+	                        ICommandService commandService = PlatformUI.getWorkbench().getService(ICommandService.class);
+	                        if (commandService == null) return;
+
+	                        Command command = commandService.getCommand(COPILOT_OPEN_CHAT_COMMAND);
+	                        if (command != null && command.isDefined() && command.isEnabled()) {
+	                            Map<String, String> modeParams = new HashMap<>();
+	                            modeParams.put(PARAM_MODE, chatMode != null ? chatMode : CHAT_MODE_AGENT);
+	                            command.executeWithChecks(new ExecutionEvent(command, modeParams, null, null));
+	                        }
+	                    } catch (Exception e) {
+	                        CxLogger.warning(LOG_PREFIX + " Mode switch failed: " + e.getMessage());
+	                    }
+	                });
+
+	                // Wait for mode to fully initialize in the UI
+	                Thread.sleep(300);
+
+	                // Step B: Now send the prompt after mode is ready
+	                Display.getDefault().syncExec(() -> {
+	                    try {
+	                        ICommandService commandService = PlatformUI.getWorkbench().getService(ICommandService.class);
+	                        if (commandService == null) return;
+
+	                        Command command = commandService.getCommand(COPILOT_OPEN_CHAT_COMMAND);
+	                        if (command != null && command.isDefined() && command.isEnabled()) {
+	                            Map<String, String> promptParams = new HashMap<>();
+	                            promptParams.put(PARAM_INPUT_VALUE, prompt);
+	                            promptParams.put(PARAM_AUTO_SEND, Boolean.TRUE.toString());
+
+	                            command.executeWithChecks(new ExecutionEvent(command, promptParams, null, null));
+	                        }
+	                    } catch (Exception e) {
+	                        CxLogger.warning(LOG_PREFIX + " Prompt submission failed: " + e.getMessage());
+	                    }
+	                });
+
 	            } catch (InterruptedException e) {
 	                Thread.currentThread().interrupt();
+	                CxLogger.warning(LOG_PREFIX + " Automation sequence interrupted: " + e.getMessage());
 	            }
-
-	            /**
-	             *  Fetch and prepare the standard chat view command.
-	             *  Schedule the prompt injection to run immediately AFTER the UI thread finishes clearing
-	             *  Re-enter the UI Thread to pass parameters and trigger the auto-send action
-	             */
-	            Display.getDefault().syncExec(() -> {
-	                try {
-	                    ICommandService commandService = PlatformUI.getWorkbench().getService(ICommandService.class);
-	                    if (commandService == null) return;
-
-	                    Command command = commandService.getCommand(COPILOT_OPEN_CHAT_COMMAND);
-	                    if (command != null && command.isDefined() && command.isEnabled()) {
-	                        
-	                        Map<String, String> parameters = new HashMap<>();
-	                        parameters.put(PARAM_INPUT_VALUE, prompt);
-	                        parameters.put(PARAM_AUTO_SEND, Boolean.TRUE.toString());
-	                        parameters.put(PARAM_MODE, CHAT_MODE_AGENT);
-
-	                        command.executeWithChecks(new ExecutionEvent(command, parameters, null, null));
-	                        success[0] = true;
-	                    }
-	                } catch (Exception e) {
-	                    CxLogger.warning(LOG_PREFIX + " Post-sleep submission failed: " + e.getMessage());
-	                }
-	            });
 	        });
 
 	        executionThread.start();
-	        // If your calling method relies on a strictly blocking response, you can optionally call executionThread.join(); here
+	        return true;
 
 	    } catch (Exception e) {
 	        CxLogger.error(LOG_PREFIX + " Unexpected exception handling background dispatch: " + e.getMessage(), e);
+	        return false;
 	    }
-
-	    return success[0];
 	}
 	
 

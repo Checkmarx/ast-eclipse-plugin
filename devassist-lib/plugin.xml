@@ -139,6 +139,48 @@
             super="org.eclipse.ui.workbench.texteditor.info"
             markerType="org.eclipse.core.resources.problemmarker">
       </type>
+
+      <!-- Dark theme variants -->
+      <type
+            name="com.checkmarx.eclipse.findings.malicious_dark"
+            super="org.eclipse.ui.workbench.texteditor.error"
+            markerType="org.eclipse.core.resources.problemmarker">
+      </type>
+      <type
+            name="com.checkmarx.eclipse.findings.critical_dark"
+            super="org.eclipse.ui.workbench.texteditor.error"
+            markerType="org.eclipse.core.resources.problemmarker">
+      </type>
+      <type
+            name="com.checkmarx.eclipse.findings.high_dark"
+            super="org.eclipse.ui.workbench.texteditor.error"
+            markerType="org.eclipse.core.resources.problemmarker">
+      </type>
+      <type
+            name="com.checkmarx.eclipse.findings.medium_dark"
+            super="org.eclipse.ui.workbench.texteditor.warning"
+            markerType="org.eclipse.core.resources.problemmarker">
+      </type>
+      <type
+            name="com.checkmarx.eclipse.findings.low_dark"
+            super="org.eclipse.ui.workbench.texteditor.info"
+            markerType="org.eclipse.core.resources.problemmarker">
+      </type>
+      <type
+            name="com.checkmarx.eclipse.findings.unknown_dark"
+            super="org.eclipse.ui.workbench.texteditor.bookmark"
+            markerType="org.eclipse.core.resources.problemmarker">
+      </type>
+      <type
+            name="com.checkmarx.eclipse.findings.ok_dark"
+            super="org.eclipse.ui.workbench.texteditor.bookmark"
+            markerType="org.eclipse.core.resources.problemmarker">
+      </type>
+      <type
+            name="com.checkmarx.eclipse.findings.ignored_dark"
+            super="org.eclipse.ui.workbench.texteditor.info"
+            markerType="org.eclipse.core.resources.problemmarker">
+      </type>
    </extension>
 
     <!-- Light Theme: Gutter icon + squiggly underline specifications for Findings annotations -->

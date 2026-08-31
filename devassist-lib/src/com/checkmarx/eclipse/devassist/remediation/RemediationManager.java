@@ -128,9 +128,18 @@ public final class RemediationManager {
 	 */
 	private boolean fixWithAI(@NonNull String prompt) {
 		try {
-			return CopilotIntegration.sendPromptToCopilot(prompt);
+			return CopilotIntegration.sendPromptToCopilot(prompt, "Agent");
 		} catch (Exception exception) {
 			CxLogger.error("RTS-Fix: Failed to fix with AI: ", exception);
+			return false;
+		}
+	}
+
+	private boolean explainWithAI(@NonNull String prompt) {
+		try {
+			return CopilotIntegration.sendPromptToCopilot(prompt, "Ask");
+		} catch (Exception exception) {
+			CxLogger.error("RTS-ViewDetails: Failed to explain with AI: ", exception);
 			return false;
 		}
 	}
@@ -190,10 +199,10 @@ public final class RemediationManager {
 				scanIssue.getScanEngine().name(), scanIssue.getTitle(), scanIssue.getFilePath()));
 		String notificationTitle = getNotificationTitle(scanIssue.getScanEngine());
 
-		// Try to send to Copilot AI first (no notifications shown by fixWithAI)
-		boolean aiSuccess = fixWithAI(prompt);
+		// Try to send to Copilot AI in Ask mode (no notifications shown by explainWithAI)
+		boolean aiSuccess = explainWithAI(prompt);
 		if (aiSuccess) {
-			CxLogger.info(format("RTS-ViewDetails: %s explanation sent to Copilot for issue: %s, for file: %s",
+			CxLogger.info(format("RTS-ViewDetails: %s explanation sent to Copilot in Ask mode for issue: %s, for file: %s",
 					scanIssue.getScanEngine().name(), scanIssue.getTitle(), scanIssue.getFilePath()));
 		} else {
 			// Fallback: Copy to clipboard with notification when Copilot is not available

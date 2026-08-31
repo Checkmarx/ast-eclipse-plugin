@@ -40,34 +40,53 @@ public class AuthenticationStateListener implements IPropertyChangeListener {
 		Object newValue = event.getNewValue();
 		boolean nowAuthenticated = newValue instanceof Boolean && (Boolean) newValue;
 
-		// Only trigger scan on login (true), not on logout (false)
 		if (nowAuthenticated) {
-			CxLogger.info(LOG_TAG + " User authenticated - clearing scan cache and triggering workspace scan...");
+			// Handle login: clear scan cache and trigger workspace scan
+			handleLogin();
+		} else {
+			// Handle logout: remove MCP server configuration
+			handleLogout();
+		}
+	}
 
-			// CRITICAL: Clear scan state cache so files that were never scanned (before authentication)
-			// are not treated as "unchanged" and skipped. Without this, files show as "cached/unchanged"
-			// and the scan is skipped even though they were never actually scanned before.
+	private void handleLogin() {
+		CxLogger.info(LOG_TAG + " User authenticated - clearing scan cache and triggering workspace scan...");
+
+		// CRITICAL: Clear scan state cache so files that were never scanned (before authentication)
+		// are not treated as "unchanged" and skipped. Without this, files show as "cached/unchanged"
+		// and the scan is skipped even though they were never actually scanned before.
+		try {
+			CxLogger.info(LOG_TAG + " Clearing scan state cache for all scanners...");
+			EnumSet<ScannerType> allScanners = EnumSet.allOf(ScannerType.class);
+			ScanStateCacheClearer.clearForScanners(allScanners);
+			CxLogger.info(LOG_TAG + " ✓ Scan cache cleared");
+		} catch (Exception e) {
+			CxLogger.warning(LOG_TAG + " Error clearing scan cache: " + e.getMessage());
+		}
+
+		// Now trigger workspace scan with cleared cache
+		IWorkspaceScanService scanService = Preferences.getWorkspaceScanService();
+		if (scanService != null) {
 			try {
-				CxLogger.info(LOG_TAG + " Clearing scan state cache for all scanners...");
-				EnumSet<ScannerType> allScanners = EnumSet.allOf(ScannerType.class);
-				ScanStateCacheClearer.clearForScanners(allScanners);
-				CxLogger.info(LOG_TAG + " ✓ Scan cache cleared");
+				scanService.scanWorkspace();
+				CxLogger.info(LOG_TAG + " ✓ Workspace scan triggered on login");
 			} catch (Exception e) {
-				CxLogger.warning(LOG_TAG + " Error clearing scan cache: " + e.getMessage());
+				CxLogger.error(LOG_TAG + " Error triggering workspace scan: " + e.getMessage(), e);
 			}
+		} else {
+			CxLogger.warning(LOG_TAG + " Workspace scan service not available");
+		}
+	}
 
-			// Now trigger workspace scan with cleared cache
-			IWorkspaceScanService scanService = Preferences.getWorkspaceScanService();
-			if (scanService != null) {
-				try {
-					scanService.scanWorkspace();
-					CxLogger.info(LOG_TAG + " ✓ Workspace scan triggered on login");
-				} catch (Exception e) {
-					CxLogger.error(LOG_TAG + " Error triggering workspace scan: " + e.getMessage(), e);
-				}
-			} else {
-				CxLogger.warning(LOG_TAG + " Workspace scan service not available");
-			}
+	private void handleLogout() {
+		CxLogger.info(LOG_TAG + " User logged out - removing MCP server configuration...");
+
+		try {
+			// Import statement needed: com.checkmarx.eclipse.devassist.configuration.McpInstallService
+			com.checkmarx.eclipse.devassist.configuration.McpInstallService.uninstall();
+			CxLogger.info(LOG_TAG + " ✓ MCP server configuration removed on logout");
+		} catch (Exception e) {
+			CxLogger.error(LOG_TAG + " Error removing MCP configuration on logout: " + e.getMessage(), e);
 		}
 	}
 }

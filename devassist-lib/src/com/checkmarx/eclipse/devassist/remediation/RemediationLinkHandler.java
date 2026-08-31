@@ -154,6 +154,7 @@ public class RemediationLinkHandler {
                 TelemetryService.logIgnorePackageAction(scanIssue);
                 deleteMarkerForIssue(project, scanIssue);
                 refreshFindingsView();
+                com.checkmarx.eclipse.devassist.ui.findings.ignore.DevAssistIgnoredFindings.refreshIfOpen();
                 break;
             }
             case IGNORE_ALL_OF_THIS_TYPE: {
@@ -166,6 +167,7 @@ public class RemediationLinkHandler {
                 TelemetryService.logIgnoreAllAction(scanIssue);
                 deleteMarkersForAllMatches(project, scanIssue);
                 refreshFindingsView();
+                com.checkmarx.eclipse.devassist.ui.findings.ignore.DevAssistIgnoredFindings.refreshIfOpen();
                 break;
             }
             default:

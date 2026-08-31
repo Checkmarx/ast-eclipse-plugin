@@ -307,7 +307,6 @@ public class WelcomeDialog extends TitleAreaDialog {
 		header.setBackground(parent.getBackground());
 
 		realTimeScannersCheckbox = new Button(header, SWT.CHECK);
-		realTimeScannersCheckbox.setEnabled(mcpEnabled);
 		realTimeScannersCheckbox.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false));
 
 		Label titleLabel = new Label(header, SWT.NONE);
@@ -322,6 +321,11 @@ public class WelcomeDialog extends TitleAreaDialog {
 		titleLabel.addDisposeListener(e -> boldFont.dispose());
 
 		header.setBackground(parent.getBackground());
+
+		// Initialize real-time state (first-time login handling)
+		if (mcpEnabled) {
+			initializeRealtimeState();
+		}
 
 		// Configure checkbox behavior
 		configureCheckboxBehavior();
@@ -358,6 +362,21 @@ public class WelcomeDialog extends TitleAreaDialog {
 		textLabel.setLayoutData(gd);
 	}
 
+	private void initializeRealtimeState() {
+		if (!mcpEnabled) {
+			return;
+		}
+
+		com.checkmarx.eclipse.devassist.state.ScannerStateManager stateManager =
+			new com.checkmarx.eclipse.devassist.state.ScannerStateManager();
+
+		// On first login (no user preferences set yet), enable all scanners
+		if (!stateManager.isUserPreferencesSet()) {
+			settingsManager.setAll(true);
+			stateManager.setUserPreferencesSet(true);
+		}
+	}
+
 	private void configureCheckboxBehavior() {
 		if (realTimeScannersCheckbox == null) return;
 
@@ -375,7 +394,14 @@ public class WelcomeDialog extends TitleAreaDialog {
 		if (realTimeScannersCheckbox == null) return;
 
 		boolean anyEnabled = settingsManager.areAnyEnabled();
+		boolean allEnabled = settingsManager.areAllEnabled();
+
 		realTimeScannersCheckbox.setSelection(anyEnabled);
+
+		// Disable checkbox if any scanner is disabled (user has customized preferences)
+		boolean hasCustomizedPreferences = !allEnabled && anyEnabled;
+		realTimeScannersCheckbox.setEnabled(mcpEnabled && !hasCustomizedPreferences);
+
 		updateCheckboxTooltip();
 	}
 
@@ -389,9 +415,12 @@ public class WelcomeDialog extends TitleAreaDialog {
 
 		boolean allEnabled = settingsManager.areAllEnabled();
 		boolean anyEnabled = settingsManager.areAnyEnabled();
+		boolean hasCustomizedPreferences = !allEnabled && anyEnabled;
 
 		String tooltipText;
-		if (allEnabled) {
+		if (hasCustomizedPreferences) {
+			tooltipText = "Some scanners are disabled. Manage scanner preferences in Preferences > Checkmarx";
+		} else if (allEnabled) {
 			tooltipText = "Disable all real-time scanners";
 		} else if (anyEnabled) {
 			tooltipText = "Some scanners are enabled. Click to enable all real-time scanners";

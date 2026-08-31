@@ -340,7 +340,7 @@ public final class CheckmarxProblemDescriptionFormatter {
 	 *                    section data.
 	 */
 	private void buildRemediationActionsSection(StringBuilder descBuilder, String scanIssueId, String engineName) {
-		String buttonStyle = "color: #4470EC; cursor: pointer; " + TITLE_FONT_SIZE + TITLE_FONT_FAMILY
+		String buttonStyle = "color: #4B9CFF; cursor: pointer; " + TITLE_FONT_SIZE + TITLE_FONT_FAMILY
 				+ CELL_LINE_HEIGHT_STYLE + "white-space: nowrap; margin:0; padding:0;";
 
 		// Add CSS for hover effect with underline - more specific selector with !important to ensure it applies

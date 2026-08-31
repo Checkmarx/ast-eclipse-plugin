@@ -1,9 +1,15 @@
 package com.checkmarx.eclipse.devassist.backend.listener;
 
+import java.nio.file.FileSystems;
+import java.nio.file.PathMatcher;
+import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
+import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
@@ -18,6 +24,7 @@ import com.checkmarx.eclipse.devassist.backend.ScannerRegistry;
 import com.checkmarx.eclipse.devassist.backend.result.ResultPublisher;
 import com.checkmarx.eclipse.devassist.common.ScanManager;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
 import com.checkmarx.eclipse.common.utils.CxLogger;
 import com.checkmarx.eclipse.common.listener.IProjectLifecycleListener;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -33,6 +40,9 @@ public class ProjectLifecycleListener implements IResourceChangeListener, IProje
 	private static final QualifiedName PROBLEM_HOLDER_KEY = new QualifiedName(PLUGIN_ID, "problem-holder");
 	private static final QualifiedName STATE_HOLDER_KEY = new QualifiedName(PLUGIN_ID, "state-holder");
 	private static final QualifiedName WORKSPACE_SCAN_JOB_KEY = new QualifiedName(PLUGIN_ID, "workspace-scan-job");
+
+	// Exclusion patterns (files/directories to skip during recursive scanning)
+	private static final String NODE_MODULES_EXCLUSION = "/node_modules/";
 
 	private final Set<String> initializedProjects = ConcurrentHashMap.newKeySet();
 
@@ -236,6 +246,25 @@ public class ProjectLifecycleListener implements IResourceChangeListener, IProje
 				CxLogger.warning(LOG_TAG + " Error clearing state: " + e.getMessage());
 			}
 
+			try {
+				com.checkmarx.eclipse.devassist.ignore.IgnoreManager.dispose(project);
+				CxLogger.info(LOG_TAG + " ✓ IgnoreManager disposed");
+			} catch (Exception e) {
+				CxLogger.warning(LOG_TAG + " Error disposing IgnoreManager: " + e.getMessage());
+			}
+
+			try {
+				// Unregisters the project's workspace-level ignore-file resource-change
+				// listener - unlike ScannerRegistry/ProblemHolderService/DevAssistScanStateHolder
+				// above (held in IProject session properties, auto-discarded by Eclipse on
+				// close), IgnoreFileManager is cached in its own static map with no lifecycle
+				// hook, so without this call it and its listener live for the process lifetime.
+				com.checkmarx.eclipse.devassist.ignore.IgnoreFileManager.dispose(project);
+				CxLogger.info(LOG_TAG + " ✓ IgnoreFileManager disposed");
+			} catch (Exception e) {
+				CxLogger.warning(LOG_TAG + " Error disposing IgnoreFileManager: " + e.getMessage());
+			}
+
 			initializedProjects.remove(project.getName());
 			CxLogger.info(LOG_TAG + " ✓ Project cleanup completed: " + project.getName());
 
@@ -257,28 +286,16 @@ public class ProjectLifecycleListener implements IResourceChangeListener, IProje
 			@Override
 			protected IStatus run(IProgressMonitor monitor) {
 				try {
-					monitor.beginTask("Scanning manifest, IaC, and container files...", 3);
+					monitor.beginTask("Scanning OSS manifest files...", 1);
 
 					// Check if job was cancelled or project closed before starting
 					if (monitor.isCanceled() || !project.isOpen()) {
 						return Status.CANCEL_STATUS;
 					}
 
+					// Only scan OSS manifests on startup (matches JetBrains behavior)
+					// IaC and Container scanning are triggered by real-time scanner events
 					scanManifestFiles(project);
-					monitor.worked(1);
-
-					if (monitor.isCanceled() || !project.isOpen()) {
-						return Status.CANCEL_STATUS;
-					}
-
-					scanIacFiles(project);
-					monitor.worked(1);
-
-					if (monitor.isCanceled() || !project.isOpen()) {
-						return Status.CANCEL_STATUS;
-					}
-
-					scanContainerFiles(project);
 					monitor.worked(1);
 
 					return Status.OK_STATUS;
@@ -304,74 +321,134 @@ public class ProjectLifecycleListener implements IResourceChangeListener, IProje
 	}
 
 	private void scanManifestFiles(IProject project) {
-		String[] manifestPatterns = {
-				"pom.xml", "package.json", "package-lock.json", "npm-shrinkwrap.json",
-				"go.mod", "go.sum", "requirements.txt", "Pipfile", "Pipfile.lock", "setup.py",
-				"Gemfile", "Gemfile.lock", "Cargo.toml", "Cargo.lock", "composer.json", "composer.lock",
-				"packages.config", ".csproj", "yarn.lock"
-		};
-		findAndScanFiles(project, manifestPatterns, "OSS Manifest Files");
+		findAndScanFilesRecursive(project, DevAssistConstants.MANIFEST_FILE_PATTERNS, "OSS Manifest Files");
 	}
 
 	private void scanIacFiles(IProject project) {
-		String[] iacPatterns = { ".tf", ".tfvars", ".yaml", ".yml", ".hcl" };
-		findAndScanFiles(project, iacPatterns, "IaC Configuration Files");
+		findAndScanFilesRecursive(project, DevAssistConstants.IAC_SUPPORTED_PATTERNS, "IaC Configuration Files");
 	}
 
 	private void scanContainerFiles(IProject project) {
-		String[] containerPatterns = {
-				"Dockerfile", "dockerfile", "docker-compose.yaml", "docker-compose.yml", ".dockerignore"
-		};
-		findAndScanFiles(project, containerPatterns, "Container Files");
+		findAndScanFilesRecursive(project, DevAssistConstants.CONTAINERS_FILE_PATTERNS, "Container Files");
 	}
 
-	private void findAndScanFiles(IProject project, String[] patterns, String fileType) {
+	/**
+	 * Recursively scans files in project matching glob patterns.
+	 * Unlike the old root-only scan, this finds files at ANY directory depth.
+	 * Excludes node_modules directories (and their contents) for performance.
+	 */
+	private void findAndScanFilesRecursive(IProject project, List<String> patterns, String fileType) {
 		try {
-
-			ScannerRegistry registry = (ScannerRegistry) project.getSessionProperty(
-					new QualifiedName(PLUGIN_ID, "scanner-registry"));
-			DevAssistScanStateHolder stateHolder = (DevAssistScanStateHolder) project.getSessionProperty(
-					new QualifiedName(PLUGIN_ID, "state-holder"));
-			ProblemHolderService problemHolder = (ProblemHolderService) project.getSessionProperty(
-					new QualifiedName(PLUGIN_ID, "problem-holder"));
+			ScannerRegistry registry = (ScannerRegistry) project.getSessionProperty(REGISTRY_KEY);
+			DevAssistScanStateHolder stateHolder = (DevAssistScanStateHolder) project.getSessionProperty(STATE_HOLDER_KEY);
+			ProblemHolderService problemHolder = (ProblemHolderService) project.getSessionProperty(PROBLEM_HOLDER_KEY);
 
 			if (registry == null || stateHolder == null || problemHolder == null) {
+				CxLogger.warning(LOG_TAG + " Cannot scan " + fileType + " - registry/stateHolder/problemHolder is null");
 				return;
 			}
 
-			IResource[] members = project.members(true);
-			for (IResource resource : members) {
-				if (!(resource instanceof org.eclipse.core.resources.IFile)) {
+			// Convert glob patterns to PathMatchers
+			List<PathMatcher> matchers = patterns.stream()
+					.map(p -> FileSystems.getDefault().getPathMatcher("glob:" + p))
+					.collect(Collectors.toList());
+
+			CxLogger.info(LOG_TAG + " Starting recursive scan for " + fileType + " with " + patterns.size() + " patterns");
+
+			// Recursively traverse all project resources
+			traverseResourcesRecursively(project, matchers, registry, stateHolder, problemHolder, fileType);
+
+		} catch (Exception e) {
+			CxLogger.error(LOG_TAG + " Error scanning " + fileType, e);
+		}
+	}
+
+	/**
+	 * Recursively traverses project resources and scans matching files.
+	 * Skips node_modules directories for performance.
+	 */
+	private void traverseResourcesRecursively(IResource resource,
+	                                          List<PathMatcher> matchers,
+	                                          ScannerRegistry registry,
+	                                          DevAssistScanStateHolder stateHolder,
+	                                          ProblemHolderService problemHolder,
+	                                          String fileType) {
+		try {
+			if (!(resource instanceof IContainer)) {
+				return;
+			}
+
+			IContainer container = (IContainer) resource;
+			IResource[] children = container.members(false);
+
+			for (IResource child : children) {
+				// Safety check: resource might be deleted or not exist
+				if (!child.exists()) {
 					continue;
 				}
 
-				IFile file = (org.eclipse.core.resources.IFile) resource;
-				String fileName = file.getName().toLowerCase();
-				String filePath = file.getLocation().toOSString();
+				String path = child.getLocation().toOSString();
 
-				boolean matches = false;
-				for (String pattern : patterns) {
-					if (fileName.equals(pattern.toLowerCase())
-							|| filePath.toLowerCase().endsWith(pattern.toLowerCase())) {
-						matches = true;
-						break;
-					}
+				// Skip node_modules (like JetBrains) - avoid scanning npm packages
+				if (path.contains(NODE_MODULES_EXCLUSION) || path.contains("\\node_modules\\")) {
+					continue;
 				}
-				if (matches) {
-					try {
-						ScanManager scanManager = new ScanManager(registry, stateHolder);
-						List<ScanIssue> issues = scanManager.scanFile(filePath);
-						if (!issues.isEmpty()) {
-							problemHolder.addScanIssues(filePath, issues);
-							ResultPublisher.publishResults(file, issues);
+
+				if (child instanceof IFile) {
+					IFile file = (IFile) child;
+
+					// Check if file matches any of the glob patterns
+					for (PathMatcher matcher : matchers) {
+						try {
+							if (matcher.matches(Paths.get(path))) {
+								scanFileAndPublishResults(file, path, registry, stateHolder, problemHolder);
+								break; // File matched, don't check other patterns
+							}
+						} catch (Exception e) {
+							CxLogger.warning(LOG_TAG + " Error matching pattern for " + path + ": " + e.getMessage());
 						}
-					} catch (Exception e) {
-						System.err.println(LOG_TAG + " Error scanning " + fileName + ": " + e.getMessage());
 					}
+				} else if (child instanceof IContainer) {
+					// Recurse into subdirectories
+					traverseResourcesRecursively(child, matchers, registry, stateHolder, problemHolder, fileType);
 				}
 			}
 		} catch (Exception e) {
-			System.err.println(LOG_TAG + " Error finding files for " + fileType + ": " + e.getMessage());
+			CxLogger.warning(LOG_TAG + " Error traversing resources: " + e.getMessage());
 		}
+	}
+
+	/**
+	 * Scans a single file and publishes results if issues are found.
+	 */
+	private void scanFileAndPublishResults(IFile file,
+	                                       String filePath,
+	                                       ScannerRegistry registry,
+	                                       DevAssistScanStateHolder stateHolder,
+	                                       ProblemHolderService problemHolder) {
+		try {
+			ScanManager scanManager = new ScanManager(registry, stateHolder);
+			List<ScanIssue> issues = scanManager.scanFile(filePath);
+
+			if (!issues.isEmpty()) {
+				problemHolder.addScanIssues(filePath, issues);
+				ResultPublisher.publishResults(file, issues);
+			}
+		} catch (Exception e) {
+			CxLogger.warning(LOG_TAG + " Error scanning file " + filePath + ": " + e.getMessage());
+		}
+	}
+
+	/**
+	 * Legacy method for backward compatibility.
+	 * Kept as fallback but no longer used by new code.
+	 */
+	private void findAndScanFiles(IProject project, String[] patterns, String fileType) {
+		// Convert string array to list and use new recursive method
+		List<String> patternList = new ArrayList<>();
+		for (String pattern : patterns) {
+			patternList.add("**/*" + pattern); // Add /** prefix for recursive matching
+		}
+		findAndScanFilesRecursive(project, patternList, fileType);
 	}
 }

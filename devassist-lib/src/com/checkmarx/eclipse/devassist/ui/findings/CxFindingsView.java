@@ -299,7 +299,8 @@ public class CxFindingsView extends ViewPart {
 		Composite treeComposite = new Composite(sashForm, SWT.NONE);
 		treeComposite.setLayout(new FillLayout());
 
-		treeViewer = new TreeViewer(treeComposite, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL);
+		Tree tree = new Tree(treeComposite, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL);
+		treeViewer = new TreeViewer(tree);
 		treeViewer.setContentProvider(new FindingsContentProvider());
 		treeViewer.setLabelProvider(new FindingsLabelProvider());
 
@@ -661,6 +662,7 @@ public class CxFindingsView extends ViewPart {
 
 			// Refresh the tree to remove the ignored finding from the view
 			refreshTreeWithFilter();
+			com.checkmarx.eclipse.devassist.ui.findings.ignore.DevAssistIgnoredFindings.refreshIfOpen();
 
 			CxLogger.info("Successfully ignored finding: " + issue.getTitle());
 
@@ -698,6 +700,7 @@ public class CxFindingsView extends ViewPart {
 
 			// Refresh the tree to remove the ignored findings from the view
 			refreshTreeWithFilter();
+			com.checkmarx.eclipse.devassist.ui.findings.ignore.DevAssistIgnoredFindings.refreshIfOpen();
 
 			CxLogger.info("Successfully ignored all findings of type: " + issue.getTitle());
 

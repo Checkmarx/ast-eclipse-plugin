@@ -37,6 +37,12 @@ public final class IgnoreFileManager {
     private final Map<String, String> scannedFileMap = new HashMap<>();
     private Map<String, IgnoreEntry> previousIgnoreData = new HashMap<>();
     private final List<IgnoreListener> listeners = Collections.synchronizedList(new ArrayList<>());
+    // Captured so dispose() can unregister it - startFileWatcher() previously
+    // passed an anonymous listener straight to addResourceChangeListener() with
+    // no reference kept anywhere, so a closed project's manager (and its
+    // workspace-level listener, which keeps firing on every future resource
+    // change regardless of which project changed) could never be unregistered.
+    private IResourceChangeListener resourceChangeListener;
 
     public interface IgnoreListener {
         void onIgnoreUpdated();
@@ -47,6 +53,30 @@ public final class IgnoreFileManager {
             INSTANCES.put(project, new IgnoreFileManager(project));
         }
         return INSTANCES.get(project);
+    }
+
+    /**
+     * Evicts and disposes the cached IgnoreFileManager for a closed project -
+     * unregisters its workspace-level resource-change listener and drops it
+     * from INSTANCES. Without this, every project ever opened in a session
+     * stays in INSTANCES forever with its listener still firing on every future
+     * workspace resource change, even for projects that no longer exist.
+     *
+     * @param project the project that is closing
+     */
+    public static synchronized void dispose(IProject project) {
+        IgnoreFileManager manager = INSTANCES.remove(project);
+        if (manager != null) {
+            manager.disposeInternal();
+        }
+    }
+
+    private void disposeInternal() {
+        if (resourceChangeListener != null) {
+            ResourcesPlugin.getWorkspace().removeResourceChangeListener(resourceChangeListener);
+            resourceChangeListener = null;
+        }
+        listeners.clear();
     }
 
     public IgnoreFileManager(IProject project) {
@@ -70,7 +100,7 @@ public final class IgnoreFileManager {
         if (ignoreIFile == null) {
             return;
         }
-        ResourcesPlugin.getWorkspace().addResourceChangeListener((IResourceChangeListener) event -> {
+        resourceChangeListener = (IResourceChangeListener) event -> {
             IResourceDelta delta = event.getDelta();
             if (delta == null) {
                 return;
@@ -86,7 +116,8 @@ public final class IgnoreFileManager {
                     display.asyncExec(this::handleFileChange);
                 }
             }
-        }, IResourceChangeEvent.POST_CHANGE);
+        };
+        ResourcesPlugin.getWorkspace().addResourceChangeListener(resourceChangeListener, IResourceChangeEvent.POST_CHANGE);
     }
 
     public void updateIgnoreData(String vulnerabilityKey, IgnoreEntry newData) {
@@ -198,10 +229,33 @@ public final class IgnoreFileManager {
     private void saveIgnoreFile() {
         try {
             String json = MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(ignoreData);
-            writeAtomically(getIgnoreFilePath(), json);
+            Path ignoreFilePath = getIgnoreFilePath();
+            writeAtomically(ignoreFilePath, json);
+            refreshFileInWorkspace(ignoreFilePath);
             notifyListeners();
         } catch (IOException e) {
             CxLogger.warning("RTS-Ignore: Exception occurred while adding ignore entry into file: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Forces Eclipse's resource model to pick up a file we just wrote directly
+     * via java.nio (writeAtomically bypasses IFile/IResource entirely). Without
+     * this, the Ignored Findings view (or any other resource-change listener)
+     * only learns about the change once native/polling workspace refresh gets
+     * around to it - which can be disabled or delayed in managed/enterprise
+     * Eclipse installs - leaving a window where the on-disk file and Eclipse's
+     * view of it disagree.
+     */
+    private void refreshFileInWorkspace(Path filePath) {
+        try {
+            org.eclipse.core.resources.IFile file = ResourcesPlugin.getWorkspace().getRoot()
+                    .getFileForLocation(new org.eclipse.core.runtime.Path(filePath.toString()));
+            if (file != null) {
+                file.refreshLocal(org.eclipse.core.resources.IResource.DEPTH_ZERO, null);
+            }
+        } catch (org.eclipse.core.runtime.CoreException e) {
+            CxLogger.warning("RTS-Ignore: Failed to refresh workspace resource for " + filePath + ": " + e.getMessage());
         }
     }
 
@@ -317,7 +371,9 @@ public final class IgnoreFileManager {
         try {
             CxLogger.info("RTS-Ignore: [TEMP_LIST_UPDATE] Writing " + tempList.size() + " items to temp list file");
             String json = MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(tempList);
-            writeAtomically(getTempListPath(), json);
+            Path tempListPath = getTempListPath();
+            writeAtomically(tempListPath, json);
+            refreshFileInWorkspace(tempListPath);
             CxLogger.info("RTS-Ignore: [TEMP_LIST_UPDATE_SUCCESS] Temp list updated successfully with " + tempList.size() + " items");
 
             // If tempList is empty, verify the file is actually empty
