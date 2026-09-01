@@ -17,7 +17,6 @@
 		<module>com.checkmarx.eclipse.feature</module>
 		<module>com.checkmarx.eclipse.site</module>
 		<module>checkmarx-ast-eclipse-plugin-tests</module>
-		<module>devassist-lib-tests</module>
 	</modules>
 
 	<properties>

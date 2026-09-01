@@ -5,6 +5,7 @@ Bundle-SymbolicName: com.checkmarx.ast.eclipse.tests
 Bundle-Version: 1.0.0.qualifier
 Fragment-Host: com.checkmarx.eclipse.plugin;bundle-version="1.0.0"
 Require-Bundle: 
+ com.checkmarx.eclipse.devassist,
  org.eclipse.swtbot.swt.finder,
  org.eclipse.swtbot.eclipse.finder,
  org.eclipse.swtbot.junit5_x,
