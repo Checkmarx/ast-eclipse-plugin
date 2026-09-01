@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.checkmarx.eclipse.devassist.inspection.DevAssistInspection;
+
 /**
  * Unit tests for {@link DevAssistInspection}. This is a plain metadata
  * holder (Eclipse has no {@code LocalInspectionTool} equivalent to extend),

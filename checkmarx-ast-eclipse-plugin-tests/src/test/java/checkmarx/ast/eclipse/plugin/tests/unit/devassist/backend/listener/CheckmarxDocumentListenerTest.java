@@ -13,6 +13,8 @@ import org.eclipse.core.resources.IFile;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.checkmarx.eclipse.devassist.backend.listener.CheckmarxDocumentListener;
+import com.checkmarx.eclipse.devassist.backend.listener.RealTimeScanJob;
 import com.checkmarx.eclipse.devassist.inspection.DevAssistScanScheduler;
 
 /**

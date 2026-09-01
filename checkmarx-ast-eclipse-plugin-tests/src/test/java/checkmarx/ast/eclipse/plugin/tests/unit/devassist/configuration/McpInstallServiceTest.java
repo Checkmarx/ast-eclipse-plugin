@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import com.checkmarx.eclipse.common.listener.IMcpInstallCallback;
 import com.checkmarx.eclipse.common.preferences.Preferences;
 import com.checkmarx.eclipse.common.utils.PluginConstants;
+import com.checkmarx.eclipse.devassist.configuration.McpInstallService;
 
 /**
  * Unit tests for {@link McpInstallService}. Scoped to the paths that are safe

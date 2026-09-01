@@ -17,6 +17,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.checkmarx.eclipse.devassist.scanners.containers.ContainerScannerCommand;
+import com.checkmarx.eclipse.devassist.scanners.containers.ContainerScannerService;
+
 /**
  * Unit tests for {@link ContainerScannerCommand}, using the
  * dependency-injection constructor to substitute a mocked

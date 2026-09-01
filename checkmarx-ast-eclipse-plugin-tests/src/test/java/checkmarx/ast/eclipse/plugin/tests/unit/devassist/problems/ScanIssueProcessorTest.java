@@ -14,6 +14,9 @@ import org.junit.jupiter.api.Test;
 
 import com.checkmarx.eclipse.devassist.model.Location;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.problems.ProblemDescriptor;
+import com.checkmarx.eclipse.devassist.problems.ProblemHelper;
+import com.checkmarx.eclipse.devassist.problems.ScanIssueProcessor;
 
 /**
  * Unit tests for {@link ScanIssueProcessor}'s validation pipeline. Uses a

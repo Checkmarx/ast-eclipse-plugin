@@ -25,6 +25,8 @@ import com.checkmarx.eclipse.common.preferences.Preferences;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.model.Vulnerability;
+import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
+import com.checkmarx.eclipse.devassist.utils.DevAssistUtils;
 
 /**
  * Unit tests for {@link DevAssistUtils}'s pure-logic helpers. Deliberately

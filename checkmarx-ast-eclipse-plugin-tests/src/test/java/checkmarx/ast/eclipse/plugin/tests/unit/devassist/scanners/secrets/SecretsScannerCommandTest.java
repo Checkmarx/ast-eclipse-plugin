@@ -14,6 +14,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.checkmarx.eclipse.devassist.scanners.secrets.SecretsScannerCommand;
+
+import com.checkmarx.eclipse.devassist.scanners.secrets.SecretsScannerCommand;
+
 /**
  * Unit tests for {@link SecretsScannerCommand}. There is no
  * dependency-injection constructor for this command, so a mocked

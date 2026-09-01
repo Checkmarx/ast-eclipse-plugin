@@ -16,6 +16,8 @@ import com.checkmarx.ast.realtime.RealtimeLocation;
 import com.checkmarx.ast.secretsrealtime.SecretsRealtimeResults;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.scanners.secrets.SecretsScanResultAdaptor;
+import com.checkmarx.eclipse.devassist.scanners.secrets.SecretsScanResultAdaptor;
 
 /**
  * Unit tests for {@link SecretsScanResultAdaptor}. Pure logic tests - no

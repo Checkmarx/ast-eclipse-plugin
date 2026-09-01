@@ -14,6 +14,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.checkmarx.eclipse.devassist.scanners.iac.IacScannerCommand;
+import com.checkmarx.eclipse.devassist.scanners.iac.IacScannerService;
+
+import com.checkmarx.eclipse.devassist.scanners.iac.IacScannerCommand;
+import com.checkmarx.eclipse.devassist.scanners.iac.IacScannerService;
+
 /**
  * Unit tests for {@link IacScannerCommand}, using the dependency-injection
  * constructor to substitute a mocked {@link IacScannerService}.

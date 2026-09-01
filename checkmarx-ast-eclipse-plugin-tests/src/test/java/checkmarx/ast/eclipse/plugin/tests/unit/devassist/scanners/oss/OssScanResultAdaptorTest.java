@@ -18,6 +18,7 @@ import com.checkmarx.ast.ossrealtime.OssRealtimeVulnerability;
 import com.checkmarx.ast.realtime.RealtimeLocation;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.scanners.oss.OssScanResultAdaptor;
 
 /**
  * Unit tests for {@link OssScanResultAdaptor}. Pure logic tests - no Eclipse

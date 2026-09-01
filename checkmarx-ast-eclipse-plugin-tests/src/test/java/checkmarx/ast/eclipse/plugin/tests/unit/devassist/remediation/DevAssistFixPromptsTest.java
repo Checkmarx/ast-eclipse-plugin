@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.checkmarx.eclipse.devassist.remediation.DevAssistFixPrompts;
 import com.checkmarx.eclipse.devassist.utils.DevAssistUtils;
 
 /**

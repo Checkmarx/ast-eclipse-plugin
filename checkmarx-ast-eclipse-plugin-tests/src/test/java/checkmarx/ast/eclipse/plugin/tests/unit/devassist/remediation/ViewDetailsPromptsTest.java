@@ -10,6 +10,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.checkmarx.eclipse.devassist.model.Vulnerability;
+import com.checkmarx.eclipse.devassist.remediation.ViewDetailsPrompts;
 
 /**
  * Unit tests for {@link ViewDetailsPrompts}. Pure static string-builder

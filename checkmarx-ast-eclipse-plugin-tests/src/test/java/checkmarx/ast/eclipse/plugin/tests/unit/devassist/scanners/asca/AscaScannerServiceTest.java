@@ -16,6 +16,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.checkmarx.eclipse.devassist.common.ScannerConfig;
+import com.checkmarx.eclipse.devassist.scanners.asca.AscaScannerService;
 import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
 
 /**

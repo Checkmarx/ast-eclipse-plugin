@@ -12,6 +12,8 @@ import org.eclipse.core.resources.IProject;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.checkmarx.eclipse.devassist.inspection.DevAssistScanScheduler;
+
 /**
  * Unit tests for {@link DevAssistScanScheduler}. Each scheduled
  * {@link com.checkmarx.eclipse.devassist.backend.listener.RealTimeScanJob}

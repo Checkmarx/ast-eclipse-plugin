@@ -18,6 +18,7 @@ import com.checkmarx.ast.containersrealtime.ContainersRealtimeVulnerability;
 import com.checkmarx.ast.realtime.RealtimeLocation;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.scanners.containers.ContainerScanResultAdaptor;
 
 /**
  * Unit tests for {@link ContainerScanResultAdaptor}. Pure logic tests - no

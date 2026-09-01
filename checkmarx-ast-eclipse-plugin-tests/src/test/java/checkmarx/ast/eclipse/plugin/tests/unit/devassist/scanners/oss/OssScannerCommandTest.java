@@ -15,6 +15,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.checkmarx.eclipse.devassist.scanners.oss.OssScannerCommand;
+
 /**
  * Unit tests for {@link OssScannerCommand}. There is no dependency-injection
  * constructor for this command, so a mocked {@link IProject} is used and

@@ -18,6 +18,7 @@ import com.checkmarx.ast.asca.ScanDetail;
 import com.checkmarx.ast.asca.ScanResult;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.scanners.asca.AscaScanResultAdaptor;
 import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
 
 /**

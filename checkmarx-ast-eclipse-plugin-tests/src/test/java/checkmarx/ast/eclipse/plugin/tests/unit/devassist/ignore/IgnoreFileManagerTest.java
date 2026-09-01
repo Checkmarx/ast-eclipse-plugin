@@ -19,6 +19,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import com.checkmarx.eclipse.devassist.ignore.IgnoreEntry;
+import com.checkmarx.eclipse.devassist.ignore.IgnoreFileManager;
 import com.checkmarx.eclipse.devassist.utils.ScanEngine;
 
 /**

@@ -15,6 +15,8 @@ import org.mockito.MockedStatic;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.model.Vulnerability;
+import com.checkmarx.eclipse.devassist.remediation.CopilotIntegration;
+import com.checkmarx.eclipse.devassist.remediation.RemediationManager;
 
 /**
  * Unit tests for {@link RemediationManager}. {@link CopilotIntegration} is

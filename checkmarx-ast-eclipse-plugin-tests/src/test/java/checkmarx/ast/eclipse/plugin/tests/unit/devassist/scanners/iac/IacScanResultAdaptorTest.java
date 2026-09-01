@@ -18,6 +18,7 @@ import com.checkmarx.ast.iacrealtime.IacRealtimeResults;
 import com.checkmarx.ast.realtime.RealtimeLocation;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.scanners.iac.IacScanResultAdaptor;
 import com.checkmarx.eclipse.devassist.utils.DevAssistConstants;
 
 /**
