@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import org.junit.jupiter.api.Test;
 
-import com.checkmarx.eclipse.enums.Severity;
+import com.checkmarx.eclipse.common.enums.Severity;
 
 class SeverityTest {
 
@@ -31,21 +31,6 @@ class SeverityTest {
     @Test
     void testGetSeverity_info() {
         assertEquals(Severity.INFO, Severity.getSeverity("INFO"));
-    }
-
-    @Test
-    void testGetSeverity_groupBySeverity() {
-        assertEquals(Severity.GROUP_BY_SEVERITY, Severity.getSeverity("GROUP_BY_SEVERITY"));
-    }
-
-    @Test
-    void testGetSeverity_groupByQueryName() {
-        assertEquals(Severity.GROUP_BY_QUERY_NAME, Severity.getSeverity("GROUP_BY_QUERY_NAME"));
-    }
-
-    @Test
-    void testGetSeverity_groupByStateName() {
-        assertEquals(Severity.GROUP_BY_STATE_NAME, Severity.getSeverity("GROUP_BY_STATE_NAME"));
     }
 
     @Test

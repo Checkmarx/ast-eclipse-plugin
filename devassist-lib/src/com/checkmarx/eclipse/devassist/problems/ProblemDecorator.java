@@ -1,0 +1,982 @@
+package com.checkmarx.eclipse.devassist.problems;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IProject;
+import org.eclipse.jface.text.BadLocationException;
+import org.eclipse.jface.text.BadPositionCategoryException;
+import org.eclipse.jface.text.DefaultPositionUpdater;
+import org.eclipse.jface.text.IDocument;
+import org.eclipse.jface.text.IPositionUpdater;
+import org.eclipse.jface.text.IRegion;
+import org.eclipse.jface.text.Position;
+import org.eclipse.jface.text.source.Annotation;
+import org.eclipse.jface.text.source.IAnnotationModel;
+import org.eclipse.ui.IWorkbench;
+import org.eclipse.ui.IWorkbenchPage;
+import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.texteditor.ITextEditor;
+
+import com.checkmarx.eclipse.devassist.ignore.IgnoreEntry;
+import com.checkmarx.eclipse.devassist.ignore.IgnoreFileManager;
+import com.checkmarx.eclipse.devassist.ignore.IgnoreManager;
+import com.checkmarx.eclipse.devassist.ui.findings.editor.FindingsAnnotation;
+import com.checkmarx.eclipse.devassist.ui.findings.marker.MarkerIssueMapper;
+import com.checkmarx.eclipse.devassist.model.Location;
+import com.checkmarx.eclipse.devassist.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.utils.DevAssistUtils;
+import com.checkmarx.eclipse.common.utils.CxLogger;
+
+/**
+ * Renders scan results as editor decorations.
+ *
+ * Creates visual indicators for issues in the editor:
+ * - Gutter icons (severity indicators on line numbers)
+ * - Line highlighting (background color by severity)
+ * - Annotations (squiggly underlines and tooltips)
+ *
+ * Integrates with Eclipse's SourceViewerConfiguration to display
+ * issue markers alongside the editor content.
+ */
+public class ProblemDecorator {
+
+	private static final String LOG_TAG = "[SCAN-DECORATOR]";
+
+	// Track annotations we've created so we can remove them later
+	private static final Map<String, List<Annotation>> fileAnnotations = new HashMap<>();
+
+	// Live-tracked line positions for ignored entries, keyed by
+	// "<normalizedPath>#<title>#<originalIgnoreFileLine>". Registered on the
+	// document via Position/PositionUpdater so edits made above an ignored line
+	// shift it automatically (Eclipse's equivalent of JetBrains' RangeMarker),
+	// instead of re-reading the static line number stored in .checkmarxIgnored
+	// on every redecoration pass.
+	private static final String IGNORED_POSITION_CATEGORY = "com.checkmarx.eclipse.ignoredLineTracking";
+	private static final Map<String, TrackedPosition> ignoredLinePositions = new HashMap<>();
+
+	private static final class TrackedPosition {
+		final IDocument document;
+		final Position position;
+
+		TrackedPosition(IDocument document, Position position) {
+			this.document = document;
+			this.position = position;
+		}
+	}
+
+	/**
+	 * Returns the current (edit-tracked) offset for an ignored entry's line,
+	 * creating and registering a tracked {@link Position} the first time this
+	 * entry is seen for the given document. Falls back to the given original
+	 * line's offset if tracking can't be set up.
+	 */
+	private static int resolveTrackedIgnoredOffset(IDocument document, String key, int originalLineOffset) {
+		TrackedPosition tracked = ignoredLinePositions.get(key);
+		if (tracked != null && tracked.document == document && !tracked.position.isDeleted()) {
+			return Math.max(0, Math.min(tracked.position.getOffset(), document.getLength()));
+		}
+
+		try {
+			if (!document.containsPositionCategory(IGNORED_POSITION_CATEGORY)) {
+				document.addPositionCategory(IGNORED_POSITION_CATEGORY);
+				IPositionUpdater updater = new DefaultPositionUpdater(IGNORED_POSITION_CATEGORY);
+				document.addPositionUpdater(updater);
+			}
+			Position position = new Position(originalLineOffset, 0);
+			document.addPosition(IGNORED_POSITION_CATEGORY, position);
+			ignoredLinePositions.put(key, new TrackedPosition(document, position));
+			return originalLineOffset;
+		} catch (BadLocationException | BadPositionCategoryException e) {
+			return originalLineOffset;
+		}
+	}
+
+	/**
+	 * Normalize file path for consistent key lookups in fileAnnotations map.
+	 * Converts to lowercase on Windows and uses forward slashes.
+	 * This prevents path key mismatches between different code paths that might
+	 * format paths differently (e.g. Maven editor vs regular editor).
+	 */
+	private static String normalizeFilePath(String filePath) {
+		if (filePath == null || filePath.isEmpty()) {
+			return "";
+		}
+		String normalized = filePath.replace("\\", "/");
+		// On Windows, normalize to lowercase for case-insensitive matching
+		if (System.getProperty("os.name").toLowerCase().contains("win")) {
+			normalized = normalized.toLowerCase();
+		}
+		CxLogger.info(LOG_TAG + "[PATH_NORMALIZE] Original: " + filePath + " -> Normalized: " + normalized);
+		return normalized;
+	}
+
+	/**
+	 * Render scan results as annotations in the editor.
+	 *
+	 * Creates FindingsAnnotation objects for each issue and adds them
+	 * to the editor's annotation model for visual display.
+	 *
+	 * @param file       File that was scanned
+	 * @param scanIssues Issues to visualize
+	 */
+	public static void decorateEditor(IFile file, List<ScanIssue> scanIssues) {
+		if (file == null) {
+			return;
+		}
+		if (scanIssues == null) {
+			scanIssues = List.of();
+		}
+
+		// **FIX: Use getLocation() (absolute path) for consistency with RealTimeScanJob
+		// and ResultPublisher**
+		// This ensures fileAnnotations map keys match the same path format used
+		// throughout the codebase
+		String filePath = file.getLocation().toOSString();
+		String normalizedFilePath = normalizeFilePath(filePath);
+
+		CxLogger.info(LOG_TAG + "============================================");
+		CxLogger.info(LOG_TAG + "[DECORATE_START] File: " + filePath);
+		CxLogger.info(LOG_TAG + "[DECORATE_START] Normalized: " + normalizedFilePath);
+		CxLogger.info(LOG_TAG + "[DECORATE_START] ScanIssues count: " + scanIssues.size());
+		CxLogger.info(LOG_TAG + "[DECORATE_START] Current fileAnnotations keys: " + fileAnnotations.keySet());
+
+		try {
+			// Find open editor for this file
+			ITextEditor editor = findOpenEditor(file);
+			if (editor == null) {
+				CxLogger.info(LOG_TAG + "[DECORATE_SKIP] No open editor for: " + filePath);
+				return;
+			}
+
+			// Get annotation model from editor
+			IAnnotationModel annotationModel = editor.getDocumentProvider()
+					.getAnnotationModel(editor.getEditorInput());
+
+			if (annotationModel == null) {
+				CxLogger.warning(LOG_TAG + "[DECORATE_FAIL] No annotation model available");
+				return;
+			}
+
+			// Remove previous annotations for this file (BEFORE isEmpty check)
+			// This ensures stale annotations are cleared even if file is now clean
+			CxLogger.info(LOG_TAG + "[CLEAR_START] Clearing previous annotations for: " + normalizedFilePath);
+			clearAnnotations(normalizedFilePath, annotationModel);
+
+			// Remove previous IMarkers for this file too - ensureMarker() below only adds
+			// markers, so without this, issues that were ignored/resolved/filtered out
+			// since the last decoration (e.g. via the ignore action) leave a stale gutter
+			// icon and Problems-view entry behind even though the squiggly is gone.
+			MarkerIssueMapper.clearAllMarkers(file);
+
+			// Add new annotations for each issue. Note: we do NOT early-return when
+			// scanIssues is empty - a file can go from "has active findings" to "fully
+			// ignored" (all findings ignored one-by-one), and we still need to run the
+			// ignored-entries pass below so the "ignored" gutter icon replaces the
+			// severity icon that was just cleared above.
+			List<Annotation> annotations = new ArrayList<>();
+			Set<Integer> activeLines = new HashSet<>();
+
+			IProject project = file.getProject();
+			IgnoreManager ignoreManager = project != null ? IgnoreManager.getInstance(project) : null;
+
+			for (ScanIssue issue : scanIssues) {
+				try {
+					if (ignoreManager != null && ignoreManager.isIgnored(issue)) {
+						continue;
+					}
+					// Ensure the IMarker CheckmarxMarkerResolutionGenerator's
+					// Ctrl+1/quick-fix-in-hover
+					// actions anchor to exists as soon as the squiggly does, rather than only after
+					// the
+					// user separately navigates to this finding from the Findings view.
+					MarkerIssueMapper.ensureMarker(file, issue);
+
+					if (issue.getLocations() != null && !issue.getLocations().isEmpty()) {
+						activeLines.add(issue.getLocations().get(0).getLine());
+					}
+
+					FindingsAnnotation annotation = createAnnotation(editor, issue);
+					if (annotation != null) {
+						annotation.addButton(filePath, null);
+						annotations.add(annotation);
+						// **OSS-SPECIFIC LOGIC: Only decorate the first line (used for redirection)**
+						// For OSS issues, decorate only the first location's line to keep it simple
+						Position pos = null;
+
+						if (issue.getScanEngine() != null &&
+								issue.getScanEngine().name().equalsIgnoreCase("OSS")) {
+							// OSS: Decorate only the first line where package is declared
+							pos = decorateOssFirstLineOnly(editor, issue);
+						} else {
+							// Other engines: Use standard range calculation
+							pos = calculateRange(editor, issue);
+						}
+
+						if (pos != null && pos.getLength() > 0) {
+							// Add annotation to model for display
+							annotationModel.addAnnotation(annotation, pos);
+							CxLogger.info(LOG_TAG + "Annotation added to model");
+						} else {
+							CxLogger.warning(LOG_TAG + "FAILED: Invalid position (offset=" +
+									(pos != null ? pos.getOffset() : "null") + ", length=" +
+									(pos != null ? pos.getLength() : "null") + ")");
+						}
+					}
+				} catch (Exception e) {
+					CxLogger.warning(LOG_TAG + " Error creating annotation: " +
+							e.getMessage());
+					e.printStackTrace();
+				}
+			}
+
+			// Draw the theme-aware "ignored" gutter icon for every active
+			// .checkmarxIgnored entry on this file whose line isn't already owned by an
+			// active (non-ignored) finding above.
+			annotations.addAll(decorateIgnoredEntries(file, editor, annotationModel, activeLines));
+
+			// Store annotations for later cleanup (using normalized path)
+			fileAnnotations.put(normalizedFilePath, annotations);
+
+			CxLogger.info(LOG_TAG + "[DECORATE_COMPLETE] Added " + annotations.size() +
+					" annotations to editor");
+			CxLogger.info(LOG_TAG + "[DECORATE_COMPLETE] FileAnnotations now has: " + fileAnnotations.size() + " entries");
+			CxLogger.info(LOG_TAG + "============================================");
+
+		} catch (Exception e) {
+			CxLogger.warning(LOG_TAG + "[DECORATE_ERROR] Error decorating editor: " +
+					e.getMessage());
+			e.printStackTrace();
+			CxLogger.info(LOG_TAG + "============================================");
+		}
+	}
+
+	/**
+	 * Create a FindingsAnnotation for a scan issue.
+	 *
+	 * FindingsAnnotation extends Eclipse's Annotation class and provides
+	 * custom rendering (color, icon, tooltip) based on issue severity.
+	 *
+	 * @param editor Text editor
+	 * @param issue  Scan issue
+	 * @return FindingsAnnotation, or null if creation fails
+	 */
+	private static FindingsAnnotation createAnnotation(ITextEditor editor,
+			ScanIssue issue) {
+		try {
+			// Get severity from issue
+			String severity = issue.getSeverity();
+
+			// DEBUG: Log the actual severity value
+			CxLogger.info(LOG_TAG + " [DEBUG] Issue: " + issue.getTitle() +
+					" | Severity from issue: " + (severity != null ? severity : "NULL"));
+
+			// Map severity to annotation type
+			String annotationType = mapSeverityToAnnotationType(severity);
+
+			CxLogger.info(LOG_TAG + " [DEBUG] Mapped to annotation type: " + annotationType);
+
+			// Create annotation with issue details
+			FindingsAnnotation annotation = new FindingsAnnotation(
+					annotationType,
+					issue.getTitle(),
+					issue.getDescription(),
+					issue);
+			return annotation;
+		} catch (Exception e) {
+			CxLogger.warning(LOG_TAG + " Error creating annotation: " +
+					e.getMessage());
+			return null;
+		}
+	}
+
+	/**
+	 * Draw a theme-aware "ignored" gutter annotation for every active
+	 * {@code .checkmarxIgnored} entry that targets this file, skipping any line
+	 * that an active (non-ignored) finding already owns in this decoration pass.
+	 *
+	 * Uses a zero-length {@link Position} so only the vertical ruler/gutter icon
+	 * is rendered - no in-text squiggle - matching the requirement that an
+	 * ignored finding shows solely the "ignored" icon in place of its previous
+	 * severity icon.
+	 *
+	 * @param file            File being decorated
+	 * @param editor          Open text editor for the file
+	 * @param annotationModel Annotation model to add the ignored annotations to
+	 * @param activeLines     1-based line numbers already covered by an active
+	 *                        (non-ignored) finding in this same pass
+	 * @return The list of ignored annotations added, for later cleanup
+	 */
+	private static List<Annotation> decorateIgnoredEntries(IFile file, ITextEditor editor,
+			IAnnotationModel annotationModel, Set<Integer> activeLines) {
+		List<Annotation> result = new ArrayList<>();
+		try {
+			IProject project = file.getProject();
+			if (project == null) {
+				return result;
+			}
+
+			IgnoreFileManager ignoreFileManager = IgnoreFileManager.getInstance(project);
+			String normalizedPath = ignoreFileManager.normalizePath(file.getLocation().toOSString());
+
+			IDocument document = editor.getDocumentProvider().getDocument(editor.getEditorInput());
+			if (document == null) {
+				return result;
+			}
+
+			String annotationType = "com.checkmarx.eclipse.findings.ignored" +
+					(DevAssistUtils.isDarkTheme() ? "_dark" : "");
+
+			for (IgnoreEntry entry : ignoreFileManager.getAllIgnoreEntries()) {
+				if (entry.getFiles() == null) {
+					continue;
+				}
+				for (IgnoreEntry.FileReference ref : entry.getFiles()) {
+					if (!ref.isActive() || ref.getLine() == null) {
+						continue;
+					}
+					if (!normalizedPath.equals(ref.getPath())) {
+						continue;
+					}
+
+					int zeroBasedLine = ref.getLine() - 1;
+					if (zeroBasedLine < 0 || zeroBasedLine >= document.getNumberOfLines()) {
+						continue;
+					}
+
+					try {
+						IRegion lineInfo = document.getLineInformation(zeroBasedLine);
+						String trackingKey = normalizedPath + "#" + entry.getTitle() + "#" + ref.getLine();
+						int trackedOffset = resolveTrackedIgnoredOffset(document, trackingKey, lineInfo.getOffset());
+						int currentLine = document.getLineOfOffset(trackedOffset) + 1;
+
+						if (activeLines.contains(currentLine)) {
+							// An active (non-ignored) finding already owns this line this pass.
+							continue;
+						}
+
+						Position pos = new Position(trackedOffset, 0);
+
+						String description = entry.getDescription() != null ? entry.getDescription()
+								: entry.getPackageName();
+						FindingsAnnotation annotation = new FindingsAnnotation(
+								annotationType,
+								entry.getTitle(),
+								"Ignored: " + description);
+						annotationModel.addAnnotation(annotation, pos);
+						result.add(annotation);
+					} catch (Exception e) {
+						CxLogger.warning(LOG_TAG + " Error adding ignored annotation: " + e.getMessage());
+					}
+				}
+			}
+		} catch (Exception e) {
+			CxLogger.warning(LOG_TAG + " Error decorating ignored entries: " + e.getMessage());
+		}
+		return result;
+	}
+
+	/**
+	 * Map severity level to theme-aware custom Findings annotation type.
+	 * Returns dark theme variant in dark theme, light variant in light theme.
+	 * Handles all 8 severity levels including OK, UNKNOWN, and IGNORED.
+	 *
+	 * @param severity Severity string (MALICIOUS, CRITICAL, HIGH, MEDIUM, LOW,
+	 *                 UNKNOWN, OK, IGNORED)
+	 * @return Annotation type constant (com.checkmarx.eclipse.findings.{severity}[_dark])
+	 */
+	private static String mapSeverityToAnnotationType(String severity) {
+		// Append _dark suffix if dark theme is active
+		String themeSuffix = DevAssistUtils.isDarkTheme() ? "_dark" : "";
+
+		if (severity == null) {
+			return "com.checkmarx.eclipse.findings.unknown" + themeSuffix;
+		}
+		String upper = severity.toUpperCase();
+		if (upper.contains("MALICIOUS")) {
+			return "com.checkmarx.eclipse.findings.malicious" + themeSuffix;
+		}
+		if (upper.contains("CRITICAL") || upper.contains("ERROR")) {
+			return "com.checkmarx.eclipse.findings.critical" + themeSuffix;
+		}
+		if (upper.contains("HIGH")) {
+			return "com.checkmarx.eclipse.findings.high" + themeSuffix;
+		}
+		if (upper.contains("MEDIUM")) {
+			return "com.checkmarx.eclipse.findings.medium" + themeSuffix;
+		}
+		if (upper.contains("LOW") || upper.contains("INFO")) {
+			return "com.checkmarx.eclipse.findings.low" + themeSuffix;
+		}
+		if (upper.contains("UNKNOWN")) {
+			return "com.checkmarx.eclipse.findings.unknown" + themeSuffix;
+		}
+		if (upper.contains("OK")) {
+			return "com.checkmarx.eclipse.findings.ok" + themeSuffix;
+		}
+		if (upper.contains("IGNORED")) {
+			return "com.checkmarx.eclipse.findings.ignored" + themeSuffix;
+		}
+
+		return "com.checkmarx.eclipse.findings.unknown" + themeSuffix;
+	}
+
+	/**
+	 * Decorate only the first line for OSS issues (package declaration line).
+	 *
+	 * For OSS vulnerabilities, the Location has the exact character range,
+	 * but it may span the entire dependency block. We simplify by decorating
+	 * only the first line where the package is declared.
+	 *
+	 * @param editor Text editor
+	 * @param issue  OSS issue
+	 * @return Position covering the entire first line, or null if unable to
+	 *         determine
+	 */
+	/**
+	 * Decorate the complete OSS dependency block using the first and last
+	 * locations from the issue.
+	 *
+	 * For OSS vulnerabilities, the Locations array contains the line/range
+	 * information for the complete dependency block. The decoration starts
+	 * from the first location's StartIndex and ends at the last location's
+	 * EndIndex.
+	 *
+	 * Leading whitespace before the first StartIndex and trailing whitespace
+	 * after the last EndIndex are not decorated.
+	 *
+	 * @param editor Text editor
+	 * @param issue  OSS issue
+	 * @return Position covering the complete OSS dependency block, or null if
+	 *         unable to determine
+	 */
+	private static Position decorateOssFirstLineOnly(ITextEditor editor, ScanIssue issue) {
+
+		try {
+			IDocument document = editor.getDocumentProvider()
+					.getDocument(editor.getEditorInput());
+
+			if (document == null) {
+				CxLogger.warning(LOG_TAG + "   [OSS] Document is null!");
+				return null;
+			}
+
+			// Get locations from issue
+			if (issue.getLocations() == null || issue.getLocations().isEmpty()) {
+				CxLogger.warning(LOG_TAG + "   [OSS] No locations found!");
+				return null;
+			}
+
+			Location firstLocation = issue.getLocations().get(0);
+			Location lastLocation = issue.getLocations().get(issue.getLocations().size() - 1);
+
+			// Convert line numbers from 1-based to 0-based
+			int firstLineNumber = firstLocation.getLine() - 1;
+			int lastLineNumber = lastLocation.getLine() - 1;
+
+			int lineCount = document.getNumberOfLines();
+			int docLength = document.getLength();
+
+			// Bounds check
+			if (firstLineNumber < 0 || firstLineNumber >= lineCount) {
+				CxLogger.warning(LOG_TAG + "   [OSS] First line " + (firstLineNumber + 1) + " out of bounds (doc has "
+						+ lineCount + " lines)");
+				return null;
+			}
+
+			if (lastLineNumber < 0 || lastLineNumber >= lineCount) {
+				CxLogger.warning(LOG_TAG + "   [OSS] Last line " + (lastLineNumber + 1) + " out of bounds (doc has "
+						+ lineCount + " lines)");
+				return null;
+			}
+
+			IRegion firstLineInfo = document.getLineInformation(firstLineNumber);
+			IRegion lastLineInfo = document.getLineInformation(lastLineNumber);
+			int firstLineOffset = firstLineInfo.getOffset();
+			int lastLineOffset = lastLineInfo.getOffset();
+			int firstLineLength = firstLineInfo.getLength();
+			int lastLineLength = lastLineInfo.getLength();
+			int startIndex = firstLocation.getStartIndex();
+			int endIndex = lastLocation.getEndIndex();
+			startIndex = Math.max(0, Math.min(startIndex, firstLineLength));
+			endIndex = Math.max(0, Math.min(endIndex, lastLineLength));
+
+			int startOffset = firstLineOffset + startIndex;
+			int endOffset = lastLineOffset + endIndex;
+
+			while (startOffset < endOffset && startOffset < docLength
+					&& Character.isWhitespace(document.getChar(startOffset))) {
+				startOffset++;
+			}
+			while (endOffset > startOffset && endOffset <= docLength
+					&& Character.isWhitespace(document.getChar(endOffset - 1))) {
+				endOffset--;
+			}
+
+			if (startOffset < 0 || startOffset > docLength) {
+				CxLogger.warning(LOG_TAG + "   [OSS] Invalid start offset: " + startOffset);
+				return null;
+			}
+
+			if (endOffset < startOffset || endOffset > docLength) {
+				CxLogger.warning(LOG_TAG + "   [OSS] Invalid end offset: " + endOffset);
+				return null;
+			}
+
+			int decorationLength = endOffset - startOffset;
+
+			if (decorationLength <= 0) {
+				CxLogger.warning(LOG_TAG + "   [OSS] Invalid decoration length: " + decorationLength);
+				return null;
+			}
+
+			CxLogger.info(LOG_TAG + "   [OSS] Decorating dependency block");
+
+			CxLogger.info(LOG_TAG + "   [OSS] First line: " + (firstLineNumber + 1) + ", StartIndex: "
+					+ firstLocation.getStartIndex());
+
+			CxLogger.info(LOG_TAG + "   [OSS] Last line: " + (lastLineNumber + 1) + ", EndIndex: "
+					+ lastLocation.getEndIndex());
+
+			CxLogger.info(LOG_TAG + "   [OSS] Final Position: [" + startOffset + "-" + endOffset + "] = "
+					+ decorationLength + " chars");
+
+			return new Position(startOffset, decorationLength);
+
+		} catch (Exception e) {
+			CxLogger.warning(LOG_TAG + "   [OSS] Error decorating dependency block: " + e.getMessage());
+			e.printStackTrace();
+			return null;
+		}
+	}
+
+	/**
+	 * Calculate the precise source range for an annotation.
+	 *
+	 * Handles BOTH absolute and line-relative offsets depending on scanner:
+	 * - Secrets API: Returns RealtimeLocation with ABSOLUTE document offsets
+	 * - ASCA API: Returns character positions that are LINE-RELATIVE offsets
+	 *
+	 * @param editor Text editor
+	 * @param issue  Scan issue with location info
+	 * @return org.eclipse.jface.text.Position representing the precise range
+	 */
+	private static Position calculateRange(ITextEditor editor, ScanIssue issue) {
+		try {
+			IDocument document = editor.getDocumentProvider().getDocument(editor.getEditorInput());
+			if (document == null)
+				return new org.eclipse.jface.text.Position(0, 1);
+
+			int docLength = document.getLength();
+
+			// 1. Precise location-based offset calculation
+			if (issue.getLocations() != null && !issue.getLocations().isEmpty()) {
+				Location location = issue.getLocations().get(0);
+				int rawStart = location.getStartIndex();
+				int rawEnd = location.getEndIndex();
+				int line = Math.max(0, location.getLine() - 1);
+
+				IRegion lineInfo = document.getLineInformation(line);
+				int lineOffset = lineInfo.getOffset();
+				int lineLength = lineInfo.getLength();
+
+				int trimIndent = getLeadingWhitespaceOffset(document, lineOffset, lineLength);
+				// Use explicit flag from Location instead of inferring from magnitude
+				boolean isAbsoluteOffset = location.isAbsoluteOffset();
+
+				int charStart = isAbsoluteOffset ? rawStart : (lineOffset + rawStart);
+				int charEnd = isAbsoluteOffset ? rawEnd : (lineOffset + rawEnd);
+
+				// If start points to the beginning of the line, shift past leading whitespace
+				if (charStart <= lineOffset) {
+					charStart = lineOffset + trimIndent;
+				}
+
+				if (charEnd <= charStart) {
+					charEnd = lineOffset + lineLength;
+				}
+
+				// Clamp offsets safely within document bounds
+				charStart = Math.max(0, Math.min(charStart, docLength));
+				charEnd = Math.max(charStart, Math.min(charEnd, docLength));
+
+				if (charEnd > charStart) {
+					return new org.eclipse.jface.text.Position(charStart, charEnd - charStart);
+				}
+			}
+
+			// 2. Fallback: Highlight line content (skipping leading indentation)
+			int targetLine = 0;
+			if (issue.getProblematicLineNumber() != null) {
+				targetLine = issue.getProblematicLineNumber() - 1;
+			} else if (issue.getLocations() != null && !issue.getLocations().isEmpty()) {
+				targetLine = issue.getLocations().get(0).getLine() - 1;
+			}
+
+			int line = Math.max(0, Math.min(targetLine, document.getNumberOfLines() - 1));
+			IRegion lineInfo = document.getLineInformation(line);
+
+			int trimIndent = getLeadingWhitespaceOffset(document, lineInfo.getOffset(), lineInfo.getLength());
+			int startOffset = lineInfo.getOffset() + trimIndent;
+			int length = Math.max(1, lineInfo.getLength() - trimIndent);
+
+			return new org.eclipse.jface.text.Position(startOffset, length);
+
+		} catch (Exception e) {
+			CxLogger.warning(LOG_TAG + " Error calculating range: " + e.getMessage());
+			return new org.eclipse.jface.text.Position(0, 1);
+		}
+	}
+
+	/**
+	 * Calculates the number of leading whitespace characters (spaces/tabs) on a
+	 * given line.
+	 *
+	 * @param document   Text document
+	 * @param lineOffset Start character offset of the line
+	 * @param lineLength Total length of the line
+	 * @return Number of leading whitespace characters
+	 */
+	private static int getLeadingWhitespaceOffset(org.eclipse.jface.text.IDocument document,
+			int lineOffset,
+			int lineLength) {
+		try {
+			String lineText = document.get(lineOffset, lineLength);
+			int leadingSpaces = 0;
+
+			while (leadingSpaces < lineText.length() &&
+					Character.isWhitespace(lineText.charAt(leadingSpaces))) {
+				leadingSpaces++;
+			}
+
+			return leadingSpaces;
+		} catch (Exception e) {
+			return 0;
+		}
+	}
+
+	/**
+	 * Clear previous annotations for a file.
+	 *
+	 * @param filePath        File path
+	 * @param annotationModel Annotation model
+	 */
+	private static void clearAnnotations(String filePath,
+			IAnnotationModel annotationModel) {
+
+		try {
+			String normalizedPath = normalizeFilePath(filePath);
+			CxLogger.info(LOG_TAG + "[CLEAR_DEBUG] Looking up with normalized path: " + normalizedPath);
+			CxLogger.info(LOG_TAG + "[CLEAR_DEBUG] Available keys in fileAnnotations: " + fileAnnotations.keySet());
+
+			List<Annotation> previousAnnotations = fileAnnotations.get(normalizedPath);
+			if (previousAnnotations != null) {
+				CxLogger.info(LOG_TAG + "[CLEAR_DEBUG] Found " + previousAnnotations.size() + " annotations to remove");
+				for (Annotation annotation : previousAnnotations) {
+					annotationModel.removeAnnotation(annotation);
+					CxLogger.info(LOG_TAG + "[CLEAR_DEBUG] Removed annotation: " + annotation);
+				}
+				fileAnnotations.remove(normalizedPath);
+
+				CxLogger.info(LOG_TAG + "[CLEAR_SUCCESS] Cleared " + previousAnnotations.size() +
+						" previous annotations for: " + normalizedPath);
+			} else {
+				// FALLBACK: If lookup failed, try direct removal from annotation model
+				CxLogger.warning(LOG_TAG + "[CLEAR_FALLBACK] No annotations found in map for: " + normalizedPath);
+				CxLogger.warning(LOG_TAG + "[CLEAR_FALLBACK] Attempting direct removal of FindingsAnnotations from model");
+				List<Annotation> toRemove = new ArrayList<>();
+				annotationModel.getAnnotationIterator().forEachRemaining(ann -> {
+					if (ann instanceof FindingsAnnotation) {
+						toRemove.add(ann);
+						CxLogger.info(LOG_TAG + "[CLEAR_FALLBACK] Will remove FindingsAnnotation: " + ann);
+					}
+				});
+				for (Annotation ann : toRemove) {
+					annotationModel.removeAnnotation(ann);
+				}
+				if (!toRemove.isEmpty()) {
+					CxLogger.info(LOG_TAG + "[CLEAR_FALLBACK] Removed " + toRemove.size() + " FindingsAnnotations directly from model");
+				}
+			}
+		} catch (Exception e) {
+			CxLogger.warning(LOG_TAG + "[CLEAR_ERROR] Error clearing annotations: " +
+					e.getMessage());
+			e.printStackTrace();
+		}
+	}
+
+	/**
+	 * Clear all annotations from all open editors (used on logout).
+	 * Removes all FindingsAnnotation objects from the annotation models
+	 * of currently open editors.
+	 */
+	public static void clearAllAnnotations() {
+		try {
+			CxLogger.info(LOG_TAG + "[CLEAR_ALL_START] Clearing all annotations from all open editors");
+			IWorkbench workbench = PlatformUI.getWorkbench();
+			if (workbench == null) {
+				CxLogger.warning(LOG_TAG + "[CLEAR_ALL] Workbench is null");
+				return;
+			}
+
+			int editorCount = 0;
+			int annotationCount = 0;
+
+			for (var window : workbench.getWorkbenchWindows()) {
+				IWorkbenchPage page = window.getActivePage();
+				if (page == null) {
+					continue;
+				}
+
+				// Get all open editors
+				org.eclipse.ui.IEditorReference[] editors = page.getEditorReferences();
+				for (org.eclipse.ui.IEditorReference editorRef : editors) {
+					try {
+						org.eclipse.ui.IEditorPart editorPart = editorRef.getEditor(false);
+						if (editorPart == null) {
+							continue;
+						}
+
+						// Use adapter pattern to get ITextEditor
+						ITextEditor editor = editorPart.getAdapter(ITextEditor.class);
+						if (editor == null) {
+							continue;
+						}
+
+						editorCount++;
+						IAnnotationModel annotationModel = editor.getDocumentProvider()
+								.getAnnotationModel(editor.getEditorInput());
+						if (annotationModel == null) {
+							continue;
+						}
+
+						// Remove all FindingsAnnotation objects
+						java.util.List<Annotation> toRemove = new java.util.ArrayList<>();
+						annotationModel.getAnnotationIterator().forEachRemaining(annotation -> {
+							if (annotation instanceof FindingsAnnotation) {
+								toRemove.add(annotation);
+							}
+						});
+
+						for (Annotation annotation : toRemove) {
+							annotationModel.removeAnnotation(annotation);
+							annotationCount++;
+						}
+						CxLogger.info(LOG_TAG + "[CLEAR_ALL] Cleared " + toRemove.size() + " annotations from editor " + editorCount);
+					} catch (Exception e) {
+						CxLogger.warning(LOG_TAG + "[CLEAR_ALL_ERROR] Error clearing annotations from editor: " + e.getMessage());
+					}
+				}
+			}
+
+			// Clear the fileAnnotations map
+			CxLogger.info(LOG_TAG + "[CLEAR_ALL] Clearing fileAnnotations map with " + fileAnnotations.size() + " entries");
+			fileAnnotations.clear();
+			CxLogger.info(LOG_TAG + "[CLEAR_ALL_COMPLETE] All annotations cleared - Editors: " + editorCount + ", Annotations removed: " + annotationCount);
+		} catch (Exception e) {
+			CxLogger.warning(LOG_TAG + "[CLEAR_ALL_ERROR] Error clearing all annotations: " + e.getMessage());
+		}
+	}
+
+	/**
+	 * Find open text editor for a file.
+	 *
+	 * @param file File to find editor for
+	 * @return ITextEditor or null
+	 */
+	private static ITextEditor findOpenEditor(IFile file) {
+		try {
+			IWorkbench workbench = PlatformUI.getWorkbench();
+			if (workbench == null) {
+				return null;
+			}
+
+			IWorkbenchPage page = null;
+			try {
+				page = workbench.getActiveWorkbenchWindow().getActivePage();
+			} catch (NullPointerException e) {
+				// Workbench window not available, try all windows
+				for (var window : workbench.getWorkbenchWindows()) {
+					page = window.getActivePage();
+					if (page != null)
+						break;
+				}
+			}
+
+			if (page == null) {
+				return null;
+			}
+
+			var editors = page.getEditors();
+			for (var editor : editors) {
+				Object input = editor.getEditorInput();
+				if (input instanceof org.eclipse.ui.IFileEditorInput) {
+					IFile editorFile = ((org.eclipse.ui.IFileEditorInput) input)
+							.getFile();
+					if (editorFile.equals(file)) {
+						// Try method 1: Direct ITextEditor instance
+						if (editor instanceof ITextEditor) {
+							return (ITextEditor) editor;
+						}
+
+						// Try method 2: ITextEditor adapter (for MavenPomEditor, etc.)
+						ITextEditor textEditor = editor.getAdapter(ITextEditor.class);
+						if (textEditor != null) {
+							return textEditor;
+						}
+					}
+				}
+			}
+		} catch (Exception e) {
+			CxLogger.warning(LOG_TAG + " Error finding open editor: " +
+					e.getMessage());
+		}
+
+		return null;
+	}
+
+	/**
+	 * Remove all decorations for a file.
+	 *
+	 * Called when:
+	 * - Results are cleared
+	 * - File is closed
+	 * - Editor is disposed
+	 *
+	 * @param file File to remove decorations from
+	 */
+	public static void clearDecorations(IFile file) {
+		try {
+			// **FIX: Use getLocation() (absolute path) for consistency with
+			// decorateEditor()**
+			// Ensures fileAnnotations map lookups use the same path format
+			String filePath = file.getLocation().toOSString();
+			CxLogger.info(LOG_TAG + " Clearing decorations for: " + filePath);
+
+			ITextEditor editor = findOpenEditor(file);
+			if (editor == null) {
+				fileAnnotations.remove(filePath);
+				return;
+			}
+
+			IAnnotationModel annotationModel = editor.getDocumentProvider()
+					.getAnnotationModel(editor.getEditorInput());
+
+			if (annotationModel != null) {
+				clearAnnotations(filePath, annotationModel);
+			}
+
+			CxLogger.info(LOG_TAG + " Decorations cleared");
+
+		} catch (Exception e) {
+			CxLogger.warning(LOG_TAG + " Error clearing decorations: " +
+					e.getMessage());
+		}
+	}
+
+	/**
+	 * Get decorator statistics.
+	 *
+	 * @return Summary string
+	 */
+	public static String getStatistics() {
+		int totalAnnotations = fileAnnotations.values().stream()
+				.mapToInt(List::size)
+				.sum();
+		return "Decorated files: " + fileAnnotations.size() +
+				", Total annotations: " + totalAnnotations;
+	}
+
+	/**
+	 * Highlight a line and add gutter icon for a problem.
+	 *
+	 * Delegates to the decorateEditor() path which handles annotation creation
+	 * and display in the editor's gutter and line highlighting.
+	 *
+	 * @param problemHelper     Problem helper with context (used to locate the file
+	 *                          being edited)
+	 * @param scanIssue         Scan issue to highlight
+	 * @param isProblem         Whether this is a problem (not just note)
+	 * @param problemLineNumber Line number to highlight
+	 */
+	public void highlightLineAddGutterIconForProblem(
+			ProblemHelper problemHelper,
+			ScanIssue scanIssue,
+			boolean isProblem,
+			int problemLineNumber) {
+
+		if (!isProblem || scanIssue == null) {
+			return;
+		}
+
+		try {
+			// Get the file from problem helper and decorate it
+			// Wrap single issue in a list and delegate to decorateEditor()
+			IFile file = problemHelper.getFile();
+			if (file != null && file.exists()) {
+				decorateEditor(file, List.of(scanIssue));
+			} else {
+				CxLogger.warning(LOG_TAG + " Cannot decorate: file not found or null");
+			}
+		} catch (Exception e) {
+			CxLogger.error(LOG_TAG + " Error in highlightLineAddGutterIconForProblem: " + e.getMessage(), e);
+		}
+	}
+
+	/**
+	 * Remove all highlighters/decorations from a project.
+	 *
+	 * Called by DevAssistInspectionMgr when resetting editor state.
+	 * Clears all tracked annotations across all files.
+	 *
+	 * @param project Project to clear (used for context, actual clearing is
+	 *                project-wide)
+	 */
+	public static void removeAllHighlighters(org.eclipse.core.resources.IProject project) {
+		try {
+			IWorkbench workbench = PlatformUI.getWorkbench();
+			if (workbench == null) {
+				CxLogger.info(LOG_TAG + " removeAllHighlighters: Workbench not available");
+				return;
+			}
+
+			for (org.eclipse.ui.IWorkbenchWindow window : workbench.getWorkbenchWindows()) {
+				for (IWorkbenchPage page : window.getPages()) {
+					for (org.eclipse.ui.IEditorReference ref : page.getEditorReferences()) {
+						try {
+							ITextEditor editor = (ITextEditor) ref.getEditor(false);
+							if (editor != null) {
+								IAnnotationModel annotationModel = editor.getDocumentProvider()
+										.getAnnotationModel(editor.getEditorInput());
+								if (annotationModel != null) {
+									for (List<Annotation> annotations : fileAnnotations.values()) {
+										for (Annotation ann : annotations) {
+											try {
+												annotationModel.removeAnnotation(ann);
+											} catch (Exception e) {
+												// Continue removing others
+											}
+										}
+									}
+								}
+							}
+						} catch (Exception e) {
+							// Continue with other editors
+						}
+					}
+				}
+			}
+
+			fileAnnotations.clear();
+			CxLogger.info(LOG_TAG + " Removed all highlighters for project: " + project.getName());
+
+		} catch (Exception e) {
+			CxLogger.error(LOG_TAG + " Error removing all highlighters: " + e.getMessage(), e);
+		}
+	}
+}

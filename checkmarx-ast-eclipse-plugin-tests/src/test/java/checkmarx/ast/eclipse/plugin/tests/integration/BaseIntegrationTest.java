@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory;
 
 import com.checkmarx.ast.wrapper.CxConfig;
 import com.checkmarx.ast.wrapper.CxWrapper;
-import com.checkmarx.eclipse.runner.Authenticator;
+import com.checkmarx.eclipse.common.runner.Authenticator;
 
 import checkmarx.ast.eclipse.plugin.tests.common.Environment;
 

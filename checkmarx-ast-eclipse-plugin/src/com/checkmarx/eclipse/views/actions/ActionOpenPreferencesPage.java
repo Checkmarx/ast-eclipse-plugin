@@ -6,8 +6,8 @@ import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.dialogs.PreferencesUtil;
 
+import com.checkmarx.eclipse.common.utils.PluginConstants;
 import com.checkmarx.eclipse.enums.ActionName;
-import com.checkmarx.eclipse.utils.PluginConstants;
 import com.checkmarx.eclipse.views.DisplayModel;
 
 public class ActionOpenPreferencesPage extends CxBaseAction {

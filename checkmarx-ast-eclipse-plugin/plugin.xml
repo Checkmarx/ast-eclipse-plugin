@@ -5,9 +5,15 @@
     <extension
             point="org.eclipse.ui.preferencePages">
         <page
-                class="com.checkmarx.eclipse.properties.PreferencesPage"
+                class="com.checkmarx.eclipse.common.preferences.PreferencesPage"
                 id="com.checkmarx.eclipse.properties.preferencespage"
                 name="Checkmarx One">
+        </page>
+        <page
+                class="com.checkmarx.eclipse.common.preferences.CheckmarxPreferencePage"
+                id="com.checkmarx.eclipse.devassist.prefs.checkmarxpreferencepage"
+                name="Checkmarx One Assist"
+                category="com.checkmarx.eclipse.properties.preferencespage">
         </page>
     </extension>
     <extension

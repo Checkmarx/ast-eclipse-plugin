@@ -1,0 +1,311 @@
+package com.checkmarx.eclipse.devassist.problems;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IProject;
+import org.eclipse.e4.core.services.events.IEventBroker;
+import org.eclipse.ui.PlatformUI;
+
+import com.checkmarx.eclipse.devassist.model.ScanIssue;
+import com.checkmarx.eclipse.common.utils.CxLogger;
+
+/**
+ * In-memory cache for scan results (ScanIssue), keyed by file path.
+ *
+ * Thread-safe via ConcurrentHashMap. Used to avoid redundant scans
+ * and to enable result restoration when files are reopened.
+ *
+ * Mirrors JetBrains ProblemHolderService pattern with Eclipse IEventBroker for notifications.
+ */
+public class ProblemHolderService {
+
+	private static final String LOG_TAG = "[PROBLEM-HOLDER]";
+	public static final String ISSUES_UPDATED_TOPIC = "com/checkmarx/issues/updated";
+
+	// Session property key for storing service in project
+	public static final String SERVICE_KEY = ProblemHolderService.class.getName() +
+		".INSTANCE";
+
+	private final ConcurrentHashMap<String, List<ScanIssue>> fileToScanIssues =
+		new ConcurrentHashMap<>();
+	private final ConcurrentHashMap<String, List<ProblemDescriptor>> fileToProblemDescriptors =
+		new ConcurrentHashMap<>();
+
+    /**
+     * Returns the instance of this service for the given project.
+     *
+     * @param project the project.
+     * @return the instance of this service for the given project.
+     */
+	public static ProblemHolderService getInstance(IProject project) {
+		if (project == null) {
+			return null;
+		}
+		try {
+			org.eclipse.core.runtime.QualifiedName key = new org.eclipse.core.runtime.QualifiedName(
+				"com.checkmarx.eclipse.plugin", "problem-holder");
+			ProblemHolderService instance = (ProblemHolderService) project.getSessionProperty(key);
+			if (instance == null) {
+				instance = new ProblemHolderService();
+				project.setSessionProperty(key, instance);
+			}
+			return instance;
+		} catch (Exception e) {
+			return new ProblemHolderService();
+		}
+    }
+
+	/**
+	 * Cache scan issues for a file.
+	 *
+	 * @param filePath Absolute file path
+	 * @param issues Issues found by scanners
+	 */
+	public void addScanIssues(String filePath, List<ScanIssue> issues) {
+		if (filePath == null || issues == null) {
+			return;
+		}
+		fileToScanIssues.put(filePath, new ArrayList<>(issues));
+		// **KEY: Notify all listeners of the update (JetBrains pattern)**
+		publishIssuesUpdated();
+	}
+
+	/**
+	 * Get cached scan issues for a file.
+	 *
+	 * @param filePath Absolute file path
+	 * @return Cached issues or empty list
+	 */
+	public List<ScanIssue> getScanIssuesByFile(String filePath) {
+		if (filePath == null) {
+			return Collections.emptyList();
+		}
+
+		List<ScanIssue> cached = fileToScanIssues.get(filePath);
+		return cached != null ? new ArrayList<>(cached) : Collections.emptyList();
+	}
+
+	/**
+	 * Get all cached issues across all files.
+	 *
+	 * @return Map of file path → issues
+	 */
+	public Map<String, List<ScanIssue>> getAllScanIssues() {
+
+		Map<String, List<ScanIssue>> result = new HashMap<>();
+		for (Map.Entry<String, List<ScanIssue>> entry : fileToScanIssues.entrySet()) {
+			result.put(entry.getKey(), new ArrayList<>(entry.getValue()));
+		}
+		int totalIssues = result.values().stream().mapToInt(List::size).sum();
+		return result;
+	}
+
+	/**
+	 * Merge new issues with existing issues for a file.
+	 * Deduplicates by issue ID.
+	 *
+	 * @param filePath Absolute file path
+	 * @param newIssues Issues to merge
+	 */
+	public void mergeScanIssues(String filePath, List<ScanIssue> newIssues) {
+		if (filePath == null || newIssues == null) {
+			return;
+		}
+
+		List<ScanIssue> existing = fileToScanIssues.getOrDefault(filePath, new ArrayList<>());
+		Map<String, ScanIssue> merged = new HashMap<>();
+
+		// Add existing issues
+		for (ScanIssue issue : existing) {
+			merged.put(issue.getScanIssueId(), issue);
+		}
+
+		// Add/override with new issues (by ID)
+		for (ScanIssue issue : newIssues) {
+			merged.put(issue.getScanIssueId(), issue);
+		}
+
+		fileToScanIssues.put(filePath, new ArrayList<>(merged.values()));
+		CxLogger.info(LOG_TAG + " Merged " + newIssues.size() + " issues for: " + filePath);
+
+		// **KEY: Notify listeners when cache is modified**
+		publishIssuesUpdated();
+	}
+
+	/**
+	 * Clear cached issues for a file.
+	 *
+	 * @param filePath Absolute file path
+	 */
+	public void removeScanIssues(String filePath) {
+		if (filePath == null) {
+			return;
+		}
+
+		fileToScanIssues.remove(filePath);
+		CxLogger.info(LOG_TAG + " Cleared cache for: " + filePath);
+	}
+
+	/**
+	 * Remove cached scan issues for a specific scanner type and file.
+	 * Mirrors JetBrains DevAssistScanScheduler.cacheScanResults() pattern.
+	 *
+	 * When a partial re-scan is performed (e.g., only ASCA is rescanned),
+	 * this method removes the old results for THAT scanner type before
+	 * merging the new results.
+	 *
+	 * @param scannerType Name of the scanner engine (e.g., "ASCA", "OSS", "IaC")
+	 * @param filePath Absolute file path
+	 */
+	public void removeScanIssuesByFileAndScanner(String scannerType, String filePath) {
+		if (filePath == null || scannerType == null) {
+			return;
+		}
+
+		List<ScanIssue> existing = fileToScanIssues.getOrDefault(filePath, new ArrayList<>());
+		List<ScanIssue> filtered = new ArrayList<>();
+
+		// Keep only issues from OTHER scanners
+		for (ScanIssue issue : existing) {
+			if (issue.getScanEngine() != null &&
+				!issue.getScanEngine().name().equals(scannerType)) {
+				filtered.add(issue);
+			}
+		}
+
+		fileToScanIssues.put(filePath, filtered);
+		CxLogger.info(LOG_TAG + " Removed " + scannerType + " issues for: " + filePath +
+			" (kept " + filtered.size() + " issues from other scanners)");
+	}
+
+	/**
+	 * Remove cached scan issues for a scanner across ALL files in this project.
+	 * Used when a scanner is disabled and its findings must be purged immediately.
+	 *
+	 * @param scannerType Name of the scanner engine (e.g., "ASCA", "OSS", "IAC")
+	 * @return the file paths that had at least one issue removed, so callers can
+	 *         refresh editor decorations/markers for those files
+	 */
+	public List<String> removeAllIssuesForScanner(String scannerType) {
+		List<String> affectedFiles = new ArrayList<>();
+		if (scannerType == null) {
+			return affectedFiles;
+		}
+
+		for (Map.Entry<String, List<ScanIssue>> entry : fileToScanIssues.entrySet()) {
+			boolean hasMatch = entry.getValue().stream()
+				.anyMatch(issue -> issue.getScanEngine() != null && issue.getScanEngine().name().equals(scannerType));
+			if (hasMatch) {
+				affectedFiles.add(entry.getKey());
+			}
+		}
+
+		for (String filePath : affectedFiles) {
+			removeScanIssuesByFileAndScanner(scannerType, filePath);
+		}
+
+		if (!affectedFiles.isEmpty()) {
+			publishIssuesUpdated();
+		}
+
+		return affectedFiles;
+	}
+
+	/**
+	 * Clear all caches (on project close or logout).
+	 */
+	public void clearAll() {
+		fileToScanIssues.clear();
+		fileToProblemDescriptors.clear();
+		CxLogger.info(LOG_TAG + " All caches cleared");
+		publishIssuesUpdated();
+	}
+
+	/**
+	 * Get cache statistics for debugging.
+	 *
+	 * @return Summary string
+	 */
+	public String getCacheStats() {
+		int fileCount = fileToScanIssues.size();
+		int totalIssues = fileToScanIssues.values().stream()
+			.mapToInt(List::size)
+			.sum();
+		return "Files: " + fileCount + ", Total Issues: " + totalIssues;
+	}
+
+	/**
+	 * Publish issues update via Eclipse IEventBroker.
+	 * Subscribers listen on ISSUES_UPDATED_TOPIC using @UIEventTopic annotation.
+	 *
+	 * @see com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView
+	 */
+	private void publishIssuesUpdated() {
+		try {
+			IEventBroker eventBroker = (IEventBroker) PlatformUI.getWorkbench().getService(IEventBroker.class);
+			if (eventBroker != null) {
+				Map<String, List<ScanIssue>> allIssues = getAllScanIssues();
+				
+				eventBroker.post(ISSUES_UPDATED_TOPIC, allIssues);
+			} else {
+				System.err.println(LOG_TAG + " [EVENT-BROKER] ✗ EventBroker not available");
+			}
+		} catch (Exception e) {
+			System.err.println(LOG_TAG + " [EVENT-BROKER] Error publishing event: " + e.getMessage());
+			e.printStackTrace();
+		}
+	}
+	
+	public static void addToCxOneFindings(IFile file, List<ScanIssue> problemsList) {
+        getInstance(file.getProject()).addScanIssues(file.getFullPath().toOSString(), problemsList);
+    }
+
+	/**
+	 * Cache problem descriptors for a file.
+	 *
+	 * @param filePath Absolute file path
+	 * @param descriptors Problem descriptors to cache
+	 */
+	public void addProblemDescriptors(String filePath, List<ProblemDescriptor> descriptors) {
+		if (filePath == null || descriptors == null) {
+			return;
+		}
+		fileToProblemDescriptors.put(filePath, new ArrayList<>(descriptors));
+		CxLogger.info(LOG_TAG + " Cached " + descriptors.size() + " problem descriptors for: " + filePath);
+	}
+
+	/**
+	 * Get cached problem descriptors for a file.
+	 *
+	 * @param filePath Absolute file path
+	 * @return Cached problem descriptors or empty list
+	 */
+	public List<ProblemDescriptor> getProblemDescriptors(String filePath) {
+		if (filePath == null) {
+			return Collections.emptyList();
+		}
+		List<ProblemDescriptor> cached = fileToProblemDescriptors.get(filePath);
+		return cached != null ? Collections.unmodifiableList(cached) : Collections.emptyList();
+	}
+
+	/**
+	 * Remove cached problem descriptors for a file.
+	 *
+	 * @param filePath Absolute file path
+	 */
+	public void removeProblemDescriptorsForFile(String filePath) {
+		if (filePath == null) {
+			return;
+		}
+		fileToProblemDescriptors.remove(filePath);
+		CxLogger.info(LOG_TAG + " Removed problem descriptors for: " + filePath);
+	}
+
+}
+

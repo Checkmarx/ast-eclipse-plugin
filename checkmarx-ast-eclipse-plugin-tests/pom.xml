@@ -43,7 +43,6 @@
 			                <formats>
 			                    <format>XML</format>
 			                    <format>CSV</format>
-			                    <format>HTML</format>
 			                </formats>
 			            </configuration>
 			        </execution>

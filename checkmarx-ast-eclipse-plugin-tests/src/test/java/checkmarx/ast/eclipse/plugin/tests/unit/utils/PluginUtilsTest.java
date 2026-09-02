@@ -32,9 +32,9 @@ import org.mockito.stubbing.Answer;
 import com.checkmarx.ast.results.result.Data;
 import com.checkmarx.ast.results.result.Node;
 import com.checkmarx.ast.results.result.Result;
-import com.checkmarx.eclipse.enums.Severity;
-import com.checkmarx.eclipse.properties.Preferences;
-import com.checkmarx.eclipse.utils.PluginConstants;
+import com.checkmarx.eclipse.common.enums.Severity;
+import com.checkmarx.eclipse.common.preferences.Preferences;
+import com.checkmarx.eclipse.common.utils.PluginConstants;
 import com.checkmarx.eclipse.utils.PluginUtils;
 import com.checkmarx.eclipse.views.DataProvider;
 import com.checkmarx.eclipse.views.DisplayModel;
@@ -167,7 +167,7 @@ public class PluginUtilsTest {
 
         try (MockedStatic<Preferences> prefs = Mockito.mockStatic(Preferences.class)) {
 
-            prefs.when(Preferences::getApiKey).thenReturn("apikey");
+            prefs.when(Preferences::isAuthenticated).thenReturn(true);
 
             boolean result = PluginUtils.areCredentialsDefined();
 
@@ -180,7 +180,7 @@ public class PluginUtilsTest {
 
         try (MockedStatic<Preferences> prefs = Mockito.mockStatic(Preferences.class)) {
 
-            prefs.when(Preferences::getApiKey).thenReturn("");
+            prefs.when(Preferences::isAuthenticated).thenReturn(false);
 
             boolean result = PluginUtils.areCredentialsDefined();
 

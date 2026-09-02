@@ -4,8 +4,8 @@ import org.eclipse.jface.action.Action;
 import org.eclipse.jface.viewers.TreeViewer;
 
 import com.checkmarx.eclipse.Activator;
+import com.checkmarx.eclipse.common.utils.PluginConstants;
 import com.checkmarx.eclipse.enums.ActionName;
-import com.checkmarx.eclipse.utils.PluginConstants;
 import com.checkmarx.eclipse.views.DisplayModel;
 
 public class ActionCancelScan extends CxBaseAction {

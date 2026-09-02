@@ -5,31 +5,31 @@ Bundle-SymbolicName: com.checkmarx.eclipse.plugin;singleton:=true
 Bundle-Version: 1.0.0.qualifier
 Bundle-Vendor: Checkmarx
 Require-Bundle: org.eclipse.ui,
+ org.eclipse.ui.workbench.texteditor,
+ org.eclipse.ui.editors,
  org.eclipse.core.runtime,
  org.eclipse.jdt.core,
  org.eclipse.ui.ide,
+ org.eclipse.jface.text,
+ org.eclipse.text,
+ org.eclipse.jdt.ui,
  org.eclipse.jgit,
  org.eclipse.e4.core.services,
  com.google.guava,
  org.eclipse.e4.ui.di,
- org.apache.commons.lang3,
  org.eclipse.mylyn.commons.ui,
  org.eclipse.mylyn.commons.core,
- jakarta.inject.jakarta.inject-api;bundle-version="2.0.1"
+ jakarta.inject.jakarta.inject-api;bundle-version="2.0.1",
+ com.checkmarx.eclipse.common,
+ com.checkmarx.eclipse.devassist
 Automatic-Module-Name: com.checkmarx.eclipse
 Bundle-RequiredExecutionEnvironment: JavaSE-17
 Import-Package: org.eclipse.core.resources,
  org.osgi.service.event;version="1.4.1"
 Bundle-ActivationPolicy: lazy
 Bundle-Activator: com.checkmarx.eclipse.Activator
+Export-Package: com.checkmarx.eclipse.enums,
+ com.checkmarx.eclipse.utils
 Bundle-ClassPath: .,
- lib/slf4j-simple-2.0.17.jar,
- lib/slf4j-reload4j-2.0.17.jar,
- lib/slf4j-api-2.0.17.jar,
- lib/jackson-annotations-2.21.jar,
- lib/jackson-core-2.21.4.jar,
- lib/jackson-databind-2.21.5.jar,
- lib/commons-lang3-3.18.0.jar,
- lib/ast-cli-java-wrapper-2.4.24.jar,
  lib/org.eclipse.mylyn.commons.ui_4.9.0.v20251121-0615.jar,
  lib/org-eclipse-mylyn-commons-core.jar
