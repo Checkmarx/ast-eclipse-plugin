@@ -7,9 +7,6 @@
 		<test.includes>
 			**/unit/**/Test*.java,**/unit/**/*Test.java,**/unit/**/*Tests.java,**/unit/**/*TestCase.java
 		</test.includes>
-		<test.excludes>
-			**/integration/**,**/ui/**
-		</test.excludes>
 	</properties>
 	<groupId>com.checkmarx.ast.eclipse.tests</groupId>
 	<artifactId>com.checkmarx.ast.eclipse.tests</artifactId>
@@ -47,6 +44,7 @@
 			                <formats>
 			                    <format>XML</format>
 			                    <format>CSV</format>
+			                    <format>HTML</format>
 			                </formats>
 			            </configuration>
 			        </execution>
@@ -57,7 +55,7 @@
 				<artifactId>tycho-surefire-plugin</artifactId>
 				<version>${tycho.version}</version>
 				<configuration>
-					<useUIHarness>false</useUIHarness>
+					<useUIHarness>true</useUIHarness>
 					<useUIThread>false</useUIThread>
 					<providerHint>junit5</providerHint>
 					<failIfNoTests>true</failIfNoTests>
@@ -65,9 +63,6 @@
 					<includes>
 						<include>${test.includes}</include>
 					</includes>
-					<excludes>
-						<exclude>${test.excludes}</exclude>
-					</excludes>
 				</configuration>
 			</plugin>
 
