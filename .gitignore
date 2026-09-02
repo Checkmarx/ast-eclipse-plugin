@@ -8,3 +8,4 @@
 !checkmarx-ast-eclipse-plugin/lib/*.jar
 !devassist-lib/lib/*.jar
 !common-lib/lib/*.jar
+/.vscode
