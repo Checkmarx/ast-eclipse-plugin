@@ -11,9 +11,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
-import com.checkmarx.eclipse.devassist.problems.ProblemBuilder;
-import com.checkmarx.eclipse.devassist.problems.ProblemDescriptor;
-import com.checkmarx.eclipse.devassist.problems.ProblemHelper;
 
 /**
  * Unit tests for {@link ProblemBuilder}. Pure logic - builds a
