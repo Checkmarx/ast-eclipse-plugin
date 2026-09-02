@@ -25,6 +25,7 @@ import org.mockito.MockedStatic;
 
 import com.checkmarx.eclipse.devassist.model.Location;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.problems.ProblemDecorator;
 import com.checkmarx.eclipse.devassist.utils.DevAssistUtils;
 
 /**
