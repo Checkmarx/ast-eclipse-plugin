@@ -782,11 +782,19 @@ public final class IgnoreManager {
                     }
                 }
             } else {
-                // Not found in scan results - remove if this entry has a reference for this file
+                // Not found in THIS file's reconciliation scan - the package is gone from this file
+                // only. Remove just this file's reference(s), not the whole entry, so an ignore
+                // recorded separately for another file (e.g. "ignore this" clicked in both a root
+                // and a nested manifest with the same dependency) survives intact. Only drop the
+                // entry entirely once it has no file references left at all.
                 boolean hasFileRefForCurrentFile = ignoreEntry.getFiles().stream()
                         .anyMatch(fileRef -> fileRef.getPath().equals(relativePath) && fileRef.isActive());
                 if (hasFileRefForCurrentFile) {
-                    keysToRemove.add(mapEntry.getKey());
+                    ignoreEntry.getFiles().removeIf(fileRef -> fileRef.getPath().equals(relativePath));
+                    hasChanges = true;
+                    if (ignoreEntry.getFiles().isEmpty()) {
+                        keysToRemove.add(mapEntry.getKey());
+                    }
                 }
             }
         }

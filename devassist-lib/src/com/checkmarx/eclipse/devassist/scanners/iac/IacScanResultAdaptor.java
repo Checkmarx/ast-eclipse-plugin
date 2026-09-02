@@ -76,7 +76,7 @@ public class IacScanResultAdaptor implements ScanResult<IacRealtimeResults> {
 						},
 						Collectors.collectingAndThen(Collectors.toList(), issuesList -> {
 							issuesList
-									.sort(Comparator.comparingInt(issue -> getSeverityPrecedence(issue.getSeverity())));
+									.sort(Comparator.comparingInt((IacRealtimeResults.Issue issue) -> getSeverityPrecedence(issue.getSeverity())).reversed());
 							return issuesList;
 						})));
 
@@ -233,6 +233,8 @@ public class IacScanResultAdaptor implements ScanResult<IacRealtimeResults> {
 		}
 
 		switch (severity.toLowerCase()) {
+			case "malicious":
+				return 6;
 			case "critical":
 				return 5;
 			case "high":

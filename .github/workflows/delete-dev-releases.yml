@@ -13,13 +13,20 @@ on:
         description: 'Tag to delete'
         required: true
 
-permissions:
-  id-token: write
-  contents: write
-  packages: write
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions: {}
 
 jobs:
   delete:
+    name: Delete releases and tags
+    environment: release
+    permissions:
+      id-token: write  # for OIDC token generation
+      contents: write  # for git tag/release deletion
+      packages: write  # for artifact registry cleanup
     runs-on: cx-public-ubuntu-x64
     steps:
 

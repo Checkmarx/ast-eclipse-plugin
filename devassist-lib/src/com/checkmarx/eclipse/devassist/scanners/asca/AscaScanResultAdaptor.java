@@ -132,7 +132,7 @@ public class AscaScanResultAdaptor implements ScanResult<Object> {
 						ScanDetail::getLine,
 						Collectors.collectingAndThen(Collectors.toList(), detailsList -> {
 							detailsList.sort(
-									Comparator.comparingInt(detail -> getSeverityPrecedence(detail.getSeverity())));
+									Comparator.comparingInt((ScanDetail detail) -> getSeverityPrecedence(detail.getSeverity())).reversed());
 							return detailsList;
 						})));
 
@@ -330,6 +330,8 @@ public class AscaScanResultAdaptor implements ScanResult<Object> {
 		}
 
 		switch (severity.toLowerCase()) {
+			case "malicious":
+				return 6;
 			case "critical":
 				return 5;
 			case "high":

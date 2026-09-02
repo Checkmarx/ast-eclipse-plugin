@@ -151,6 +151,34 @@
 						</environment>
 					</environments>
 
+					<extraRequirements>
+						<requirement>
+							<type>eclipse-plugin</type>
+							<id>org.objectweb.asm</id>
+							<versionRange>[9.10.1,9.10.1]</versionRange>
+						</requirement>
+						<requirement>
+							<type>eclipse-plugin</type>
+							<id>org.objectweb.asm.tree</id>
+							<versionRange>[9.10.1,9.10.1]</versionRange>
+						</requirement>
+						<requirement>
+							<type>eclipse-plugin</type>
+							<id>org.objectweb.asm.commons</id>
+							<versionRange>[9.10.1,9.10.1]</versionRange>
+						</requirement>
+						<requirement>
+							<type>eclipse-plugin</type>
+							<id>org.objectweb.asm.util</id>
+							<versionRange>[9.10.1,9.10.1]</versionRange>
+						</requirement>
+						<requirement>
+							<type>eclipse-plugin</type>
+							<id>org.objectweb.asm.analysis</id>
+							<versionRange>[9.10.1,9.10.1]</versionRange>
+						</requirement>
+					</extraRequirements>
+
 				</configuration>
 			</plugin>
 			<plugin>
@@ -202,12 +230,6 @@
 			<id>swtbot</id>
 			<layout>p2</layout>
 			<url>https://download.eclipse.org/technology/swtbot/releases/latest</url>
-		</repository>
-		<repository>
-			<id>orbit-4.32</id>
-			<layout>p2</layout>
-			<url>
-				https://download.eclipse.org/tools/orbit/simrel/orbit-aggregation/release/4.32.0</url>
 		</repository>
 		<repository>
 			<id>mylyn</id>

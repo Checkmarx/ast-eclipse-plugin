@@ -169,13 +169,15 @@ public final class CopilotIntegration {
 	            }
 	        });
 
-	        // 2. Offload to a background thread to wait out the Copilot UI rebuild process safely
+	        // 2. Schedule mode switch and prompt send in sequence via background thread
+	        // This ensures mode is fully initialized before prompt is sent
 	        Thread executionThread = new Thread(() -> {
 	            try {
 	                // Give the SWT Browser/HTML view 450-500ms to completely finish loading the fresh session
 	                Thread.sleep(450);
 	            } catch (InterruptedException e) {
 	                Thread.currentThread().interrupt();
+	                CxLogger.warning(LOG_PREFIX + " Automation sequence interrupted: " + e.getMessage());
 	            }
 
 	            /**
@@ -206,13 +208,12 @@ public final class CopilotIntegration {
 	        });
 
 	        executionThread.start();
-	        // If your calling method relies on a strictly blocking response, you can optionally call executionThread.join(); here
+	        return true;
 
 	    } catch (Exception e) {
 	        CxLogger.error(LOG_PREFIX + " Unexpected exception handling background dispatch: " + e.getMessage(), e);
+	        return false;
 	    }
-
-	    return success[0];
 	}
 	
 
