@@ -36,15 +36,27 @@
   <ol>
     <li>
       <a href="#overview">Overview</a>
-    </li>
-    <li>
-      <a href="#getting-started">Getting Started</a>
       <ul>
-        <li><a href="#prerequisites">Prerequisites</a></li>
-        <li><a href="#setting-up">Setting Up</a></li>
+        <li>
+          <a href="#checkmarx-one-platform">Checkmarx One Platform</a>
+          <ul>
+            <li><a href="#key-features">Key Features</a></li>
+            <li><a href="#prerequisites">Prerequisites</a></li>
+            <li><a href="#initial-setup">Initial Setup</a></li>
+            <li><a href="#usage">Usage</a></li>
+          </ul>
+        </li>
+        <li>
+          <a href="#checkmarx-developer-assist">Checkmarx Developer Assist</a>
+          <ul>
+            <li><a href="#key-features-1">Key Features</a></li>
+            <li><a href="#prerequisites-1">Prerequisites</a></li>
+            <li><a href="#initial-setup-1">Initial Setup</a></li>
+            <li><a href="#usage-1">Usage</a></li>
+          </ul>
+        </li>
       </ul>
     </li>
-    <li><a href="#usage">Usage</a></li>
     <li><a href="#contribution">Contribution</a></li>
     <li><a href="#license">License</a></li>
     <li><a href="#contact">Contact</a></li>
@@ -54,55 +66,82 @@
 
 
 <!-- Overview -->
-## Overview
+# Overview
 
-Checkmarx continues to spearhead the shift-left approach to AppSec by bringing our powerful AppSec tools into your IDE. This empowers developers to identify vulnerabilities and remediate them **as they code**. The Checkmarx Eclipse plugin integrates seamlessly into your IDE, enabling you to access the full functionality of your Checkmarx One account (SAST, SCA, IaC Security) directly from your IDE.
+Checkmarx continues to spearhead the shift-left approach to AppSec by bringing our powerful AppSec tools into your IDE. This empowers developers to identify vulnerabilities and remediate them **as they code**. The Checkmarx One Eclipse plugin integrates seamlessly into your IDE, enabling you to access the full functionality of your Checkmarx One account (SAST, SCA, IaC, and Secret Detection) directly from your IDE.
+This plugin contains two separate capabilities:
 
-You can run new scans, or import results from scans run in your Checkmarx One account. Checkmarx provides detailed info about each vulnerability, including remediation recommendations and examples of effective remediation. The plugin enables you to navigate from a vulnerability to the relevant source code, so that you can easily zero-in on the problematic code and start working on remediation. 
+-   Checkmarx One Platform
 
-### Main Features
-* Access the full power of Checkmarx One (SAST, SCA, and IaC Security) directly from your IDE 
+-   Checkmarx Developer Assist  
+
+## Checkmarx One Platform
+This tool enables Checkmarx One users to access the full functionality of your Checkmarx One account (SAST, SCA, IaC, and Secret Detection) directly from your IDE. You can run new scans, or import results from scans run in your Checkmarx One account. Checkmarx provides detailed info about each vulnerability, including remediation recommendations and examples of effective remediation. The plugin enables you to navigate from a vulnerability to the relevant source code, so that you can easily zero-in on the problematic code and start working on remediation.
+
+### Key Features
+* Access the full power of Checkmarx One (SAST, SCA, IaC, and Secret Detection) directly from your IDE 
 * Run a new scan from your IDE even before committing the code, or import scan results from your Checkmarx One account
-* Provides actionable results including remediation recommendations. Navigate from results panel directly to the highlighted vulnerable code in the editor and get right down to work on the   remediation.
+* Provides actionable results including remediation recommendations. Navigate from results panel directly to the highlighted vulnerable code in the editor and get right down to work on the remediation.
 * Group and filter results
-* Triage results (by adjusting the severity and state and adding comments) directly from the Visual Studio console
+* Triage results (by adjusting the severity and state and adding comments) directly from the Eclipse console (currently supported for SAST and IaC Security)
 * Links to Codebashing lessons
-
-
-<!-- GETTING STARTED -->
-## Getting Started
-
 
 ### Prerequisites
 
--   An eclipse installation, version 2019-03 (4.11) or above. 
+- An Eclipse installation, version 2020-09 or above. 
    > Supported platforms: Windows, Mac, Linux/GTK
 
--   You have an **API key** for your Checkmarx One account. To create an
-    API key, see [Generating an API Key](https://checkmarx.com/resource/documents/en/34965-68618-generating-an-api-key.html)
-> In order to use this integration for running an end-to-end flow of
-    scanning a project and viewing results, the API Key must have at a
-    minimum the out-of-the-box composite role `ast-scanner` as well as
-    the IAM role `default-roles`.
-### Setting Up
+- You have an **API key** for your Checkmarx One account. To create an
+  API key, see [Generating an API Key](https://checkmarx.com/resource/documents/en/34965-68618-generating-an-api-key.html)
+  > In order to use this integration for running an end-to-end flow of scanning a project and viewing results with the minimum required permissions, the API Key or user account should have the role `plugin-scanner`. Alternatively, they can have at a minimum the out-of-the-box composite role `ast-scanner` as well as the IAM role `default-roles`.
+   
+
+### Initial Setup
 
 1.   Verify that all prerequisites are in place.
 
 2.   Install the **Checkmarx One** plugin and configure the settings as described [here](https://checkmarx.com/resource/documents/en/34965-68729-installing-and-setting-up-the-checkmarx-one-eclipse-plugin.html).
 
-## Usage
+### Usage
 
-To see how you can use our tool, please refer to the [Documentation](https://checkmarx.com/resource/documents/en/34965-68728-checkmarx-one-eclipse-plugin.html)
+To see how you can use our tool, please refer to the [Documentation](https://docs.checkmarx.com/en/34965-68731-using-the-checkmarx-one-eclipse-plugin.html).
 
-## How To Videos
-- **Installing and Setting up the Plugin**
-![GIF - How to install and set up the plugin](https://checkmarx.com/resource/documents/en/image/164fe2f621388d.gif "GIF - How to install and set up the plugin")
 
-- **Running a Scan from the IDE**
-![Running a Scan from the IDE](https://checkmarx.com/resource/documents/en/image/164fe2f62587ef.gif "Running a Scan from the IDE")
+## Checkmarx Developer Assist
+Developer Assist is an agentic AI tool that delivers real-time context-aware prevention, remediation, and guidance to developers inside the IDE. 
 
-- **Loading and Viewing Scan Results**
-[![Loading and Viewing Scan Results](https://checkmarx.com/resource/documents/en/image/164fe2f6237dfa.gif "Loading and Viewing Scan Results")](https://checkmarx.com/resource/documents/en/image/164fe2f6237dfa.gif "Loading and Viewing Scan Results")
+### Key Features
+
+* An advanced security agent that delivers real-time context-aware prevention, remediation, and guidance to developers from the IDE.​
+* Real-time scanners identify risks as you code.
+* **ASCA**, a lightweight source code scanner, enables developers to identify secure coding best practice violations in the file that they are working on as they code.
+* Specialized real-time scanners identify vulnerable open source packages and container images, as well as exposed secrets and IaC risks.
+* MCP-based agentic AI remediation.
+* AI-powered explanation of risk details.
+* Reduce noise by marking false positives as ignored.
+
+
+### Prerequisites
+
+  - Eclipse installation, version 2025-06 and above with GitHub Copilot
+  - A Checkmarx One account with a **Checkmarx One Assist** license. Also, **Dev Assist** must be activated for your tenant account in the Checkmarx One UI under **Global Settings > Plugins** page. This must be done by an account admin.  
+You will need to provide an **API key** for your Checkmarx One account. To create an API key, see [Generating an API Key](https://checkmarx.com/resource/documents/en/34965-68618-generating-an-api-key.html)
+    
+
+### Initial Setup
+
+1.   Verify that all prerequisites are in place.
+
+2.   Install the **Checkmarx One** plugin and configure the settings as described [here](https://checkmarx.com/resource/documents/en/34965-68729-installing-and-setting-up-the-checkmarx-one-eclipse-plugin.html).
+3. After authentication, in the welcome screen, select the checkbox next to "Code Smarter with Checkmarx One Assist​".
+
+### Usage
+
+To see how you can use our tool, please refer to the [Documentation](https://docs.checkmarx.com/en/34965-68731-using-the-checkmarx-one-eclipse-plugin.html).
+
+**GIF - AI Remediation with Developer Assist**
+<PLACEHOLDER>
+
 
 ## Contribution
 
@@ -123,7 +162,7 @@ Project Link: [https://github.com/Checkmarx/ast-eclipse-plugin](https://github.c
 
 Find more integrations from our team [here](https://github.com/Checkmarx/ci-cd-integrations#checkmarx-ast-integrations)
 
-© 2022 Checkmarx Ltd. All Rights Reserved.
+© 2026 Checkmarx Ltd. All Rights Reserved.
 
 [contributors-shield]: https://img.shields.io/github/contributors/Checkmarx/ast-eclipse-plugin.svg
 [contributors-url]: https://github.com/Checkmarx/ast-eclipse-plugin/graphs/contributors
@@ -137,4 +176,3 @@ Find more integrations from our team [here](https://github.com/Checkmarx/ci-cd-i
 [license-url]: https://github.com/Checkmarx/ast-eclipse-plugin/blob/main/LICENSE
 [install-shield]: https://img.shields.io/eclipse-marketplace/dt/checkmarx-ast-plugin
 [install-url]: https://marketplace.eclipse.org/content/checkmarx-ast-plugin
-
