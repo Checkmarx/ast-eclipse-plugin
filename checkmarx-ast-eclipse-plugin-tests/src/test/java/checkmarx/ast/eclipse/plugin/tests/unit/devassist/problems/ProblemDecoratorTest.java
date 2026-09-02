@@ -26,6 +26,7 @@ import org.mockito.MockedStatic;
 import com.checkmarx.eclipse.devassist.model.Location;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.utils.DevAssistUtils;
+import com.checkmarx.eclipse.devassist.problems.ProblemDecorator;
 
 /**
  * Unit tests for {@link ProblemDecorator}. The public API is almost entirely

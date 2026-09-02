@@ -15,6 +15,7 @@
             icon="icons/checkmarx-plugin-13_dark.png"
             category="com.checkmarx.eclipse.devassist.category"
             class="com.checkmarx.eclipse.devassist.ui.findings.CxFindingsView"
+            inject="true"
             restorable="true">
       </view>
        <view
@@ -23,6 +24,7 @@
             icon="icons/checkmarx-plugin-13_dark.png"
             category="com.checkmarx.eclipse.devassist.category"
             class="com.checkmarx.eclipse.devassist.ui.findings.ignore.DevAssistIgnoredFindings"
+            inject="true"
             restorable="true">
       </view>
    </extension>
