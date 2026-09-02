@@ -254,9 +254,11 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 
 		textControl.addModifyListener(e -> {
 			boolean hasApiKey = StringUtils.isNotBlank(textControl.getText());
+			// Fetch live authentication status rather than relying on the static isConnected closure variable
+		    boolean currentlyConnected = Preferences.isAuthenticated() && StringUtils.isNotBlank(Preferences.getApiKey());
 			// API key is mandatory to enable Connect; also disable Connect if the key
 			// matches the already-validated key (it stays connected in that case).
-			connectionButton.setEnabled(isConnected ? false : hasApiKey);
+			connectionButton.setEnabled(currentlyConnected ? false : hasApiKey);
 		});
 		connectionButton.addSelectionListener(new SelectionAdapter() {
 
@@ -265,6 +267,7 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 				String apiKey_str = apiKey.getStringValue();
 
 				// API key is mandatory — don't attempt authentication without it.
+				
 				if (StringUtils.isBlank(apiKey_str)) {
 					MessageDialog.openWarning(getShell(), "Missing API Key",
 							"Please enter an API key before attempting to connect.");

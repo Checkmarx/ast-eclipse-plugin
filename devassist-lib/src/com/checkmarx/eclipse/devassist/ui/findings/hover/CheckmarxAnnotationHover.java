@@ -239,8 +239,9 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 			CxLogger.info("[HOVER] Unknown or unhandled action: " + action);
 		}
 
-		// Auto-close hover for ignore/ignore-all actions
-		if (handled && (action.contains("ignore"))) {
+		// Auto-close hover after any button action (copyfixprompt, viewdetails, ignore*, etc.)
+		// to reset deduplication state and allow re-clicking the same action from a fresh popup
+		if (handled) {
 			closeHover();
 		}
 	}

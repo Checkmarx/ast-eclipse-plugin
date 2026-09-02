@@ -109,7 +109,7 @@ public final class CheckmarxProblemDescriptionFormatter {
 			buildIACDescription(descBuilder, scanIssue, textColor);
 			break;
 		case CONTAINERS:
-			buildContainerDescription(descBuilder, scanIssue);
+			buildContainerDescription(descBuilder, scanIssue, textColor);
 			break;
 		default:
 			buildDefaultDescription(descBuilder, scanIssue);
@@ -268,8 +268,8 @@ public final class CheckmarxProblemDescriptionFormatter {
 	/**
 	 * Container description (image header + vulnerability counts).
 	 */
-	private void buildContainerDescription(StringBuilder descBuilder, ScanIssue scanIssue) {
-		buildImageHeader(descBuilder, scanIssue);
+	private void buildContainerDescription(StringBuilder descBuilder, ScanIssue scanIssue, String textColor) {
+		buildImageHeader(descBuilder, scanIssue, textColor);
 		buildVulnerabilitySection(descBuilder, scanIssue);
 	}
 
@@ -295,15 +295,19 @@ public final class CheckmarxProblemDescriptionFormatter {
 	/**
 	 * Container image header.
 	 */
-	private void buildImageHeader(StringBuilder descBuilder, ScanIssue scanIssue) {
+	private void buildImageHeader(StringBuilder descBuilder, ScanIssue scanIssue, String textColor) {
 		String icon = getSeverityIconHtml(CONTAINER, ICON_INLINE_STYLE);
+		String colorStyle = textColor != null && !textColor.isEmpty() ? "color:" + textColor + ";" : "";
 
 		descBuilder.append(TABLE_WITH_TR).append("<td style='padding:0 6px 0 0;vertical-align:middle;'>").append(icon)
-				.append("</td>").append("<td style='padding:0 2px 0 2px;").append(TITLE_FONT_SIZE)
+				.append("</td>").append("<td style='" + colorStyle + "padding:0 2px 0 2px;").append(TITLE_FONT_SIZE)
 				.append(TITLE_FONT_FAMILY).append(CELL_LINE_HEIGHT_STYLE).append("'>").append("<p style='margin:0;")
 				.append(TITLE_FONT_SIZE).append(TITLE_FONT_FAMILY).append("'>").append("<b>")
-				.append(HtmlEscapeUtil.escape(scanIssue.getTitle())).append("@")
-				.append(HtmlEscapeUtil.escape(scanIssue.getImageTag())).append("</b>").append("</p></td></tr></table>");
+				.append(HtmlEscapeUtil.escape(scanIssue.getTitle())).append(":")
+				.append(HtmlEscapeUtil.escape(scanIssue.getImageTag())).append("</b>").append(" - ")
+				.append("<span style='").append(SECONDARY_SPAN_STYLE).append("'>")
+				.append(HtmlEscapeUtil.escape(scanIssue.getSeverity()))
+				.append(" severity image</span>").append("</p></td></tr></table>");
 	}
 
 	/**

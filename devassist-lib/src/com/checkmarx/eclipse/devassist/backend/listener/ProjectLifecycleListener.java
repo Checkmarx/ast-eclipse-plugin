@@ -144,8 +144,16 @@ public class ProjectLifecycleListener implements IResourceChangeListener, IProje
 					IResource resource = delta.getResource();
 					if (resource instanceof IProject) {
 						IProject project = (IProject) resource;
-						// Check if project OPEN state changed
-						if ((delta.getFlags() & IResourceDelta.OPEN) != 0) {
+						// A project's open/closed state toggling on an EXISTING project sets the
+						// OPEN flag. A brand-new project being imported/created (e.g. into a
+						// workspace that had no projects open yet) is reported as ADDED instead -
+						// it never had a "closed" state to transition from, so the OPEN flag is
+						// never set on its delta. Checking only the OPEN flag (as before) silently
+						// skipped this case, leaving a newly opened project's files never scanned
+						// until the user manually closed/reopened it or restarted Eclipse.
+						boolean openStateChanged = (delta.getFlags() & IResourceDelta.OPEN) != 0;
+						boolean isNewProject = (delta.getKind() & IResourceDelta.ADDED) != 0;
+						if (openStateChanged || isNewProject) {
 							if (project.isOpen() && !isInitialized(project)) {
 								onProjectOpen(project);
 							} else if (!project.isOpen() && isInitialized(project)) {

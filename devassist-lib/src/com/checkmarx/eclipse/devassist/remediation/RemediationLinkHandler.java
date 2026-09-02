@@ -368,7 +368,12 @@ public class RemediationLinkHandler {
                 return;
             }
 
-            IFile file = project.getFile(filePath);
+            // scanIssue.getFilePath() is an absolute OS path (same format as
+            // file.getLocation().toOSString() elsewhere in this codebase), not a
+            // project-relative path - IProject.getFile(String) expects the latter and
+            // would never resolve here, silently no-oping this whole method.
+            IFile file = ResourcesPlugin.getWorkspace().getRoot()
+                    .getFileForLocation(new org.eclipse.core.runtime.Path(filePath));
             if (file == null || !file.exists()) {
                 CxLogger.warning("RTS-Fix: Cannot delete marker, file not found: " + filePath);
                 return;
@@ -377,7 +382,11 @@ public class RemediationLinkHandler {
             IMarker[] markers = file.findMarkers("com.checkmarx.eclipse.plugin.checkmarxProblemMarker", true, IResource.DEPTH_ZERO);
             for (IMarker marker : markers) {
                 try {
-                    String markerScanIssueId = marker.getAttribute("scanIssueId", "");
+                    // Match against the actual attribute key MarkerIssueMapper stores the
+                    // issue id under ("cx.issueId") - "scanIssueId" was never a real
+                    // attribute on these markers, so this comparison always failed.
+                    String markerScanIssueId = com.checkmarx.eclipse.devassist.ui.findings.marker.MarkerIssueMapper
+                            .getIssueId(marker);
                     if (markerScanIssueId.equals(scanIssue.getScanIssueId())) {
                         marker.delete();
                         CxLogger.info("RTS-Fix: Deleted marker for issue: " + scanIssue.getTitle());
