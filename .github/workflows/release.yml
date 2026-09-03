@@ -106,13 +106,8 @@ jobs:
           path: ~/.m2/repository
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
-            ${{ runner.os }}-maven-
-      
-      - name: Configure echo mirror for dependency resolution
-        run: |
-          sed -i 's|</settings>|<mirrors><mirror><id>echo</id><mirrorOf>central,!org.eclipse.*,!org.sonatype.*</mirrorOf><url>https://maven.echohq.com</url></mirror></mirrors></settings>|' ~/.m2/settings.xml
- 
-
+            ${{ runner.os }}-maven-      
+     
       - name: Update the POM version
         env:
           VERSION: ${{ inputs.tag }}
