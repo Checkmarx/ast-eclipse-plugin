@@ -109,7 +109,12 @@ jobs:
       
       - name: Configure echo mirror for dependency resolution
         run: |
-          sed -i 's|</settings>|<mirrors><mirror><id>echo</id><mirrorOf>central,!org.eclipse.*,!org.sonatype.*</mirrorOf><url>https://maven.echohq.com</url></mirror></mirrors></settings>|' ~/.m2/settings.xml
+          # Update existing mirror or create new one with Eclipse artifacts excluded
+          if grep -q '<mirror>' ~/.m2/settings.xml; then
+            sed -i 's|<mirrorOf>.*</mirrorOf>|<mirrorOf>central,!org.eclipse.*,!org.sonatype.*</mirrorOf>|g' ~/.m2/settings.xml
+          else
+            sed -i 's|</settings>|<mirrors><mirror><id>echo</id><mirrorOf>central,!org.eclipse.*,!org.sonatype.*</mirrorOf><url>https://maven.echohq.com</url></mirror></mirrors></settings>|' ~/.m2/settings.xml
+          fi
  
 
       - name: Update the POM version
