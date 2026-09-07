@@ -7,6 +7,9 @@
 		<test.includes>
 			**/unit/**/Test*.java,**/unit/**/*Test.java,**/unit/**/*Tests.java,**/unit/**/*TestCase.java
 		</test.includes>
+		<test.excludes>
+			**/ui/**/*Test.java,**/integration/**/*Test.java,**/it/**/*Test.java
+		</test.excludes>
 	</properties>
 	<groupId>com.checkmarx.ast.eclipse.tests</groupId>
 	<artifactId>com.checkmarx.ast.eclipse.tests</artifactId>
@@ -41,6 +44,7 @@
 			                <goal>report</goal>
 			            </goals>
 			            <configuration>
+			                <outputDirectory>${project.build.directory}/site/jacoco</outputDirectory>
 			                <formats>
 			                    <format>XML</format>
 			                    <format>CSV</format>
@@ -63,6 +67,9 @@
 					<includes>
 						<include>${test.includes}</include>
 					</includes>
+					<excludes>
+						<exclude>${test.excludes}</exclude>
+					</excludes>
 				</configuration>
 			</plugin>
 

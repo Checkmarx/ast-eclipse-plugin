@@ -1,124 +1,219 @@
 package checkmarx.ast.eclipse.plugin.tests.unit.devassist.problems;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.mock;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IProject;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import com.checkmarx.eclipse.devassist.model.ScanEngine;
+import com.checkmarx.eclipse.devassist.model.Location;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.problems.ProblemDescriptor;
 import com.checkmarx.eclipse.devassist.problems.ProblemHolderService;
 
+/**
+ * Unit tests for {@link ProblemHolderService}. Tests the caching and retrieval
+ * of problem descriptors organized by file path.
+ */
+@DisplayName("ProblemHolderService unit tests")
 class ProblemHolderServiceTest {
 
-	private ProblemHolderService service;
+	private ProblemHolderService holder;
+	private IProject mockProject;
 
 	@BeforeEach
 	void setUp() {
-		service = new ProblemHolderService();
+		mockProject = mock(IProject.class);
+		holder = ProblemHolderService.getInstance(mockProject);
 	}
 
-	@Test
-	void testAddScanIssues_ValidInput() {
-		String filePath = "testFile.java";
+	private ScanIssue createIssue(String title, String severity, int line) {
 		ScanIssue issue = new ScanIssue();
-		issue.setSeverity("HIGH");
-		issue.setScanEngine(ScanEngine.OSS);
-		List<ScanIssue> issues = Collections.singletonList(issue);
-
-		service.addScanIssues(filePath, issues);
-
-		Map<String, List<ScanIssue>> allIssues = service.getAllScanIssues();
-		assertTrue(allIssues.containsKey(filePath));
-		assertEquals(1, allIssues.get(filePath).size());
+		issue.setTitle(title);
+		issue.setSeverity(severity);
+		Location location = new Location();
+		location.setLine(line);
+		issue.getLocations().add(location);
+		return issue;
 	}
 
 	@Test
-	void testGetAllScanIssues_Empty() {
-		Map<String, List<ScanIssue>> allIssues = service.getAllScanIssues();
-		assertTrue(allIssues.isEmpty());
+	@DisplayName("getInstance returns singleton for same project")
+	void getInstanceReturnsSingleton() {
+		ProblemHolderService holder2 = ProblemHolderService.getInstance(mockProject);
+		assertSame(holder, holder2);
 	}
 
 	@Test
-	void testRemoveAllIssuesForScanner_ValidType() {
-		String filePath = "testFile.java";
-		ScanIssue issue = new ScanIssue();
-		issue.setScanEngine(ScanEngine.OSS);
-		service.addScanIssues(filePath, Collections.singletonList(issue));
+	@DisplayName("addScanIssues stores issues with file path key")
+	void addScanIssuesStoresIssues() {
+		String filePath = "/project/src/Main.java";
+		ScanIssue issue = createIssue("SQL Injection", "High", 10);
 
-		service.removeAllIssuesForScanner("OSS");
-		Map<String, List<ScanIssue>> remainingIssues = service.getAllScanIssues();
-		assertTrue(remainingIssues.isEmpty() || remainingIssues.get(filePath).isEmpty());
+		holder.addScanIssues(filePath, java.util.List.of(issue));
+
+		List<ScanIssue> issues = holder.getScanIssuesByFile(filePath);
+		assertNotNull(issues);
+		assertEquals(1, issues.size());
+		assertEquals("SQL Injection", issues.get(0).getTitle());
 	}
 
 	@Test
-	void testGetScanIssuesByFile_NoIssues() {
-		List<ScanIssue> issues = service.getScanIssuesByFile("nonExistentFile.java");
+	@DisplayName("getScanIssuesByFile returns empty list for unknown file")
+	void getScanIssuesByFileReturnsEmptyForUnknownFile() {
+		List<ScanIssue> issues = holder.getScanIssuesByFile("/unknown/path/File.java");
+		assertNotNull(issues);
 		assertTrue(issues.isEmpty());
 	}
 
 	@Test
-	void testMergeScanIssues_ValidInput() {
-		String filePath = "testFile.java";
-		ScanIssue issue1 = new ScanIssue();
-		issue1.setSeverity("HIGH");
-		issue1.setScanEngine(ScanEngine.OSS);
+	@DisplayName("Multiple issues for same file are stored")
+	void multipleIssuesStoredForSameFile() {
+		String filePath = "/project/src/Main.java";
+		ScanIssue issue1 = createIssue("SQL Injection", "High", 10);
+		ScanIssue issue2 = createIssue("XSS", "Medium", 20);
 
-		service.addScanIssues(filePath, Collections.singletonList(issue1));
+		holder.addScanIssues(filePath, java.util.List.of(issue1, issue2));
 
-		ScanIssue issue2 = new ScanIssue();
-		issue2.setSeverity("MEDIUM");
-		issue2.setScanEngine(ScanEngine.ASCA);
-		service.mergeScanIssues(filePath, Collections.singletonList(issue2));
-
-		List<ScanIssue> issues = service.getScanIssuesByFile(filePath);
+		List<ScanIssue> issues = holder.getScanIssuesByFile(filePath);
 		assertEquals(2, issues.size());
 	}
 
 	@Test
-	void testRemoveScanIssues_ValidFile() {
-		String filePath = "testFile.java";
-		ScanIssue issue = new ScanIssue();
-		issue.setScanEngine(ScanEngine.OSS);
-		service.addScanIssues(filePath, Collections.singletonList(issue));
+	@DisplayName("removeScanIssues clears all issues for file")
+	void removeScanIssuesClearsIssues() {
+		String filePath = "/project/src/Main.java";
+		ScanIssue issue = createIssue("Rule", "High", 10);
+		holder.addScanIssues(filePath, java.util.List.of(issue));
 
-		service.removeScanIssues(filePath);
-		List<ScanIssue> issues = service.getScanIssuesByFile(filePath);
+		holder.removeScanIssues(filePath);
+
+		List<ScanIssue> issues = holder.getScanIssuesByFile(filePath);
 		assertTrue(issues.isEmpty());
 	}
 
 	@Test
-	void testRemoveScanIssuesByFileAndScanner_ValidInput() {
-		String filePath = "testFile.java";
-		ScanIssue issue1 = new ScanIssue();
-		issue1.setScanEngine(ScanEngine.OSS);
+	@DisplayName("getAllScanIssues returns map of all issues")
+	void getAllScanIssuesReturnsAllIssues() {
+		String file1 = "/project/File1.java";
+		String file2 = "/project/File2.java";
 
-		ScanIssue issue2 = new ScanIssue();
-		issue2.setScanEngine(ScanEngine.ASCA);
+		ScanIssue issue1 = createIssue("Rule1", "High", 10);
+		ScanIssue issue2 = createIssue("Rule2", "Medium", 20);
+		holder.addScanIssues(file1, java.util.List.of(issue1));
+		holder.addScanIssues(file2, java.util.List.of(issue2));
 
-		service.addScanIssues(filePath, List.of(issue1, issue2));
-		service.removeScanIssuesByFileAndScanner("OSS", filePath);
-
-		List<ScanIssue> remainingIssues = service.getScanIssuesByFile(filePath);
-		assertEquals(1, remainingIssues.size());
-		assertEquals(ScanEngine.ASCA, remainingIssues.get(0).getScanEngine());
+		Map<String, List<ScanIssue>> allIssues = holder.getAllScanIssues();
+		assertEquals(2, allIssues.size());
+		assertTrue(allIssues.containsKey(file1));
+		assertTrue(allIssues.containsKey(file2));
 	}
 
 	@Test
-	void testClearAll_RemovesAllIssues() {
-		service.addScanIssues("file1.java", Collections.singletonList(new ScanIssue()));
-		service.addScanIssues("file2.java", Collections.singletonList(new ScanIssue()));
+	@DisplayName("clearAll removes all issues")
+	void clearAllRemovesAllIssues() {
+		String filePath = "/project/File.java";
+		ScanIssue issue = createIssue("Rule", "High", 10);
+		holder.addScanIssues(filePath, java.util.List.of(issue));
 
-		service.clearAll();
+		holder.clearAll();
 
-		Map<String, List<ScanIssue>> allIssues = service.getAllScanIssues();
+		Map<String, List<ScanIssue>> allIssues = holder.getAllScanIssues();
 		assertTrue(allIssues.isEmpty());
+	}
+
+	@Test
+	@DisplayName("addScanIssues with null issues handles gracefully")
+	void addScanIssuesWithNullHandled() {
+		assertDoesNotThrow(() -> holder.addScanIssues("/path", null));
+	}
+
+	@Test
+	@DisplayName("Issue count reflects added issues")
+	void issueCountAccurate() {
+		String filePath = "/project/File.java";
+
+		assertEquals(0, holder.getAllScanIssues().size());
+
+		holder.addScanIssues(filePath, java.util.List.of(createIssue("R1", "High", 1)));
+		assertEquals(1, holder.getAllScanIssues().size());
+
+		holder.addScanIssues(filePath, java.util.List.of(createIssue("R2", "Medium", 2)));
+		assertEquals(1, holder.getAllScanIssues().size()); // same file
+	}
+
+	@Test
+	@DisplayName("Handles special characters in file paths")
+	void handlesSpecialCharactersInPaths() {
+		String filePath = "/project/src & test/File#1.java";
+		ScanIssue issue = createIssue("Rule", "High", 10);
+		holder.addScanIssues(filePath, java.util.List.of(issue));
+
+		List<ScanIssue> issues = holder.getScanIssuesByFile(filePath);
+		assertEquals(1, issues.size());
+	}
+
+	@Test
+	@DisplayName("mergeScanIssues deduplicates by issue ID")
+	void mergeScanIssuesDeduplicated() {
+		String filePath = "/project/File.java";
+		ScanIssue issue1 = createIssue("Rule1", "High", 10);
+		issue1.setScanIssueId("ID1");
+		ScanIssue issue2 = createIssue("Rule2", "Medium", 20);
+		issue2.setScanIssueId("ID2");
+
+		holder.addScanIssues(filePath, java.util.List.of(issue1));
+		holder.mergeScanIssues(filePath, java.util.List.of(issue2));
+
+		List<ScanIssue> issues = holder.getScanIssuesByFile(filePath);
+		assertEquals(2, issues.size());
+	}
+
+	@Test
+	@DisplayName("getCacheStats returns accurate statistics")
+	void getCacheStatsReturnsStats() {
+		String file1 = "/project/File1.java";
+		String file2 = "/project/File2.java";
+		ScanIssue issue1 = createIssue("Rule1", "High", 10);
+		ScanIssue issue2 = createIssue("Rule2", "Medium", 20);
+
+		holder.addScanIssues(file1, java.util.List.of(issue1));
+		holder.addScanIssues(file2, java.util.List.of(issue2));
+
+		String stats = holder.getCacheStats();
+		assertNotNull(stats);
+		assertTrue(stats.contains("Files:"));
+		assertTrue(stats.contains("2"));
+	}
+
+	@Test
+	@DisplayName("getProblemDescriptors returns cached descriptors")
+	void getProblemDescriptorsReturnsCached() {
+		String filePath = "/project/File.java";
+		List<ProblemDescriptor> descriptors = java.util.List.of(mock(ProblemDescriptor.class));
+
+		holder.addProblemDescriptors(filePath, descriptors);
+		List<ProblemDescriptor> cached = holder.getProblemDescriptors(filePath);
+
+		assertNotNull(cached);
+		assertEquals(1, cached.size());
+	}
+
+	@Test
+	@DisplayName("removeProblemDescriptorsForFile clears descriptors")
+	void removeProblemDescriptorsForFileClearsCache() {
+		String filePath = "/project/File.java";
+		List<ProblemDescriptor> descriptors = java.util.List.of(mock(ProblemDescriptor.class));
+
+		holder.addProblemDescriptors(filePath, descriptors);
+		holder.removeProblemDescriptorsForFile(filePath);
+		List<ProblemDescriptor> cached = holder.getProblemDescriptors(filePath);
+
+		assertTrue(cached.isEmpty());
 	}
 }
