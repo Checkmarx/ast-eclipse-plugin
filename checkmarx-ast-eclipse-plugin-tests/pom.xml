@@ -44,7 +44,7 @@
 			                <goal>report</goal>
 			            </goals>
 			            <configuration>
-			                <outputDirectory>${project.build.directory}/site/jacoco</outputDirectory>
+			                <outputDirectory>${project.build.directory}/site/jacoco-aggregate</outputDirectory>
 			                <formats>
 			                    <format>XML</format>
 			                    <format>CSV</format>
