@@ -47,6 +47,6 @@ class SeverityTest {
 
     @Test
     void testEnumValues_count() {
-        assertEquals(8, Severity.values().length);
+        assertEquals(6, Severity.values().length);
     }
 }
