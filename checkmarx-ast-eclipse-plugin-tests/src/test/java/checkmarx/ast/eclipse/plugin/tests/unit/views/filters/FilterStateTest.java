@@ -13,6 +13,7 @@ import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
 import com.checkmarx.eclipse.common.enums.Severity;
+import com.checkmarx.eclipse.enums.GroupingMode;
 import com.checkmarx.eclipse.enums.State;
 import com.checkmarx.eclipse.views.GlobalSettings;
 import com.checkmarx.eclipse.views.filters.FilterState;
@@ -136,6 +137,7 @@ class FilterStateTest {
     void testSetState_groupBySeverity_toggles() {
         FilterState.groupBySeverity = true;
         try (MockedStatic<GlobalSettings> gs = Mockito.mockStatic(GlobalSettings.class)) {
+            FilterState.setGroupingMode(GroupingMode.SEVERITY);
         }
         assertFalse(FilterState.groupBySeverity);
     }
@@ -144,6 +146,7 @@ class FilterStateTest {
     void testSetState_groupByQueryName_toggles() {
         FilterState.groupByQueryName = false;
         try (MockedStatic<GlobalSettings> gs = Mockito.mockStatic(GlobalSettings.class)) {
+            FilterState.setGroupingMode(GroupingMode.QUERY_NAME);
         }
         assertTrue(FilterState.groupByQueryName);
     }
@@ -152,6 +155,7 @@ class FilterStateTest {
     void testSetState_groupByStateName_toggles() {
         FilterState.groupByStateName = false;
         try (MockedStatic<GlobalSettings> gs = Mockito.mockStatic(GlobalSettings.class)) {
+            FilterState.setGroupingMode(GroupingMode.STATE_NAME);
         }
         assertTrue(FilterState.groupByStateName);
     }

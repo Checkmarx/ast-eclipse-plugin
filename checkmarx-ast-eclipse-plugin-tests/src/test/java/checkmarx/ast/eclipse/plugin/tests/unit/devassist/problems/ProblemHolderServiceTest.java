@@ -1,12 +1,15 @@
 package checkmarx.ast.eclipse.plugin.tests.unit.devassist.problems;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.eclipse.core.resources.IProject;
+import org.eclipse.core.runtime.QualifiedName;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -27,8 +30,19 @@ class ProblemHolderServiceTest {
 	private IProject mockProject;
 
 	@BeforeEach
-	void setUp() {
+	void setUp() throws Exception {
 		mockProject = mock(IProject.class);
+		// IProject is a bare mock, so getSessionProperty/setSessionProperty are no-ops by
+		// default; back them with a real map so getInstance's session-property cache behaves
+		// like the real Eclipse IProject implementation would across repeated calls.
+		Map<QualifiedName, Object> sessionProperties = new HashMap<>();
+		doAnswer(invocation -> sessionProperties.get((QualifiedName) invocation.getArgument(0)))
+				.when(mockProject).getSessionProperty(any());
+		doAnswer(invocation -> {
+			sessionProperties.put(invocation.getArgument(0), invocation.getArgument(1));
+			return null;
+		}).when(mockProject).setSessionProperty(any(), any());
+
 		holder = ProblemHolderService.getInstance(mockProject);
 	}
 

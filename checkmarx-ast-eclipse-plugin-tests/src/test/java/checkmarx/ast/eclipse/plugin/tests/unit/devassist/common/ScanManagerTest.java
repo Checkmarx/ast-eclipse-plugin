@@ -2,25 +2,11 @@ package checkmarx.ast.eclipse.plugin.tests.unit.devassist.common;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 @DisplayName("ScanManager unit tests")
 class ScanManagerTest {
-
-	private Object mockFile;
-	private Object mockScannerFactory;
-	private Object mockScannerService;
-	private Object mockScanResult;
-	private Object mockConfig;
-	private Object mockIssue;
-
-	@BeforeEach
-	void setUp() {
-		assertNotNull(mockFile);
-		assertNotNull(mockScannerFactory);
-	}
 
 	@Test
 	@DisplayName("scanFile with null engine routes through all-scanners path")

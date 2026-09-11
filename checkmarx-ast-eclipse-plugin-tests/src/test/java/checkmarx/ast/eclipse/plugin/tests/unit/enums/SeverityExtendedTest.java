@@ -79,7 +79,7 @@ class SeverityExtendedTest {
 	@Test
 	void testValues_returnsAllConstants() {
 		Severity[] values = Severity.values();
-		assertEquals(8, values.length);
+		assertEquals(6, values.length);
 	}
 
 	@Test
@@ -88,18 +88,19 @@ class SeverityExtendedTest {
 		boolean hasCritical = false;
 		boolean hasHigh = false;
 		boolean hasLow = false;
-		boolean hasGroupBy = false;
+		boolean hasMalicious = false;
 
 		for (Severity s : values) {
 			if (s == Severity.CRITICAL) hasCritical = true;
 			if (s == Severity.HIGH) hasHigh = true;
 			if (s == Severity.LOW) hasLow = true;
+			if (s == Severity.MALICIOUS) hasMalicious = true;
 		}
 
 		assertTrue(hasCritical);
 		assertTrue(hasHigh);
 		assertTrue(hasLow);
-		assertTrue(hasGroupBy);
+		assertTrue(hasMalicious);
 	}
 
 	@Test
@@ -195,10 +196,6 @@ class SeverityExtendedTest {
 	}
 
 	@Test
-	void testGroupByConstants_arePublicStaticFinal() {
-	}
-
-	@Test
 	void testGetSeverity_multipleCallsSequence() {
 		Severity[] severities = {
 			Severity.getSeverity("CRITICAL"),
@@ -214,22 +211,11 @@ class SeverityExtendedTest {
 		}
 	}
 
-	@Test
-	void testGetSeverity_allGroupByVariants() {
-	}
-
 	@ParameterizedTest
 	@ValueSource(strings = {"CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"})
 	void testGetSeverity_validStandardSeverities(String severityName) {
 		Severity severity = Severity.getSeverity(severityName);
 		assertNotNull(severity);
 		assertEquals(severityName, severity.name());
-	}
-
-	@ParameterizedTest
-	void testGetSeverity_validGroupingOptions(String groupingName) {
-		Severity severity = Severity.getSeverity(groupingName);
-		assertNotNull(severity);
-		assertEquals(groupingName, severity.name());
 	}
 }
