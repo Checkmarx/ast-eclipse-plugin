@@ -301,13 +301,6 @@ public class ProjectLifecycleListener implements IResourceChangeListener, IProje
 						return Status.CANCEL_STATUS;
 					}
 
-					// Force the in-memory resource tree to match disk before scanning.
-					// Eclipse's own project-import wizards frequently open newly-created
-					// projects with IResource.BACKGROUND_REFRESH so large imports don't
-					// block the UI - the open()/ADDED event we react to can fire before
-					// that background sync finishes, so members() below could otherwise
-					// see an empty/partial tree and find zero manifest files, even though
-					// the project is (wrongly) marked initialized afterward.
 					project.refreshLocal(IResource.DEPTH_INFINITE, monitor);
 
 					if (monitor.isCanceled() || !project.isOpen()) {
