@@ -171,11 +171,12 @@ public class DevAssistInspectionMgr extends ScanManager {
 			List<ProblemDescriptor> descriptors = createProblemDescriptors(
 					problemHelper, false);
 
-			// Decorate UI
-			if (!descriptors.isEmpty()) {
-				decorateUI(problemHelper.getDocument(), problemHelper.getFile(),
-						problemHelper.getScanIssueList());
-			}
+			// Decorate UI - always call even if descriptors is empty.
+			// decorateUI() handles ALL scan issues (OK, Unknown, etc.), not just "problems".
+			// If we skip this when descriptors is empty, we'll have cleared all highlighters
+			// but never re-added them, leaving gutter icons missing.
+			decorateUI(problemHelper.getDocument(), problemHelper.getFile(),
+					problemHelper.getScanIssueList());
 
 			return descriptors;
 		}

@@ -40,6 +40,7 @@ import org.eclipse.swt.browser.ProgressEvent;
 import org.eclipse.swt.browser.ProgressListener;
 
 import com.checkmarx.eclipse.common.utils.CxLogger;
+import com.checkmarx.eclipse.devassist.backend.SeverityLevel;
 import com.checkmarx.eclipse.devassist.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
 import com.checkmarx.eclipse.devassist.remediation.RemediationLinkHandler;
@@ -549,6 +550,10 @@ public class CheckmarxAnnotationHover implements IJavaEditorTextHover, ITextHove
 				FindingsAnnotation findingsAnn = (FindingsAnnotation) annotation;
 				ScanIssue scanIssue = findingsAnn.getScanIssue();
 				if (scanIssue == null) {
+					continue;
+				}
+				String severity = scanIssue.getSeverity();
+				if (SeverityLevel.OK.getSeverity().equals(severity) || SeverityLevel.UNKNOWN.getSeverity().equals(severity)) {
 					continue;
 				}
 				currentFinding = scanIssue;

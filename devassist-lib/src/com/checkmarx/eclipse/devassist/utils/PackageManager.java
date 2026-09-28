@@ -1,5 +1,6 @@
 package com.checkmarx.eclipse.devassist.utils;
 
+import java.util.Arrays;
 import java.util.List;
 
 import com.checkmarx.eclipse.common.utils.CxLogger;
@@ -144,9 +145,9 @@ public enum PackageManager {
         	return getCompanionFileNamesByType(CompanionFileType.COMPOSER_LOCK);
         }
 
-        // Python Poetry
+        // Python Poetry  or UV
         if (fileName.equals("pyproject.toml")) {
-        	return getCompanionFileNamesByType(CompanionFileType.POETRY_LOCK);
+        	return getCompanionFileNamesByType(CompanionFileType.POETRY_LOCK, CompanionFileType.UV_LOCK);
         }
 
         // Dart/Flutter Pub
@@ -170,6 +171,7 @@ public enum PackageManager {
 		GEMFILE_LOCK("Gemfile.lock"),
 		COMPOSER_LOCK("composer.lock"),
 		POETRY_LOCK("poetry.lock"),
+		UV_LOCK("uv.lock"),
 		PUBSPEC_LOCK("pubspec.lock");
     	
     	private String compFileName;
@@ -183,11 +185,12 @@ public enum PackageManager {
 		}
 	}
     
-    public static List<String> getCompanionFileNamesByType(CompanionFileType type) {
-		if (type == null) {
+    public static List<String> getCompanionFileNamesByType(CompanionFileType... type) {
+		if (type == null || type.length == 0) {
 			return List.of();
 		}
-		return List.of(type.getCompFileName());
+		return Arrays.stream(type).filter(fileType -> fileType != null)
+				.map(CompanionFileType::getCompFileName).toList(); 
 	}
     
     /**

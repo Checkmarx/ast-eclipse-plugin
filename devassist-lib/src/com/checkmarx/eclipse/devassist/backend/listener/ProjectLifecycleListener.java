@@ -301,6 +301,12 @@ public class ProjectLifecycleListener implements IResourceChangeListener, IProje
 						return Status.CANCEL_STATUS;
 					}
 
+					project.refreshLocal(IResource.DEPTH_INFINITE, monitor);
+
+					if (monitor.isCanceled() || !project.isOpen()) {
+						return Status.CANCEL_STATUS;
+					}
+
 					// Only scan OSS manifests on startup (matches JetBrains behavior)
 					// IaC and Container scanning are triggered by real-time scanner events
 					scanManifestFiles(project);
