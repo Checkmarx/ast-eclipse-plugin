@@ -5,6 +5,7 @@ Bundle-SymbolicName: com.checkmarx.ast.eclipse.tests
 Bundle-Version: 1.0.0.qualifier
 Fragment-Host: com.checkmarx.eclipse.plugin;bundle-version="1.0.0"
 Require-Bundle: 
+ com.checkmarx.eclipse.devassist,
  org.eclipse.swtbot.swt.finder,
  org.eclipse.swtbot.eclipse.finder,
  org.eclipse.swtbot.junit5_x,
@@ -15,4 +16,7 @@ Bundle-RequiredExecutionEnvironment: JavaSE-17
 Bundle-ClassPath: .,lib/mockito-core-5.14.2.jar,lib/powermock-core-*.jar, lib/byte-buddy-1.17.8.jar, lib/byte-buddy-agent-1.17.8.jar
 Automatic-Module-Name: com.checkmarx.ast.eclipse.tests
 Import-Package: com.checkmarx.eclipse.common.runner,
+ com.fasterxml.jackson.annotation,
+ com.fasterxml.jackson.core,
+ com.fasterxml.jackson.databind,
  org.slf4j;version="[2.0.0,3.0.0)"

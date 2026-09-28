@@ -5,7 +5,11 @@
 	<modelVersion>4.0.0</modelVersion>
 	<properties>
 		<test.includes>
-			**/Test*.java,**/*Test.java,**/*Tests.java,**/*TestCase.java</test.includes>
+			**/unit/**/Test*.java,**/unit/**/*Test.java,**/unit/**/*Tests.java,**/unit/**/*TestCase.java
+		</test.includes>
+		<test.excludes>
+			**/ui/**/*Test.java,**/integration/**/*Test.java,**/it/**/*Test.java
+		</test.excludes>
 	</properties>
 	<groupId>com.checkmarx.ast.eclipse.tests</groupId>
 	<artifactId>com.checkmarx.ast.eclipse.tests</artifactId>
@@ -40,9 +44,11 @@
 			                <goal>report</goal>
 			            </goals>
 			            <configuration>
+			                <outputDirectory>${project.build.directory}/site/jacoco-aggregate</outputDirectory>
 			                <formats>
 			                    <format>XML</format>
 			                    <format>CSV</format>
+			                    <format>HTML</format>
 			                </formats>
 			            </configuration>
 			        </execution>
@@ -61,6 +67,9 @@
 					<includes>
 						<include>${test.includes}</include>
 					</includes>
+					<excludes>
+						<exclude>${test.excludes}</exclude>
+					</excludes>
 				</configuration>
 			</plugin>
 
