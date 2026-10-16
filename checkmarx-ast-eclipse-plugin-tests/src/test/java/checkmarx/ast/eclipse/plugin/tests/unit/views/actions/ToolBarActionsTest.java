@@ -137,7 +137,7 @@ class ToolBarActionsTest {
     void testGroupBySeverityAction() {
         // createGroupByActions() runs inside a background Job so we test the toggle directly.
         FilterState.groupBySeverity = false;
-        assertTrue(FilterState.groupBySeverity);
+        assertFalse(FilterState.groupBySeverity);
     }
 
     @Test

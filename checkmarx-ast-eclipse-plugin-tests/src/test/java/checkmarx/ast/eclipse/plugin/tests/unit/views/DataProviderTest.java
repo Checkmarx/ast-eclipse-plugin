@@ -66,14 +66,24 @@ class DataProviderTest {
 
     @Test
     void testGetProjectsReturnsList() throws Exception {
-        List<Project> projects = dataProvider.getProjects();
-        assertNotNull(projects);
+        try (MockedConstruction<CxWrapper> mocked = mockConstruction(CxWrapper.class, (mock, ctx) -> {
+            when(mock.authValidate()).thenReturn("OK");
+            when(mock.projectList(anyString())).thenReturn(Collections.emptyList());
+        })) {
+            List<Project> projects = dataProvider.getProjects();
+            assertNotNull(projects);
+        }
     }
 
     @Test
     void testGetProjectsByNameReturnsList() throws Exception {
-        List<Project> projects = dataProvider.getProjects(TEST_PROJECT);
-        assertNotNull(projects);
+        try (MockedConstruction<CxWrapper> mocked = mockConstruction(CxWrapper.class, (mock, ctx) -> {
+            when(mock.authValidate()).thenReturn("OK");
+            when(mock.projectList(anyString())).thenReturn(Collections.emptyList());
+        })) {
+            List<Project> projects = dataProvider.getProjects(TEST_PROJECT);
+            assertNotNull(projects);
+        }
     }
 
     @Test
