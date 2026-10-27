@@ -9,7 +9,7 @@
 	<classpathentry kind="src" path="src"/>
 	<classpathentry exported="true" kind="lib" path="lib/ast-cli-java-wrapper-2.4.31.jar"/>
 	<classpathentry kind="lib" path="lib/commons-lang3-3.18.0.jar"/>
-	<classpathentry kind="lib" path="lib/jackson-core-2.21.4.jar"/>
+	<classpathentry kind="lib" path="lib/jackson-core-2.21.7.jar"/>
 	<classpathentry kind="lib" path="lib/jackson-databind-2.21.5.jar"/>
 	<classpathentry kind="lib" path="lib/jackson-annotations-2.21.jar"/>
 	<classpathentry kind="lib" path="lib/slf4j-api-2.0.17.jar"/>
