@@ -6,6 +6,8 @@ import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 import org.eclipse.core.runtime.preferences.InstanceScope;
@@ -54,6 +56,7 @@ public final class McpSettingsInjector {
 	private static final String LOG_TAG = "[MCP-INJECTOR]";
 	private static final ObjectMapper MAPPER = new ObjectMapper();
 	private static final String FALLBACK_BASE = "https://ast-master-components.dev.cxast.net";
+	private static final Pattern IAM_HOST_LABEL = Pattern.compile("(^|\\.)iam\\.");
 	private static final String SERVER_KEY = "checkmarx";
 	public static final String MCP_ENDPOINT = "/api/security-mcp/mcp";
 
@@ -297,7 +300,7 @@ public final class McpSettingsInjector {
 	/**
 	 * Derives AST base URL from issuer claim.
 	 * If issuer is like https://iam.checkmarx.com, converts to
-	 * https://ast.checkmarx.com
+	 * https://ast.checkmarx.com; otherwise (single-tenant) uses the issuer host.
 	 */
 	private static String deriveBaseUrlFromIssuer(String issuer) {
 		if (issuer == null || issuer.isBlank()) {
@@ -309,18 +312,15 @@ public final class McpSettingsInjector {
 			CxLogger.info(LOG_TAG + " Deriving base URL from issuer: " + issuer);
 			String host = URI.create(issuer).getHost();
 
-			if (host != null && host.contains("iam.")) {
-				String newHost = host.replace("iam", "ast");
-				String baseUrl = "https://" + newHost;
-				CxLogger.info(LOG_TAG + "Derived base URL: " + baseUrl);
-				return baseUrl;
-			}else if (host != null && !host.isBlank()) {
-				CxLogger.info(LOG_TAG + "Derived base URL: " + "https://" + host);
-                return "https://" + host;
-            }
+			if (host == null || host.isBlank()) {
+				CxLogger.info(LOG_TAG + " Issuer has no host, using fallback");
+				return FALLBACK_BASE;
+			}
 
-			CxLogger.info(LOG_TAG + " Host does not match iam. pattern, using fallback");
-			return FALLBACK_BASE;
+			// Multi-tenant: swap only the "iam" host label (e.g. eu.iam.checkmarx.net -> eu.ast.checkmarx.net).
+			// Single-tenant: the issuer host is the tenant base URL.
+			Matcher iamLabel = IAM_HOST_LABEL.matcher(host);
+			return "https://" + (iamLabel.find() ? iamLabel.replaceFirst("$1ast.") : host);
 		} catch (Exception e) {
 			CxLogger.warning(LOG_TAG + " Failed to derive base URL from issuer: " + e.getMessage());
 			return FALLBACK_BASE;
