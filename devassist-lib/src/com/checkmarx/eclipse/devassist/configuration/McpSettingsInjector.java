@@ -309,14 +309,17 @@ public final class McpSettingsInjector {
 			CxLogger.info(LOG_TAG + " Deriving base URL from issuer: " + issuer);
 			String host = URI.create(issuer).getHost();
 
-			if (host != null && host.contains("iam.checkmarx")) {
+			if (host != null && host.contains("iam.")) {
 				String newHost = host.replace("iam", "ast");
 				String baseUrl = "https://" + newHost;
 				CxLogger.info(LOG_TAG + "Derived base URL: " + baseUrl);
 				return baseUrl;
-			}
+			}else if (host != null && !host.isBlank()) {
+				CxLogger.info(LOG_TAG + "Derived base URL: " + "https://" + host);
+                return "https://" + host;
+            }
 
-			CxLogger.info(LOG_TAG + " Host does not match iam.checkmarx pattern, using fallback");
+			CxLogger.info(LOG_TAG + " Host does not match iam. pattern, using fallback");
 			return FALLBACK_BASE;
 		} catch (Exception e) {
 			CxLogger.warning(LOG_TAG + " Failed to derive base URL from issuer: " + e.getMessage());
