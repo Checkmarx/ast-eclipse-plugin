@@ -41,7 +41,7 @@ jobs:
           DISPLAY: :99.0
         run: |
           Xvfb -ac :99 -screen 0 1920x1080x16 &
-          mvn verify -Dtest.includes="**/ui/*.java"
+          ./mvnw verify -Dtest.includes="**/ui/*.java"
       - name: Upload Coverage Report
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -80,7 +80,7 @@ jobs:
           DISPLAY: :99.0
         run: |
           Xvfb -ac :99 -screen 0 1920x1080x16 &
-          mvn verify -Dtest.includes="**/integration/*Test.java"
+          ./mvnw verify -Dtest.includes="**/integration/*Test.java"
       - name: Upload Coverage Report
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -119,7 +119,7 @@ jobs:
           DISPLAY: :99.0
         run: |
           Xvfb -ac :99 -screen 0 1920x1080x16 &
-          mvn clean verify -Dtest.includes="**/unit/**/*Test.java"
+          ./mvnw clean verify -Dtest.includes="**/unit/**/*Test.java"
       - name: Upload Coverage Report
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:

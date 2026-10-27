@@ -111,10 +111,10 @@ jobs:
       - name: Update the POM version
         env:
           VERSION: ${{ inputs.tag }}
-        run: mvn -B org.eclipse.tycho:tycho-versions-plugin:set-version -DnewVersion="${VERSION}" --file pom.xml
+        run: ./mvnw -B org.eclipse.tycho:tycho-versions-plugin:set-version -DnewVersion="${VERSION}" --file pom.xml
 
       - name: Create release
-        run: mvn -B clean install --file pom.xml  -DskipTests -pl "!checkmarx-ast-eclipse-plugin-tests"
+        run: ./mvnw -B clean install --file pom.xml  -DskipTests -pl "!checkmarx-ast-eclipse-plugin-tests"
 
       - name: Extract CLI version
         id: extract_cli_version
