@@ -5,7 +5,6 @@ import static org.mockito.Mockito.*;
 
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.preferences.IPreferencesService;
-import org.eclipse.jface.preference.IPreferenceStore;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,7 +12,6 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.MockitoAnnotations;
 
-import com.checkmarx.eclipse.Activator;
 import com.checkmarx.eclipse.common.preferences.Preferences;
 
 class PreferencesTest {
@@ -21,20 +19,14 @@ class PreferencesTest {
 	@Mock
 	private IPreferencesService mockPreferencesService;
 
-	@Mock
-	private IPreferenceStore mockPreferenceStore;
-
-	@Mock
-	private Activator mockActivator;
+	private static final String KEY_PREFIX = "preferencesTest.";
 
 	private MockedStatic<Platform> platformMock;
-	private MockedStatic<Activator> activatorMock;
 
 	@BeforeEach
 	void setUp() {
 		MockitoAnnotations.openMocks(this);
 		platformMock = mockStatic(Platform.class);
-		activatorMock = mockStatic(Activator.class);
 	}
 
 	@AfterEach
@@ -42,9 +34,18 @@ class PreferencesTest {
 		if (platformMock != null) {
 			platformMock.close();
 		}
-		if (activatorMock != null) {
-			activatorMock.close();
+		for (String key : new String[] { "testKey", "key1", "key2" }) {
+			Preferences.STORE.setToDefault(KEY_PREFIX + key);
 		}
+	}
+
+	/**
+	 * Preferences.store writes to the real ScopedPreferenceStore, which reads
+	 * through Platform.getPreferencesService(), so the Platform mock must be released.
+	 */
+	private void useRealPlatform() {
+		platformMock.close();
+		platformMock = null;
 	}
 
 	@Test
@@ -118,33 +119,29 @@ class PreferencesTest {
 
 	@Test
 	void testStore_setsValueInPreferenceStore() {
-		activatorMock.when(Activator::getDefault).thenReturn(mockActivator);
-		when(mockActivator.getPreferenceStore()).thenReturn(mockPreferenceStore);
+		useRealPlatform();
 
-		Preferences.store("testKey", "testValue");
+		Preferences.store(KEY_PREFIX + "testKey", "testValue");
 
-		verify(mockActivator).getPreferenceStore();
-		verify(mockPreferenceStore).setValue("testKey", "testValue");
+		assertEquals("testValue", Preferences.STORE.getString(KEY_PREFIX + "testKey"));
 	}
 
 	@Test
 	void testStore_withEmptyValue() {
-		activatorMock.when(Activator::getDefault).thenReturn(mockActivator);
-		when(mockActivator.getPreferenceStore()).thenReturn(mockPreferenceStore);
+		useRealPlatform();
+		Preferences.store(KEY_PREFIX + "testKey", "testValue");
 
-		Preferences.store("testKey", "");
+		Preferences.store(KEY_PREFIX + "testKey", "");
 
-		verify(mockPreferenceStore).setValue("testKey", "");
+		assertEquals("", Preferences.STORE.getString(KEY_PREFIX + "testKey"));
 	}
 
 	@Test
-	void testStore_withNullValue() {
-		activatorMock.when(Activator::getDefault).thenReturn(mockActivator);
-		when(mockActivator.getPreferenceStore()).thenReturn(mockPreferenceStore);
+	void testStore_withNullValue_throws() {
+		useRealPlatform();
 
-		Preferences.store("testKey", null);
-
-		verify(mockPreferenceStore).setValue("testKey", null);
+		// Eclipse preference nodes reject null values
+		assertThrows(NullPointerException.class, () -> Preferences.store(KEY_PREFIX + "testKey", null));
 	}
 
 	@Test
@@ -179,13 +176,12 @@ class PreferencesTest {
 
 	@Test
 	void testStore_multipleValuesSequentially() {
-		activatorMock.when(Activator::getDefault).thenReturn(mockActivator);
-		when(mockActivator.getPreferenceStore()).thenReturn(mockPreferenceStore);
+		useRealPlatform();
 
-		Preferences.store("key1", "value1");
-		Preferences.store("key2", "value2");
+		Preferences.store(KEY_PREFIX + "key1", "value1");
+		Preferences.store(KEY_PREFIX + "key2", "value2");
 
-		verify(mockPreferenceStore).setValue("key1", "value1");
-		verify(mockPreferenceStore).setValue("key2", "value2");
+		assertEquals("value1", Preferences.STORE.getString(KEY_PREFIX + "key1"));
+		assertEquals("value2", Preferences.STORE.getString(KEY_PREFIX + "key2"));
 	}
 }

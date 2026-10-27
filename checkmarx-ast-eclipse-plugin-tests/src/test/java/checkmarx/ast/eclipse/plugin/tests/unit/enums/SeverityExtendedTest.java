@@ -79,27 +79,14 @@ class SeverityExtendedTest {
 	@Test
 	void testValues_returnsAllConstants() {
 		Severity[] values = Severity.values();
-		assertEquals(8, values.length);
+		assertEquals(6, values.length);
 	}
 
 	@Test
 	void testValues_containsAllExpected() {
-		Severity[] values = Severity.values();
-		boolean hasCritical = false;
-		boolean hasHigh = false;
-		boolean hasLow = false;
-		boolean hasGroupBy = false;
-
-		for (Severity s : values) {
-			if (s == Severity.CRITICAL) hasCritical = true;
-			if (s == Severity.HIGH) hasHigh = true;
-			if (s == Severity.LOW) hasLow = true;
-		}
-
-		assertTrue(hasCritical);
-		assertTrue(hasHigh);
-		assertTrue(hasLow);
-		assertTrue(hasGroupBy);
+		// Grouping modes live in GroupingMode; Severity holds only real severity levels
+		assertArrayEquals(new Severity[] { Severity.CRITICAL, Severity.HIGH, Severity.MEDIUM, Severity.LOW,
+				Severity.INFO, Severity.MALICIOUS }, Severity.values());
 	}
 
 	@Test

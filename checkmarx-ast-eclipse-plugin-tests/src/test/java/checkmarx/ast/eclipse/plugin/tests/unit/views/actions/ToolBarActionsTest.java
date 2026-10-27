@@ -25,11 +25,13 @@ import org.mockito.Mockito;
 import com.checkmarx.eclipse.enums.ActionName;
 import com.checkmarx.eclipse.views.DataProvider;
 
+import com.checkmarx.eclipse.enums.GroupingMode;
 import com.checkmarx.eclipse.enums.PluginListenerType;
 import com.checkmarx.eclipse.common.enums.Severity;
 import com.checkmarx.eclipse.views.DisplayModel;
 import com.checkmarx.eclipse.views.PluginListenerDefinition;
 import com.checkmarx.eclipse.views.actions.ToolBarActions;
+import com.checkmarx.eclipse.views.GlobalSettings;
 import com.checkmarx.eclipse.views.filters.FilterState;
 import com.google.common.eventbus.EventBus;
 
@@ -137,6 +139,9 @@ class ToolBarActionsTest {
     void testGroupBySeverityAction() {
         // createGroupByActions() runs inside a background Job so we test the toggle directly.
         FilterState.groupBySeverity = false;
+        try (MockedStatic<GlobalSettings> gs = Mockito.mockStatic(GlobalSettings.class)) {
+            FilterState.setGroupingMode(GroupingMode.SEVERITY);
+        }
         assertTrue(FilterState.groupBySeverity);
     }
 
