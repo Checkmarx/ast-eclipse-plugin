@@ -113,7 +113,8 @@ jobs:
           ECHO_LIBRARIES_ACCESS_KEY: ${{ secrets.ECHO_LIBRARIES_ACCESS_KEY }}
         run: |
           MAVEN_VERSION=3.9.16 # Resolved through the echo mirror configured in .mvn/settings.xml
-          mvn -B -q dependency:copy -Dartifact=org.apache.maven:apache-maven:${MAVEN_VERSION}:tar.gz:bin -DoutputDirectory=/tmp/maven-dist
+          # Run outside the repo: the root pom loads the Tycho extension, which fails on the runner's Maven
+          (cd "${RUNNER_TEMP}" && mvn -B -q -gs "${GITHUB_WORKSPACE}/.mvn/settings.xml" dependency:copy -Dartifact=org.apache.maven:apache-maven:${MAVEN_VERSION}:tar.gz:bin -DoutputDirectory=/tmp/maven-dist)
           sudo tar -xzf /tmp/maven-dist/apache-maven-${MAVEN_VERSION}-bin.tar.gz -C /opt
           echo "/opt/apache-maven-${MAVEN_VERSION}/bin" >> "$GITHUB_PATH"
 
