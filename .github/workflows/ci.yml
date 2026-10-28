@@ -32,12 +32,21 @@ jobs:
           path: ~/.m2/repository
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-maven-
+      - name: Install pinned Maven
+        env:
+          ECHO_LIBRARIES_ACCESS_KEY: ${{ secrets.ECHO_LIBRARIES_ACCESS_KEY }}
+        run: |
+          MAVEN_VERSION=3.9.16 # Resolved through the echo mirror configured in .mvn/settings.xml
+          mvn -B -q dependency:copy -Dartifact=org.apache.maven:apache-maven:${MAVEN_VERSION}:tar.gz:bin -DoutputDirectory=/tmp/maven-dist
+          sudo tar -xzf /tmp/maven-dist/apache-maven-${MAVEN_VERSION}-bin.tar.gz -C /opt
+          echo "/opt/apache-maven-${MAVEN_VERSION}/bin" >> "$GITHUB_PATH"
       - name: Run UI Tests
         env:
           CX_BASE_URI: ${{ secrets.CX_BASE_URI }}
           CX_TENANT: ${{ secrets.CX_TENANT }}
           CX_APIKEY: ${{ secrets.CX_APIKEY }}
           CX_TEST_SCAN: ${{ secrets.CX_TEST_SCAN }}
+          ECHO_LIBRARIES_ACCESS_KEY: ${{ secrets.ECHO_LIBRARIES_ACCESS_KEY }}
           DISPLAY: :99.0
         run: |
           Xvfb -ac :99 -screen 0 1920x1080x16 &
@@ -71,12 +80,21 @@ jobs:
           path: ~/.m2/repository
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-maven-
+      - name: Install pinned Maven
+        env:
+          ECHO_LIBRARIES_ACCESS_KEY: ${{ secrets.ECHO_LIBRARIES_ACCESS_KEY }}
+        run: |
+          MAVEN_VERSION=3.9.16 # Resolved through the echo mirror configured in .mvn/settings.xml
+          mvn -B -q dependency:copy -Dartifact=org.apache.maven:apache-maven:${MAVEN_VERSION}:tar.gz:bin -DoutputDirectory=/tmp/maven-dist
+          sudo tar -xzf /tmp/maven-dist/apache-maven-${MAVEN_VERSION}-bin.tar.gz -C /opt
+          echo "/opt/apache-maven-${MAVEN_VERSION}/bin" >> "$GITHUB_PATH"
       - name: Run Integration Tests
         env:
           CX_BASE_URI: ${{ secrets.CX_BASE_URI }}
           CX_TENANT: ${{ secrets.CX_TENANT }}
           CX_APIKEY: ${{ secrets.CX_APIKEY }}
           CX_TEST_SCAN: ${{ secrets.CX_TEST_SCAN }}
+          ECHO_LIBRARIES_ACCESS_KEY: ${{ secrets.ECHO_LIBRARIES_ACCESS_KEY }}
           DISPLAY: :99.0
         run: |
           Xvfb -ac :99 -screen 0 1920x1080x16 &
@@ -110,12 +128,21 @@ jobs:
           path: ~/.m2/repository
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-maven-
+      - name: Install pinned Maven
+        env:
+          ECHO_LIBRARIES_ACCESS_KEY: ${{ secrets.ECHO_LIBRARIES_ACCESS_KEY }}
+        run: |
+          MAVEN_VERSION=3.9.16 # Resolved through the echo mirror configured in .mvn/settings.xml
+          mvn -B -q dependency:copy -Dartifact=org.apache.maven:apache-maven:${MAVEN_VERSION}:tar.gz:bin -DoutputDirectory=/tmp/maven-dist
+          sudo tar -xzf /tmp/maven-dist/apache-maven-${MAVEN_VERSION}-bin.tar.gz -C /opt
+          echo "/opt/apache-maven-${MAVEN_VERSION}/bin" >> "$GITHUB_PATH"
       - name: Run Unit Tests with Coverage
         env:
           CX_BASE_URI: ${{ secrets.CX_BASE_URI }}
           CX_TENANT: ${{ secrets.CX_TENANT }}
           CX_APIKEY: ${{ secrets.CX_APIKEY }}
           CX_TEST_SCAN: ${{ secrets.CX_TEST_SCAN }}
+          ECHO_LIBRARIES_ACCESS_KEY: ${{ secrets.ECHO_LIBRARIES_ACCESS_KEY }}
           DISPLAY: :99.0
         run: |
           Xvfb -ac :99 -screen 0 1920x1080x16 &

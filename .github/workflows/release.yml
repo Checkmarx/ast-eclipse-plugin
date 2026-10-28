@@ -108,12 +108,24 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-      
      
+      - name: Install pinned Maven
+        env:
+          ECHO_LIBRARIES_ACCESS_KEY: ${{ secrets.ECHO_LIBRARIES_ACCESS_KEY }}
+        run: |
+          MAVEN_VERSION=3.9.16 # Resolved through the echo mirror configured in .mvn/settings.xml
+          mvn -B -q dependency:copy -Dartifact=org.apache.maven:apache-maven:${MAVEN_VERSION}:tar.gz:bin -DoutputDirectory=/tmp/maven-dist
+          sudo tar -xzf /tmp/maven-dist/apache-maven-${MAVEN_VERSION}-bin.tar.gz -C /opt
+          echo "/opt/apache-maven-${MAVEN_VERSION}/bin" >> "$GITHUB_PATH"
+
       - name: Update the POM version
         env:
           VERSION: ${{ inputs.tag }}
+          ECHO_LIBRARIES_ACCESS_KEY: ${{ secrets.ECHO_LIBRARIES_ACCESS_KEY }}
         run: mvn -B org.eclipse.tycho:tycho-versions-plugin:set-version -DnewVersion="${VERSION}" --file pom.xml
 
       - name: Create release
+        env:
+          ECHO_LIBRARIES_ACCESS_KEY: ${{ secrets.ECHO_LIBRARIES_ACCESS_KEY }}
         run: mvn -B clean install --file pom.xml  -DskipTests -pl "!checkmarx-ast-eclipse-plugin-tests"
 
       - name: Extract CLI version
@@ -241,4 +253,3 @@ jobs:
   #     release_url: https://github.com/Checkmarx/ast-eclipse-plugin/releases/tag/${{ needs.release.outputs.TAG_NAME }}
   #     jira_product_name: ECLIPSE
   #   secrets: inherit
-
