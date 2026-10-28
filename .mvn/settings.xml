@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+	Project-level Maven settings, loaded as global settings via .mvn/maven.config.
+	User settings (~/.m2/settings.xml) are still applied on top of this file.
+
+	All Maven Central traffic is routed through the Echo HQ repository, which serves
+	CVE-patched builds of open-source libraries. Authentication requires the
+	ECHO_LIBRARIES_ACCESS_KEY environment variable (set from a secret in CI).
+	Never hardcode the key in this file.
+-->
+<settings xmlns="http://maven.apache.org/SETTINGS/1.2.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 https://maven.apache.org/xsd/settings-1.2.0.xsd">
+	<servers>
+		<!-- Echo rejects basic auth unless the username is empty, which Maven does not send,
+			so the access key is passed as a Bearer token instead. -->
+		<server>
+			<id>echo</id>
+			<configuration>
+				<httpHeaders>
+					<property>
+						<name>Authorization</name>
+						<value>Bearer ${env.ECHO_LIBRARIES_ACCESS_KEY}</value>
+					</property>
+				</httpHeaders>
+			</configuration>
+		</server>
+	</servers>
+	<mirrors>
+		<mirror>
+			<id>echo</id>
+			<mirrorOf>central</mirrorOf>
+			<name>Echo HQ Maven Repository</name>
+			<url>https://maven.echohq.com</url>
+		</mirror>
+	</mirrors>
+</settings>

@@ -38,6 +38,7 @@ jobs:
           CX_TENANT: ${{ secrets.CX_TENANT }}
           CX_APIKEY: ${{ secrets.CX_APIKEY }}
           CX_TEST_SCAN: ${{ secrets.CX_TEST_SCAN }}
+          ECHO_LIBRARIES_ACCESS_KEY: ${{ secrets.ECHO_LIBRARIES_ACCESS_KEY }}
           DISPLAY: :99.0
         run: |
           Xvfb -ac :99 -screen 0 1920x1080x16 &
@@ -77,6 +78,7 @@ jobs:
           CX_TENANT: ${{ secrets.CX_TENANT }}
           CX_APIKEY: ${{ secrets.CX_APIKEY }}
           CX_TEST_SCAN: ${{ secrets.CX_TEST_SCAN }}
+          ECHO_LIBRARIES_ACCESS_KEY: ${{ secrets.ECHO_LIBRARIES_ACCESS_KEY }}
           DISPLAY: :99.0
         run: |
           Xvfb -ac :99 -screen 0 1920x1080x16 &
@@ -116,6 +118,7 @@ jobs:
           CX_TENANT: ${{ secrets.CX_TENANT }}
           CX_APIKEY: ${{ secrets.CX_APIKEY }}
           CX_TEST_SCAN: ${{ secrets.CX_TEST_SCAN }}
+          ECHO_LIBRARIES_ACCESS_KEY: ${{ secrets.ECHO_LIBRARIES_ACCESS_KEY }}
           DISPLAY: :99.0
         run: |
           Xvfb -ac :99 -screen 0 1920x1080x16 &
