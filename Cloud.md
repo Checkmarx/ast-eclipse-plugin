@@ -142,7 +142,7 @@ Import into Eclipse:
 All Maven dependencies and plugins are resolved through the **Echo HQ Maven Repository** (`https://maven.echohq.com`), which serves CVE-patched builds of open-source libraries.
 
 - In CI/CD, each workflow writes `~/.m2/settings.xml` with an `echo-repo` mirror (`mirrorOf *`) and server credentials taken from the `ECHO_LIBRARIES_ACCESS_KEY` secret, the same way as `ast-cli-java-wrapper`.
-- Local builds download from Maven Central (or the repositories in your own `~/.m2/settings.xml`) unless Echo is configured. To build through Echo, create a separate file such as `~/.m2/settings-echo.xml` with the same `echo-repo` mirror and server, using an empty username and your access key as the password, and run `mvn -s ~/.m2/settings-echo.xml ...`. Keeping it separate avoids sending your other Maven projects to Echo. Never commit the key.
+- For local builds, add the same `echo-repo` mirror and server to your `~/.m2/settings.xml`, with an empty username and your access key as the password. Never commit the key.
 - Eclipse platform bundles still come from the p2 repositories declared in `pom.xml`, and the runtime JARs bundled in the `lib/` folders are committed to the repo. Echo does not affect either of them.
 
 ### Build from CLI
