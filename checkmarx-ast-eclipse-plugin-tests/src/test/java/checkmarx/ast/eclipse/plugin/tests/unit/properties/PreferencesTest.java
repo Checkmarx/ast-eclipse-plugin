@@ -22,10 +22,13 @@ class PreferencesTest {
 	private IPreferencesService mockPreferencesService;
 
 	private MockedStatic<Platform> platformMock;
+	private IPreferencesService realPreferencesService;
 
 	@BeforeEach
 	void setUp() {
 		MockitoAnnotations.openMocks(this);
+		// Captured before Platform is mocked: reading values back through Preferences.STORE needs the real service
+		realPreferencesService = Platform.getPreferencesService();
 		platformMock = mockStatic(Platform.class);
 	}
 
@@ -110,6 +113,7 @@ class PreferencesTest {
 
 	@Test
 	void testStore_setsValueInPreferenceStore() {
+		useRealPreferencesService();
 		Preferences.store("testKey", "testValue");
 
 		assertEquals("testValue", Preferences.STORE.getString("testKey"));
@@ -117,6 +121,7 @@ class PreferencesTest {
 
 	@Test
 	void testStore_withEmptyValue() {
+		useRealPreferencesService();
 		Preferences.store("testKey", "value");
 		Preferences.store("testKey", "");
 
@@ -155,10 +160,15 @@ class PreferencesTest {
 
 	@Test
 	void testStore_multipleValuesSequentially() {
+		useRealPreferencesService();
 		Preferences.store("key1", "value1");
 		Preferences.store("key2", "value2");
 
 		assertEquals("value1", Preferences.STORE.getString("key1"));
 		assertEquals("value2", Preferences.STORE.getString("key2"));
+	}
+
+	private void useRealPreferencesService() {
+		platformMock.when(Platform::getPreferencesService).thenReturn(realPreferencesService);
 	}
 }
