@@ -108,6 +108,31 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-      
      
+      - name: Configure echo mirror for dependency resolution
+        run: |
+          mkdir -p ~/.m2
+          cat > ~/.m2/settings.xml << EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <settings>
+            <mirrors>
+              <mirror>
+                <id>echo-repo</id>
+                <mirrorOf>*</mirrorOf>
+                <url>https://maven.echohq.com</url>
+              </mirror>
+            </mirrors>
+            <servers>
+              <server>
+                <id>echo-repo</id>
+                <username></username>
+                <password>${ECHO_LIBRARIES_ACCESS_KEY}</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
+        env:
+          ECHO_LIBRARIES_ACCESS_KEY: ${{ secrets.ECHO_LIBRARIES_ACCESS_KEY }}
+
       - name: Update the POM version
         env:
           VERSION: ${{ inputs.tag }}
