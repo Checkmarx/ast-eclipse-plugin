@@ -43,6 +43,12 @@ class DataProviderTest {
         FilterState.resetFilters();
     }
 
+    /** These tests call the real CLI, so they can only run when CX_APIKEY is provided (e.g. not on fork PRs). */
+    private static void assumeCredentialsConfigured() {
+        Assumptions.assumeTrue(Environment.API_KEY != null && !Environment.API_KEY.isBlank(),
+                "CX_APIKEY is not set; skipping test that needs a live Checkmarx server");
+    }
+
     @Test
     void testSingletonInstance() {
         DataProvider instance1 = DataProvider.getInstance();
@@ -66,12 +72,14 @@ class DataProviderTest {
 
     @Test
     void testGetProjectsReturnsList() throws Exception {
+        assumeCredentialsConfigured();
         List<Project> projects = dataProvider.getProjects();
         assertNotNull(projects);
     }
 
     @Test
     void testGetProjectsByNameReturnsList() throws Exception {
+        assumeCredentialsConfigured();
         List<Project> projects = dataProvider.getProjects(TEST_PROJECT);
         assertNotNull(projects);
     }

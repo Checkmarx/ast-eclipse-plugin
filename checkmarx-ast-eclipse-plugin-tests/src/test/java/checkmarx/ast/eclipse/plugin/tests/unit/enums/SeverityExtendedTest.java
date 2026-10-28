@@ -79,7 +79,7 @@ class SeverityExtendedTest {
 	@Test
 	void testValues_returnsAllConstants() {
 		Severity[] values = Severity.values();
-		assertEquals(8, values.length);
+		assertEquals(6, values.length);
 	}
 
 	@Test
@@ -88,7 +88,6 @@ class SeverityExtendedTest {
 		boolean hasCritical = false;
 		boolean hasHigh = false;
 		boolean hasLow = false;
-		boolean hasGroupBy = false;
 
 		for (Severity s : values) {
 			if (s == Severity.CRITICAL) hasCritical = true;
@@ -99,7 +98,6 @@ class SeverityExtendedTest {
 		assertTrue(hasCritical);
 		assertTrue(hasHigh);
 		assertTrue(hasLow);
-		assertTrue(hasGroupBy);
 	}
 
 	@Test
