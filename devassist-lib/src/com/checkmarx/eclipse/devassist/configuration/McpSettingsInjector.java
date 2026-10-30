@@ -6,6 +6,9 @@ import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 import org.eclipse.core.runtime.preferences.InstanceScope;
@@ -59,6 +62,8 @@ public final class McpSettingsInjector {
 
 	/** Bundle symbolic name of GitHub Copilot for Eclipse's UI plugin. */
 	private static final String COPILOT_UI_BUNDLE_ID = "com.microsoft.copilot.eclipse.ui";
+	private static final Set<String> DEV_ENV_IAM_HOSTS = Set.of("iam-dev.dev.cxast.net");
+	private static final Pattern IAM_HOST_LABEL = Pattern.compile("(^|\\.)iam\\.");	 
 
 	/** Preference key Copilot reads its MCP server JSON from (Constants.MCP). */
 	private static final String MCP_PREFERENCE_KEY = "mcp";
@@ -304,23 +309,29 @@ public final class McpSettingsInjector {
 			CxLogger.info(LOG_TAG + " Issuer is null/empty, using fallback base URL");
 			return FALLBACK_BASE;
 		}
-
+ 
 		try {
 			CxLogger.info(LOG_TAG + " Deriving base URL from issuer: " + issuer);
 			String host = URI.create(issuer).getHost();
-
-			if (host != null && host.contains("iam.checkmarx")) {
-				String newHost = host.replace("iam", "ast");
-				String baseUrl = "https://" + newHost;
-				CxLogger.info(LOG_TAG + "Derived base URL: " + baseUrl);
-				return baseUrl;
+ 
+			if (host == null || host.isBlank()) {
+				CxLogger.info(LOG_TAG + " Issuer has no host, using fallback");
+				return FALLBACK_BASE;
+			}			
+			
+ 
+			if (DEV_ENV_IAM_HOSTS.contains(host)) {
+				CxLogger.info(LOG_TAG + " Issuer host '" + host + "' is a dev env, using fallback base URL");
+				return FALLBACK_BASE;
 			}
-
-			CxLogger.info(LOG_TAG + " Host does not match iam.checkmarx pattern, using fallback");
-			return FALLBACK_BASE;
+ 
+			// Multi-tenant: swap only the "iam" host label (e.g. eu.iam.checkmarx.net -> eu.ast.checkmarx.net).
+			// Single-tenant: the issuer host is the tenant base URL.
+			Matcher iamLabel = IAM_HOST_LABEL.matcher(host);
+			return "https://" + (iamLabel.find() ? iamLabel.replaceFirst("$1ast.") : host);
 		} catch (Exception e) {
 			CxLogger.warning(LOG_TAG + " Failed to derive base URL from issuer: " + e.getMessage());
 			return FALLBACK_BASE;
 		}
 	}
-}
+ }
