@@ -12,6 +12,7 @@ import com.checkmarx.eclipse.common.preferences.Preferences;
 import com.checkmarx.eclipse.devassist.backend.listener.CheckmarxEditorListener;
 import com.checkmarx.eclipse.devassist.backend.GlobalScannerController;
 import com.checkmarx.eclipse.devassist.backend.listener.ProjectLifecycleListener;
+import com.checkmarx.eclipse.devassist.telemetry.TelemetryService;
 
 public class PluginStartup implements IStartup {
 
@@ -47,6 +48,10 @@ public class PluginStartup implements IStartup {
 					// Register listener for real-time scanning with debounce
 					realtimeScanListener = new CheckmarxEditorListener();
 					window.getPartService().addPartListener(realtimeScanListener);
+
+					// Report login for an already logged-in user (once per launch), queued ahead of
+					// every scan event the scanners below will produce.
+					TelemetryService.logStartupLoginEvent();
 
 					// Initialize backend scanner infrastructure
 					initializeBackendScanners();

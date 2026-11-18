@@ -30,6 +30,7 @@ import org.eclipse.ui.dialogs.PreferencesUtil;
 
 import com.checkmarx.eclipse.common.utils.PluginConstants;
 import com.checkmarx.eclipse.common.listener.IAuthenticationSuccessHandler;
+import com.checkmarx.eclipse.common.listener.ILoginTelemetryHandler;
 import com.checkmarx.eclipse.common.listener.IMcpUninstallCallback;
 import com.checkmarx.eclipse.common.listener.IMcpUninstallHandler;
 import com.checkmarx.eclipse.common.listener.ISettingsChangeNotifier;
@@ -315,6 +316,10 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 						// anything else gated on login) actually sees it.
 						Preferences.STORE.setValue(Preferences.API_KEY, apiKey_str);
 						Preferences.STORE.setValue(Preferences.ADDITIONAL_OPTIONS, additionalParams_str);
+						// Report the login BEFORE credentialsValidated flips: that change starts a
+						// workspace scan immediately, and the login event must reach the CLI first
+						// (it creates the session id the scan events reuse).
+						reportLoginTelemetry(true, null);
 						Preferences.setCredentialsValidated(true);
 						// connectionButton stays disabled - it's only re-enabled on logout, or
 						// below if this attempt actually failed.
@@ -335,6 +340,7 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 						// Authentication failed - the flow ends here with no welcome dialog,
 						// so show the failure message right away, restore Logout, and let the
 						// user retry the connect.
+						reportLoginTelemetry(false, result);
 						if (!connectionButton.isDisposed()) {
 							connectionButton.setEnabled(true);
 						}
@@ -427,6 +433,21 @@ public class PreferencesPage extends FieldEditorPreferencePage implements IWorkb
 				textControl.setFocus();
 			}
 		});
+	}
+
+	/**
+	 * Reports the result of a Connect attempt to the login telemetry handler
+	 * (registered by devassist-lib). Never throws - telemetry must not affect login.
+	 */
+	private static void reportLoginTelemetry(boolean success, String failureReason) {
+		try {
+			ILoginTelemetryHandler handler = Preferences.getLoginTelemetryHandler();
+			if (handler != null) {
+				handler.onLogin(success, failureReason);
+			}
+		} catch (Exception e) {
+			CxLogger.warning("Telemetry: login event could not be reported - " + e.getMessage());
+		}
 	}
 
 	private static String mapAuthResult(String result) {

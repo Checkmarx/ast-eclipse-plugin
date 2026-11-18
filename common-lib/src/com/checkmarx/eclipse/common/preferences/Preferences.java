@@ -11,6 +11,7 @@ import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.ui.preferences.ScopedPreferenceStore;
 
 import com.checkmarx.eclipse.common.listener.IAuthenticationSuccessHandler;
+import com.checkmarx.eclipse.common.listener.ILoginTelemetryHandler;
 import com.checkmarx.eclipse.common.listener.IMcpInstallHandler;
 import com.checkmarx.eclipse.common.listener.IMcpUninstallHandler;
 import com.checkmarx.eclipse.common.listener.ISettingsChangeNotifier;
@@ -46,6 +47,9 @@ public class Preferences {
 
     // Handler for post-authentication UI setup (registered by devassist-lib)
     private static IAuthenticationSuccessHandler authSuccessHandler;
+
+    // Handler that reports login telemetry (registered by devassist-lib)
+    private static ILoginTelemetryHandler loginTelemetryHandler;
 
     // Notifiers for settings changes (registered by main plugin and devassist-lib).
     // A List is used because both bundles register their own notifier for different
@@ -102,6 +106,14 @@ public class Preferences {
 
     public static void setAuthenticationSuccessHandler(IAuthenticationSuccessHandler handler) {
         authSuccessHandler = handler;
+    }
+
+    public static void setLoginTelemetryHandler(ILoginTelemetryHandler handler) {
+        loginTelemetryHandler = handler;
+    }
+
+    public static ILoginTelemetryHandler getLoginTelemetryHandler() {
+        return loginTelemetryHandler;
     }
 
     public static IAuthenticationSuccessHandler getAuthenticationSuccessHandler() {

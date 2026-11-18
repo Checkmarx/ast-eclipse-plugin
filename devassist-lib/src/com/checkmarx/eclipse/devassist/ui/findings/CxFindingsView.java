@@ -1029,7 +1029,12 @@ public class CxFindingsView extends ViewPart {
 		fixWithAIItem.addSelectionListener(new org.eclipse.swt.events.SelectionAdapter() {
 			@Override
 			public void widgetSelected(org.eclipse.swt.events.SelectionEvent e) {
-				new RemediationManager().fixWithCxOneAssist(issue, DevAssistConstants.QUICK_FIX);
+				try {
+					new RemediationManager().fixWithCxOneAssist(issue, DevAssistConstants.QUICK_FIX);
+				} catch (RuntimeException ex) {
+					TelemetryService.logFixWithCxOneAssistFailure(issue, ex.getMessage());
+					throw ex;
+				}
 				TelemetryService.logFixWithCxOneAssistAction(issue);
 			}
 		});
