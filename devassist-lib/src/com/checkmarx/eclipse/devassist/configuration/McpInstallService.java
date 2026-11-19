@@ -48,6 +48,11 @@ public final class McpInstallService {
 			// Register handler for post-authentication UI (welcome dialog, workspace scan)
 			Preferences.setAuthenticationSuccessHandler(new AuthenticationSuccessHandler());
 
+			// Register handler so common-lib PreferencesPage can report login telemetry
+			// without depending on this bundle directly.
+			Preferences.setLoginTelemetryHandler(
+					com.checkmarx.eclipse.devassist.telemetry.TelemetryService::logLoginEvent);
+
 			// Register handler so common-lib preference pages (e.g.
 			// CheckmarxPreferencePage)
 			// can trigger MCP install without depending on this bundle directly.

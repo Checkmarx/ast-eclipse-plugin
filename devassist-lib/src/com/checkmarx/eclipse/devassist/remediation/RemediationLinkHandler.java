@@ -137,7 +137,12 @@ public class RemediationLinkHandler {
     private boolean handleActions(@NonNull String action, @NonNull ScanIssue scanIssue, @NonNull String actionId) {
         switch (action) {
             case FIX:
-                remediationManager.fixWithCxOneAssist(scanIssue, actionId);
+                try {
+                    remediationManager.fixWithCxOneAssist(scanIssue, actionId);
+                } catch (RuntimeException e) {
+                    TelemetryService.logFixWithCxOneAssistFailure(scanIssue, e.getMessage());
+                    throw e;
+                }
                 TelemetryService.logFixWithCxOneAssistAction(scanIssue);
                 break;
             case VIEW_DETAILS:

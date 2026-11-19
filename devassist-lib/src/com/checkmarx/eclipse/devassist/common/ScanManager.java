@@ -9,7 +9,9 @@ import com.checkmarx.eclipse.devassist.backend.DevAssistScanStateHolder;
 import com.checkmarx.eclipse.devassist.backend.ScannerRegistry;
 import com.checkmarx.eclipse.devassist.backend.ScannerRegistry.ScannerType;
 import com.checkmarx.eclipse.devassist.basescanner.ScannerService;
+import com.checkmarx.eclipse.devassist.model.ScanEngine;
 import com.checkmarx.eclipse.devassist.model.ScanIssue;
+import com.checkmarx.eclipse.devassist.telemetry.TelemetryService;
 import com.checkmarx.eclipse.common.utils.CxLogger;
 
 /**
@@ -160,8 +162,13 @@ public class ScanManager {
 						allIssues.addAll(scannerResults);
 					}
 					successfulScanners++;
+					// One scan event per engine scan (a null result means the engine did not run)
+					if (scanResult != null) {
+						reportScanTelemetry(scanner, scannerResults, filePath);
+					}
 				} catch (Exception e) {
 					e.printStackTrace();
+					reportScanFailureTelemetry(scanner, e, filePath);
 				}
 			}
 
@@ -184,6 +191,44 @@ public class ScanManager {
 		} finally {
 			// Always release the in-flight marker so the next edit can trigger a scan.
 			stateHolder.markScanComplete(filePath);
+		}
+	}
+
+	/** Resolves the scan engine of a scanner from its config; null if unknown. */
+	private static ScanEngine engineOf(ScannerService<?> scanner) {
+		try {
+			return ScanEngine.fromString(scanner.getConfig().getEngineName());
+		} catch (Exception e) {
+			return null;
+		}
+	}
+
+	private static void reportScanTelemetry(ScannerService<?> scanner, List<ScanIssue> issues, String filePath) {
+		try {
+			ScanEngine engine = engineOf(scanner);
+			if (engine == null) {
+				return;
+			}
+			List<String> severities = new ArrayList<>();
+			if (issues != null) {
+				for (ScanIssue issue : issues) {
+					severities.add(issue.getSeverity());
+				}
+			}
+			TelemetryService.logScanEvent(engine, severities, filePath);
+		} catch (Exception e) {
+			CxLogger.warning(LOG_TAG + " Scan telemetry failed: " + e.getMessage());
+		}
+	}
+
+	private static void reportScanFailureTelemetry(ScannerService<?> scanner, Exception failure, String filePath) {
+		try {
+			ScanEngine engine = engineOf(scanner);
+			if (engine != null) {
+				TelemetryService.logScanFailureEvent(engine, failure.getMessage(), filePath);
+			}
+		} catch (Exception e) {
+			CxLogger.warning(LOG_TAG + " Scan telemetry failed: " + e.getMessage());
 		}
 	}
 

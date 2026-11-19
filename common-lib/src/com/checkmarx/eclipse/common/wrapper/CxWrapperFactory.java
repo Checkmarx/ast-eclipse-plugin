@@ -77,7 +77,7 @@ public class CxWrapperFactory {
 	 * build (Tycho replaces the "qualifier" placeholder in MANIFEST.MF with the
 	 * real build qualifier), falling back when running outside an OSGi framework.
 	 */
-	private static String getPluginVersion() {
+	public static String getPluginVersion() {
 		try {
 			Bundle bundle = FrameworkUtil.getBundle(CxWrapperFactory.class);
 			return bundle != null ? bundle.getVersion().toString() : "0.0.0";
