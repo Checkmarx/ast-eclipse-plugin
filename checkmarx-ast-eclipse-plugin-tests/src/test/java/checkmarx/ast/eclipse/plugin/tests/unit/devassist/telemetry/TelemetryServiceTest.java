@@ -3,7 +3,6 @@ package checkmarx.ast.eclipse.plugin.tests.unit.devassist.telemetry;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -22,6 +21,7 @@ class TelemetryServiceTest {
         assertEquals("Eclipse", event.getAgent());
         assertEquals("IDE", event.getPluginType());
         assertFalse(event.getCxPluginVersion() == null || event.getCxPluginVersion().isEmpty());
+        assertEquals("DevAssist", event.getEventAttributes().get("pluginName"));
     }
 
     @Test
@@ -59,6 +59,7 @@ class TelemetryServiceTest {
         assertEquals(Integer.valueOf(6), event.getTotalCount());
         assertEquals("Critical=1, High=2, Medium=1, Low=0, Info=2", event.getStatusResult());
         assertEquals("v2", event.getApiVersion());
+        assertEquals("v2", event.getEventAttributes().get("apiVersion"));
     }
 
     @Test
@@ -110,7 +111,8 @@ class TelemetryServiceTest {
         TelemetryEvent event = TelemetryService.buildClickEvent("Click", "viewDetails", "Oss", "Low", "CVE-1",
                 "success", "");
 
-        assertTrue(event.getEventAttributes() == null || event.getEventAttributes().isEmpty());
+        assertFalse(event.getEventAttributes().containsKey("remediationMode"));
+        assertFalse(event.getEventAttributes().containsKey("vulnerabilityId"));
         assertNull(event.getApiVersion());
     }
 

@@ -46,11 +46,15 @@ public final class TelemetryService {
     private static final String API_VERSION = "v2";
     private static final String AUTH_METHOD_API_KEY = "API_KEY";
     private static final String REMEDIATION_MODE = "DevAssist";
+    // Sent on every event so Analytics can tell the Checkmarx One and Dev Assist plugins apart
+    private static final String PLUGIN_NAME_DEV_ASSIST = "DevAssist";
     private static final String STATUS_SUCCESS = "success";
     private static final String STATUS_FAILURE = "failure";
     private static final int MAX_STATUS_RESULT_LENGTH = 500;
 
     // Event attribute keys
+    private static final String ATTR_PLUGIN_NAME = "pluginName";
+    private static final String ATTR_API_VERSION = "apiVersion";
     private static final String ATTR_AUTH_METHOD = "authMethod";
     private static final String ATTR_VULNERABILITY_ID = "vulnerabilityId";
     private static final String ATTR_REMEDIATION_MODE = "remediationMode";
@@ -156,7 +160,8 @@ public final class TelemetryService {
                 .agent(ECLIPSE_AGENT_NAME)
                 .agentVersion(getAgentVersion())
                 .cxPluginVersion(CxWrapperFactory.getPluginVersion())
-                .pluginType(PLUGIN_TYPE);
+                .pluginType(PLUGIN_TYPE)
+                .eventAttribute(ATTR_PLUGIN_NAME, PLUGIN_NAME_DEV_ASSIST);
     }
 
     /**
@@ -222,6 +227,7 @@ public final class TelemetryService {
                 .problemSeverity(highest)
                 .totalCount(total)
                 .apiVersion(API_VERSION)
+                .eventAttribute(ATTR_API_VERSION, API_VERSION)
                 .build();
     }
 
@@ -231,6 +237,7 @@ public final class TelemetryService {
                 failureStatusResult("Scan failed", failureReason))
                 .engine(engine)
                 .apiVersion(API_VERSION)
+                .eventAttribute(ATTR_API_VERSION, API_VERSION)
                 .build();
     }
 
