@@ -164,11 +164,11 @@ public class ScanManager {
 					successfulScanners++;
 					// One scan event per engine scan (a null result means the engine did not run)
 					if (scanResult != null) {
-						reportScanTelemetry(scanner, scannerResults);
+						reportScanTelemetry(scanner, scannerResults, filePath);
 					}
 				} catch (Exception e) {
 					e.printStackTrace();
-					reportScanFailureTelemetry(scanner, e);
+					reportScanFailureTelemetry(scanner, e, filePath);
 				}
 			}
 
@@ -203,7 +203,7 @@ public class ScanManager {
 		}
 	}
 
-	private static void reportScanTelemetry(ScannerService<?> scanner, List<ScanIssue> issues) {
+	private static void reportScanTelemetry(ScannerService<?> scanner, List<ScanIssue> issues, String filePath) {
 		try {
 			ScanEngine engine = engineOf(scanner);
 			if (engine == null) {
@@ -215,17 +215,17 @@ public class ScanManager {
 					severities.add(issue.getSeverity());
 				}
 			}
-			TelemetryService.logScanEvent(engine, severities);
+			TelemetryService.logScanEvent(engine, severities, filePath);
 		} catch (Exception e) {
 			CxLogger.warning(LOG_TAG + " Scan telemetry failed: " + e.getMessage());
 		}
 	}
 
-	private static void reportScanFailureTelemetry(ScannerService<?> scanner, Exception failure) {
+	private static void reportScanFailureTelemetry(ScannerService<?> scanner, Exception failure, String filePath) {
 		try {
 			ScanEngine engine = engineOf(scanner);
 			if (engine != null) {
-				TelemetryService.logScanFailureEvent(engine, failure.getMessage());
+				TelemetryService.logScanFailureEvent(engine, failure.getMessage(), filePath);
 			}
 		} catch (Exception e) {
 			CxLogger.warning(LOG_TAG + " Scan telemetry failed: " + e.getMessage());

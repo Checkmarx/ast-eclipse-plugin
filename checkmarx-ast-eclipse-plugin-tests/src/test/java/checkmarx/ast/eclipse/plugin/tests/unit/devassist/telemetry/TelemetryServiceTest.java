@@ -32,8 +32,23 @@ class TelemetryServiceTest {
         assertEquals("authentication", event.getEventType());
         assertEquals("authentication", event.getSubType());
         assertEquals("success", event.getStatus());
-        assertEquals("", event.getStatusResult());
-        assertEquals("API_KEY", event.getEventAttributes().get("authMethod"));
+        assertEquals("Authentication successful.", event.getStatusResult());
+        assertEquals("APIKey", event.getEventAttributes().get("authMethod"));
+        assertFalse(event.getEventAttributes().get("loginTimestamp").isEmpty());
+        java.time.Instant.parse(event.getEventAttributes().get("loginTimestamp"));
+    }
+
+    @Test
+    void installEventCarriesIdAndTimestamp() {
+        TelemetryEvent event = TelemetryService.buildInstallEvent("eclipse-1234", "2026-11-19T08:00:00Z");
+
+        assertCommonFields(event);
+        assertEquals("install", event.getEventType());
+        assertEquals("installation", event.getSubType());
+        assertEquals("success", event.getStatus());
+        assertEquals("Plugin installed successfully.", event.getStatusResult());
+        assertEquals("eclipse-1234", event.getEventAttributes().get("installationId"));
+        assertEquals("2026-11-19T08:00:00Z", event.getEventAttributes().get("installationTimestamp"));
     }
 
     @Test
@@ -95,6 +110,29 @@ class TelemetryServiceTest {
         assertEquals("High", event.getProblemSeverity());
         assertEquals("DevAssist", event.getEventAttributes().get("remediationMode"));
         assertEquals("CVE-2024-1", event.getEventAttributes().get("vulnerabilityId"));
+        assertEquals("Remediation completed successfully.", event.getStatusResult());
+    }
+
+    @Test
+    void clickEventAndScanEventCarryRepoUrl() {
+        assertEquals("https://github.com/org/repo", TelemetryService.buildClickEvent("click", "fixWithAIChat", "Oss",
+                "High", "x@1", "success", "", "https://github.com/org/repo").getRepoUrl());
+        assertEquals("https://github.com/org/repo", TelemetryService.buildScanEvent("Oss", Collections.emptyList(),
+                "https://github.com/org/repo").getRepoUrl());
+    }
+
+    @Test
+    void gitRemoteResolverReadsOriginAndStripsCredentials(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir)
+            throws java.io.IOException {
+        java.nio.file.Path git = java.nio.file.Files.createDirectories(dir.resolve(".git"));
+        java.nio.file.Files.write(git.resolve("config"), Arrays.asList("[core]", "	bare = false",
+                "[remote \"upstream\"]", "	url = https://github.com/other/repo.git",
+                "[remote \"origin\"]", "	url = https://user:tok@github.com/org/repo.git"));
+        java.nio.file.Path file = java.nio.file.Files.createDirectories(dir.resolve("src")).resolve("a.java");
+
+        assertEquals("https://github.com/org/repo.git",
+                com.checkmarx.eclipse.devassist.telemetry.GitRemoteResolver.resolve(file.toString()));
+        assertNull(com.checkmarx.eclipse.devassist.telemetry.GitRemoteResolver.resolve(null));
     }
 
     @Test
@@ -120,6 +158,6 @@ class TelemetryServiceTest {
     void sanitizeRemovesCredentialsAndTruncates() {
         assertEquals("https://***@host/x", TelemetryService.sanitize("https://user:pw@host/x"));
         assertEquals("Bearer ***", TelemetryService.sanitize("Bearer abc.def"));
-        assertEquals(500, TelemetryService.sanitize("a ".repeat(400)).length());
+        assertEquals(256, TelemetryService.sanitize("a ".repeat(400)).length());
     }
 }
